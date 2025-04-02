@@ -147,6 +147,8 @@ button.primary:hover {
   transition: var(--transition);
   background-color: var(--bg-color);
   box-shadow: var(--shadow);
+  position: relative;
+  padding-right: 40px;
 }
 
 .script-item:hover {
@@ -414,4 +416,76 @@ a:hover {
 #toast.show {
   opacity: 1;
   transform: translate(-50%, -8px);
+}
+
+/* Add these styles at the end of the file */
+.script-menu {
+  background: none;
+  border: none;
+  padding: 6px;
+  cursor: pointer;
+  color: var(--secondary-text);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+}
+
+.script-menu:hover {
+  background-color: var(--light-bg);
+  color: var(--text-color);
+}
+
+.menu-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  min-width: 160px;
+  background-color: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  z-index: 100;
+  display: none;
+  transform-origin: top right;
+}
+
+.menu-dropdown.show {
+  display: block;
+  animation: menuFadeIn 0.2s ease;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.menu-item:hover {
+  background-color: var(--light-bg);
+}
+
+.menu-item.delete {
+  color: var(--danger);
+}
+
+.menu-item .action-icon {
+  width: 16px;
+  height: 16px;
+}
+
+@keyframes menuFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }

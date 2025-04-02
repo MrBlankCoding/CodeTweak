@@ -1,7 +1,7 @@
 //Manage popup
 // Dont touch this (Popup is fine, UI is fine, I dont anticipate any changes)
 
-document.addEventListener("DOMContentLoaded", async function () {
+document.addEventListener("DOMContentLoaded", async () => {
   // Initialize dark mode first
   initDarkMode();
 
@@ -121,89 +121,76 @@ document.addEventListener("DOMContentLoaded", async function () {
     scriptInfo.appendChild(scriptName);
     scriptInfo.appendChild(scriptTarget);
 
-    const scriptActions = document.createElement("div");
-    scriptActions.className = "script-actions";
-
-    const toggleLabel = document.createElement("label");
-    toggleLabel.className = "toggle-switch tooltip";
-    toggleLabel.setAttribute(
-      "data-tooltip",
-      script.enabled ? "Disable script" : "Enable script"
-    );
-
-    const toggleInput = document.createElement("input");
-    toggleInput.type = "checkbox";
-    toggleInput.checked = script.enabled;
-    toggleInput.addEventListener("change", () =>
-      toggleScript(index, toggleInput.checked)
-    );
-
-    const slider = document.createElement("span");
-    slider.className = "slider";
-
-    toggleLabel.appendChild(toggleInput);
-    toggleLabel.appendChild(slider);
-
-    const actionMenuBtn = document.createElement("button");
-    actionMenuBtn.className = "icon-button action-menu-btn";
-    actionMenuBtn.innerHTML = "⋮";
-    actionMenuBtn.title = "Script Actions";
-
-    const dropdownMenu = document.createElement("div");
-    dropdownMenu.className = "dropdown-menu";
-    dropdownMenu.innerHTML = `
-      <div class="dropdown-item" data-action="edit">
-        <span>✏️</span> Edit Script
-      </div>
-      <div class="dropdown-divider"></div>
-      <div class="dropdown-item danger" data-action="delete">
-        <span>🗑️</span> Delete
-      </div>
-    `;
-
-    actionMenuBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const isActive = dropdownMenu.classList.contains("show");
-
-      document.querySelectorAll(".dropdown-menu.show").forEach((menu) => {
-        menu.classList.remove("show");
-      });
-
-      if (isActive) {
-        dropdownMenu.classList.remove("show");
-      } else {
-        dropdownMenu.classList.add("show");
-      }
-    });
-
-    const actionMenu = document.createElement("div");
-    actionMenu.className = "action-menu";
-    actionMenu.appendChild(actionMenuBtn);
-    actionMenu.appendChild(dropdownMenu);
-
-    dropdownMenu.querySelectorAll(".dropdown-item").forEach((item) => {
-      item.addEventListener("click", (e) => {
-        const action = item.dataset.action;
-        dropdownMenu.classList.remove("show");
-
-        switch (action) {
-          case "edit":
-            editScript(index);
-            break;
-          case "delete":
-            deleteScript(index);
-            break;
-        }
-      });
-    });
-
-    scriptActions.appendChild(toggleLabel);
-    scriptActions.appendChild(actionMenu);
+    const scriptActions = createScriptActions(script);
 
     scriptItem.appendChild(scriptInfo);
     scriptItem.appendChild(scriptActions);
 
     return scriptItem;
+  }
+
+  function createScriptActions(script) {
+    const actions = document.createElement("div");
+    actions.className = "script-actions";
+
+    const menuBtn = document.createElement("button");
+    menuBtn.className = "script-menu";
+    menuBtn.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="3" r="1.5" fill="currentColor"/>
+        <circle cx="8" cy="8" r="1.5" fill="currentColor"/>
+        <circle cx="8" cy="13" r="1.5" fill="currentColor"/>
+      </svg>
+    `;
+
+    const menu = document.createElement("div");
+    menu.className = "menu-dropdown";
+    menu.innerHTML = `
+      <div class="menu-item" data-action="edit">
+        <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+        Edit Script
+      </div>
+      <div class="menu-item delete" data-action="delete">
+        <svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 6h18"/>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+        </svg>
+        Delete Script
+      </div>
+    `;
+
+    menuBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      menu.classList.toggle("show");
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener("click", (e) => {
+      if (!menu.contains(e.target) && !menuBtn.contains(e.target)) {
+        menu.classList.remove("show");
+      }
+    });
+
+    menu.addEventListener("click", (e) => {
+      const action = e.target.closest(".menu-item")?.dataset.action;
+      if (!action) return;
+
+      menu.classList.remove("show");
+
+      if (action === "edit") {
+        chrome.tabs.create({
+          url: `editor.html?id=${script.id}`,
+        });
+      } else if (action === "delete") {
+        deleteScript(script.id);
+      }
+    });
+
+    actions.append(menuBtn, menu);
+    return actions;
   }
 
   async function toggleScript(index, enabled) {
@@ -225,23 +212,22 @@ document.addEventListener("DOMContentLoaded", async function () {
     });
   }
 
-  async function deleteScript(index) {
-    if (!confirm("Are you sure you want to delete this script?")) {
-      return;
-    }
+  async function deleteScript(scriptId) {
+    if (!confirm("Are you sure you want to delete this script?")) return;
 
-    const { scripts = [] } = await chrome.storage.local.get("scripts");
+    try {
+      const { scripts = [] } = await chrome.storage.local.get("scripts");
+      const updatedScripts = scripts.filter((s) => s.id !== scriptId);
+      await chrome.storage.local.set({ scripts: updatedScripts });
 
-    if (index >= 0 && index < scripts.length) {
-      const deletedName = scripts[index].name;
-      scripts.splice(index, 1);
-      await chrome.storage.local.set({ scripts });
-
-      showToast(`"${deletedName}" deleted`);
-
+      // Reload scripts to update UI properly
       loadScripts(currentTabUrl);
 
       chrome.runtime.sendMessage({ action: "scriptsUpdated" });
+      showToast("Script deleted successfully");
+    } catch (error) {
+      console.error("Error deleting script:", error);
+      showToast("Error deleting script");
     }
   }
 
