@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scripty</title>
+    <link rel="stylesheet" href="styles/popup.css" />
+    <script src="utils/theme.js"></script>
+  </head>
+  <body>
+    <header>
+      <div class="logo-container">
+        <div class="logo">S</div>
+        <h1>Scripty</h1>
+      </div>
+      <div class="buttons">
+        <button
+          id="openDashboard"
+          class="primary tooltip"
+          data-tooltip="Open Dashboard"
+        >
+          <span class="btn-icon">📊</span>
+          <span>Dashboard</span>
+        </button>
+        <button
+          id="createScript"
+          class="primary tooltip"
+          data-tooltip="Create New Script"
+        >
+          <span class="btn-icon">+</span>
+          <span>Create</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="main-content">
+      <div class="script-list" id="scriptList">
+        <!-- Scripts will be populated by JavaScript -->
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">📜</div>
+          <p>
+            No scripts yet. Create your first script to enhance this website.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <div>v1.0.0</div>
+      <div><a href="#" id="reportIssue">Report issue</a></div>
+    </footer>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

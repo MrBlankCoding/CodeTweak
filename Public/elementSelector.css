@@ -1,0 +1,58 @@
+.scripty-highlight {
+  outline: 2px dashed #4a90e2 !important;
+  outline-offset: 1px !important;
+  background-color: rgba(74, 144, 226, 0.1) !important;
+}
+
+.scripty-menu {
+  position: fixed;
+  z-index: 999999;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  padding: 8px 0;
+  min-width: 200px;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+}
+
+.scripty-menu-item {
+  padding: 8px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scripty-menu-item:hover {
+  background-color: #f5f5f5;
+}
+
+.scripty-menu-item-icon {
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
+}
+
+.scripty-selector-mode {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  z-index: 999999;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scripty-selector-mode .icon {
+  color: #4a90e2;
+}

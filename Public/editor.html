@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Script Editor - UserScript Creator</title>
+    <link rel="stylesheet" href="codemirror/codemirror.css" />
+    <link rel="stylesheet" href="codemirror/theme/ayu-dark.css" />
+    <link rel="stylesheet" href="codemirror/addon/hint/show-hint.css" />
+    <link rel="stylesheet" href="codemirror/addon/fold/foldgutter.css" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+    <link rel="stylesheet" href="styles/editor.css" />
+    <link rel="stylesheet" href="codemirror/theme/default.css" />
+    <script src="utils/theme.js"></script>
+  </head>
+  <body>
+    <div class="app-container">
+      <header>
+        <div class="header-left">
+          <button type="button" id="sidebarToggle" class="sidebar-toggle">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+          <a href="dashboard.html" class="logo">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M12 3C7.02944 3 3 7.02944 3 12C3 16.9706 7.02944 21 12 21C16.9706 21 21 16.9706 21 12"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+              <path
+                d="M14 6.5C11.5 6.5 9.5 7.5 8.5 9.5C7.5 11.5 8 14 10 15.5C11.5 16.5 13.5 16.5 15 15.5"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+              <path
+                d="M17 7L19.5 9.5L17 12"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span>Dashboard</span>
+          </a>
+        </div>
+
+        <h1 id="pageTitle">Create UserScript</h1>
+
+        <button type="button" class="action-button" id="lintBtn">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+          <span id="lintBtnText">Lint: Off</span>
+        </button>
+
+        <button type="button" class="action-button" id="autosaveBtn">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"
+            ></path>
+            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+            <polyline points="7 3 7 8 15 8"></polyline>
+          </svg>
+          <span id="autosaveBtnText">Autosave: Off</span>
+        </button>
+
+        <div class="header-right">
+          <div class="status-info">
+            <div class="status-badge" id="scriptStatusBadge">
+              Unsaved Changes
+            </div>
+          </div>
+          <div class="header-actions">
+            <button
+              type="button"
+              id="saveBtn"
+              class="header-button primary-button"
+            >
+              Save Script
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div class="main-content">
+        <div class="sidebar">
+          <div class="settings-section collapsible">
+            <h3 class="section-toggle">
+              <span>Script Information</span>
+              <svg
+                class="toggle-icon"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </h3>
+            <div class="section-content">
+              <div class="settings-group">
+                <label for="scriptName">Script Name</label>
+                <input
+                  type="text"
+                  id="scriptName"
+                  placeholder="My Custom Script"
+                />
+              </div>
+              <div class="settings-group">
+                <label for="scriptVersion">Version</label>
+                <input type="text" id="scriptVersion" placeholder="1.0.0" />
+              </div>
+              <div class="settings-group">
+                <label for="scriptDescription">Description</label>
+                <input
+                  type="text"
+                  id="scriptDescription"
+                  placeholder="Enhances website functionality"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section collapsible">
+            <h3 class="section-toggle">
+              <span>Execution Settings</span>
+              <svg
+                class="toggle-icon"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </h3>
+            <div class="section-content">
+              <div class="settings-group">
+                <label for="targetUrl">Target URLs</label>
+                <div class="url-list-container">
+                  <input
+                    type="url"
+                    id="targetUrl"
+                    placeholder="https://example.com/*"
+                    required
+                  />
+                  <button type="button" id="addUrlBtn" class="small-button">
+                    Add URL
+                  </button>
+                </div>
+                <div id="urlList" class="url-list"></div>
+              </div>
+              <div class="settings-group">
+                <label for="runAt">Run Timing</label>
+                <select id="runAt">
+                  <option value="document_start">As soon as possible</option>
+                  <option value="document_end">When DOM is ready</option>
+                  <option value="document_idle" selected>
+                    After page load
+                  </option>
+                  <option value="element_ready">When element exists</option>
+                </select>
+              </div>
+              <div class="settings-group">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="cspDisabled" />
+                  Disable Content Security Policy (CSP)
+                </label>
+              </div>
+              <div class="settings-group" id="selectorContainer">
+                <label for="waitForSelector"
+                  >Wait for element (CSS selector)</label
+                >
+                <input
+                  type="text"
+                  id="waitForSelector"
+                  placeholder="#main-content"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section collapsible">
+            <h3 class="section-toggle">
+              <span>Permissions</span>
+              <svg
+                class="toggle-icon"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </h3>
+            <div class="section-content">
+              <div class="checkbox-group">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="domAccess" checked />
+                  DOM Manipulation
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" id="storageAccess" />
+                  Storage Access
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" id="ajaxAccess" />
+                  Network Requests
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" id="cookieAccess" />
+                  Cookie Access
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="editor-section">
+          <div id="statusMessage" class="status-message"></div>
+
+          <div class="editor-toolbar">
+            <div class="editor-actions">
+              <button type="button" class="action-button" id="formatBtn">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M21 10H3"></path>
+                  <path d="M21 6H3"></path>
+                  <path d="M21 14H3"></path>
+                  <path d="M21 18H3"></path>
+                </svg>
+                Format
+              </button>
+            </div>
+            <div class="editor-info">
+              <span id="cursorInfo">Line: 1, Col: 1</span>
+            </div>
+          </div>
+
+          <div class="editor-container">
+            <textarea
+              id="codeEditor"
+              placeholder="// Your JavaScript code here"
+            ></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="codemirror/codemirror.js"></script>
+    <script src="codemirror/javascript.js"></script>
+    <script src="codemirror/addon/edit/matchbrackets.js"></script>
+    <script src="codemirror/addon/edit/closebrackets.js"></script>
+    <script src="codemirror/addon/fold/foldcode.js"></script>
+    <script src="codemirror/addon/fold/foldgutter.js"></script>
+    <script src="codemirror/addon/fold/brace-fold.js"></script>
+    <script src="codemirror/addon/hint/show-hint.js"></script>
+    <script src="codemirror/addon/hint/javascript-hint.js"></script>
+    <link rel="stylesheet" href="codemirror/addon/lint/lint.css" />
+    <script src="codemirror/addon/lint/lint.js"></script>
+    <script src="codemirror/addon/lint/javascript-lint.js"></script>
+    <script defer src="lib/jshint.js"></script>
+    <script src="editor.js"></script>
+  </body>
+</html>
