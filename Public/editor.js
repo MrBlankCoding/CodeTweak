@@ -365,6 +365,17 @@ ${decodedTemplate}
         setTimeout(clearStatusMessage, 5000);
       } else {
         clearStatusMessage();
+        // Notify background script about CSP re-enable
+        const urls = Array.from(document.querySelectorAll(".url-item")).map(
+          (item) => item.dataset.url
+        );
+
+        urls.forEach((url) => {
+          chrome.runtime.sendMessage({
+            action: "cspStateChanged",
+            data: { url, enabled: false },
+          });
+        });
       }
     });
 

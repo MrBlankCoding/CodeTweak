@@ -137,7 +137,7 @@ function bypassTrustedTypes(tabId) {
     .catch(console.warn);
 }
 
-// Retrieve and filter scripts based on URL and execution timing
+// Update the getFilteredScripts function to group scripts by CSP requirement
 async function getFilteredScripts(url, runAt) {
   const currentTime = Date.now();
   if (!scriptCache || currentTime - lastCacheUpdate > CACHE_LIFETIME) {
@@ -152,48 +152,92 @@ async function getFilteredScripts(url, runAt) {
     lastCacheUpdate = currentTime;
   }
 
-  return scriptCache.filter(
+  const matchingScripts = scriptCache.filter(
     (script) =>
       script.enabled &&
       (!runAt || script.runAt === runAt) &&
       script.targetUrls.some((targetUrl) => urlMatchesPattern(url, targetUrl))
   );
+
+  // Separate scripts based on CSP requirement
+  return {
+    normalScripts: matchingScripts.filter(
+      (script) => !script.permissions?.cspDisabled
+    ),
+    cspDisabledScripts: matchingScripts.filter(
+      (script) => script.permissions?.cspDisabled
+    ),
+  };
 }
 
-// Inject scripts at specific document stages
+// Update the injectScriptsForStage function to handle separated scripts
 async function injectScriptsForStage(details, runAt) {
   if (details.frameId !== 0) return;
 
   try {
     const { settings = {} } = await chrome.storage.local.get("settings");
     const url = details.url;
-    const scripts = await getFilteredScripts(url, runAt);
-    const elementReadyScripts =
+    const { normalScripts, cspDisabledScripts } = await getFilteredScripts(
+      url,
+      runAt
+    );
+    const {
+      normalScripts: elementReadyNormalScripts,
+      cspDisabledScripts: elementReadyCspScripts,
+    } =
       runAt === INJECTION_TYPES.DOCUMENT_IDLE
         ? await getFilteredScripts(url, INJECTION_TYPES.ELEMENT_READY)
-        : [];
+        : { normalScripts: [], cspDisabledScripts: [] };
 
-    if (!scripts.length && !elementReadyScripts.length) return;
-
-    const requiresCSP = [...scripts, ...elementReadyScripts].some(
-      (script) => script.permissions?.cspDisabled
-    );
-    if (requiresCSP) {
-      await disableCSP(details.tabId, url);
-      bypassTrustedTypes(details.tabId);
+    // First handle normal scripts without any CSP modification
+    if (normalScripts.length) {
+      normalScripts.forEach((script) =>
+        injectScriptDirectly(
+          details.tabId,
+          script.code,
+          script.name,
+          settings,
+          false
+        )
+      );
     }
 
-    scripts.forEach((script) =>
-      injectScriptDirectly(details.tabId, script.code, script.name, settings)
-    );
-
-    if (elementReadyScripts.length) {
+    if (elementReadyNormalScripts.length) {
       chrome.tabs
         .sendMessage(details.tabId, {
           action: "waitForElements",
-          scripts: elementReadyScripts,
+          scripts: elementReadyNormalScripts,
+          requiresCSP: false,
         })
         .catch(console.warn);
+    }
+
+    // Then handle CSP-disabled scripts separately
+    if (cspDisabledScripts.length || elementReadyCspScripts.length) {
+      await disableCSP(details.tabId, url);
+      bypassTrustedTypes(details.tabId);
+
+      if (cspDisabledScripts.length) {
+        cspDisabledScripts.forEach((script) =>
+          injectScriptDirectly(
+            details.tabId,
+            script.code,
+            script.name,
+            settings,
+            true
+          )
+        );
+      }
+
+      if (elementReadyCspScripts.length) {
+        chrome.tabs
+          .sendMessage(details.tabId, {
+            action: "waitForElements",
+            scripts: elementReadyCspScripts,
+            requiresCSP: true,
+          })
+          .catch(console.warn);
+      }
     }
   } catch (error) {
     console.error("Error injecting scripts:", error);
@@ -208,7 +252,13 @@ async function injectScriptsForStage(details, runAt) {
 });
 
 // Directly inject a script into a tab
-async function injectScriptDirectly(tabId, code, scriptName, settings) {
+async function injectScriptDirectly(
+  tabId,
+  code,
+  scriptName,
+  settings,
+  requiresCSP = false
+) {
   try {
     // Check if tab exists before attempting injection
     const tab = await chrome.tabs.get(tabId);
@@ -279,17 +329,20 @@ async function injectScriptDirectly(tabId, code, scriptName, settings) {
       });
     }
 
+    // Add CSP information to the injection
     await chrome.scripting.executeScript({
       target: { tabId },
       world: "MAIN",
-      func: (code) => {
+      func: (code, hasCSPDisabled) => {
         try {
+          // Add a flag to indicate CSP status
+          window._codeScriptCSPDisabled = hasCSPDisabled;
           eval(code);
         } catch (error) {
           console.error("Script execution error:", error);
         }
       },
-      args: [code],
+      args: [code, requiresCSP],
     });
   } catch (error) {
     console.warn("Script injection error:", error);
@@ -349,7 +402,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           .get(message.tabId)
           .then((tab) => {
             if (tab && message.scriptCode) {
-              injectScriptDirectly(tab.id, message.scriptCode);
+              injectScriptDirectly(
+                tab.id,
+                message.scriptCode,
+                "Element Ready Script",
+                {},
+                message.requiresCSP || false
+              );
             }
           })
           .catch(() => {
@@ -357,6 +416,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           });
       }
       return false; // No async response needed
+    }
+
+    case "cspStateChanged": {
+      const { url, enabled } = message.data;
+      if (!enabled) {
+        cleanupCSPRules(url).catch(console.error);
+      }
+      sendResponse({ success: true });
+      return false;
     }
 
     default:
@@ -449,5 +517,33 @@ async function handleScriptCreation(url, template) {
     }
   } catch (error) {
     console.error("Error handling script creation:", error);
+  }
+}
+
+// Add new function to cleanup CSP rules
+async function cleanupCSPRules(url) {
+  if (isRunning) return;
+  isRunning = true;
+
+  try {
+    const existingRules = await chrome.declarativeNetRequest.getSessionRules();
+    const staleRules = existingRules.filter(
+      (rule) => rule.condition.urlFilter === url
+    );
+
+    if (staleRules.length) {
+      await chrome.declarativeNetRequest.updateSessionRules({
+        removeRuleIds: staleRules.map((rule) => rule.id),
+      });
+      activeRules = new Set(
+        [...activeRules].filter(
+          (id) => !staleRules.some((rule) => rule.id === id)
+        )
+      );
+    }
+  } catch (error) {
+    console.error("Failed to cleanup CSP rules:", error);
+  } finally {
+    isRunning = false;
   }
 }
