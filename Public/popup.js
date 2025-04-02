@@ -41,7 +41,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   reportIssueLink.addEventListener("click", (e) => {
     e.preventDefault();
     chrome.tabs.create({
-      url: "https://github.com/MrBlankCoding/Scripty/issues/new",
+      url: "https://github.com/MrBlankCoding/CodeTweak/issues/new",
     });
   });
 

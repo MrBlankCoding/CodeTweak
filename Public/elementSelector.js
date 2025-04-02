@@ -76,7 +76,7 @@ function createMenu(x, y) {
   cleanup(false); // Cleanup but keep menu
 
   menu = document.createElement("div");
-  menu.className = "scripty-menu";
+  menu.className = "CodeTweak-menu";
   menu.style.left = `${x}px`;
   menu.style.top = `${y}px`;
 
@@ -89,8 +89,8 @@ function createMenu(x, y) {
 
   actions.forEach(({ icon, text, action }) => {
     const item = document.createElement("div");
-    item.className = "scripty-menu-item";
-    item.innerHTML = `<span class="scripty-menu-item-icon">${icon}</span>${text}`;
+    item.className = "CodeTweak-menu-item";
+    item.innerHTML = `<span class="CodeTweak-menu-item-icon">${icon}</span>${text}`;
     item.addEventListener("click", () => handleAction(action));
     menu.appendChild(item);
   });
@@ -129,7 +129,7 @@ function handleAction(action) {
 function cleanup(removeMenu = true) {
   isSelecting = false;
   if (currentElement) {
-    currentElement.classList.remove("scripty-highlight");
+    currentElement.classList.remove("CodeTweak-highlight");
     currentElement = null;
   }
   if (removeMenu && menu) {
@@ -144,7 +144,7 @@ function cleanup(removeMenu = true) {
 
 function showSelectorMode() {
   const indicator = document.createElement("div");
-  indicator.className = "scripty-selector-mode";
+  indicator.className = "CodeTweak-selector-mode";
   indicator.innerHTML = `
     <span class="icon">🎯</span>
     <span>Selection Mode - Click an element to select it (Esc to cancel)</span>
@@ -164,10 +164,10 @@ document.addEventListener("mouseover", (e) => {
   if (!isSelecting) return;
 
   if (currentElement) {
-    currentElement.classList.remove("scripty-highlight");
+    currentElement.classList.remove("CodeTweak-highlight");
   }
   currentElement = e.target;
-  currentElement.classList.add("scripty-highlight");
+  currentElement.classList.add("CodeTweak-highlight");
 
   e.stopPropagation();
 });

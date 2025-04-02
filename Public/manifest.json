@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Scripty",
+  "name": "CodeTweak",
   "version": "1.0.0",
   "description": "Inject custom JavaScript code into specific websites based on user-defined settings",
   "permissions": [

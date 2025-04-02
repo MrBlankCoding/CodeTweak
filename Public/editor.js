@@ -454,7 +454,7 @@ ${decodedTemplate}
   'use strict';
   
   // Your code here...
-  console.log('Scripty: Custom script is running!');
+  console.log('CodeTweak: Custom script is running!');
 
 })();`);
 
@@ -615,7 +615,7 @@ ${decodedTemplate}
 
       // Notify background script with improved error handling
       try {
-        const port = chrome.runtime.connect({ name: "scripty" });
+        const port = chrome.runtime.connect({ name: "CodeTweak" });
         await new Promise((resolve) => {
           chrome.runtime.sendMessage(
             { action: "scriptsUpdated" },
@@ -722,7 +722,7 @@ ${decodedTemplate}
 
   function setupBackgroundConnection() {
     try {
-      const port = chrome.runtime.connect({ name: "scripty" });
+      const port = chrome.runtime.connect({ name: "CodeTweak" });
       port.onDisconnect.addListener(() => {
         console.log("Background connection closed, will reconnect when needed");
       });

@@ -1,10 +1,10 @@
-.scripty-highlight {
+.CodeTweak-highlight {
   outline: 2px dashed #4a90e2 !important;
   outline-offset: 1px !important;
   background-color: rgba(74, 144, 226, 0.1) !important;
 }
 
-.scripty-menu {
+.CodeTweak-menu {
   position: fixed;
   z-index: 999999;
   background: white;
@@ -17,7 +17,7 @@
   font-size: 14px;
 }
 
-.scripty-menu-item {
+.CodeTweak-menu-item {
   padding: 8px 16px;
   cursor: pointer;
   display: flex;
@@ -25,17 +25,17 @@
   gap: 8px;
 }
 
-.scripty-menu-item:hover {
+.CodeTweak-menu-item:hover {
   background-color: #f5f5f5;
 }
 
-.scripty-menu-item-icon {
+.CodeTweak-menu-item-icon {
   width: 16px;
   height: 16px;
   opacity: 0.7;
 }
 
-.scripty-selector-mode {
+.CodeTweak-selector-mode {
   position: fixed;
   top: 16px;
   left: 50%;
@@ -53,6 +53,6 @@
   gap: 8px;
 }
 
-.scripty-selector-mode .icon {
+.CodeTweak-selector-mode .icon {
   color: #4a90e2;
 }

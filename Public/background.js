@@ -47,7 +47,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
 // Handle port connections and disconnections
 chrome.runtime.onConnect.addListener((port) => {
-  if (port.name === "scripty") {
+  if (port.name === "CodeTweak") {
     ports.add(port);
     port.onDisconnect.addListener(() => {
       ports.delete(port);
@@ -366,7 +366,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Update port connection handling
 function setupPort(port) {
-  if (port.name === "scripty") {
+  if (port.name === "CodeTweak") {
+    // Check if the port is already connected
+    if (ports.has(port)) {
+      console.warn("Port already connected:", port.name);
+      return;
+    }
+    // Set up the port connection
     ports.add(port);
     port.onDisconnect.addListener(() => {
       ports.delete(port);
