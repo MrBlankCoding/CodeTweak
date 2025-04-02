@@ -126,9 +126,10 @@ button.primary:hover {
 }
 
 .main-content {
-  padding: 16px;
+  padding: 12px;
   max-height: 400px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .script-list {
@@ -141,19 +142,21 @@ button.primary:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
+  padding: 16px;
   border-radius: var(--radius);
-  border: 1px solid var(--border-color);
-  transition: var(--transition);
   background-color: var(--bg-color);
   box-shadow: var(--shadow);
   position: relative;
-  padding-right: 40px;
+  margin: 4px 0;
+  border: 1px solid transparent;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: fadeIn 0.2s ease-in;
 }
 
 .script-item:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  border-color: var(--primary);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
 }
 
 .script-info {
@@ -162,28 +165,31 @@ button.primary:hover {
 }
 
 .script-name {
+  font-size: 14px;
   font-weight: 600;
-  margin-bottom: 4px;
+  color: var(--text-color);
+  margin-bottom: 6px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .script-target {
-  font-size: 12px;
-  color: var(--secondary-text);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--secondary-text);
 }
 
 .script-type {
-  font-size: 11px;
-  color: var(--secondary-text);
-  border: 1px solid var(--border-color);
-  padding: 2px 6px;
+  padding: 2px 8px;
   border-radius: 12px;
-  background-color: var(--light-bg);
+  font-size: 11px;
+  font-weight: 500;
+  background-color: var(--primary);
+  color: white;
+  letter-spacing: 0.3px;
 }
 
 .script-actions {
@@ -244,17 +250,23 @@ input:checked + .slider:before {
 
 .empty-state {
   text-align: center;
-  padding: 32px 16px;
+  padding: 40px 20px;
   color: var(--secondary-text);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 16px;
+  background: linear-gradient(to bottom, transparent, var(--light-bg));
+  border-radius: var(--radius);
+  margin: 20px 0;
 }
 
 .empty-icon {
-  font-size: 42px;
-  color: var(--border-color);
+  font-size: 48px;
+  background: linear-gradient(45deg, var(--primary), var(--primary-hover));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 8px;
 }
 
 .icon-button {
@@ -370,8 +382,15 @@ a:hover {
   to { opacity: 1; transform: translateY(0); }
 }
 
-.script-item {
-  animation: fadeIn 0.2s ease-in;
+@keyframes menuFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 /* Tooltip */
@@ -401,21 +420,22 @@ a:hover {
   position: fixed;
   bottom: 16px;
   left: 50%;
-  transform: translateX(-50%);
-  padding: 10px 16px;
-  background-color: rgba(0, 0, 0, 0.85);
+  transform: translateX(-50%) translateY(20px);
+  padding: 10px 20px;
+  background: linear-gradient(to right, var(--primary), var(--primary-hover));
   color: white;
-  border-radius: var(--radius);
-  font-size: 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
   z-index: 1000;
-  transition: opacity 0.3s, transform 0.3s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   opacity: 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 #toast.show {
   opacity: 1;
-  transform: translate(-50%, -8px);
+  transform: translateX(-50%) translateY(0);
 }
 
 /* Add these styles at the end of the file */
@@ -440,34 +460,37 @@ a:hover {
 .menu-dropdown {
   position: absolute;
   right: 0;
-  top: 100%;
-  min-width: 160px;
+  top: calc(100% + 4px);
+  min-width: 180px;
   background-color: var(--bg-color);
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   z-index: 100;
   display: none;
   transform-origin: top right;
+  overflow: hidden;
 }
 
 .menu-dropdown.show {
   display: block;
-  animation: menuFadeIn 0.2s ease;
+  animation: menuFadeIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .menu-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 10px;
+  padding: 10px 16px;
   color: var(--text-color);
   cursor: pointer;
-  transition: var(--transition);
+  transition: all 0.2s ease;
+  font-size: 13px;
 }
 
 .menu-item:hover {
   background-color: var(--light-bg);
+  padding-left: 20px;
 }
 
 .menu-item.delete {
@@ -477,15 +500,9 @@ a:hover {
 .menu-item .action-icon {
   width: 16px;
   height: 16px;
+  opacity: 0.8;
 }
 
-@keyframes menuFadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+.menu-item:hover .action-icon {
+  opacity: 1;
 }
