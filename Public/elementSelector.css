@@ -1,20 +1,62 @@
+/* Theme variables */
+:root {
+  --highlight-color: #4a90e2;
+  --highlight-bg: rgba(74, 144, 226, 0.1);
+  --menu-bg: rgba(255, 255, 255, 0.95);
+  --menu-hover: rgba(74, 144, 226, 0.1);
+  --text-color: #333333;
+  --indicator-bg: rgba(0, 0, 0, 0.9);
+  --indicator-text: #ffffff;
+}
+
+[data-theme="dark"] {
+  --highlight-color: #81a9f7;
+  --highlight-bg: rgba(129, 169, 247, 0.1);
+  --menu-bg: rgba(30, 41, 59, 0.95);
+  --menu-hover: rgba(129, 169, 247, 0.1);
+  --text-color: #f0f0f0;
+  --indicator-bg: rgba(15, 23, 42, 0.9);
+  --indicator-text: #f0f0f0;
+}
+
 .CodeTweak-highlight {
-  outline: 2px dashed #4a90e2 !important;
+  outline: 2px dashed var(--highlight-color) !important;
   outline-offset: 1px !important;
-  background-color: rgba(74, 144, 226, 0.1) !important;
+  background-color: var(--highlight-bg) !important;
+  animation: highlight-pulse 1.5s ease-in-out infinite !important;
+}
+
+@keyframes highlight-pulse {
+  0% { outline-color: rgba(var(--highlight-color), 0.6); }
+  50% { outline-color: var(--highlight-color); }
+  100% { outline-color: rgba(var(--highlight-color), 0.6); }
 }
 
 .CodeTweak-menu {
   position: fixed;
   z-index: 999999;
-  background: white;
-  border: 1px solid #ccc;
+  background: var(--menu-bg);
+  border: none;
   border-radius: 4px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
   padding: 8px 0;
   min-width: 200px;
   font-family: system-ui, -apple-system, sans-serif;
   font-size: 14px;
+  backdrop-filter: blur(8px);
+  animation: menu-appear 0.2s ease-out;
+  color: var(--text-color);
+}
+
+@keyframes menu-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .CodeTweak-menu-item {
@@ -23,16 +65,25 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+  margin: 0 4px;
+  color: var(--text-color);
 }
 
 .CodeTweak-menu-item:hover {
-  background-color: #f5f5f5;
+  background-color: var(--menu-hover);
+  transform: translateX(4px);
 }
 
 .CodeTweak-menu-item-icon {
   width: 16px;
   height: 16px;
   opacity: 0.7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-color);
 }
 
 .CodeTweak-selector-mode {
@@ -40,8 +91,8 @@
   top: 16px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
+  background: var(--indicator-bg);
+  color: var(--indicator-text);
   padding: 8px 16px;
   border-radius: 20px;
   font-family: system-ui, -apple-system, sans-serif;
@@ -51,8 +102,28 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  animation: indicator-appear 0.3s ease-out;
+}
+
+@keyframes indicator-appear {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 
 .CodeTweak-selector-mode .icon {
-  color: #4a90e2;
+  color: var(--highlight-color);
+  animation: icon-bounce 1s ease-in-out infinite;
+}
+
+@keyframes icon-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
 }

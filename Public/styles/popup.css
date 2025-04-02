@@ -263,10 +263,15 @@ input:checked + .slider:before {
 
 .empty-icon {
   font-size: 48px;
-  background: linear-gradient(45deg, var(--primary), var(--primary-hover));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--secondary-text);
+  display: flex;
+  justify-content: center;
+  align-items: center;
   margin-bottom: 8px;
+}
+
+.empty-icon svg {
+  stroke: var(--secondary-text);
 }
 
 .icon-button {
