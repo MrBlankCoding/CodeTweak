@@ -40,7 +40,6 @@ function initDashboard() {
 
   const state = {
     allScripts: [],
-    debouncedFilterTimer: null,
   };
 
   setupEventListeners(elements, state);
@@ -53,7 +52,7 @@ function initDashboard() {
 
 function setupEventListeners(elements, state) {
   // Navigation
-  elements.createScriptBtn.addEventListener("click", () => {
+  elements.createScriptBtn?.addEventListener("click", () => {
     window.location.href = "/editor.html";
   });
 
@@ -62,30 +61,33 @@ function setupEventListeners(elements, state) {
   });
 
   // Settings
-  elements.saveSettingsBtn.addEventListener("click", () =>
+  elements.saveSettingsBtn?.addEventListener("click", () =>
     saveSettings(elements.settings)
   );
 
   // Filters
-  elements.filters.scriptSearch.addEventListener(
+  elements.filters.scriptSearch?.addEventListener(
     "input",
     debounce(() => filterScripts(elements, state), 300)
   );
 
   const filterChangeHandler = () => filterScripts(elements, state);
-  elements.filters.websiteFilter.addEventListener(
+  elements.filters.websiteFilter?.addEventListener(
     "change",
     filterChangeHandler
   );
-  elements.filters.statusFilter.addEventListener("change", filterChangeHandler);
-  elements.filters.runAtFilter.addEventListener("change", filterChangeHandler);
+  elements.filters.statusFilter?.addEventListener(
+    "change",
+    filterChangeHandler
+  );
+  elements.filters.runAtFilter?.addEventListener("change", filterChangeHandler);
 
   // Import
-  elements.import.importBtn.addEventListener("click", () => {
-    elements.import.importInput.click();
+  elements.import.importBtn?.addEventListener("click", () => {
+    elements.import.importInput?.click();
   });
 
-  elements.import.importInput.addEventListener("change", (event) => {
+  elements.import.importInput?.addEventListener("change", (event) => {
     handleScriptImport(event, elements, state);
   });
 }
@@ -106,16 +108,20 @@ function setupTabs(tabsContainer, tabContents) {
   const tabs = tabsContainer.querySelectorAll(".tab");
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => {
+      // Deactivate all tabs
       tabs.forEach((t) => {
         t.classList.remove("active");
         t.setAttribute("aria-selected", "false");
       });
 
+      // Hide all tab contents
       tabContents.forEach((c) => c.classList.remove("active"));
 
+      // Activate clicked tab
       tab.classList.add("active");
       tab.setAttribute("aria-selected", "true");
 
+      // Show corresponding content
       const tabId = `${tab.getAttribute("data-tab")}-tab`;
       document.getElementById(tabId)?.classList.add("active");
     });
@@ -125,6 +131,7 @@ function setupTabs(tabsContainer, tabContents) {
 async function loadScripts(elements, state) {
   try {
     const { scripts = [] } = await chrome.storage.local.get("scripts");
+
     // Convert legacy scripts to use targetUrls array
     state.allScripts = scripts.map((script) => ({
       ...script,
@@ -144,11 +151,13 @@ async function loadScripts(elements, state) {
 }
 
 function updateWebsiteFilterOptions(scripts, websiteFilter) {
+  if (!websiteFilter) return;
+
   try {
     const websites = new Set();
 
     for (const script of scripts) {
-      for (const url of script.targetUrls) {
+      for (const url of script.targetUrls || []) {
         try {
           websites.add(new URL(url).hostname);
         } catch {
@@ -173,16 +182,22 @@ function updateWebsiteFilterOptions(scripts, websiteFilter) {
 }
 
 function filterScripts(elements, state) {
-  const searchTerm = elements.filters.scriptSearch.value.toLowerCase();
-  const websiteValue = elements.filters.websiteFilter.value;
-  const statusValue = elements.filters.statusFilter.value;
-  const runAtValue = elements.filters.runAtFilter.value;
+  if (!elements.scriptsList) return;
+
+  const searchTerm = (elements.filters.scriptSearch?.value || "").toLowerCase();
+  const websiteValue = elements.filters.websiteFilter?.value || "";
+  const statusValue = elements.filters.statusFilter?.value || "";
+  const runAtValue = elements.filters.runAtFilter?.value || "";
 
   const filteredScripts = state.allScripts.filter((script) => {
-    if (!script.name.toLowerCase().includes(searchTerm)) return false;
+    // Filter by search term
+    if (searchTerm && !script.name.toLowerCase().includes(searchTerm)) {
+      return false;
+    }
 
+    // Filter by website
     if (websiteValue) {
-      const matchesWebsite = script.targetUrls.some((url) => {
+      const matchesWebsite = (script.targetUrls || []).some((url) => {
         try {
           return new URL(url).hostname === websiteValue;
         } catch {
@@ -192,11 +207,13 @@ function filterScripts(elements, state) {
       if (!matchesWebsite) return false;
     }
 
+    // Filter by enabled status
     if (statusValue) {
       const isEnabled = statusValue === "enabled";
       if (script.enabled !== isEnabled) return false;
     }
 
+    // Filter by run timing
     if (runAtValue && script.runAt !== runAtValue) return false;
 
     return true;
@@ -206,17 +223,22 @@ function filterScripts(elements, state) {
 }
 
 function updateScriptsList(scripts, elements) {
+  if (!elements.scriptsList) return;
+
   elements.scriptsList.innerHTML = "";
 
+  // Show empty state if no scripts match filters
   if (scripts.length === 0) {
-    elements.scriptsTable.style.display = "none";
-    elements.emptyState.style.display = "block";
+    if (elements.scriptsTable) elements.scriptsTable.style.display = "none";
+    if (elements.emptyState) elements.emptyState.style.display = "block";
     return;
   }
 
-  elements.scriptsTable.style.display = "table";
-  elements.emptyState.style.display = "none";
+  // Show table and populate with scripts
+  if (elements.scriptsTable) elements.scriptsTable.style.display = "table";
+  if (elements.emptyState) elements.emptyState.style.display = "none";
 
+  // Create and append all rows at once for better performance
   const fragment = document.createDocumentFragment();
   scripts.forEach((script) => {
     fragment.appendChild(createScriptRow(script));
@@ -229,7 +251,47 @@ function createScriptRow(script) {
   const row = document.createElement("tr");
   row.dataset.scriptId = script.id;
 
-  // Status cell with toggle
+  // Status toggle cell
+  row.appendChild(createStatusToggleCell(script));
+
+  // Name cell
+  const nameCell = document.createElement("td");
+  nameCell.textContent = script.name;
+  row.appendChild(nameCell);
+
+  // Author cell
+  const authorCell = document.createElement("td");
+  authorCell.textContent = script.author || "Anonymous";
+  authorCell.className = "script-author";
+  row.appendChild(authorCell);
+
+  // Favicon cell
+  row.appendChild(createFaviconCell(script));
+
+  // Run At cell
+  const runAtCell = document.createElement("td");
+  const timingInfo = document.createElement("div");
+  timingInfo.className = "timing-info";
+
+  const timingSpan = document.createElement("span");
+  timingSpan.textContent = formatRunAt(script.runAt);
+
+  timingInfo.appendChild(timingSpan);
+  runAtCell.appendChild(timingInfo);
+  row.appendChild(runAtCell);
+
+  // Version cell
+  const versionCell = document.createElement("td");
+  versionCell.textContent = script.version || "1.0.0";
+  row.appendChild(versionCell);
+
+  // Actions cell
+  row.appendChild(createActionsCell(script));
+
+  return row;
+}
+
+function createStatusToggleCell(script) {
   const statusCell = document.createElement("td");
   const toggleLabel = document.createElement("label");
   toggleLabel.className = "toggle-switch";
@@ -247,120 +309,108 @@ function createScriptRow(script) {
   toggleLabel.append(toggleInput, slider);
   statusCell.appendChild(toggleLabel);
 
-  // Name cell
-  const nameCell = document.createElement("td");
-  nameCell.textContent = script.name;
+  return statusCell;
+}
 
-  // Author cell
-  const authorCell = document.createElement("td");
-  authorCell.textContent = script.author || "Anonymous";
-  authorCell.className = "script-author";
-
-  // Favicon cell
+function createFaviconCell(script) {
   const faviconCell = document.createElement("td");
   const faviconContainer = document.createElement("div");
   faviconContainer.className = "favicon-container";
-  // Handle multiple favicons
+
+  // Handle multiple favicons for target URLs
   const uniqueHosts = new Set();
-  script.targetUrls?.forEach((url) => {
-    try {
-      const hostname = new URL(url).hostname;
-      if (!uniqueHosts.has(hostname)) {
-        uniqueHosts.add(hostname);
-        const faviconWrapper = document.createElement("div");
-        faviconWrapper.className = "favicon-wrapper";
-        faviconWrapper.title = hostname;
 
-        const faviconImg = document.createElement("img");
-        faviconImg.src = `https://${hostname}/favicon.ico`;
-        faviconImg.alt = "";
-        faviconImg.className = "favicon";
-        faviconImg.onerror = function () {
-          this.parentElement.innerHTML = `<div class='favicon-fallback'>${hostname[0].toUpperCase()}</div>`;
-        };
+  // Try to get favicon for each target URL
+  if (script.targetUrls && script.targetUrls.length > 0) {
+    script.targetUrls.forEach((url) => {
+      try {
+        const hostname = new URL(url).hostname;
+        if (!uniqueHosts.has(hostname)) {
+          uniqueHosts.add(hostname);
 
-        faviconWrapper.appendChild(faviconImg);
-        faviconContainer.appendChild(faviconWrapper);
+          const faviconWrapper = createFaviconWrapper(hostname);
+          faviconContainer.appendChild(faviconWrapper);
 
-        // Only show first 3 favicons
-        if (faviconContainer.children.length === 3 && uniqueHosts.size > 3) {
-          const remaining = uniqueHosts.size - 3;
-          const counter = document.createElement("div");
-          counter.className = "favicon-counter";
-          counter.textContent = `+${remaining}`;
-
-          // Create dropdown container
-          const dropdown = document.createElement("div");
-          dropdown.className = "favicon-dropdown";
-
-          // Create URL list
-          const urlList = document.createElement("ul");
-          urlList.className = "favicon-url-list";
-
-          // Add all remaining URLs to the dropdown
-          Array.from(uniqueHosts)
-            .slice(3)
-            .forEach((hostname) => {
-              const listItem = document.createElement("li");
-              listItem.className = "favicon-url-item";
-
-              // Try to add favicon
-              const favicon = document.createElement("img");
-              favicon.src = `https://${hostname}/favicon.ico`;
-              favicon.alt = "";
-              favicon.onerror = () => {
-                favicon.outerHTML = `<div class='favicon-fallback'>${hostname[0].toUpperCase()}</div>`;
-              };
-
-              const domain = document.createElement("span");
-              domain.textContent = hostname;
-
-              listItem.append(favicon, domain);
-              urlList.appendChild(listItem);
-            });
-
-          dropdown.appendChild(urlList);
-          counter.appendChild(dropdown);
-          faviconContainer.appendChild(counter);
-          return;
+          // Only show first 3 favicons plus counter if more exist
+          if (faviconContainer.children.length === 3 && uniqueHosts.size > 3) {
+            const extraHosts = Array.from(uniqueHosts).slice(3);
+            const counterElement = createFaviconCounter(extraHosts);
+            faviconContainer.appendChild(counterElement);
+            return;
+          }
         }
+      } catch (error) {
+        // Skip invalid URLs
       }
-    } catch {
-      if (faviconContainer.children.length === 0) {
-        const fallback = document.createElement("div");
-        fallback.className = "favicon-fallback";
-        fallback.textContent = script.name[0].toUpperCase();
-        faviconContainer.appendChild(fallback);
-      }
-    }
-  });
+    });
+  }
 
-  // If no favicons were added, show fallback
+  // Show fallback if no valid favicons
   if (faviconContainer.children.length === 0) {
     const fallback = document.createElement("div");
     fallback.className = "favicon-fallback";
-    fallback.textContent = script.name[0].toUpperCase();
+    fallback.textContent = (script.name[0] || "?").toUpperCase();
     faviconContainer.appendChild(fallback);
   }
 
   faviconCell.appendChild(faviconContainer);
+  return faviconCell;
+}
 
-  // Run At cell
-  const runAtCell = document.createElement("td");
-  const timingInfo = document.createElement("div");
-  timingInfo.className = "timing-info";
+function createFaviconWrapper(hostname) {
+  const faviconWrapper = document.createElement("div");
+  faviconWrapper.className = "favicon-wrapper";
+  faviconWrapper.title = hostname;
 
-  const timingSpan = document.createElement("span");
-  timingSpan.textContent = formatRunAt(script.runAt);
+  const faviconImg = document.createElement("img");
+  faviconImg.src = `https://${hostname}/favicon.ico`;
+  faviconImg.alt = "";
+  faviconImg.className = "favicon";
+  faviconImg.onerror = function () {
+    this.parentElement.innerHTML = `<div class='favicon-fallback'>${hostname[0].toUpperCase()}</div>`;
+  };
 
-  timingInfo.appendChild(timingSpan);
-  runAtCell.appendChild(timingInfo);
+  faviconWrapper.appendChild(faviconImg);
+  return faviconWrapper;
+}
 
-  // Version cell
-  const versionCell = document.createElement("td");
-  versionCell.textContent = script.version || "1.0.0";
+function createFaviconCounter(extraHosts) {
+  const counter = document.createElement("div");
+  counter.className = "favicon-counter";
+  counter.textContent = `+${extraHosts.length}`;
 
-  // Actions cell
+  // Create dropdown for extra hosts
+  const dropdown = document.createElement("div");
+  dropdown.className = "favicon-dropdown";
+
+  const urlList = document.createElement("ul");
+  urlList.className = "favicon-url-list";
+
+  extraHosts.forEach((hostname) => {
+    const listItem = document.createElement("li");
+    listItem.className = "favicon-url-item";
+
+    // Try to add favicon
+    const favicon = document.createElement("img");
+    favicon.src = `https://${hostname}/favicon.ico`;
+    favicon.alt = "";
+    favicon.onerror = () => {
+      favicon.outerHTML = `<div class='favicon-fallback'>${hostname[0].toUpperCase()}</div>`;
+    };
+
+    const domain = document.createElement("span");
+    domain.textContent = hostname;
+
+    listItem.append(favicon, domain);
+    urlList.appendChild(listItem);
+  });
+
+  dropdown.appendChild(urlList);
+  counter.appendChild(dropdown);
+  return counter;
+}
+
+function createActionsCell(script) {
   const actionsCell = document.createElement("td");
   actionsCell.className = "script-actions";
 
@@ -396,21 +446,12 @@ function createScriptRow(script) {
     const button = document.createElement("button");
     button.className = "icon-button";
     button.innerHTML = icon;
-    button.title = title; // Keep the title for tooltip
+    button.title = title;
     button.addEventListener("click", handler);
     actionsCell.appendChild(button);
   });
 
-  row.append(
-    statusCell,
-    nameCell,
-    authorCell,
-    faviconCell,
-    runAtCell,
-    versionCell,
-    actionsCell
-  );
-  return row;
+  return actionsCell;
 }
 
 async function toggleScript(scriptId, enabled) {
@@ -486,15 +527,20 @@ async function loadSettings(settingsElements) {
   try {
     const { settings = {} } = await chrome.storage.local.get("settings");
 
-    settingsElements.enableAllScripts.checked =
-      settings.enableAllScripts !== false;
-    settingsElements.showNotifications.checked =
-      settings.showNotifications !== false;
-    settingsElements.debugMode.checked = settings.debugMode === true;
-    settingsElements.allowThirdPartyScripts.checked =
-      settings.allowThirdPartyScripts === true;
-    settingsElements.confirmBeforeRunning.checked =
-      settings.confirmBeforeRunning === true;
+    // Set form field values from stored settings with defaults
+    Object.entries({
+      enableAllScripts: true,
+      showNotifications: true,
+      debugMode: false,
+      allowThirdPartyScripts: false,
+      confirmBeforeRunning: false,
+    }).forEach(([key, defaultValue]) => {
+      const element = settingsElements[key];
+      if (element) {
+        element.checked =
+          settings[key] !== undefined ? settings[key] : defaultValue;
+      }
+    });
   } catch (error) {
     console.error("Error loading settings:", error);
     showNotification("Error loading settings", "error");
@@ -503,13 +549,15 @@ async function loadSettings(settingsElements) {
 
 async function saveSettings(settingsElements) {
   try {
-    const settings = {
-      enableAllScripts: settingsElements.enableAllScripts.checked,
-      showNotifications: settingsElements.showNotifications.checked,
-      debugMode: settingsElements.debugMode.checked,
-      allowThirdPartyScripts: settingsElements.allowThirdPartyScripts.checked,
-      confirmBeforeRunning: settingsElements.confirmBeforeRunning.checked,
-    };
+    const settings = {};
+
+    // Collect values from all setting elements
+    Object.keys(settingsElements).forEach((key) => {
+      const element = settingsElements[key];
+      if (element) {
+        settings[key] = element.checked;
+      }
+    });
 
     await chrome.storage.local.set({ settings });
     showNotification("Settings saved successfully", "success");
@@ -526,7 +574,7 @@ function downloadScript(script) {
       name: script.name,
       author: script.author || "Anonymous",
       code: script.code,
-      targetUrls: script.targetUrls || [script.targetUrl], // Support both new and legacy format
+      targetUrls: script.targetUrls || [script.targetUrl], // Support both formats
       runAt: script.runAt,
       enabled: script.enabled,
       version: script.version || "1.0.0",
@@ -556,10 +604,12 @@ function downloadScript(script) {
     const fileName = `${script.name
       .replace(/[^a-z0-9]/gi, "_")
       .toLowerCase()}.json`;
+
     const blob = new Blob([JSON.stringify(scriptData, null, 2)], {
       type: "application/json",
     });
 
+    // Create download link and trigger click
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -568,6 +618,7 @@ function downloadScript(script) {
     document.body.appendChild(a);
     a.click();
 
+    // Clean up
     setTimeout(() => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
@@ -604,8 +655,8 @@ async function handleScriptImport(event, elements, state) {
       id: crypto.randomUUID(),
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      enabled: settings.enableAllScripts !== false, // Set initial enabled state based on settings
-      targetUrls: scriptData.targetUrls || [scriptData.targetUrl], // Handle legacy format
+      enabled: settings.enableAllScripts !== false,
+      targetUrls: scriptData.targetUrls || [scriptData.targetUrl],
       permissions: {
         domAccess: scriptData.permissions?.domAccess ?? true,
         storageAccess: scriptData.permissions?.storageAccess ?? false,
@@ -628,7 +679,7 @@ async function handleScriptImport(event, elements, state) {
     scripts.push(newScript);
     await chrome.storage.local.set({ scripts });
 
-    // Update the UI
+    // Update UI
     state.allScripts = scripts;
     updateWebsiteFilterOptions(scripts, elements.filters.websiteFilter);
     filterScripts(elements, state);
@@ -643,6 +694,7 @@ async function handleScriptImport(event, elements, state) {
 }
 
 function showNotification(message, type = "info") {
+  // Find or create notification container
   let notificationContainer = document.querySelector(".notification-container");
   if (!notificationContainer) {
     notificationContainer = document.createElement("div");
@@ -653,7 +705,7 @@ function showNotification(message, type = "info") {
   const notification = document.createElement("div");
   notification.className = `notification notification-${type}`;
 
-  // Create icon
+  // Create icon based on notification type
   const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   icon.setAttribute("class", "notification-icon icon");
   icon.setAttribute("viewBox", "0 0 24 24");
@@ -699,6 +751,8 @@ function showNotification(message, type = "info") {
 }
 
 function setupGreasyfork(elements) {
+  if (!elements.button) return;
+
   elements.button.addEventListener("click", () => {
     elements.modal.setAttribute("aria-hidden", "false");
   });
@@ -735,53 +789,47 @@ async function searchGreasyfork(elements) {
   elements.loading.style.display = "block";
 
   try {
+    // Fix: Use correct endpoint with query parameter
+    const encodedQuery = encodeURIComponent(query);
     const response = await fetch(
-      `https://greasyfork.org/en/scripts.json?q=${encodeURIComponent(query)}`
+      `https://greasyfork.org/en/scripts.json?q=${encodedQuery}`
     );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error ${response.status}`);
+    }
+
     const scripts = await response.json();
 
-    elements.results.innerHTML = scripts
-      .map(
-        (script) => `
-        <div class="script-card" data-code-url="${escapeHtml(script.code_url)}">
-          <h3>${escapeHtml(script.name)}</h3>
-          <div class="script-card-meta">
-            <span>👤 ${script.users}</span>
-            <span>⭐ ${script.daily_installs}</span>
-            <span>v${script.version}</span>
-          </div>
-          <p class="script-card-description">${escapeHtml(
-            script.description
-          )}</p>
-          <div class="script-card-actions">
-            <a href="${
-              script.url
-            }" target="_blank" rel="noopener noreferrer" class="secondary">
-              View on Greasy Fork
-            </a>
-            <button class="primary import-greasy-fork">
-              Import
-            </button>
-          </div>
+    if (scripts.length === 0) {
+      elements.results.innerHTML = `
+        <div class="no-results">
+          No scripts found for "${escapeHtml(
+            query
+          )}". Try a different search term.
         </div>
-      `
-      )
-      .join("");
+      `;
+    } else {
+      // Create all script cards at once
+      elements.results.innerHTML = scripts
+        .map((script) => createScriptCard(script))
+        .join("");
 
-    // Add event listeners to all import buttons
-    elements.results
-      .querySelectorAll(".import-greasy-fork")
-      .forEach((button) => {
-        button.addEventListener("click", () => {
-          const codeUrl = button.closest(".script-card").dataset.codeUrl;
-          importGreasyforkScript(codeUrl);
+      // Add event listeners to import buttons
+      elements.results
+        .querySelectorAll(".import-greasy-fork")
+        .forEach((button) => {
+          button.addEventListener("click", () => {
+            const codeUrl = button.closest(".script-card").dataset.codeUrl;
+            importGreasyforkScript(codeUrl);
+          });
         });
-      });
+    }
   } catch (error) {
     console.error("Error searching Greasy Fork:", error);
     elements.results.innerHTML = `
       <div class="error-message">
-        Error searching Greasy Fork. Please try again later.
+        Error searching Greasy Fork: ${error.message}. Please try again later.
       </div>
     `;
   } finally {
@@ -789,16 +837,53 @@ async function searchGreasyfork(elements) {
   }
 }
 
+function createScriptCard(script) {
+  return `
+    <div class="script-card" data-code-url="${escapeHtml(script.code_url)}">
+      <h3>${escapeHtml(script.name)}</h3>
+      <div class="script-card-meta">
+        <span>👤 ${script.users || 0}</span>
+        <span>⭐ ${script.daily_installs || 0}</span>
+        <span>v${script.version || "1.0.0"}</span>
+      </div>
+      <p class="script-card-description">${escapeHtml(
+        script.description || ""
+      )}</p>
+      <div class="script-card-actions">
+        <a href="${
+          script.url
+        }" target="_blank" rel="noopener noreferrer" class="secondary">
+          View on Greasy Fork
+        </a>
+        <button class="primary import-greasy-fork">
+          Import
+        </button>
+      </div>
+    </div>
+  `;
+}
+
 async function importGreasyforkScript(codeUrl) {
+  if (!codeUrl) {
+    showNotification("Invalid script URL", "error");
+    return;
+  }
+
   try {
     const response = await fetch(codeUrl);
+    if (!response.ok) {
+      throw new Error(`HTTP error ${response.status}`);
+    }
+
     const code = await response.text();
 
     // Parse metadata block
     const metadataBlock = code.match(
       /==UserScript==([\s\S]*?)==\/UserScript==/
     );
-    if (!metadataBlock) throw new Error("No metadata block found");
+    if (!metadataBlock) {
+      throw new Error("No metadata block found in script");
+    }
 
     const metadata = {};
     metadataBlock[1].split("\n").forEach((line) => {
