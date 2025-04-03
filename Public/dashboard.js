@@ -417,7 +417,7 @@ function createActionsCell(script) {
   const actions = [
     {
       icon: `<svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 1 2-2v-7" />
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
             </svg>`,
       title: "Edit Script",
@@ -432,15 +432,30 @@ function createActionsCell(script) {
       title: "Export Script",
       handler: () => downloadScript(script),
     },
-    {
-      icon: `<svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-            </svg>`,
-      title: "Delete Script",
-      handler: () => deleteScript(script.id),
-    },
   ];
+
+  // Add update check button for Greasy Fork scripts
+  if (script.updateInfo?.source === "greasyfork") {
+    actions.push({
+      icon: `<svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 2v6h-6"></path>
+              <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+              <path d="M3 12a9 9 0 0 0 15 6.7L21 16"></path>
+              <path d="M21 22v-6h-6"></path>
+            </svg>`,
+      title: "Check for Updates",
+      handler: () => checkForUpdates(script),
+    });
+  }
+
+  actions.push({
+    icon: `<svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+          </svg>`,
+    title: "Delete Script",
+    handler: () => deleteScript(script.id),
+  });
 
   actions.forEach(({ icon, title, handler }) => {
     const button = document.createElement("button");
@@ -838,12 +853,17 @@ async function searchGreasyfork(elements) {
 }
 
 function createScriptCard(script) {
+  // Format numbers with comma separators
+  const formatNumber = (num) => {
+    return num ? num.toLocaleString() : "0";
+  };
+
   return `
     <div class="script-card" data-code-url="${escapeHtml(script.code_url)}">
       <h3>${escapeHtml(script.name)}</h3>
       <div class="script-card-meta">
-        <span>👤 ${script.users || 0}</span>
-        <span>⭐ ${script.daily_installs || 0}</span>
+        <span>👤 ${formatNumber(script.total_installs)}</span>
+        <span>⭐ ${formatNumber(script.daily_installs)}</span>
         <span>v${script.version || "1.0.0"}</span>
       </div>
       <p class="script-card-description">${escapeHtml(
@@ -899,6 +919,16 @@ async function importGreasyforkScript(codeUrl) {
       }
     });
 
+    // Add update metadata
+    const updateInfo = {
+      source: "greasyfork",
+      sourceUrl: codeUrl,
+      updateUrl: metadata.updateURL || codeUrl,
+      downloadUrl: metadata.downloadURL || codeUrl,
+      version: metadata.version || "1.0.0",
+      lastChecked: Date.now(),
+    };
+
     const scriptData = {
       name: metadata.name || "Imported Script",
       author: metadata.author || "Anonymous",
@@ -911,6 +941,7 @@ async function importGreasyforkScript(codeUrl) {
       id: crypto.randomUUID(),
       createdAt: Date.now(),
       updatedAt: Date.now(),
+      updateInfo, // Add update information
     };
 
     const { scripts = [] } = await chrome.storage.local.get("scripts");
@@ -929,6 +960,71 @@ async function importGreasyforkScript(codeUrl) {
   } catch (error) {
     console.error("Error importing script:", error);
     showNotification("Error importing script: " + error.message, "error");
+  }
+}
+
+async function checkForUpdates(script) {
+  if (!script.updateInfo?.updateUrl) {
+    showNotification("No update URL available", "error");
+    return;
+  }
+
+  try {
+    const response = await fetch(script.updateInfo.updateUrl);
+    if (!response.ok) {
+      throw new Error(`HTTP error ${response.status}`);
+    }
+
+    const newCode = await response.text();
+    const metadataBlock = newCode.match(
+      /==UserScript==([\s\S]*?)==\/UserScript==/
+    );
+    if (!metadataBlock) {
+      throw new Error("Invalid script format");
+    }
+
+    const versionMatch = metadataBlock[1].match(/@version\s+(.+)/);
+    const newVersion = versionMatch ? versionMatch[1].trim() : null;
+
+    if (!newVersion) {
+      throw new Error("Could not determine script version");
+    }
+
+    if (newVersion === script.version) {
+      showNotification("Script is up to date", "success");
+      return;
+    }
+
+    const updateConfirmed = confirm(
+      `Update available: ${script.version} → ${newVersion}\nWould you like to update now?`
+    );
+
+    if (updateConfirmed) {
+      const { scripts = [] } = await chrome.storage.local.get("scripts");
+      const scriptIndex = scripts.findIndex((s) => s.id === script.id);
+
+      if (scriptIndex !== -1) {
+        scripts[scriptIndex] = {
+          ...scripts[scriptIndex],
+          version: newVersion,
+          code: newCode,
+          updatedAt: Date.now(),
+          updateInfo: {
+            ...scripts[scriptIndex].updateInfo,
+            lastChecked: Date.now(),
+            version: newVersion,
+          },
+        };
+
+        await chrome.storage.local.set({ scripts });
+        chrome.runtime.sendMessage({ action: "scriptsUpdated" });
+        showNotification("Script updated successfully", "success");
+        await refreshDashboard();
+      }
+    }
+  } catch (error) {
+    console.error("Error checking for updates:", error);
+    showNotification("Error checking for updates: " + error.message, "error");
   }
 }
 
