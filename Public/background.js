@@ -76,57 +76,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ success: true });
       return false;
 
-    case "GM_deleteValue":
-      handleGMDeleteValue(message.key, sender.tab.id).then(sendResponse);
-      return true;
-
-    case "GM_getValue":
-      handleGMGetValue(message.key, message.defaultValue, sender.tab.id).then(
-        sendResponse
-      );
-      return true;
-
-    case "GM_listValues":
-      handleGMListValues(sender.tab.id).then(sendResponse);
-      return true;
-
-    case "GM_setValue":
-      handleGMSetValue(message.key, message.value, sender.tab.id).then(
-        sendResponse
-      );
-      return true;
-
-    case "GM_getResourceUrl":
-      handleGMGetResourceUrl(message.resourceName, sender.tab.id).then(
-        sendResponse
-      );
-      return true;
-
-    case "GM_registerMenuCommand":
-      handleGMRegisterMenuCommand(message, sender.tab.id).then(sendResponse);
-      return true;
-
-    case "GM_openInTab":
-      chrome.tabs.create({
-        url: message.url,
-        active: message.options?.active ?? true,
-      });
-      sendResponse({ success: true });
-      return false;
-
-    case "GM_setClipboard":
-      // Implementation would go here
-      sendResponse({ success: true });
-      return false;
-
-    case "GM_xmlHttpRequest":
-      handleGMXHR(message.details)
-        .then(sendResponse)
-        .catch((error) => {
-          sendResponse({ error: error.message });
-        });
-      return true;
-
     case "contentScriptReady":
       // Reset executed scripts when content script loads
       if (sender.tab && sender.tab.id) {
@@ -453,18 +402,11 @@ async function injectScriptDirectly(
       return;
     }
 
-    // Only inject GM API once
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      files: ["gm-api.js"],
-      world: "MAIN",
-    });
-
-    // Single script injection with all context
+    // Single script injection
     await chrome.scripting.executeScript({
       target: { tabId },
       world: "MAIN",
-      func: (code, scriptName, metadata, hasCSPDisabled, scriptId) => {
+      func: (code, scriptName, hasCSPDisabled, scriptId) => {
         try {
           // Initialize execution tracking
           window._executedScripts = window._executedScripts || new Set();
@@ -479,10 +421,6 @@ async function injectScriptDirectly(
           window._executedScriptIds.add(scriptId);
           window._executedScripts.add(code);
 
-          // Initialize GM API and context
-          const GM = window.createGMApi ? window.createGMApi(metadata) : {};
-          const unsafeWindow = window;
-          const GM_info = GM.info;
           window._codeScriptCSPDisabled = hasCSPDisabled;
 
           // Execute script once
@@ -494,11 +432,6 @@ async function injectScriptDirectly(
       args: [
         code,
         scriptName,
-        {
-          name: scriptName,
-          version: "1.0.0",
-          targetUrls: [tab.url],
-        },
         requiresCSP,
         scriptId || code.substring(0, 100), // Use scriptId if provided, otherwise hash the code
       ],
@@ -655,80 +588,6 @@ function urlMatchesPattern(url, pattern) {
   } catch (error) {
     console.warn("URL matching error:", error);
     return false;
-  }
-}
-
-/**
- * GM API Helper Functions
- */
-async function handleGMDeleteValue(key, tabId) {
-  const storageKey = `GM_${tabId}_${key}`;
-  await chrome.storage.local.remove(storageKey);
-  return { success: true };
-}
-
-async function handleGMGetValue(key, defaultValue, tabId) {
-  const storageKey = `GM_${tabId}_${key}`;
-  const result = await chrome.storage.local.get(storageKey);
-  return { value: result[storageKey] ?? defaultValue };
-}
-
-async function handleGMListValues(tabId) {
-  const result = await chrome.storage.local.get(null);
-  const prefix = `GM_${tabId}_`;
-  const keys = Object.keys(result)
-    .filter((key) => key.startsWith(prefix))
-    .map((key) => key.slice(prefix.length));
-  return { keys };
-}
-
-async function handleGMSetValue(key, value, tabId) {
-  const storageKey = `GM_${tabId}_${key}`;
-  await chrome.storage.local.set({ [storageKey]: value });
-  return { success: true };
-}
-
-async function handleGMGetResourceUrl(resourceName, tabId) {
-  // Implementation depends on how resources are stored
-  return { url: chrome.runtime.getURL(`resources/${resourceName}`) };
-}
-
-async function handleGMRegisterMenuCommand(message, tabId) {
-  const menuData = {
-    tabId,
-    commandId: message.commandId,
-    caption: message.caption,
-  };
-  // Store menu command data for later use
-  await chrome.storage.local.set({
-    [`GM_menu_${message.commandId}`]: menuData,
-  });
-  return { success: true };
-}
-
-async function handleGMXHR(details) {
-  try {
-    const response = await fetch(details.url, {
-      method: details.method || "GET",
-      headers: details.headers || {},
-      body: details.data,
-      mode: "cors",
-      credentials: details.anonymous ? "omit" : "include",
-    });
-
-    const responseData = await (details.responseType === "blob"
-      ? response.blob()
-      : response.text());
-
-    return {
-      status: response.status,
-      statusText: response.statusText,
-      responseHeaders: Object.fromEntries(response.headers.entries()),
-      response: responseData,
-    };
-  } catch (error) {
-    console.error("GM XHR error:", error);
-    throw error;
   }
 }
 
