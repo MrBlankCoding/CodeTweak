@@ -6,7 +6,7 @@ const INJECTION_TYPES = Object.freeze({
   ELEMENT_READY: "element_ready",
 });
 
-// Cache settings
+// Cache and state management
 let scriptCache = null;
 let lastCacheUpdate = 0;
 const CACHE_LIFETIME = 5000;
@@ -14,17 +14,120 @@ let isRunning = false;
 let activeRules = new Set();
 let ports = new Set();
 
-// Add near the beginning of the file, after the initial constants
+/**
+ * Message handling for script updates
+ */
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === "scriptsUpdated") {
-    scriptCache = null; // Invalidate cache to force refresh
-    lastCacheUpdate = 0;
-    sendResponse({ success: true });
-    return true; // Required for async response
+  switch (message.action) {
+    case "scriptsUpdated":
+      scriptCache = null; // Invalidate cache to force refresh
+      lastCacheUpdate = 0;
+      sendResponse({ success: true });
+
+      // Notify any connected ports
+      ports.forEach((port) => {
+        try {
+          port.postMessage({ action: "scriptsUpdated" });
+        } catch (error) {
+          console.warn("Failed to notify port:", error);
+          ports.delete(port);
+        }
+      });
+      return false;
+
+    case "createScript":
+      const { template, url: scriptUrl } = message.data;
+      handleScriptCreation(scriptUrl, template).catch(console.error);
+      return false;
+
+    case "elementFound":
+      if (message.tabId) {
+        chrome.tabs
+          .get(message.tabId)
+          .then((tab) => {
+            if (tab && message.scriptCode) {
+              injectScriptDirectly(
+                tab.id,
+                message.scriptCode,
+                "Element Ready Script",
+                {},
+                message.requiresCSP || false
+              );
+            }
+          })
+          .catch(() => {
+            console.warn("Target tab no longer exists");
+          });
+      }
+      return false;
+
+    case "cspStateChanged":
+      const { url, enabled } = message.data;
+      if (!enabled) {
+        cleanupCSPRules(url).catch(console.error);
+      }
+      sendResponse({ success: true });
+      return false;
+
+    case "GM_deleteValue":
+      handleGMDeleteValue(message.key, sender.tab.id).then(sendResponse);
+      return true;
+
+    case "GM_getValue":
+      handleGMGetValue(message.key, message.defaultValue, sender.tab.id).then(
+        sendResponse
+      );
+      return true;
+
+    case "GM_listValues":
+      handleGMListValues(sender.tab.id).then(sendResponse);
+      return true;
+
+    case "GM_setValue":
+      handleGMSetValue(message.key, message.value, sender.tab.id).then(
+        sendResponse
+      );
+      return true;
+
+    case "GM_getResourceUrl":
+      handleGMGetResourceUrl(message.resourceName, sender.tab.id).then(
+        sendResponse
+      );
+      return true;
+
+    case "GM_registerMenuCommand":
+      handleGMRegisterMenuCommand(message, sender.tab.id).then(sendResponse);
+      return true;
+
+    case "GM_openInTab":
+      chrome.tabs.create({
+        url: message.url,
+        active: message.options?.active ?? true,
+      });
+      sendResponse({ success: true });
+      return false;
+
+    case "GM_setClipboard":
+      // Implementation would go here
+      sendResponse({ success: true });
+      return false;
+
+    case "GM_xmlHttpRequest":
+      handleGMXHR(message.details)
+        .then(sendResponse)
+        .catch((error) => {
+          sendResponse({ error: error.message });
+        });
+      return true;
+
+    default:
+      return false;
   }
 });
 
-// Replace the context menu creation code with this:
+/**
+ * Context menu functionality
+ */
 function createContextMenu() {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
@@ -38,23 +141,45 @@ function createContextMenu() {
 // Create context menu when extension loads
 createContextMenu();
 
-// Keep the existing context menu click handler
+// Handle context menu clicks
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "selectElement") {
     chrome.tabs.sendMessage(tab.id, { action: "startSelection" });
   }
 });
 
-// Handle port connections and disconnections
+/**
+ * Port connection management
+ */
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name === "CodeTweak") {
+    if (ports.has(port)) {
+      console.warn("Port already connected:", port.name);
+      return;
+    }
+
     ports.add(port);
+
     port.onDisconnect.addListener(() => {
       ports.delete(port);
+      console.log("Port disconnected:", port.name);
+    });
+
+    port.onMessage.addListener((message) => {
+      try {
+        console.log("Port message received:", message);
+        // Handle specific port messages if needed
+      } catch (error) {
+        console.error("Port message error:", error);
+        port.disconnect();
+      }
     });
   }
 });
 
+/**
+ * Rule and tab management
+ */
 // Generate a unique rule ID
 const generateUniqueRuleId = () => Math.floor(Math.random() * 100000000);
 
@@ -67,6 +192,9 @@ async function getCurrentTab() {
   return tab;
 }
 
+/**
+ * CSP handling
+ */
 // Disable CSP for a given tab and URL
 async function disableCSP(tabId, url) {
   if (isRunning) return;
@@ -116,6 +244,35 @@ async function disableCSP(tabId, url) {
   }
 }
 
+// Cleanup CSP rules for a specific URL
+async function cleanupCSPRules(url) {
+  if (isRunning) return;
+  isRunning = true;
+
+  try {
+    const existingRules = await chrome.declarativeNetRequest.getSessionRules();
+    const staleRules = existingRules.filter(
+      (rule) => rule.condition.urlFilter === url
+    );
+
+    if (staleRules.length) {
+      await chrome.declarativeNetRequest.updateSessionRules({
+        removeRuleIds: staleRules.map((rule) => rule.id),
+      });
+
+      activeRules = new Set(
+        [...activeRules].filter(
+          (id) => !staleRules.some((rule) => rule.id === id)
+        )
+      );
+    }
+  } catch (error) {
+    console.error("Failed to cleanup CSP rules:", error);
+  } finally {
+    isRunning = false;
+  }
+}
+
 // Bypass Trusted Types restrictions
 function bypassTrustedTypes(tabId) {
   chrome.scripting
@@ -137,7 +294,10 @@ function bypassTrustedTypes(tabId) {
     .catch(console.warn);
 }
 
-// Update the getFilteredScripts function to group scripts by CSP requirement
+/**
+ * Script handling and injection
+ */
+// Get filtered scripts based on URL and run-at stage
 async function getFilteredScripts(url, runAt) {
   const currentTime = Date.now();
   if (!scriptCache || currentTime - lastCacheUpdate > CACHE_LIFETIME) {
@@ -170,7 +330,7 @@ async function getFilteredScripts(url, runAt) {
   };
 }
 
-// Update the injectScriptsForStage function to handle separated scripts
+// Inject scripts for a specific stage
 async function injectScriptsForStage(details, runAt) {
   if (details.frameId !== 0) return;
 
@@ -181,6 +341,7 @@ async function injectScriptsForStage(details, runAt) {
       url,
       runAt
     );
+
     const {
       normalScripts: elementReadyNormalScripts,
       cspDisabledScripts: elementReadyCspScripts,
@@ -189,7 +350,7 @@ async function injectScriptsForStage(details, runAt) {
         ? await getFilteredScripts(url, INJECTION_TYPES.ELEMENT_READY)
         : { normalScripts: [], cspDisabledScripts: [] };
 
-    // First handle normal scripts without any CSP modification
+    // Handle normal scripts without CSP modification
     if (normalScripts.length) {
       normalScripts.forEach((script) =>
         injectScriptDirectly(
@@ -212,7 +373,7 @@ async function injectScriptsForStage(details, runAt) {
         .catch(console.warn);
     }
 
-    // Then handle CSP-disabled scripts separately
+    // Handle CSP-disabled scripts separately
     if (cspDisabledScripts.length || elementReadyCspScripts.length) {
       await disableCSP(details.tabId, url);
       bypassTrustedTypes(details.tabId);
@@ -244,13 +405,6 @@ async function injectScriptsForStage(details, runAt) {
   }
 }
 
-// Register navigation event listeners
-["onCommitted", "onDOMContentLoaded", "onCompleted"].forEach((event, index) => {
-  chrome.webNavigation[event].addListener((details) =>
-    injectScriptsForStage(details, Object.values(INJECTION_TYPES)[index])
-  );
-});
-
 // Directly inject a script into a tab
 async function injectScriptDirectly(
   tabId,
@@ -260,13 +414,56 @@ async function injectScriptDirectly(
   requiresCSP = false
 ) {
   try {
-    // Check if tab exists before attempting injection
     const tab = await chrome.tabs.get(tabId);
     if (!tab) {
       console.warn("Target tab no longer exists");
       return;
     }
 
+    // First inject the GM API
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ["gm-api.js"],
+      world: "MAIN",
+    });
+
+    // Then inject the user script with GM API initialization
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      world: "MAIN",
+      func: (code, scriptName, metadata) => {
+        try {
+          // Initialize GM API
+          const GM = createGMApi(metadata);
+          // Add compatibility aliases
+          const unsafeWindow = window;
+          const GM_info = GM.info;
+
+          // Execute the user script with GM API context
+          const scriptContent = `
+            (async function() {
+              'use strict';
+              ${code}
+            })();
+          `;
+          eval(scriptContent);
+        } catch (error) {
+          console.error("Script execution error:", error);
+        }
+      },
+      args: [
+        code,
+        scriptName,
+        {
+          name: scriptName,
+          version: "1.0.0",
+          targetUrls: [tab.url],
+          // Add other metadata as needed
+        },
+      ],
+    });
+
+    // Show notification if enabled
     if (settings.showNotifications) {
       await chrome.scripting.executeScript({
         target: { tabId },
@@ -349,121 +546,7 @@ async function injectScriptDirectly(
   }
 }
 
-// Efficient URL pattern matching
-function urlMatchesPattern(url, pattern) {
-  try {
-    if (pattern === url) return true;
-    if (
-      pattern.startsWith("*.") &&
-      new URL(url).hostname.endsWith(pattern.slice(2))
-    )
-      return true;
-
-    return new RegExp(
-      `^${pattern.replace(/\*/g, ".*").replace(/\./g, "\\.")}$`,
-      "i"
-    ).test(url);
-  } catch (error) {
-    console.warn("URL matching error:", error);
-    return false;
-  }
-}
-
-// Add with the other message listeners
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  switch (message.action) {
-    case "createScript": {
-      const { template, url } = message.data;
-      handleScriptCreation(url, template).catch(console.error);
-      return false; // No async response needed
-    }
-
-    case "scriptsUpdated": {
-      scriptCache = null;
-      lastCacheUpdate = 0;
-      // Send immediate response
-      sendResponse({ success: true });
-      // Notify any connected ports
-      ports.forEach((port) => {
-        try {
-          port.postMessage({ action: "scriptsUpdated" });
-        } catch (error) {
-          console.warn("Failed to notify port:", error);
-          ports.delete(port);
-        }
-      });
-      return false; // Response already sent
-    }
-
-    case "elementFound": {
-      if (message.tabId) {
-        // Check if tab exists before injecting
-        chrome.tabs
-          .get(message.tabId)
-          .then((tab) => {
-            if (tab && message.scriptCode) {
-              injectScriptDirectly(
-                tab.id,
-                message.scriptCode,
-                "Element Ready Script",
-                {},
-                message.requiresCSP || false
-              );
-            }
-          })
-          .catch(() => {
-            console.warn("Target tab no longer exists");
-          });
-      }
-      return false; // No async response needed
-    }
-
-    case "cspStateChanged": {
-      const { url, enabled } = message.data;
-      if (!enabled) {
-        cleanupCSPRules(url).catch(console.error);
-      }
-      sendResponse({ success: true });
-      return false;
-    }
-
-    default:
-      return false;
-  }
-});
-
-// Update port connection handling
-function setupPort(port) {
-  if (port.name === "CodeTweak") {
-    // Check if the port is already connected
-    if (ports.has(port)) {
-      console.warn("Port already connected:", port.name);
-      return;
-    }
-    // Set up the port connection
-    ports.add(port);
-    port.onDisconnect.addListener(() => {
-      ports.delete(port);
-      console.log("Port disconnected:", port.name);
-    });
-
-    // Add error handling for port
-    port.onMessage.addListener((message, port) => {
-      try {
-        // Handle port messages if needed
-        console.log("Port message received:", message);
-      } catch (error) {
-        console.error("Port message error:", error);
-        port.disconnect();
-      }
-    });
-  }
-}
-
-// Update the port connection listener
-chrome.runtime.onConnect.addListener(setupPort);
-
-// Add this new function near the other helper functions
+// Handle script creation
 async function handleScriptCreation(url, template) {
   try {
     const { scripts = [] } = await chrome.storage.local.get("scripts");
@@ -520,30 +603,106 @@ async function handleScriptCreation(url, template) {
   }
 }
 
-// Add new function to cleanup CSP rules
-async function cleanupCSPRules(url) {
-  if (isRunning) return;
-  isRunning = true;
+// Register navigation event listeners
+["onCommitted", "onDOMContentLoaded", "onCompleted"].forEach((event, index) => {
+  chrome.webNavigation[event].addListener((details) =>
+    injectScriptsForStage(details, Object.values(INJECTION_TYPES)[index])
+  );
+});
 
+/**
+ * Utility functions
+ */
+// Efficient URL pattern matching
+function urlMatchesPattern(url, pattern) {
   try {
-    const existingRules = await chrome.declarativeNetRequest.getSessionRules();
-    const staleRules = existingRules.filter(
-      (rule) => rule.condition.urlFilter === url
-    );
+    if (pattern === url) return true;
+    if (
+      pattern.startsWith("*.") &&
+      new URL(url).hostname.endsWith(pattern.slice(2))
+    )
+      return true;
 
-    if (staleRules.length) {
-      await chrome.declarativeNetRequest.updateSessionRules({
-        removeRuleIds: staleRules.map((rule) => rule.id),
-      });
-      activeRules = new Set(
-        [...activeRules].filter(
-          (id) => !staleRules.some((rule) => rule.id === id)
-        )
-      );
-    }
+    return new RegExp(
+      `^${pattern.replace(/\*/g, ".*").replace(/\./g, "\\.")}$`,
+      "i"
+    ).test(url);
   } catch (error) {
-    console.error("Failed to cleanup CSP rules:", error);
-  } finally {
-    isRunning = false;
+    console.warn("URL matching error:", error);
+    return false;
+  }
+}
+
+/**
+ * GM API Helper Functions
+ */
+async function handleGMDeleteValue(key, tabId) {
+  const storageKey = `GM_${tabId}_${key}`;
+  await chrome.storage.local.remove(storageKey);
+  return { success: true };
+}
+
+async function handleGMGetValue(key, defaultValue, tabId) {
+  const storageKey = `GM_${tabId}_${key}`;
+  const result = await chrome.storage.local.get(storageKey);
+  return { value: result[storageKey] ?? defaultValue };
+}
+
+async function handleGMListValues(tabId) {
+  const result = await chrome.storage.local.get(null);
+  const prefix = `GM_${tabId}_`;
+  const keys = Object.keys(result)
+    .filter((key) => key.startsWith(prefix))
+    .map((key) => key.slice(prefix.length));
+  return { keys };
+}
+
+async function handleGMSetValue(key, value, tabId) {
+  const storageKey = `GM_${tabId}_${key}`;
+  await chrome.storage.local.set({ [storageKey]: value });
+  return { success: true };
+}
+
+async function handleGMGetResourceUrl(resourceName, tabId) {
+  // Implementation depends on how resources are stored
+  return { url: chrome.runtime.getURL(`resources/${resourceName}`) };
+}
+
+async function handleGMRegisterMenuCommand(message, tabId) {
+  const menuData = {
+    tabId,
+    commandId: message.commandId,
+    caption: message.caption,
+  };
+  // Store menu command data for later use
+  await chrome.storage.local.set({
+    [`GM_menu_${message.commandId}`]: menuData,
+  });
+  return { success: true };
+}
+
+async function handleGMXHR(details) {
+  try {
+    const response = await fetch(details.url, {
+      method: details.method || "GET",
+      headers: details.headers || {},
+      body: details.data,
+      mode: "cors",
+      credentials: details.anonymous ? "omit" : "include",
+    });
+
+    const responseData = await (details.responseType === "blob"
+      ? response.blob()
+      : response.text());
+
+    return {
+      status: response.status,
+      statusText: response.statusText,
+      responseHeaders: Object.fromEntries(response.headers.entries()),
+      response: responseData,
+    };
+  } catch (error) {
+    console.error("GM XHR error:", error);
+    throw error;
   }
 }

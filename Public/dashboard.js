@@ -27,6 +27,15 @@ function initDashboard() {
       importBtn: document.getElementById("importBtn"),
       importInput: document.getElementById("importInput"),
     },
+    greasyfork: {
+      button: document.getElementById("greasyforkBtn"),
+      modal: document.getElementById("greasyforkModal"),
+      closeBtn: document.querySelector(".modal-close"),
+      searchInput: document.getElementById("greasyforkSearch"),
+      searchBtn: document.getElementById("greasyforkSearchBtn"),
+      results: document.getElementById("greasyforkResults"),
+      loading: document.getElementById("greasyforkLoading"),
+    },
   };
 
   const state = {
@@ -39,6 +48,7 @@ function initDashboard() {
   loadSettings(elements.settings);
   setupTabs(elements.tabs, elements.tabContents);
   initDarkMode();
+  setupGreasyfork(elements.greasyfork);
 }
 
 function setupEventListeners(elements, state) {
@@ -241,6 +251,11 @@ function createScriptRow(script) {
   const nameCell = document.createElement("td");
   nameCell.textContent = script.name;
 
+  // Author cell
+  const authorCell = document.createElement("td");
+  authorCell.textContent = script.author || "Anonymous";
+  authorCell.className = "script-author";
+
   // Favicon cell
   const faviconCell = document.createElement("td");
   const faviconContainer = document.createElement("div");
@@ -330,62 +345,6 @@ function createScriptRow(script) {
 
   faviconCell.appendChild(faviconContainer);
 
-  // Target URL cell with multiple URL support
-  const targetCell = document.createElement("td");
-
-  if (!script.targetUrls?.length) {
-    targetCell.textContent = "No target URL";
-  } else {
-    const urlContainer = document.createElement("div");
-    urlContainer.className = "url-list";
-
-    try {
-      const primaryUrl = script.targetUrls[0];
-      const primaryUrlSpan = document.createElement("a");
-      primaryUrlSpan.className = "primary-url";
-      primaryUrlSpan.href = primaryUrl;
-      primaryUrlSpan.textContent = new URL(primaryUrl).hostname;
-      primaryUrlSpan.target = "_blank";
-      primaryUrlSpan.rel = "noopener noreferrer";
-      urlContainer.appendChild(primaryUrlSpan);
-
-      if (script.targetUrls.length > 1) {
-        const urlCounter = document.createElement("span");
-        urlCounter.className = "url-counter";
-        urlCounter.textContent = `+${script.targetUrls.length - 1}`;
-
-        // Create dropdown
-        const dropdown = document.createElement("div");
-        dropdown.className = "url-dropdown";
-
-        // Add all URLs to the dropdown
-        script.targetUrls.forEach((url) => {
-          const urlItem = document.createElement("div");
-          urlItem.className = "url-list-item";
-          try {
-            const urlObj = new URL(url);
-            const urlLink = document.createElement("a");
-            urlLink.href = urlObj.toString();
-            urlLink.textContent = urlObj.toString();
-            urlLink.target = "_blank";
-            urlLink.rel = "noopener noreferrer";
-            urlItem.appendChild(urlLink);
-          } catch {
-            urlItem.textContent = url;
-          }
-          dropdown.appendChild(urlItem);
-        });
-
-        urlCounter.appendChild(dropdown);
-        urlContainer.appendChild(urlCounter);
-      }
-    } catch {
-      urlContainer.textContent = script.targetUrls[0];
-    }
-
-    targetCell.appendChild(urlContainer);
-  }
-
   // Run At cell
   const runAtCell = document.createElement("td");
   const timingInfo = document.createElement("div");
@@ -445,8 +404,8 @@ function createScriptRow(script) {
   row.append(
     statusCell,
     nameCell,
+    authorCell,
     faviconCell,
-    targetCell,
     runAtCell,
     versionCell,
     actionsCell
@@ -565,6 +524,7 @@ function downloadScript(script) {
   try {
     const scriptData = {
       name: script.name,
+      author: script.author || "Anonymous",
       code: script.code,
       targetUrls: script.targetUrls || [script.targetUrl], // Support both new and legacy format
       runAt: script.runAt,
@@ -736,4 +696,183 @@ function showNotification(message, type = "info") {
       setTimeout(() => notification.remove(), 300);
     }
   }, 5000);
+}
+
+function setupGreasyfork(elements) {
+  elements.button.addEventListener("click", () => {
+    elements.modal.setAttribute("aria-hidden", "false");
+  });
+
+  elements.closeBtn.addEventListener("click", () => {
+    elements.modal.setAttribute("aria-hidden", "true");
+  });
+
+  elements.modal.addEventListener("click", (e) => {
+    if (
+      e.target === elements.modal ||
+      e.target.classList.contains("modal-overlay")
+    ) {
+      elements.modal.setAttribute("aria-hidden", "true");
+    }
+  });
+
+  elements.searchInput.addEventListener("keyup", (e) => {
+    if (e.key === "Enter") {
+      searchGreasyfork(elements);
+    }
+  });
+
+  elements.searchBtn.addEventListener("click", () => {
+    searchGreasyfork(elements);
+  });
+}
+
+async function searchGreasyfork(elements) {
+  const query = elements.searchInput.value.trim();
+  if (!query) return;
+
+  elements.results.innerHTML = "";
+  elements.loading.style.display = "block";
+
+  try {
+    const response = await fetch(
+      `https://greasyfork.org/en/scripts.json?q=${encodeURIComponent(query)}`
+    );
+    const scripts = await response.json();
+
+    elements.results.innerHTML = scripts
+      .map(
+        (script) => `
+        <div class="script-card" data-code-url="${escapeHtml(script.code_url)}">
+          <h3>${escapeHtml(script.name)}</h3>
+          <div class="script-card-meta">
+            <span>👤 ${script.users}</span>
+            <span>⭐ ${script.daily_installs}</span>
+            <span>v${script.version}</span>
+          </div>
+          <p class="script-card-description">${escapeHtml(
+            script.description
+          )}</p>
+          <div class="script-card-actions">
+            <a href="${
+              script.url
+            }" target="_blank" rel="noopener noreferrer" class="secondary">
+              View on Greasy Fork
+            </a>
+            <button class="primary import-greasy-fork">
+              Import
+            </button>
+          </div>
+        </div>
+      `
+      )
+      .join("");
+
+    // Add event listeners to all import buttons
+    elements.results
+      .querySelectorAll(".import-greasy-fork")
+      .forEach((button) => {
+        button.addEventListener("click", () => {
+          const codeUrl = button.closest(".script-card").dataset.codeUrl;
+          importGreasyforkScript(codeUrl);
+        });
+      });
+  } catch (error) {
+    console.error("Error searching Greasy Fork:", error);
+    elements.results.innerHTML = `
+      <div class="error-message">
+        Error searching Greasy Fork. Please try again later.
+      </div>
+    `;
+  } finally {
+    elements.loading.style.display = "none";
+  }
+}
+
+async function importGreasyforkScript(codeUrl) {
+  try {
+    const response = await fetch(codeUrl);
+    const code = await response.text();
+
+    // Parse metadata block
+    const metadataBlock = code.match(
+      /==UserScript==([\s\S]*?)==\/UserScript==/
+    );
+    if (!metadataBlock) throw new Error("No metadata block found");
+
+    const metadata = {};
+    metadataBlock[1].split("\n").forEach((line) => {
+      const match = line.match(/@(\w+)\s+(.+)/);
+      if (match) {
+        const [, key, value] = match;
+        if (key === "match" || key === "include") {
+          metadata.matches = metadata.matches || [];
+          metadata.matches.push(value);
+        } else {
+          metadata[key] = value;
+        }
+      }
+    });
+
+    const scriptData = {
+      name: metadata.name || "Imported Script",
+      description: metadata.description || "",
+      version: metadata.version || "1.0.0",
+      targetUrls: metadata.matches || ["*://*/*"],
+      code: code,
+      runAt: metadata.runAt || "document_end",
+      enabled: true,
+      id: crypto.randomUUID(),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    const { scripts = [] } = await chrome.storage.local.get("scripts");
+    scripts.push(scriptData);
+    await chrome.storage.local.set({ scripts });
+
+    showNotification("Script imported successfully", "success");
+    chrome.runtime.sendMessage({ action: "scriptsUpdated" });
+
+    // Close the modal
+    const modal = document.getElementById("greasyforkModal");
+    modal.setAttribute("aria-hidden", "true");
+
+    // Refresh the dashboard
+    await refreshDashboard();
+  } catch (error) {
+    console.error("Error importing script:", error);
+    showNotification("Error importing script: " + error.message, "error");
+  }
+}
+
+// Add this helper function
+async function refreshDashboard() {
+  const elements = {
+    scriptsTable: document.getElementById("scriptsTable"),
+    scriptsList: document.getElementById("scriptsList"),
+    emptyState: document.getElementById("emptyState"),
+    filters: {
+      websiteFilter: document.getElementById("websiteFilter"),
+      scriptSearch: document.getElementById("scriptSearch"),
+      statusFilter: document.getElementById("statusFilter"),
+      runAtFilter: document.getElementById("runAtFilter"),
+    },
+  };
+
+  const { scripts = [] } = await chrome.storage.local.get("scripts");
+  const state = { allScripts: scripts };
+
+  // Update all dashboard components
+  updateWebsiteFilterOptions(scripts, elements.filters.websiteFilter);
+  filterScripts(elements, state);
+}
+
+function escapeHtml(unsafe) {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }

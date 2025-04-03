@@ -41,6 +41,24 @@
             Import
           </button>
           <button
+            id="greasyforkBtn"
+            class="secondary"
+            title="Search Greasy Fork"
+          >
+            <svg
+              class="icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            Browse Scripts
+          </button>
+          <button
             id="createScriptBtn"
             class="primary"
             title="Create new script"
@@ -190,8 +208,8 @@
                   <tr>
                     <th scope="col">Status</th>
                     <th scope="col">Name</th>
+                    <th scope="col">Author</th>
                     <th scope="col">Website Icons</th>
-                    <th scope="col">Target URL</th>
                     <th scope="col">Run At</th>
                     <th scope="col">Version</th>
                     <th scope="col">Actions</th>
@@ -339,8 +357,8 @@
           <div class="settings-section">
             <h2>About CodeTweak</h2>
             <p>
-              CodeTweak is a powerful browser extension that allows you to inject
-              custom JavaScript code into specific websites based on your
+              CodeTweak is a powerful browser extension that allows you to
+              inject custom JavaScript code into specific websites based on your
               preferences.
             </p>
             <div class="version-pill">Version 1.0.0</div>
@@ -465,6 +483,63 @@
           </footer>
         </section>
       </main>
+    </div>
+
+    <div
+      id="greasyforkModal"
+      class="modal"
+      role="dialog"
+      aria-modal="true"
+      aria-hidden="true"
+    >
+      <div class="modal-overlay"></div>
+      <div class="modal-container">
+        <div class="modal-header">
+          <h2>Browse Greasy Fork Scripts</h2>
+          <button class="icon-button modal-close" aria-label="Close">
+            <svg
+              class="icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-content">
+          <div class="search-container">
+            <input
+              type="text"
+              id="greasyforkSearch"
+              placeholder="Search Greasy Fork scripts..."
+              aria-label="Search Greasy Fork scripts"
+            />
+            <button id="greasyforkSearchBtn" class="primary">Search</button>
+          </div>
+          <div id="greasyforkResults" class="results-container">
+            <!-- Results will be populated here -->
+          </div>
+          <div
+            id="greasyforkLoading"
+            class="loading-spinner"
+            style="display: none"
+          >
+            <svg class="spinner" viewBox="0 0 50 50">
+              <circle
+                class="path"
+                cx="25"
+                cy="25"
+                r="20"
+                fill="none"
+                stroke-width="5"
+              ></circle>
+            </svg>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script src="dashboard.js" defer></script>

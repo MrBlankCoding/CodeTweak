@@ -17,6 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
     [
       "pageTitle",
       "scriptName",
+      "scriptAuthor", // Add this line
       "targetUrl",
       "runAt",
       "scriptVersion",
@@ -338,6 +339,7 @@ ${decodedTemplate}
     // Add change listeners to all form elements
     const formElements = [
       elements.scriptName,
+      elements.scriptAuthor, // Add this line
       elements.scriptVersion,
       elements.scriptDescription,
       elements.targetUrl,
@@ -489,7 +491,7 @@ ${decodedTemplate}
       }
 
       elements.scriptName.value = script.name || "";
-
+      elements.scriptAuthor.value = script.author || "";
       // Handle multiple URLs
       if (Array.isArray(script.targetUrls)) {
         script.targetUrls.forEach((url) => addUrlToList(url));
@@ -575,6 +577,7 @@ ${decodedTemplate}
 
     const scriptData = {
       name: elements.scriptName.value.trim(),
+      author: elements.scriptAuthor.value.trim() || "Anonymous",
       targetUrls: urlList,
       runAt: elements.runAt.value,
       version: elements.scriptVersion.value.trim() || DEFAULT_VERSION,
