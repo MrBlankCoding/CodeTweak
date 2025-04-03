@@ -13,6 +13,7 @@ const CACHE_LIFETIME = 5000;
 let isRunning = false;
 let activeRules = new Set();
 let ports = new Set();
+let executedScripts = new Map(); // Track executed scripts by tab and script ID
 
 /**
  * Message handling for script updates
@@ -45,14 +46,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         chrome.tabs
           .get(message.tabId)
           .then((tab) => {
-            if (tab && message.scriptCode) {
-              injectScriptDirectly(
-                tab.id,
-                message.scriptCode,
-                "Element Ready Script",
-                {},
-                message.requiresCSP || false
-              );
+            if (tab && message.scriptCode && message.scriptId) {
+              // Check if this script has already been executed on this tab
+              const tabScripts =
+                executedScripts.get(message.tabId) || new Set();
+              if (!tabScripts.has(message.scriptId)) {
+                injectScriptDirectly(
+                  tab.id,
+                  message.scriptCode,
+                  "Element Ready Script",
+                  {},
+                  message.requiresCSP || false,
+                  message.scriptId
+                );
+              }
             }
           })
           .catch(() => {
@@ -119,6 +126,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           sendResponse({ error: error.message });
         });
       return true;
+
+    case "contentScriptReady":
+      // Reset executed scripts when content script loads
+      if (sender.tab && sender.tab.id) {
+        executedScripts.set(sender.tab.id, new Set());
+      }
+      return false;
 
     default:
       return false;
@@ -337,67 +351,85 @@ async function injectScriptsForStage(details, runAt) {
   try {
     const { settings = {} } = await chrome.storage.local.get("settings");
     const url = details.url;
+
+    // Clear executed scripts for this tab on new navigation
+    if (runAt === INJECTION_TYPES.DOCUMENT_START) {
+      executedScripts.set(details.tabId, new Set());
+    }
+
+    // Initialize tracking for this tab if needed
+    if (!executedScripts.has(details.tabId)) {
+      executedScripts.set(details.tabId, new Set());
+    }
+
+    const tabExecutedScripts = executedScripts.get(details.tabId);
     const { normalScripts, cspDisabledScripts } = await getFilteredScripts(
       url,
       runAt
     );
 
-    const {
-      normalScripts: elementReadyNormalScripts,
-      cspDisabledScripts: elementReadyCspScripts,
-    } =
-      runAt === INJECTION_TYPES.DOCUMENT_IDLE
-        ? await getFilteredScripts(url, INJECTION_TYPES.ELEMENT_READY)
-        : { normalScripts: [], cspDisabledScripts: [] };
+    // Filter out already executed scripts by script ID
+    const newNormalScripts = normalScripts.filter(
+      (script) => !tabExecutedScripts.has(script.id)
+    );
+    const newCspScripts = cspDisabledScripts.filter(
+      (script) => !tabExecutedScripts.has(script.id)
+    );
 
-    // Handle normal scripts without CSP modification
-    if (normalScripts.length) {
-      normalScripts.forEach((script) =>
+    // Handle normal scripts
+    if (newNormalScripts.length) {
+      newNormalScripts.forEach((script) => {
+        tabExecutedScripts.add(script.id);
         injectScriptDirectly(
           details.tabId,
           script.code,
           script.name,
           settings,
-          false
-        )
-      );
+          false,
+          script.id
+        );
+      });
     }
 
-    if (elementReadyNormalScripts.length) {
-      chrome.tabs
-        .sendMessage(details.tabId, {
-          action: "waitForElements",
-          scripts: elementReadyNormalScripts,
-          requiresCSP: false,
-        })
-        .catch(console.warn);
-    }
-
-    // Handle CSP-disabled scripts separately
-    if (cspDisabledScripts.length || elementReadyCspScripts.length) {
+    // Handle CSP-disabled scripts
+    if (newCspScripts.length) {
       await disableCSP(details.tabId, url);
       bypassTrustedTypes(details.tabId);
 
-      if (cspDisabledScripts.length) {
-        cspDisabledScripts.forEach((script) =>
-          injectScriptDirectly(
-            details.tabId,
-            script.code,
-            script.name,
-            settings,
-            true
-          )
+      newCspScripts.forEach((script) => {
+        tabExecutedScripts.add(script.id);
+        injectScriptDirectly(
+          details.tabId,
+          script.code,
+          script.name,
+          settings,
+          true,
+          script.id
         );
-      }
+      });
+    }
 
-      if (elementReadyCspScripts.length) {
-        chrome.tabs
-          .sendMessage(details.tabId, {
-            action: "waitForElements",
-            scripts: elementReadyCspScripts,
-            requiresCSP: true,
-          })
-          .catch(console.warn);
+    // Handle element-ready scripts only during DOCUMENT_IDLE
+    if (runAt === INJECTION_TYPES.DOCUMENT_IDLE) {
+      const {
+        normalScripts: elementReadyNormalScripts,
+        cspDisabledScripts: elementReadyCspScripts,
+      } = await getFilteredScripts(url, INJECTION_TYPES.ELEMENT_READY);
+
+      if (elementReadyNormalScripts.length || elementReadyCspScripts.length) {
+        const elementReadyScripts = [
+          ...elementReadyNormalScripts,
+          ...elementReadyCspScripts,
+        ].filter((script) => !tabExecutedScripts.has(script.id));
+
+        if (elementReadyScripts.length) {
+          chrome.tabs
+            .sendMessage(details.tabId, {
+              action: "waitForElements",
+              scripts: elementReadyScripts,
+            })
+            .catch(console.warn);
+        }
       }
     }
   } catch (error) {
@@ -411,7 +443,8 @@ async function injectScriptDirectly(
   code,
   scriptName,
   settings,
-  requiresCSP = false
+  requiresCSP = false,
+  scriptId = null
 ) {
   try {
     const tab = await chrome.tabs.get(tabId);
@@ -420,33 +453,40 @@ async function injectScriptDirectly(
       return;
     }
 
-    // First inject the GM API
+    // Only inject GM API once
     await chrome.scripting.executeScript({
       target: { tabId },
       files: ["gm-api.js"],
       world: "MAIN",
     });
 
-    // Then inject the user script with GM API initialization
+    // Single script injection with all context
     await chrome.scripting.executeScript({
       target: { tabId },
       world: "MAIN",
-      func: (code, scriptName, metadata) => {
+      func: (code, scriptName, metadata, hasCSPDisabled, scriptId) => {
         try {
-          // Initialize GM API
-          const GM = createGMApi(metadata);
-          // Add compatibility aliases
+          // Initialize execution tracking
+          window._executedScripts = window._executedScripts || new Set();
+          window._executedScriptIds = window._executedScriptIds || new Set();
+
+          // Skip if already executed
+          if (window._executedScriptIds.has(scriptId)) {
+            return;
+          }
+
+          // Mark as executed
+          window._executedScriptIds.add(scriptId);
+          window._executedScripts.add(code);
+
+          // Initialize GM API and context
+          const GM = window.createGMApi ? window.createGMApi(metadata) : {};
           const unsafeWindow = window;
           const GM_info = GM.info;
+          window._codeScriptCSPDisabled = hasCSPDisabled;
 
-          // Execute the user script with GM API context
-          const scriptContent = `
-            (async function() {
-              'use strict';
-              ${code}
-            })();
-          `;
-          eval(scriptContent);
+          // Execute script once
+          eval(code);
         } catch (error) {
           console.error("Script execution error:", error);
         }
@@ -458,8 +498,9 @@ async function injectScriptDirectly(
           name: scriptName,
           version: "1.0.0",
           targetUrls: [tab.url],
-          // Add other metadata as needed
         },
+        requiresCSP,
+        scriptId || code.substring(0, 100), // Use scriptId if provided, otherwise hash the code
       ],
     });
 
@@ -525,22 +566,6 @@ async function injectScriptDirectly(
         args: [scriptName || "Unknown script"],
       });
     }
-
-    // Add CSP information to the injection
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      world: "MAIN",
-      func: (code, hasCSPDisabled) => {
-        try {
-          // Add a flag to indicate CSP status
-          window._codeScriptCSPDisabled = hasCSPDisabled;
-          eval(code);
-        } catch (error) {
-          console.error("Script execution error:", error);
-        }
-      },
-      args: [code, requiresCSP],
-    });
   } catch (error) {
     console.warn("Script injection error:", error);
   }
@@ -706,3 +731,8 @@ async function handleGMXHR(details) {
     throw error;
   }
 }
+
+// Add cleanup for tab tracking when a tab is closed
+chrome.tabs.onRemoved.addListener((tabId) => {
+  executedScripts.delete(tabId);
+});
