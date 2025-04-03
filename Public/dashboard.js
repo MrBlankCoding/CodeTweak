@@ -807,7 +807,7 @@ async function searchGreasyfork(elements) {
     // Fix: Use correct endpoint with query parameter
     const encodedQuery = encodeURIComponent(query);
     const response = await fetch(
-      `https://greasyfork.org/en/scripts.json?q=${encodedQuery}`
+      `https://api.greasyfork.org/en/scripts.json?q=${encodedQuery}`
     );
 
     if (!response.ok) {
@@ -863,7 +863,7 @@ function createScriptCard(script) {
       <h3>${escapeHtml(script.name)}</h3>
       <div class="script-card-meta">
         <span>👤 ${formatNumber(script.total_installs)}</span>
-        <span>⭐ ${formatNumber(script.daily_installs)}</span>
+        <span>👍 ${formatNumber(script.good_ratings)}</span>
         <span>v${script.version || "1.0.0"}</span>
       </div>
       <p class="script-card-description">${escapeHtml(
