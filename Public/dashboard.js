@@ -809,13 +809,14 @@ async function importGreasyforkScript(codeUrl) {
           metadata.matches = metadata.matches || [];
           metadata.matches.push(value);
         } else {
-          metadata[key] = value;
+          metadata[key] = value.trim();
         }
       }
     });
 
     const scriptData = {
       name: metadata.name || "Imported Script",
+      author: metadata.author || "Anonymous",
       description: metadata.description || "",
       version: metadata.version || "1.0.0",
       targetUrls: metadata.matches || ["*://*/*"],
