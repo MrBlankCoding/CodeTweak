@@ -498,6 +498,11 @@ input[type="url"]::placeholder {
   font-size: 12px;
 }
 
+/* Trailing space highlighting */
+.cm-trailingspace {
+  background-color: rgba(255, 0, 0, 0.15);
+}
+
 /* Status elements */
 .status-info {
   display: flex;

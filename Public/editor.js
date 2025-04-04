@@ -13,34 +13,33 @@ document.addEventListener("DOMContentLoaded", () => {
   const AUTOSAVE_DELAY = 1220;
 
   // Cache DOM elements using object destructuring for cleaner access
-  const elements = Object.fromEntries(
-    [
-      "pageTitle",
-      "scriptName",
-      "scriptAuthor", // Add this line
-      "targetUrl",
-      "runAt",
-      "scriptVersion",
-      "scriptDescription",
-      "domAccess",
-      "storageAccess",
-      "ajaxAccess",
-      "cookieAccess",
-      "cspDisabled", // Add this line
-      "saveBtn",
-      "sidebarToggle",
-      "selectorContainer",
-      "waitForSelector",
-      "statusMessage",
-      "formatBtn",
-      "lintBtn",
-      "lintBtnText",
-      "cursorInfo",
-      "scriptStatusBadge",
-      "autosaveBtn",
-      "autosaveBtnText",
-    ].map((id) => [id, document.getElementById(id)])
-  );
+  const elements = Object.fromEntries([
+    ["pageTitle", document.getElementById("pageTitle")],
+    ["scriptName", document.getElementById("scriptName")],
+    ["scriptAuthor", document.getElementById("scriptAuthor")],
+    ["targetUrl", document.getElementById("targetUrl")],
+    ["runAt", document.getElementById("runAt")],
+    ["scriptVersion", document.getElementById("scriptVersion")],
+    ["scriptDescription", document.getElementById("scriptDescription")],
+    ["domAccess", document.getElementById("domAccess")],
+    ["storageAccess", document.getElementById("storageAccess")],
+    ["ajaxAccess", document.getElementById("ajaxAccess")],
+    ["cookieAccess", document.getElementById("cookieAccess")],
+    ["cspDisabled", document.getElementById("cspDisabled")],
+    ["saveBtn", document.getElementById("saveBtn")],
+    ["sidebarToggle", document.getElementById("sidebarToggle")],
+    ["selectorContainer", document.getElementById("selectorContainer")],
+    ["waitForSelector", document.getElementById("waitForSelector")],
+    ["statusMessage", document.getElementById("statusMessage")],
+    ["formatBtn", document.getElementById("formatBtn")],
+    ["lintBtn", document.getElementById("lintBtn")],
+    ["lintBtnText", document.getElementById("lintBtnText")],
+    ["cursorInfo", document.getElementById("cursorInfo")],
+    ["scriptStatusBadge", document.getElementById("scriptStatusBadge")],
+    ["autosaveBtn", document.getElementById("autosaveBtn")],
+    ["autosaveBtnText", document.getElementById("autosaveBtnText")],
+    ["codeEditor", document.getElementById("codeEditor")],
+  ]);
 
   // Additional DOM elements that don't follow the ID pattern
   elements.sidebar = document.querySelector(".sidebar");
@@ -122,74 +121,84 @@ ${decodedTemplate}
   }
 
   function initializeCodeEditor() {
-    const editor = CodeMirror.fromTextArea(
-      document.getElementById("codeEditor"),
-      {
-        mode: "javascript",
-        theme: state.isDarkMode ? THEMES.DARK : THEMES.LIGHT,
-        lineNumbers: true,
-        indentUnit: 2,
-        tabSize: 2,
-        lineWrapping: true,
-        matchBrackets: true,
-        autoCloseBrackets: true,
-        foldGutter: true,
-        lint: getLintOptions(state.lintingEnabled),
-        gutters: [
-          "CodeMirror-linenumbers",
-          "CodeMirror-foldgutter",
-          "CodeMirror-lint-markers",
-        ],
-        extraKeys: {
-          "Ctrl-Space": "autocomplete",
-          "Ctrl-S": saveScript,
-          F11: (cm) => cm.setOption("fullScreen", !cm.getOption("fullScreen")),
-          Esc: (cm) => {
-            if (cm.getOption("fullScreen")) cm.setOption("fullScreen", false);
-          },
+    if (!elements.codeEditor) {
+      console.error("Code editor element not found");
+      return;
+    }
+
+    // Initialize CodeMirror with enhanced options
+    state.codeEditor = CodeMirror.fromTextArea(elements.codeEditor, {
+      mode: "javascript",
+      theme: state.currentTheme,
+      lineNumbers: true,
+      lineWrapping: true,
+      indentUnit: 2,
+      tabSize: 2,
+      indentWithTabs: false,
+      smartIndent: true,
+      electricChars: true,
+      matchBrackets: true,
+      autoCloseBrackets: true,
+      showTrailingSpace: true,
+      continueComments: true,
+      foldGutter: true,
+      lint:
+        typeof getLintOptions === "function"
+          ? getLintOptions(state.lintingEnabled)
+          : false,
+      gutters: [
+        "CodeMirror-linenumbers",
+        "CodeMirror-foldgutter",
+        "CodeMirror-lint-markers",
+      ],
+      extraKeys: {
+        "Ctrl-Space": "autocomplete",
+        "Ctrl-S": (cm) => {
+          event.preventDefault(); 
+          saveScript();
         },
-      }
-    );
-
-    // Theme change observer using MutationObserver
-    const observer = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        if (mutation.attributeName === "data-theme") {
-          const theme = document.documentElement.getAttribute("data-theme");
-          editor.setOption(
-            "theme",
-            theme === "dark" ? THEMES.DARK : THEMES.LIGHT
-          );
-          break;
-        }
-      }
-    });
-
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["data-theme"],
+        "Cmd-S": (cm) => {
+          event.preventDefault();
+          saveScript();
+        },
+        "Alt-F": (cm) => formatCode(true),
+        F11: (cm) => cm.setOption("fullScreen", !cm.getOption("fullScreen")),
+        Esc: (cm) => {
+          if (cm.getOption("fullScreen")) cm.setOption("fullScreen", false);
+        },
+        Tab: (cm) => {
+          if (cm.somethingSelected()) {
+            cm.indentSelection("add");
+          } else {
+            const spaces = " ".repeat(cm.getOption("indentUnit"));
+            cm.replaceSelection(spaces, "end", "+input");
+          }
+        },
+        "Ctrl-/": (cm) => cm.toggleComment({ indent: true }),
+        "Cmd-/": (cm) => cm.toggleComment({ indent: true }),
+      },
+      scrollbarStyle: "simple",
     });
 
     // Editor event listeners
-    editor.on("cursorActivity", (cm) => {
+    state.codeEditor.on("cursorActivity", (cm) => {
       const cursor = cm.getCursor();
-      elements.cursorInfo.textContent = `Line: ${cursor.line + 1}, Col: ${
-        cursor.ch + 1
-      }`;
+      if (elements.cursorInfo) {
+        elements.cursorInfo.textContent = `Line: ${cursor.line + 1}, Col: ${
+          cursor.ch + 1
+        }`;
+      }
     });
 
-    editor.on("change", () => {
+    state.codeEditor.on("change", () => {
       if (!state.hasUnsavedChanges) {
         markAsUnsaved();
       }
 
-      if (state.isAutosaveEnabled) {
+      if (state.isAutosaveEnabled && state.hasUserInteraction) {
         triggerAutosave();
       }
     });
-
-    state.codeEditor = editor;
-    return editor;
   }
 
   function triggerAutosave() {
@@ -674,11 +683,14 @@ ${decodedTemplate}
 
   function formatCode(showMessage = true) {
     try {
-      state.codeEditor.operation(() => {
-        for (let i = 0; i < state.codeEditor.lineCount(); i++) {
-          state.codeEditor.indentLine(i);
-        }
+      const unformattedCode = state.codeEditor.getValue();
+
+      const formattedCode = js_beautify(unformattedCode, {
+        indent_size: 2,
+        space_in_empty_paren: true,
       });
+
+      state.codeEditor.setValue(formattedCode);
 
       if (showMessage) {
         showStatusMessage("Code formatted", "success");
