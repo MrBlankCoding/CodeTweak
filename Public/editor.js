@@ -60,6 +60,10 @@ document.addEventListener("DOMContentLoaded", () => {
     isAutosaveEnabled: localStorage.getItem("autosaveEnabled") === "true",
     autosaveTimeout: null,
     hasUserInteraction: false, // Add this line
+    githubToken: null,
+    githubUser: null,
+    currentRepo: null,
+    isGitHubLinked: false,
   };
 
   // Set initial theme based on system preference
@@ -75,6 +79,7 @@ document.addEventListener("DOMContentLoaded", () => {
     updateSidebarState();
     registerEventListeners();
     setupBackgroundConnection();
+    initGitHubDialogListeners();
 
     // Focus editor after initialization
     setTimeout(() => state.codeEditor?.focus(), 100);
@@ -406,6 +411,13 @@ ${decodedTemplate}
         }
       }
     });
+
+    document
+      .getElementById("githubButton")
+      .addEventListener("click", handleGitHubAuth);
+    document
+      .getElementById("saveToGithubBtn")
+      .addEventListener("click", saveToGitHub);
   }
 
   function handleDocumentClick(event) {
@@ -745,5 +757,162 @@ ${decodedTemplate}
     }
   }
 
+  async function initGitHub() {
+    const { githubToken } = await chrome.storage.local.get("githubToken");
+    if (githubToken) {
+      state.githubToken = githubToken;
+      state.isGitHubLinked = true;
+      await fetchGitHubUser();
+      updateGitHubUI();
+    }
+  }
+
+  function updateGitHubUI() {
+    const githubButton = document.getElementById("githubButton");
+    if (state.isGitHubLinked) {
+      githubButton.textContent = `Linked as ${state.githubUser.login}`;
+    } else {
+      githubButton.textContent = "Link GitHub";
+    }
+  }
+
+  async function handleGitHubAuth() {
+    if (state.isGitHubLinked) {
+      // Show repo selection/sync dialog
+      showGitHubDialog();
+    } else {
+      try {
+        const token = await initiateGitHubOAuth();
+        state.githubToken = token;
+        state.isGitHubLinked = true;
+        await chrome.storage.local.set({ githubToken: token });
+        await fetchGitHubUser();
+        updateGitHubUI();
+      } catch (error) {
+        showStatusMessage("GitHub authentication failed", "error");
+      }
+    }
+  }
+
+  async function saveToGitHub() {
+    if (!state.isGitHubLinked) {
+      await handleGitHubAuth();
+      return;
+    }
+
+    if (!state.currentRepo) {
+      showGitHubDialog();
+      return;
+    }
+
+    const syncStatus = document.getElementById("syncStatus");
+    try {
+      syncStatus.textContent = "Syncing with GitHub...";
+      syncStatus.className = "sync-status syncing";
+
+      const scriptData = gatherScriptData();
+      const content = JSON.stringify(scriptData, null, 2);
+      const path = `scripts/${scriptData.name
+        .toLowerCase()
+        .replace(/\s+/g, "-")}.json`;
+
+      await commitToGitHub({
+        repo: state.currentRepo,
+        path,
+        content,
+        message: `Update ${scriptData.name} to version ${scriptData.version}`,
+      });
+
+      syncStatus.textContent = "Synced successfully";
+      syncStatus.className = "sync-status";
+      showStatusMessage("Saved to GitHub successfully!", "success");
+    } catch (error) {
+      syncStatus.textContent = error.message;
+      syncStatus.className = "sync-status error";
+      showStatusMessage("Failed to save to GitHub", "error");
+    }
+  }
+
+  function showGitHubDialog() {
+    const dialog = document.getElementById("githubDialog");
+    dialog.classList.add("active");
+    loadRepositories();
+  }
+
+  async function loadRepositories() {
+    const repoList = document.getElementById("repoList");
+    const syncStatus = document.getElementById("syncStatus");
+
+    try {
+      syncStatus.textContent = "Loading repositories...";
+      syncStatus.className = "sync-status syncing";
+
+      const repos = await fetchUserRepos();
+      repoList.innerHTML = repos
+        .map(
+          (repo) => `
+        <div class="repo-item ${
+          repo.name === state.currentRepo ? "selected" : ""
+        }" data-repo="${repo.name}">
+          <span>${repo.name}</span>
+          <span>${repo.private ? "🔒 Private" : "🌐 Public"}</span>
+        </div>
+      `
+        )
+        .join("");
+
+      syncStatus.textContent = "Select a repository";
+      syncStatus.className = "sync-status";
+    } catch (error) {
+      syncStatus.textContent = error.message;
+      syncStatus.className = "sync-status error";
+    }
+  }
+
+  function initGitHubDialogListeners() {
+    const dialog = document.getElementById("githubDialog");
+    const repoList = document.getElementById("repoList");
+    const createRepoBtn = document.getElementById("createRepoBtn");
+
+    dialog.querySelector(".modal-close").addEventListener("click", () => {
+      dialog.classList.remove("active");
+    });
+
+    repoList.addEventListener("click", async (e) => {
+      const repoItem = e.target.closest(".repo-item");
+      if (!repoItem) return;
+
+      const repoName = repoItem.dataset.repo;
+      state.currentRepo = repoName;
+      await chrome.storage.local.set({ currentRepo: repoName });
+
+      document.querySelectorAll(".repo-item").forEach((item) => {
+        item.classList.toggle("selected", item.dataset.repo === repoName);
+      });
+
+      document.getElementById("saveToGithubBtn").style.display = "inline-flex";
+    });
+
+    createRepoBtn.addEventListener("click", async () => {
+      const name = document.getElementById("newRepoName").value.trim();
+      const description = document.getElementById("newRepoDesc").value.trim();
+      const isPrivate = document.getElementById("newRepoPrivate").checked;
+
+      if (!name) {
+        showStatusMessage("Repository name is required", "error");
+        return;
+      }
+
+      try {
+        await createRepository(name, description, isPrivate);
+        await loadRepositories();
+        showStatusMessage("Repository created successfully", "success");
+      } catch (error) {
+        showStatusMessage(error.message, "error");
+      }
+    });
+  }
+
   init();
+  initGitHub();
 });

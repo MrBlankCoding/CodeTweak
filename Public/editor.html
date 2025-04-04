@@ -14,6 +14,7 @@
     />
     <link rel="stylesheet" href="styles/editor.css" />
     <link rel="stylesheet" href="codemirror/theme/default.css" />
+    <link rel="stylesheet" href="styles/github-dialog.css" />
     <script src="utils/theme.js"></script>
   </head>
   <body>
@@ -114,6 +115,28 @@
             </div>
           </div>
           <div class="header-actions">
+            <button type="button" id="githubButton" class="header-button">
+              Link GitHub
+            </button>
+            <button
+              type="button"
+              id="saveToGithubBtn"
+              class="header-button"
+              style="display: none"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+              >
+                <path
+                  d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"
+                ></path>
+              </svg>
+              Save to GitHub
+            </button>
             <button
               type="button"
               id="saveBtn"
@@ -328,5 +351,45 @@
     <script src="codemirror/addon/lint/javascript-lint.js"></script>
     <script defer src="lib/jshint.js"></script>
     <script src="editor.js"></script>
+    <div id="githubDialog" class="modal-overlay">
+      <div class="modal github-dialog">
+        <div class="modal-header">
+          <h2>GitHub Repository</h2>
+          <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-content">
+          <div class="sync-status">
+            <span id="syncStatus">Select a repository to sync with</span>
+          </div>
+          <div id="repoList" class="repo-list"></div>
+          <div class="create-repo-form">
+            <h3>Create New Repository</h3>
+            <div class="settings-group">
+              <input
+                type="text"
+                id="newRepoName"
+                placeholder="Repository name"
+              />
+            </div>
+            <div class="settings-group">
+              <input
+                type="text"
+                id="newRepoDesc"
+                placeholder="Description (optional)"
+              />
+            </div>
+            <label class="checkbox-label">
+              <input type="checkbox" id="newRepoPrivate" checked />
+              Private repository
+            </label>
+            <div class="repo-actions">
+              <button type="button" class="header-button" id="createRepoBtn">
+                Create Repository
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </body>
 </html>

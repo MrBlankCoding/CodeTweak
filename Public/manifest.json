@@ -10,7 +10,8 @@
     "webNavigation",
     "declarativeNetRequest",
     "tabs",
-    "contextMenus"
+    "contextMenus",
+    "identity"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -45,5 +46,12 @@
       "resources": ["injected-scripts/*"],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "oauth2": {
+    "client_id": "YOUR_GITHUB_CLIENT_ID",
+    "scopes": [
+      "repo",
+      "gist"
+    ]
+  }
 }

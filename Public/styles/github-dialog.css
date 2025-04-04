@@ -1,0 +1,59 @@
+.github-dialog {
+  width: 500px;
+  max-width: 90vw;
+}
+
+.repo-list {
+  max-height: 300px;
+  overflow-y: auto;
+  margin: 1rem 0;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+}
+
+.repo-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.repo-item:hover {
+  background-color: var(--bg-color);
+}
+
+.repo-item.selected {
+  background-color: var(--primary-light);
+}
+
+.sync-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.sync-status.syncing {
+  color: var(--primary);
+}
+
+.sync-status.error {
+  color: #ef4444;
+}
+
+.create-repo-form {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.repo-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
