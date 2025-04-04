@@ -270,44 +270,75 @@ document.addEventListener("DOMContentLoaded", async () => {
   function urlMatchesPattern(url, script) {
     if (!url || !script) return false;
 
-    // Support both legacy single URL and new multiple URLs format
-    const targetUrls = script.targetUrls || [script.targetUrl];
+    // Ensure targetUrls is an array of valid strings
+    const targetUrls = (script.targetUrls || [script.targetUrl])
+      .filter(Boolean)
+      .map(String); // Convert to strings
+
     return targetUrls.some((pattern) => {
       try {
+        if (!pattern) return false;
+
         const urlObj = new URL(url);
 
-        if (pattern === url) {
-          return true;
-        }
+        // Direct match
+        if (pattern === url) return true;
 
-        if (pattern.startsWith("*.")) {
-          const domain = pattern.substring(2);
-          return (
-            urlObj.hostname === domain || urlObj.hostname.endsWith("." + domain)
-          );
-        }
-
-        if (!pattern.includes("*") && !pattern.includes("/")) {
-          return urlObj.hostname === pattern;
-        }
-
+        // Ensure scheme exists in pattern
         if (!pattern.includes("://")) {
           pattern = "*://" + pattern + "/*";
         }
 
-        if (pattern.includes("*")) {
-          const regexPattern = pattern
-            .replace(/\./g, "\\.")
-            .replace(/\*/g, ".*")
-            .replace(/\//g, "\\/");
-          const regex = new RegExp("^" + regexPattern + "$");
-          return regex.test(url);
+        // Extract scheme, host, and path from pattern
+        let [patternSchemeHost, ...patternPathParts] = pattern.split("://");
+        let patternPath =
+          patternPathParts.length > 0 ? patternPathParts.join("://") : "/*";
+
+        let [patternScheme, patternHost] = patternSchemeHost.includes("://")
+          ? patternSchemeHost.split("://")
+          : ["*", patternSchemeHost];
+
+        // Handle wildcard subdomains (*.example.com)
+        if (
+          patternHost.startsWith("*.") &&
+          urlObj.hostname.endsWith(patternHost.slice(2))
+        ) {
+          return true;
         }
 
-        return url.includes(pattern);
+        // Convert scheme to regex
+        let schemeRegex =
+          patternScheme === "*" ? "(https?|ftp)" : patternScheme;
+
+        // Convert host to regex
+        let hostRegex = patternHost
+          .replace(/^\*\./, "(?:[^/]+\\.)?") // Handle *.example.com
+          .replace(/\*\./g, "(?:[^/.]+\\.)") // Handle multiple wildcard subdomains
+          .replace(/\*/g, "[^/]*") // Handle * in domain
+          .split(".")
+          .map((part) => part.replace(/\./g, "\\.")) // Escape dots
+          .join("\\.");
+
+        // Convert path to regex
+        let pathRegex = patternPath
+          .split("/")
+          .map((part) =>
+            part === "*"
+              ? ".*"
+              : part.replace(/\*/g, ".*").replace(/\./g, "\\.")
+          )
+          .join("/");
+
+        // Construct full regex
+        const finalRegex = new RegExp(
+          `^${schemeRegex}://${hostRegex}/${pathRegex}$`,
+          "i"
+        );
+
+        return finalRegex.test(url);
       } catch (error) {
-        console.error("Error parsing URL:", error);
-        return url.includes(pattern);
+        console.warn("URL matching error for pattern:", pattern, error);
+        return false;
       }
     });
   }

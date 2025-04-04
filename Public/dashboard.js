@@ -324,25 +324,33 @@ function createFaviconCell(script) {
   if (script.targetUrls && script.targetUrls.length > 0) {
     script.targetUrls.forEach((url) => {
       try {
-        const hostname = new URL(url).hostname;
+        let hostname;
+        if (url.includes("://")) {
+          hostname = new URL(url).hostname;
+        } else {
+          // Handle pattern-style URLs
+          hostname = url.split("/")[0];
+        }
+
         if (!uniqueHosts.has(hostname)) {
           uniqueHosts.add(hostname);
 
-          const faviconWrapper = createFaviconWrapper(hostname);
-          faviconContainer.appendChild(faviconWrapper);
-
-          // Only show first 3 favicons plus counter if more exist
-          if (faviconContainer.children.length === 3 && uniqueHosts.size > 3) {
-            const extraHosts = Array.from(uniqueHosts).slice(3);
-            const counterElement = createFaviconCounter(extraHosts);
-            faviconContainer.appendChild(counterElement);
-            return;
+          if (faviconContainer.children.length < 3) {
+            const faviconWrapper = createFaviconWrapper(hostname);
+            faviconContainer.appendChild(faviconWrapper);
           }
         }
       } catch (error) {
         // Skip invalid URLs
       }
     });
+  }
+
+  // Show counter if there are more hosts
+  if (uniqueHosts.size > 3) {
+    const extraHosts = Array.from(uniqueHosts).slice(3);
+    const counterElement = createFaviconCounter(extraHosts);
+    faviconContainer.appendChild(counterElement);
   }
 
   // Show fallback if no valid favicons
@@ -363,16 +371,23 @@ function createFaviconWrapper(hostname) {
   faviconWrapper.title = hostname;
 
   const faviconImg = document.createElement("img");
-  faviconImg.src = `https://${hostname}/favicon.ico`;
+  const faviconUrl = `https://s2.googleusercontent.com/s2/favicons?domain=${hostname}`;
+
+  console.log(`Fetching favicon for ${hostname}:`, faviconUrl);
+
+  faviconImg.src = faviconUrl;
   faviconImg.alt = "";
   faviconImg.className = "favicon";
   faviconImg.onerror = function () {
-    this.parentElement.innerHTML = `<div class='favicon-fallback'>${hostname[0].toUpperCase()}</div>`;
+    console.warn(`Failed to load favicon for ${hostname}`);
+    const fallbackText = hostname.replace(/\*\./g, "").charAt(0).toUpperCase();
+    this.parentElement.innerHTML = `<div class='favicon-fallback'>${fallbackText}</div>`;
   };
 
   faviconWrapper.appendChild(faviconImg);
   return faviconWrapper;
 }
+
 
 function createFaviconCounter(extraHosts) {
   const counter = document.createElement("div");

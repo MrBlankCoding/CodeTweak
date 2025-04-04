@@ -574,17 +574,55 @@ async function handleScriptCreation(url, template) {
 // Efficient URL pattern matching
 function urlMatchesPattern(url, pattern) {
   try {
-    if (pattern === url) return true;
-    if (
-      pattern.startsWith("*.") &&
-      new URL(url).hostname.endsWith(pattern.slice(2))
-    )
-      return true;
+    const urlObj = new URL(url);
 
-    return new RegExp(
-      `^${pattern.replace(/\*/g, ".*").replace(/\./g, "\\.")}$`,
+    // Direct match
+    if (pattern === url) return true;
+
+    // Extract pattern scheme, host, and path
+    let [patternSchemeHost, ...patternPathParts] = pattern.split("://");
+    let patternPath =
+      patternPathParts.length > 0 ? patternPathParts.join("://") : "/*";
+
+    let [patternScheme, patternHost] = patternSchemeHost.includes("://")
+      ? patternSchemeHost.split("://")
+      : ["*", patternSchemeHost];
+
+    // Handle wildcard subdomains (*.example.com)
+    if (
+      patternHost.startsWith("*.") &&
+      urlObj.hostname.endsWith(patternHost.slice(2))
+    ) {
+      return true;
+    }
+
+    // Convert scheme to regex
+    let schemeRegex = patternScheme === "*" ? "(https?|ftp)" : patternScheme;
+
+    // Convert host to regex
+    let hostRegex = patternHost
+      .replace(/^\*\./, "(?:[^/]+\\.)?") // Handle *.example.com
+      .replace(/\*\./g, "(?:[^/.]+\\.)") // Handle multiple wildcard subdomains
+      .replace(/\*/g, "[^/]*") // Handle * in domain
+      .split(".")
+      .map((part) => part.replace(/\./g, "\\.")) // Escape dots
+      .join("\\.");
+
+    // Convert path to regex
+    let pathRegex = patternPath
+      .split("/")
+      .map((part) =>
+        part === "*" ? ".*" : part.replace(/\*/g, ".*").replace(/\./g, "\\.")
+      )
+      .join("/");
+
+    // Construct full regex
+    const finalRegex = new RegExp(
+      `^${schemeRegex}://${hostRegex}/${pathRegex}$`,
       "i"
-    ).test(url);
+    );
+
+    return finalRegex.test(url);
   } catch (error) {
     console.warn("URL matching error:", error);
     return false;
