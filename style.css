@@ -3,7 +3,7 @@
     /* Main Color Scheme */
     --primary: #6200ea;
     --primary-dark: #3700b3;
-    --primary-light: #bb86fc;
+    --primary-light: #dabbff;
     --secondary: #03dac6;
     --accent: #ff4081;
     
@@ -849,4 +849,209 @@
 .cta-section p {
   font-size: 1.2rem;
   margin-bottom: 40px;
+}
+/* Additional animations for Code Tweak landing page */
+
+/* === PARALLAX BACKGROUND === */
+.code-background {
+  transition: transform 0.1s ease-out;
+}
+
+/* Floating code snippets */
+.floating-code {
+  position: absolute;
+  font-family: 'Fira Code', monospace;
+  font-size: 1rem;
+  color: var(--primary-light);
+  pointer-events: none;
+  animation: float linear infinite;
+  text-shadow: 0 0 10px var(--primary-light);
+}
+
+@keyframes float {
+  0% { transform: translateY(0) rotate(0deg); }
+  100% { transform: translateY(-100vh) rotate(360deg); }
+}
+
+/* === ENHANCED GLITCH EFFECTS === */
+.glitch-active::before,
+.glitch-active::after {
+  animation-duration: 0.2s !important;
+  animation-timing-function: steps(2, end) !important;
+}
+
+.glitch-hover::before,
+.glitch-hover::after {
+  clip: rect(auto, auto, auto, auto) !important;
+  animation-duration: 0.1s !important;
+  animation-timing-function: steps(2, end) !important;
+  opacity: 0.8;
+}
+
+/* === TYPING EFFECT === */
+.cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.2em;
+  background-color: var(--text-primary);
+  margin-left: 2px;
+  vertical-align: middle;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* === TIMELINE ANIMATIONS === */
+.timeline-line {
+  height: 0%;
+  transition: height 0.5s ease-out;
+}
+
+.step {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+.step.animated {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.step-content {
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.step-number {
+  transition: transform 0.3s ease;
+}
+
+/* === FADE IN ANIMATIONS === */
+.fade-in {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.fade-in.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* === HOVER EFFECTS === */
+.feature-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.5s ease;
+}
+
+.feature-card:hover .feature-icon {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.feature-icon {
+  transition: transform 0.3s ease;
+}
+
+/* === ACCORDION ANIMATIONS === */
+.accordion-content {
+  transition: max-height 0.5s ease, opacity 0.3s ease;
+}
+
+.accordion-header {
+  transition: background-color 0.3s ease;
+}
+
+.accordion-icon i {
+  transition: transform 0.3s ease;
+}
+
+.accordion-item.active .accordion-icon .fa-plus {
+  transform: rotate(90deg);
+}
+
+/* === SCROLL-TRIGGERED ANIMATIONS === */
+[data-aos] {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+.revealed {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+/* === BUTTON HOVER EFFECTS === */
+.cta-button {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.cta-button:hover {
+  box-shadow: 0 10px 30px rgba(98, 0, 234, 0.3);
+}
+
+/* === SCROLL INDICATOR ANIMATION === */
+.scroll-indicator {
+  animation: fadeInUp 1.5s ease-out 1s forwards;
+  opacity: 0;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 0.7;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* === FEATURE CARD HIGHLIGHT === */
+.feature-card::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, var(--primary), var(--secondary));
+  z-index: -1;
+  border-radius: 14px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.feature-card:hover::after {
+  opacity: 0.5;
+}
+
+/* === COMMUNITY CODE HIGHLIGHT === */
+.code-container pre {
+  transition: transform 0.3s ease;
+}
+
+.code-container:hover pre {
+  transform: translateY(-3px);
+}
+
+/* === SCROLLBAR STYLING === */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-darker);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-dark);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
 }
