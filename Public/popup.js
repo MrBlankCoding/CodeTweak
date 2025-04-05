@@ -2,13 +2,11 @@
 // Dont touch this (Popup is fine, UI is fine, I dont anticipate any changes)
 
 document.addEventListener("DOMContentLoaded", async () => {
-  // Initialize dark mode first
   initDarkMode();
 
   const scriptList = document.getElementById("scriptList");
   const emptyState = document.getElementById("emptyState");
   const createScriptBtn = document.getElementById("createScript");
-  // Remove createScriptCta constant since element no longer exists
   const openDashboardBtn = document.getElementById("openDashboard");
   const reportIssueLink = document.getElementById("reportIssue");
 
@@ -31,8 +29,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       ),
     });
   });
-
-  // Remove createScriptCta event listener since button no longer exists
 
   openDashboardBtn.addEventListener("click", () => {
     chrome.tabs.create({ url: chrome.runtime.getURL("dashboard.html") });
@@ -117,7 +113,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     const scriptTarget = document.createElement("div");
     scriptTarget.className = "script-target";
 
-    // Handle multiple URLs
     const urls = script.targetUrls || [script.targetUrl];
     const displayUrl =
       urls.length > 1 ? `${urls[0]} +${urls.length - 1} more` : urls[0];
@@ -177,7 +172,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       menu.classList.toggle("show");
     });
 
-    // Close menu when clicking outside
     document.addEventListener("click", (e) => {
       if (!menu.contains(e.target) && !menuBtn.contains(e.target)) {
         menu.classList.remove("show");
@@ -203,25 +197,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     return actions;
   }
 
-  async function toggleScript(index, enabled) {
-    const { scripts = [] } = await chrome.storage.local.get("scripts");
-
-    if (index >= 0 && index < scripts.length) {
-      scripts[index].enabled = enabled;
-      await chrome.storage.local.set({ scripts });
-
-      showToast(enabled ? "Script enabled" : "Script disabled");
-
-      chrome.runtime.sendMessage({ action: "scriptsUpdated" });
-    }
-  }
-
-  function editScript(index) {
-    chrome.tabs.create({
-      url: `editor.html?id=${index}`,
-    });
-  }
-
   async function deleteScript(scriptId) {
     if (!confirm("Are you sure you want to delete this script?")) return;
 
@@ -230,7 +205,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       const updatedScripts = scripts.filter((s) => s.id !== scriptId);
       await chrome.storage.local.set({ scripts: updatedScripts });
 
-      // Reload scripts to update UI properly
       loadScripts(currentTabUrl);
 
       chrome.runtime.sendMessage({ action: "scriptsUpdated" });
@@ -267,79 +241,113 @@ document.addEventListener("DOMContentLoaded", async () => {
     }, 2000);
   }
 
-  function urlMatchesPattern(url, script) {
-    if (!url || !script) return false;
+function urlMatchesPattern(url, script) {
+  if (!url || !script) return false;
 
-    // Ensure targetUrls is an array of valid strings
-    const targetUrls = (script.targetUrls || [script.targetUrl])
-      .filter(Boolean)
-      .map(String); // Convert to strings
+  const targetUrls = (
+    Array.isArray(script.targetUrls)
+      ? script.targetUrls
+      : [script.targetUrls || script.targetUrl]
+  )
+    .filter(Boolean)
+    .map(String);
 
-    return targetUrls.some((pattern) => {
-      try {
-        if (!pattern) return false;
+  return targetUrls.some((pattern) => {
+    try {
+      if (!pattern) return false;
+      if (pattern === url) return true;
 
-        const urlObj = new URL(url);
+      // Handle exact match
+      if (pattern === url) return true;
 
-        // Direct match
-        if (pattern === url) return true;
+      // Normalize pattern if missing scheme
+      if (!pattern.includes("://")) {
+        pattern = "*://" + pattern;
+      }
 
-        // Ensure scheme exists in pattern
-        if (!pattern.includes("://")) {
-          pattern = "*://" + pattern + "/*";
-        }
+      // Split into scheme, host, and path portions
+      let [schemeHost, ...pathParts] = pattern.split("://");
+      let pathString = pathParts.join("://"); // Rejoin in case there are :// in the path
 
-        // Extract scheme, host, and path from pattern
-        let [patternSchemeHost, ...patternPathParts] = pattern.split("://");
-        let patternPath =
-          patternPathParts.length > 0 ? patternPathParts.join("://") : "/*";
+      // Split host and path
+      let hostPattern, pathPattern;
+      if (pathString.includes("/")) {
+        [hostPattern, ...pathPattern] = pathString.split("/");
+        pathPattern = pathPattern.join("/");
+      } else {
+        hostPattern = pathString;
+        pathPattern = "";
+      }
 
-        let [patternScheme, patternHost] = patternSchemeHost.includes("://")
-          ? patternSchemeHost.split("://")
-          : ["*", patternSchemeHost];
+      // Parse the URL to match
+      const urlObj = new URL(url);
+      const urlScheme = urlObj.protocol.replace(":", "");
+      const urlHost = urlObj.hostname;
+      const urlPath = urlObj.pathname.substring(1); // Remove leading slash
 
-        // Handle wildcard subdomains (*.example.com)
-        if (
-          patternHost.startsWith("*.") &&
-          urlObj.hostname.endsWith(patternHost.slice(2))
-        ) {
-          return true;
-        }
-
-        // Convert scheme to regex
-        let schemeRegex =
-          patternScheme === "*" ? "(https?|ftp)" : patternScheme;
-
-        // Convert host to regex
-        let hostRegex = patternHost
-          .replace(/^\*\./, "(?:[^/]+\\.)?") // Handle *.example.com
-          .replace(/\*\./g, "(?:[^/.]+\\.)") // Handle multiple wildcard subdomains
-          .replace(/\*/g, "[^/]*") // Handle * in domain
-          .split(".")
-          .map((part) => part.replace(/\./g, "\\.")) // Escape dots
-          .join("\\.");
-
-        // Convert path to regex
-        let pathRegex = patternPath
-          .split("/")
-          .map((part) =>
-            part === "*"
-              ? ".*"
-              : part.replace(/\*/g, ".*").replace(/\./g, "\\.")
-          )
-          .join("/");
-
-        // Construct full regex
-        const finalRegex = new RegExp(
-          `^${schemeRegex}://${hostRegex}/${pathRegex}$`,
-          "i"
-        );
-
-        return finalRegex.test(url);
-      } catch (error) {
-        console.warn("URL matching error for pattern:", pattern, error);
+      // Check scheme match
+      if (schemeHost !== "*" && schemeHost !== urlScheme) {
         return false;
       }
-    });
-  }
+
+      // Check host match - handle *.domain.com pattern
+      if (hostPattern.startsWith("*.")) {
+        const domain = hostPattern.substring(2);
+        if (!(urlHost === domain || urlHost.endsWith("." + domain))) {
+          return false;
+        }
+      } else if (hostPattern !== "*" && hostPattern !== urlHost) {
+        // Handle direct hostname match or * wildcard
+        if (hostPattern.includes("*")) {
+          // Convert * to regex for partial host matching
+          const hostRegex = new RegExp(
+            "^" + hostPattern.replace(/\./g, "\\.").replace(/\*/g, ".*") + "$"
+          );
+          if (!hostRegex.test(urlHost)) {
+            return false;
+          }
+        } else {
+          return false;
+        }
+      }
+
+      // If no path in pattern but URL has path, still consider it a match
+      if (!pathPattern) {
+        return true;
+      }
+
+      // Check path match - handle ** wildcard (matches across path segments)
+      if (pathPattern === "**") {
+        return true; // Match any path
+      }
+
+      // Create regex from path pattern
+      let pathRegexStr = "^";
+
+      // Handle path segments properly
+      const pathSegments = pathPattern.split("/");
+      pathSegments.forEach((segment, index) => {
+        if (segment === "**") {
+          // ** matches anything including slashes (multiple path segments)
+          pathRegexStr += ".*";
+        } else {
+          // * matches anything within a single path segment
+          pathRegexStr += segment.replace(/\*/g, "[^/]*").replace(/\./g, "\\.");
+          if (index < pathSegments.length - 1) {
+            pathRegexStr += "\\/";
+          }
+        }
+      });
+
+      pathRegexStr += "$";
+      const pathRegex = new RegExp(pathRegexStr);
+
+      return pathRegex.test(urlPath);
+    } catch (err) {
+      console.warn("Pattern error:", pattern, err);
+      return false;
+    }
+  });
+}
+
 });

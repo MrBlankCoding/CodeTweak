@@ -54,17 +54,17 @@ function checkForElement(selector, callback, options = {}) {
   setTimeout(checkElement, config.initialDelay);
 }
 
-// Watch for element changes in the DOM
+// watch changess
 class ElementWatcher {
   constructor() {
     this.watchList = new Map();
     this.isWatching = false;
     this.observer = null;
-    this.processedScripts = new Set(); // Track scripts that have been processed
+    this.processedScripts = new Set(); // track processed scripts
   }
 
   watch(selector, callback, scriptId) {
-    // Don't add duplicate watches for the same script
+    // dont process the same script multiple times
     if (this.processedScripts.has(scriptId)) {
       return;
     }
@@ -123,9 +123,9 @@ class ElementWatcher {
   }
 }
 
-// Create the ElementWatcher
+// create watcher (I need a init function)
 const elementWatcher = new ElementWatcher();
-const executedScripts = new Set(); // Track executed scripts
+const executedScripts = new Set(); 
 
 // Get messages from the background
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -133,7 +133,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log("Received element-ready scripts:", message.scripts.length);
 
     message.scripts.forEach((script) => {
-      // Skip if script was already executed
       if (executedScripts.has(script.id)) {
         return;
       }
@@ -142,7 +141,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         checkForElement(
           script.waitForSelector,
           () => {
-            // Mark as executed before sending message to prevent race conditions
             executedScripts.add(script.id);
             chrome.runtime.sendMessage({
               action: "elementFound",
@@ -168,7 +166,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
-// Notify the background script when the content script is loaded
+// Notif 
 chrome.runtime.sendMessage({
   action: "contentScriptReady",
   url: window.location.href,

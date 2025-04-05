@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const SIDEBAR_BREAKPOINT = 900;
   const AUTOSAVE_DELAY = 1220;
 
-  // Cache DOM elements using object destructuring for cleaner access
+  // cache dom
   const elements = Object.fromEntries([
     ["pageTitle", document.getElementById("pageTitle")],
     ["scriptName", document.getElementById("scriptName")],
@@ -41,12 +41,12 @@ document.addEventListener("DOMContentLoaded", () => {
     ["codeEditor", document.getElementById("codeEditor")],
   ]);
 
-  // Additional DOM elements that don't follow the ID pattern
+  // I got lazy.
   elements.sidebar = document.querySelector(".sidebar");
   elements.sectionToggles = document.querySelectorAll(".section-toggle");
   elements.mainContent = document.querySelector(".main-content");
 
-  // State management with default values from localStorage
+  // Main state
   const state = {
     isEditMode: false,
     scriptId: null,
@@ -58,24 +58,21 @@ document.addEventListener("DOMContentLoaded", () => {
     codeEditor: null,
     isAutosaveEnabled: localStorage.getItem("autosaveEnabled") === "true",
     autosaveTimeout: null,
-    hasUserInteraction: false, // Add this line
+    hasUserInteraction: false,
   };
 
-  // Set initial theme based on system preference
   state.currentTheme = state.isDarkMode ? THEMES.DARK : THEMES.LIGHT;
 
   function init() {
     initDarkMode();
     setDefaultValues();
     initializeCodeEditor();
-    parseUrlParams(); // Move this after editor initialization
+    parseUrlParams(); 
     setupEditorMode();
     initializeCollapsibleSections();
     updateSidebarState();
     registerEventListeners();
     setupBackgroundConnection();
-
-    // Focus editor after initialization
     setTimeout(() => state.codeEditor?.focus(), 100);
   }
 
@@ -88,10 +85,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (initialTargetUrl && elements.targetUrl) {
       elements.targetUrl.value = decodeURIComponent(initialTargetUrl);
-      addUrlToList(decodeURIComponent(initialTargetUrl)); // Auto-add the URL to the list
+      addUrlToList(decodeURIComponent(initialTargetUrl));
     }
-
-    // Now we can safely set the template because the editor is initialized
     if (template) {
       const decodedTemplate = decodeURIComponent(template);
       state.codeEditor.setValue(`(function() {
@@ -110,8 +105,6 @@ ${decodedTemplate}
     if (!elements.scriptVersion.value) {
       elements.scriptVersion.value = DEFAULT_VERSION;
     }
-
-    // Set initial button states
     elements.autosaveBtnText.textContent = `Autosave: ${
       state.isAutosaveEnabled ? "On" : "Off"
     }`;
@@ -126,7 +119,7 @@ ${decodedTemplate}
       return;
     }
 
-    // Initialize CodeMirror with enhanced options
+    // Code mirror init
     state.codeEditor = CodeMirror.fromTextArea(elements.codeEditor, {
       mode: "javascript",
       theme: state.currentTheme,
@@ -179,8 +172,6 @@ ${decodedTemplate}
       },
       scrollbarStyle: "simple",
     });
-
-    // Editor event listeners
     state.codeEditor.on("cursorActivity", (cm) => {
       const cursor = cm.getCursor();
       if (elements.cursorInfo) {
@@ -278,8 +269,6 @@ ${decodedTemplate}
         ? "280px 1fr"
         : "0 1fr";
     }
-
-    // Refresh editor after sidebar animation completes
     setTimeout(() => state.codeEditor?.refresh(), 300);
   }
 
@@ -304,18 +293,13 @@ ${decodedTemplate}
   }
 
   function registerEventListeners() {
-    // Add user interaction tracking
     const trackUserInteraction = () => {
       state.hasUserInteraction = true;
     };
-
-    // Track interactions on form elements and editor
     document.addEventListener("mousedown", trackUserInteraction, {
       once: true,
     });
     document.addEventListener("keydown", trackUserInteraction, { once: true });
-
-    // Global events
     window.addEventListener("beforeunload", (e) => {
       if (state.hasUnsavedChanges && state.hasUserInteraction) {
         e.preventDefault();
@@ -328,14 +312,14 @@ ${decodedTemplate}
     document.addEventListener("click", handleDocumentClick);
     document.addEventListener("keydown", handleKeyDown);
 
-    // Button events
+    //buttons
     elements.sidebarToggle.addEventListener("click", toggleSidebar);
     elements.lintBtn.addEventListener("click", toggleLinting);
     elements.saveBtn.addEventListener("click", saveScript);
     elements.formatBtn.addEventListener("click", () => formatCode(true));
     elements.autosaveBtn.addEventListener("click", toggleAutosave);
 
-    // Form element events
+    // form
     elements.runAt.addEventListener("change", function () {
       const isElementReady = this.value === RUN_MODES.ELEMENT_READY;
       elements.selectorContainer.style.display = isElementReady
@@ -344,11 +328,9 @@ ${decodedTemplate}
       elements.waitForSelector.required = isElementReady;
       markAsUnsaved();
     });
-
-    // Add change listeners to all form elements
     const formElements = [
       elements.scriptName,
-      elements.scriptAuthor, // Add this line
+      elements.scriptAuthor,
       elements.scriptVersion,
       elements.scriptDescription,
       elements.targetUrl,
@@ -366,7 +348,7 @@ ${decodedTemplate}
       }
     });
 
-    // Add CSP warning
+    // CSP warning... (Need to comply with policy)
     elements.cspDisabled.addEventListener("change", function () {
       if (this.checked) {
         showStatusMessage(
@@ -376,7 +358,7 @@ ${decodedTemplate}
         setTimeout(clearStatusMessage, 5000);
       } else {
         clearStatusMessage();
-        // Notify background script about CSP re-enable
+        // notif background
         const urls = Array.from(document.querySelectorAll(".url-item")).map(
           (item) => item.dataset.url
         );
@@ -389,8 +371,6 @@ ${decodedTemplate}
         });
       }
     });
-
-    // Add URL list management
     document.getElementById("addUrlBtn").addEventListener("click", () => {
       const url = elements.targetUrl.value.trim();
       if (url) {
@@ -404,8 +384,7 @@ ${decodedTemplate}
         markAsUnsaved();
       }
     });
-
-    // Add keyboard support for URL input
+    // Handle Enter key for adding URLS (We all like our shortcuts)
     elements.targetUrl.addEventListener("keypress", (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
@@ -430,13 +409,11 @@ ${decodedTemplate}
   }
 
   function handleKeyDown(e) {
-    // Save shortcut (Ctrl+S or Command+S)
     if ((e.ctrlKey || e.metaKey) && e.key === "s") {
       e.preventDefault();
       saveScript();
     }
-
-    // Toggle sidebar shortcut (Ctrl+B or Command+B)
+    // Toggle sidebar
     if ((e.ctrlKey || e.metaKey) && e.key === "b") {
       e.preventDefault();
       toggleSidebar(e);
@@ -501,11 +478,10 @@ ${decodedTemplate}
 
       elements.scriptName.value = script.name || "";
       elements.scriptAuthor.value = script.author || "";
-      // Handle multiple URLs
       if (Array.isArray(script.targetUrls)) {
         script.targetUrls.forEach((url) => addUrlToList(url));
       } else if (script.targetUrl) {
-        // Handle legacy single URL format
+        // legacy support
         addUrlToList(script.targetUrl);
       }
 
@@ -539,8 +515,6 @@ ${decodedTemplate}
       showStatusMessage("Please enter a script name.", "error");
       return false;
     }
-
-    // Check for URLs in both the list and current input
     const urlList = Array.from(document.querySelectorAll(".url-item")).map(
       (item) => item.dataset.url
     );
@@ -559,7 +533,7 @@ ${decodedTemplate}
       return false;
     }
 
-    // Add confirmation for CSP disable
+    // another CSP warning
     if (elements.cspDisabled.checked) {
       if (
         !confirm(
@@ -574,11 +548,9 @@ ${decodedTemplate}
   }
 
   function gatherScriptData() {
-    // Get all URLs from the list
     const urlList = Array.from(document.querySelectorAll(".url-item")).map(
       (item) => item.dataset.url
     );
-    // Add current URL if not empty
     const currentUrl = elements.targetUrl.value.trim();
     if (currentUrl && !urlList.includes(currentUrl)) {
       urlList.push(currentUrl);
@@ -598,7 +570,7 @@ ${decodedTemplate}
         storageAccess: elements.storageAccess.checked,
         ajaxAccess: elements.ajaxAccess.checked,
         cookieAccess: elements.cookieAccess.checked,
-        cspDisabled: elements.cspDisabled.checked, // Add this line
+        cspDisabled: elements.cspDisabled.checked,
       },
       updatedAt: new Date().toISOString(),
     };
@@ -636,7 +608,7 @@ ${decodedTemplate}
 
       await chrome.storage.local.set({ scripts });
 
-      // Notify background script with improved error handling
+      // Notify bg. (This code is cauing some weird behavior, need to investigate)
       try {
         const port = chrome.runtime.connect({ name: "CodeTweak" });
         await new Promise((resolve) => {
@@ -648,18 +620,16 @@ ${decodedTemplate}
                   "Background sync warning:",
                   chrome.runtime.lastError
                 );
-                // Continue anyway as this is not critical
+                // Continue 
               }
               resolve();
             }
           );
         });
       } catch (error) {
-        // Log but don't block saving
+        // Log 
         console.warn("Background sync warning:", error);
       }
-
-      // Update URL if this was a new script
       if (!state.isEditMode) {
         state.isEditMode = true;
         state.scriptId = scriptData.id;

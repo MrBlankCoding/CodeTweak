@@ -1,27 +1,23 @@
+/**
+  * CodeTweak Element Selector
+ */
+
 let isSelecting = false;
 let currentElement = null;
 let menu = null;
 let selectorIndicator = null;
 
 const TEMPLATES = {
-  hide: (selector) => `
-// Hide element
-document.querySelector('${selector}')?.style.setProperty('display', 'none', 'important');`,
+  hide: (selector) =>
+    `document.querySelector('${selector}')?.style.setProperty('display', 'none', 'important');`,
 
-  remove: (selector) => `
-// Remove element
-document.querySelector('${selector}')?.remove();`,
+  remove: (selector) => `document.querySelector('${selector}')?.remove();`,
 
-  click: (selector) => `
-// Click element
-document.querySelector('${selector}')?.click();`,
+  click: (selector) => `document.querySelector('${selector}')?.click();`,
 
-  observe: (selector) => `
-// Watch for element changes
-const observer = new MutationObserver((mutations) => {
+  observe: (selector) => `const observer = new MutationObserver((mutations) => {
   const element = document.querySelector('${selector}');
   if (element) {
-    // Your code here when element changes
     console.log('Element changed:', element);
   }
 });
@@ -38,34 +34,35 @@ if (target) {
 
 function generateSelector(element) {
   if (!element) return "";
-
-  // Try ID first
   if (element.id) {
-    return `#${element.id}`;
+    return `#${CSS.escape(element.id)}`;
   }
-
-  // Try unique classes
-  if (element.className) {
+  if (element.className && typeof element.className === "string") {
     const classes = element.className
       .split(" ")
-      .filter((c) => c && document.querySelectorAll(`.${c}`).length === 1);
+      .filter(
+        (c) => c && document.querySelectorAll(`.${CSS.escape(c)}`).length === 1
+      );
     if (classes.length > 0) {
-      return `.${classes[0]}`;
+      return `.${CSS.escape(classes[0])}`;
     }
   }
 
-  // Generate path
-  let path = [];
+  const path = [];
   let current = element;
-  while (current.parentNode) {
+
+  while (current && current.parentNode) {
     let selector = current.tagName.toLowerCase();
+
     if (current.parentNode.children.length > 1) {
       const index =
         Array.from(current.parentNode.children).indexOf(current) + 1;
       selector += `:nth-child(${index})`;
     }
+
     path.unshift(selector);
     current = current.parentNode;
+
     if (current === document.body) break;
   }
 
@@ -73,7 +70,7 @@ function generateSelector(element) {
 }
 
 function createMenu(x, y) {
-  cleanup(false); // Cleanup but keep menu
+  cleanup(false);
 
   menu = document.createElement("div");
   menu.className = "CodeTweak-menu";
@@ -97,7 +94,6 @@ function createMenu(x, y) {
 
   document.body.appendChild(menu);
 
-  // Add click outside handler
   setTimeout(() => {
     document.addEventListener("click", handleClickOutside);
   }, 0);
@@ -128,14 +124,17 @@ function handleAction(action) {
 
 function cleanup(removeMenu = true) {
   isSelecting = false;
+
   if (currentElement) {
     currentElement.classList.remove("CodeTweak-highlight");
     currentElement = null;
   }
+
   if (removeMenu && menu) {
     menu.remove();
     menu = null;
   }
+
   if (selectorIndicator) {
     selectorIndicator.remove();
     selectorIndicator = null;
@@ -153,6 +152,7 @@ function showSelectorMode() {
   return indicator;
 }
 
+// Event Listeners
 chrome.runtime.onMessage.addListener((message) => {
   if (message.action === "startSelection") {
     isSelecting = true;
@@ -181,11 +181,9 @@ document.addEventListener("click", (e) => {
   const x = e.clientX;
   const y = e.clientY;
 
-  // Store selected element before disabling selection
   const selectedElement = currentElement;
-  isSelecting = false; // Disable selection mode when menu opens
+  isSelecting = false;
 
-  // Create menu and restore current element for the action
   createMenu(x, y);
   currentElement = selectedElement;
 });

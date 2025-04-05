@@ -1,5 +1,4 @@
 document.addEventListener("DOMContentLoaded", function () {
-  // Initialize all animations and interactive elements
   initSmoothScrolling();
   initParallaxEffects();
   initTimelineAnimations();
@@ -11,9 +10,8 @@ document.addEventListener("DOMContentLoaded", function () {
   initButtonHoverEffects();
 });
 
-// ===== SMOOTH SCROLLING =====
+//Smooth Scroll
 function initSmoothScrolling() {
-  // Select all links with hashes
   document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
     anchor.addEventListener("click", function (e) {
       e.preventDefault();
@@ -23,8 +21,6 @@ function initSmoothScrolling() {
 
       const targetElement = document.querySelector(targetId);
       if (!targetElement) return;
-
-      // Smooth scroll to target
       window.scrollTo({
         top: targetElement.offsetTop,
         behavior: "smooth",
@@ -33,29 +29,23 @@ function initSmoothScrolling() {
   });
 }
 
-// ===== PARALLAX EFFECTS =====
+// Failed parallax effect
 function initParallaxEffects() {
   const heroSection = document.querySelector(".hero");
   const codeBackground = document.querySelector(".code-background");
   const heroContent = document.querySelector(".hero-content");
 
-  // Parallax effect on hero section
   window.addEventListener("scroll", function () {
     const scrollPosition = window.scrollY;
-
-    // Parallax for hero background
     if (codeBackground) {
       codeBackground.style.transform = `translateY(${scrollPosition * 0.3}px)`;
     }
-
-    // Fade out hero content as user scrolls down
     if (heroContent && scrollPosition < heroSection.offsetHeight) {
       const opacity = 1 - scrollPosition / (heroSection.offsetHeight * 0.8);
       heroContent.style.opacity = Math.max(0.2, opacity);
       heroContent.style.transform = `translateY(${scrollPosition * 0.1}px)`;
     }
 
-    // Parallax for feature cards
     document.querySelectorAll(".feature-card").forEach((card, index) => {
       const cardPosition = card.getBoundingClientRect().top;
       const screenPosition = window.innerHeight;
@@ -68,10 +58,8 @@ function initParallaxEffects() {
     });
   });
 }
-
-// ===== TIMELINE ANIMATIONS =====
+// Bad timeline animation
 function initTimelineAnimations() {
-  // Calculate when timeline elements should animate
   const timelineObserver = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
@@ -83,15 +71,10 @@ function initTimelineAnimations() {
     },
     { threshold: 0.2 }
   );
-
-  // Observe all timeline steps
   document.querySelectorAll(".step").forEach((step, index) => {
-    // Add delay based on step index
     step.style.transitionDelay = `${index * 0.2}s`;
     timelineObserver.observe(step);
   });
-
-  // Animate the timeline line as user scrolls
   const timelineSection = document.querySelector(".how-it-works");
   const timelineLine = document.querySelector(".timeline-line");
 
@@ -101,7 +84,7 @@ function initTimelineAnimations() {
       const sectionHeight = timelineSection.offsetHeight;
       const windowHeight = window.innerHeight;
 
-      // Calculate how far we've scrolled through the section
+      // Scroll precent
       let scrollPercentage = 0;
       if (sectionTop < windowHeight && sectionTop > -sectionHeight) {
         scrollPercentage = Math.min(
@@ -119,8 +102,6 @@ function initTimelineAnimations() {
 
 function animateTimelineStep(step) {
   step.classList.add("animated");
-
-  // Animate step number
   const stepNumber = step.querySelector(".step-number");
   if (stepNumber) {
     stepNumber.style.transform = "scale(1.2)";
@@ -128,8 +109,6 @@ function animateTimelineStep(step) {
       stepNumber.style.transform = "scale(1)";
     }, 300);
   }
-
-  // Animate step content
   const stepContent = step.querySelector(".step-content");
   if (stepContent) {
     stepContent.style.opacity = "0";
@@ -141,7 +120,7 @@ function animateTimelineStep(step) {
   }
 }
 
-// ===== FAQ ACCORDION =====
+// FAQ
 function initFaqAccordion() {
   const accordionItems = document.querySelectorAll(".accordion-item");
 
@@ -149,23 +128,16 @@ function initFaqAccordion() {
     const header = item.querySelector(".accordion-header");
 
     header.addEventListener("click", () => {
-      // Toggle active class on clicked item
       const isActive = item.classList.contains("active");
-
-      // Close all accordion items first
       accordionItems.forEach((accordionItem) => {
         accordionItem.classList.remove("active");
         const content = accordionItem.querySelector(".accordion-content");
         content.style.maxHeight = null;
       });
-
-      // If the clicked item wasn't active, open it
       if (!isActive) {
         item.classList.add("active");
         const content = item.querySelector(".accordion-content");
         content.style.maxHeight = content.scrollHeight + "px";
-
-        // Add animation to content
         content.style.opacity = "0";
         setTimeout(() => {
           content.style.opacity = "1";
@@ -173,8 +145,7 @@ function initFaqAccordion() {
       }
     });
   });
-
-  // Open first accordion item by default
+  // Open the first one
   if (accordionItems.length > 0) {
     accordionItems[0].classList.add("active");
     const firstContent = accordionItems[0].querySelector(".accordion-content");
@@ -184,12 +155,11 @@ function initFaqAccordion() {
   }
 }
 
-// ===== GLITCH EFFECT =====
+// Broken glitch (Need to fix)
 function initGlitchEffect() {
   const glitchElement = document.querySelector(".glitch");
 
   if (glitchElement) {
-    // Add more random glitch moments
     setInterval(() => {
       glitchElement.classList.add("glitch-active");
       setTimeout(() => {
@@ -197,7 +167,6 @@ function initGlitchEffect() {
       }, 200);
     }, 3000);
 
-    // Add more intense glitch on hover
     glitchElement.addEventListener("mouseenter", () => {
       glitchElement.classList.add("glitch-hover");
     });
@@ -208,13 +177,12 @@ function initGlitchEffect() {
   }
 }
 
-// ===== SCROLL REVEAL ANIMATIONS =====
+// Scroll reveal
 function initScrollReveal() {
   const observerOptions = {
     threshold: 0.15,
     rootMargin: "0px 0px -50px 0px",
   };
-
   const observer = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
       if (entry.isIntersecting) {
@@ -224,15 +192,13 @@ function initScrollReveal() {
     });
   }, observerOptions);
 
-  // Observe elements with data-aos attribute
   document.querySelectorAll("[data-aos]").forEach((element) => {
     element.style.opacity = "0";
     element.style.transform = "translateY(30px)";
     element.style.transition = "opacity 0.8s ease, transform 0.8s ease";
     observer.observe(element);
   });
-
-  // Add revealed class to make elements visible with animation
+  // Add revealved class to already visible elements
   document.addEventListener(
     "scroll",
     () => {
@@ -245,7 +211,7 @@ function initScrollReveal() {
   );
 }
 
-// ===== TYPING EFFECT =====
+// Typing
 function initTypingEffect() {
   const heroSubtitle = document.querySelector(".hero-content p");
 
@@ -254,8 +220,6 @@ function initTypingEffect() {
     heroSubtitle.textContent = "";
 
     let charIndex = 0;
-
-    // Only start typing when hero section is visible
     const startTyping = () => {
       if (charIndex < originalText.length) {
         heroSubtitle.textContent += originalText.charAt(charIndex);
@@ -267,8 +231,7 @@ function initTypingEffect() {
         animateCursor();
       }
     };
-
-    // Add blinking cursor animation
+    // blinking curser
     const animateCursor = () => {
       const cursor = document.querySelector(".cursor");
       if (cursor) {
@@ -277,18 +240,15 @@ function initTypingEffect() {
         }, 500);
       }
     };
-
-    // Start typing animation with slight delay after page load
     setTimeout(startTyping, 500);
   }
 }
 
-// ===== DYNAMIC BACKGROUND =====
+// Code snipet bg
 function initDynamicBackground() {
   const codeBackground = document.querySelector(".code-background");
 
   if (codeBackground) {
-    // Create floating code snippets
     const snippets = [
       "{ code }",
       "function()",
@@ -304,14 +264,11 @@ function initDynamicBackground() {
       "window.location",
     ];
 
-    // Create 20 random code snippets for background
     for (let i = 0; i < 20; i++) {
       const snippet = document.createElement("div");
       snippet.className = "floating-code";
       snippet.textContent =
         snippets[Math.floor(Math.random() * snippets.length)];
-
-      // Randomize position and animation duration
       snippet.style.left = `${Math.random() * 100}%`;
       snippet.style.top = `${Math.random() * 100}%`;
       snippet.style.animationDuration = `${15 + Math.random() * 25}s`;
@@ -320,8 +277,6 @@ function initDynamicBackground() {
 
       codeBackground.appendChild(snippet);
     }
-
-    // Add mouse parallax effect to the background
     document.addEventListener("mousemove", (e) => {
       const mouseX = e.clientX / window.innerWidth;
       const mouseY = e.clientY / window.innerHeight;
@@ -337,9 +292,8 @@ function initDynamicBackground() {
   }
 }
 
-// ===== BUTTON HOVER EFFECTS =====
+// Btn hvr
 function initButtonHoverEffects() {
-  // Add magnetic effect to CTA buttons
   document.querySelectorAll(".cta-button").forEach((button) => {
     button.addEventListener("mousemove", (e) => {
       const buttonRect = button.getBoundingClientRect();
@@ -348,11 +302,8 @@ function initButtonHoverEffects() {
 
       const distanceX = e.clientX - buttonX;
       const distanceY = e.clientY - buttonY;
-
-      // Calculate distance from center
       const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
 
-      // Apply magnetic effect (stronger when closer to button)
       if (distance < 100) {
         const strength = 10;
         button.style.transform = `translate(${distanceX / strength}px, ${
@@ -368,18 +319,13 @@ function initButtonHoverEffects() {
     });
   });
 
-  // Add glow effect to feature cards
   document.querySelectorAll(".feature-card").forEach((card) => {
     card.addEventListener("mousemove", (e) => {
       const cardRect = card.getBoundingClientRect();
       const x = e.clientX - cardRect.left;
       const y = e.clientY - cardRect.top;
-
-      // Calculate the position for the glow effect
       const glowX = (x / cardRect.width) * 100;
       const glowY = (y / cardRect.height) * 100;
-
-      // Apply radial gradient glow effect
       card.style.background = `radial-gradient(circle at ${glowX}% ${glowY}%, rgba(187, 134, 252, 0.08) 0%, var(--bg-card) 60%)`;
     });
 
@@ -389,7 +335,6 @@ function initButtonHoverEffects() {
   });
 }
 
-// Add CSS styles for new animation elements
 function addDynamicStyles() {
   const style = document.createElement("style");
   style.textContent = `
@@ -463,11 +408,7 @@ function addDynamicStyles() {
 
   document.head.appendChild(style);
 }
-
-// Call to add dynamic styles
 addDynamicStyles();
-
-// Initialize navigation highlight
 function initNavHighlight() {
   const sections = document.querySelectorAll("section[id]");
 
@@ -489,8 +430,6 @@ function initNavHighlight() {
     });
   });
 }
-
-// When the page loads, check if any hash in URL and scroll to it smoothly
 window.addEventListener("load", () => {
   if (window.location.hash) {
     const targetElement = document.querySelector(window.location.hash);
@@ -504,14 +443,11 @@ window.addEventListener("load", () => {
     }
   }
 
-  // Add counter animation to stats (if present)
   document.querySelectorAll(".stat-number").forEach((stat) => {
     const targetNumber = parseInt(stat.textContent);
     animateCounter(stat, 0, targetNumber, 2000);
   });
 });
-
-// Counter animation function
 function animateCounter(element, start, end, duration) {
   const range = end - start;
   const startTime = performance.now();

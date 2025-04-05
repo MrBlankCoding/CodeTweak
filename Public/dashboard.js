@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", initDashboard);
-
+// Need to add a cache
 function initDashboard() {
   const elements = {
     createScriptBtn: document.getElementById("createScriptBtn"),
@@ -51,7 +51,7 @@ function initDashboard() {
 }
 
 function setupEventListeners(elements, state) {
-  // Navigation
+  // nav
   elements.createScriptBtn?.addEventListener("click", () => {
     window.location.href = "/editor.html";
   });
@@ -60,12 +60,12 @@ function setupEventListeners(elements, state) {
     window.location.href = "/editor.html";
   });
 
-  // Settings
+  // settings
   elements.saveSettingsBtn?.addEventListener("click", () =>
     saveSettings(elements.settings)
   );
 
-  // Filters
+  // filter
   elements.filters.scriptSearch?.addEventListener(
     "input",
     debounce(() => filterScripts(elements, state), 300)
@@ -82,7 +82,7 @@ function setupEventListeners(elements, state) {
   );
   elements.filters.runAtFilter?.addEventListener("change", filterChangeHandler);
 
-  // Import
+  // imports
   elements.import.importBtn?.addEventListener("click", () => {
     elements.import.importInput?.click();
   });
@@ -108,20 +108,13 @@ function setupTabs(tabsContainer, tabContents) {
   const tabs = tabsContainer.querySelectorAll(".tab");
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => {
-      // Deactivate all tabs
       tabs.forEach((t) => {
         t.classList.remove("active");
         t.setAttribute("aria-selected", "false");
       });
-
-      // Hide all tab contents
       tabContents.forEach((c) => c.classList.remove("active"));
-
-      // Activate clicked tab
       tab.classList.add("active");
       tab.setAttribute("aria-selected", "true");
-
-      // Show corresponding content
       const tabId = `${tab.getAttribute("data-tab")}-tab`;
       document.getElementById(tabId)?.classList.add("active");
     });
@@ -132,7 +125,7 @@ async function loadScripts(elements, state) {
   try {
     const { scripts = [] } = await chrome.storage.local.get("scripts");
 
-    // Convert legacy scripts to use targetUrls array
+    // convert from legacy
     state.allScripts = scripts.map((script) => ({
       ...script,
       targetUrls:
@@ -190,12 +183,9 @@ function filterScripts(elements, state) {
   const runAtValue = elements.filters.runAtFilter?.value || "";
 
   const filteredScripts = state.allScripts.filter((script) => {
-    // Filter by search term
     if (searchTerm && !script.name.toLowerCase().includes(searchTerm)) {
       return false;
     }
-
-    // Filter by website
     if (websiteValue) {
       const matchesWebsite = (script.targetUrls || []).some((url) => {
         try {
@@ -206,14 +196,10 @@ function filterScripts(elements, state) {
       });
       if (!matchesWebsite) return false;
     }
-
-    // Filter by enabled status
     if (statusValue) {
       const isEnabled = statusValue === "enabled";
       if (script.enabled !== isEnabled) return false;
     }
-
-    // Filter by run timing
     if (runAtValue && script.runAt !== runAtValue) return false;
 
     return true;
@@ -227,18 +213,17 @@ function updateScriptsList(scripts, elements) {
 
   elements.scriptsList.innerHTML = "";
 
-  // Show empty state if no scripts match filters
+  // empty state
   if (scripts.length === 0) {
     if (elements.scriptsTable) elements.scriptsTable.style.display = "none";
     if (elements.emptyState) elements.emptyState.style.display = "block";
     return;
   }
 
-  // Show table and populate with scripts
+  // show scripts
   if (elements.scriptsTable) elements.scriptsTable.style.display = "table";
   if (elements.emptyState) elements.emptyState.style.display = "none";
 
-  // Create and append all rows at once for better performance
   const fragment = document.createDocumentFragment();
   scripts.forEach((script) => {
     fragment.appendChild(createScriptRow(script));
@@ -317,10 +302,10 @@ function createFaviconCell(script) {
   const faviconContainer = document.createElement("div");
   faviconContainer.className = "favicon-container";
 
-  // Handle multiple favicons for target URLs
+  // mutli favs
   const uniqueHosts = new Set();
 
-  // Try to get favicon for each target URL
+  // get fav for each
   if (script.targetUrls && script.targetUrls.length > 0) {
     script.targetUrls.forEach((url) => {
       try {
@@ -328,7 +313,6 @@ function createFaviconCell(script) {
         if (url.includes("://")) {
           hostname = new URL(url).hostname;
         } else {
-          // Handle pattern-style URLs
           hostname = url.split("/")[0];
         }
 
@@ -341,19 +325,17 @@ function createFaviconCell(script) {
           }
         }
       } catch (error) {
-        // Skip invalid URLs
+        // skip invalid (e.g. "about:blank") URLs
       }
     });
   }
-
-  // Show counter if there are more hosts
   if (uniqueHosts.size > 3) {
     const extraHosts = Array.from(uniqueHosts).slice(3);
     const counterElement = createFaviconCounter(extraHosts);
     faviconContainer.appendChild(counterElement);
   }
 
-  // Show fallback if no valid favicons
+  // FALLBACK!
   if (faviconContainer.children.length === 0) {
     const fallback = document.createElement("div");
     fallback.className = "favicon-fallback";
@@ -393,8 +375,6 @@ function createFaviconCounter(extraHosts) {
   const counter = document.createElement("div");
   counter.className = "favicon-counter";
   counter.textContent = `+${extraHosts.length}`;
-
-  // Create dropdown for extra hosts
   const dropdown = document.createElement("div");
   dropdown.className = "favicon-dropdown";
 
@@ -404,8 +384,6 @@ function createFaviconCounter(extraHosts) {
   extraHosts.forEach((hostname) => {
     const listItem = document.createElement("li");
     listItem.className = "favicon-url-item";
-
-    // Try to add favicon
     const favicon = document.createElement("img");
     favicon.src = `https://${hostname}/favicon.ico`;
     favicon.alt = "";
@@ -449,7 +427,7 @@ function createActionsCell(script) {
     },
   ];
 
-  // Add update check button for Greasy Fork scripts
+  // check for update button
   if (script.updateInfo?.source === "greasyfork") {
     actions.push({
       icon: `<svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -557,7 +535,7 @@ async function loadSettings(settingsElements) {
   try {
     const { settings = {} } = await chrome.storage.local.get("settings");
 
-    // Set form field values from stored settings with defaults
+    // default values
     Object.entries({
       enableAllScripts: true,
       showNotifications: true,
@@ -581,7 +559,7 @@ async function saveSettings(settingsElements) {
   try {
     const settings = {};
 
-    // Collect values from all setting elements
+    // get values from elements
     Object.keys(settingsElements).forEach((key) => {
       const element = settingsElements[key];
       if (element) {
@@ -604,7 +582,7 @@ function downloadScript(script) {
       name: script.name,
       author: script.author || "Anonymous",
       code: script.code,
-      targetUrls: script.targetUrls || [script.targetUrl], // Support both formats
+      targetUrls: script.targetUrls || [script.targetUrl], // Legacy support
       runAt: script.runAt,
       enabled: script.enabled,
       version: script.version || "1.0.0",
@@ -621,7 +599,7 @@ function downloadScript(script) {
         elementSelector: script.settings?.elementSelector || "",
         timeout: script.settings?.timeout || 0,
         dependencies: script.settings?.dependencies || [],
-        ...script.settings, // Include any other custom settings
+        ...script.settings,
       },
       exportedAt: new Date().toISOString(),
       metadata: {
@@ -639,7 +617,7 @@ function downloadScript(script) {
       type: "application/json",
     });
 
-    // Create download link and trigger click
+    // Download (chrome needs a easier way to downlaod)
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -648,7 +626,7 @@ function downloadScript(script) {
     document.body.appendChild(a);
     a.click();
 
-    // Clean up
+    // clean up.
     setTimeout(() => {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
@@ -670,7 +648,7 @@ async function handleScriptImport(event, elements, state) {
     const scriptData = JSON.parse(fileContent);
     const { settings = {} } = await chrome.storage.local.get("settings");
 
-    // Validate required fields
+    // validate 
     if (
       !scriptData.name ||
       !scriptData.code ||
@@ -696,7 +674,7 @@ async function handleScriptImport(event, elements, state) {
       },
     };
 
-    // Check for duplicates
+    // check for dupes
     const duplicate = scripts.find((s) => s.name === newScript.name);
     if (duplicate) {
       const overwrite = confirm(
@@ -709,7 +687,7 @@ async function handleScriptImport(event, elements, state) {
     scripts.push(newScript);
     await chrome.storage.local.set({ scripts });
 
-    // Update UI
+    // finnaly update
     state.allScripts = scripts;
     updateWebsiteFilterOptions(scripts, elements.filters.websiteFilter);
     filterScripts(elements, state);
@@ -724,7 +702,6 @@ async function handleScriptImport(event, elements, state) {
 }
 
 function showNotification(message, type = "info") {
-  // Find or create notification container
   let notificationContainer = document.querySelector(".notification-container");
   if (!notificationContainer) {
     notificationContainer = document.createElement("div");
@@ -734,8 +711,6 @@ function showNotification(message, type = "info") {
 
   const notification = document.createElement("div");
   notification.className = `notification notification-${type}`;
-
-  // Create icon based on notification type
   const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   icon.setAttribute("class", "notification-icon icon");
   icon.setAttribute("viewBox", "0 0 24 24");
@@ -771,7 +746,7 @@ function showNotification(message, type = "info") {
   notification.append(icon, content, closeBtn);
   notificationContainer.appendChild(notification);
 
-  // Auto remove after 5 seconds
+  // remove 
   setTimeout(() => {
     if (notification.parentElement) {
       notification.classList.add("notification-hide");
@@ -819,7 +794,6 @@ async function searchGreasyfork(elements) {
   elements.loading.style.display = "block";
 
   try {
-    // Fix: Use correct endpoint with query parameter
     const encodedQuery = encodeURIComponent(query);
     const response = await fetch(
       `https://api.greasyfork.org/en/scripts.json?q=${encodedQuery}`
@@ -840,12 +814,10 @@ async function searchGreasyfork(elements) {
         </div>
       `;
     } else {
-      // Create all script cards at once
       elements.results.innerHTML = scripts
         .map((script) => createScriptCard(script))
         .join("");
 
-      // Add event listeners to import buttons
       elements.results
         .querySelectorAll(".import-greasy-fork")
         .forEach((button) => {
@@ -868,7 +840,6 @@ async function searchGreasyfork(elements) {
 }
 
 function createScriptCard(script) {
-  // Format numbers with comma separators
   const formatNumber = (num) => {
     return num ? num.toLocaleString() : "0";
   };
@@ -912,7 +883,7 @@ async function importGreasyforkScript(codeUrl) {
 
     const code = await response.text();
 
-    // Parse metadata block
+    // check if metadate is valid 
     const metadataBlock = code.match(
       /==UserScript==([\s\S]*?)==\/UserScript==/
     );
@@ -934,7 +905,6 @@ async function importGreasyforkScript(codeUrl) {
       }
     });
 
-    // Add update metadata
     const updateInfo = {
       source: "greasyfork",
       sourceUrl: codeUrl,
@@ -956,7 +926,7 @@ async function importGreasyforkScript(codeUrl) {
       id: crypto.randomUUID(),
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      updateInfo, // Add update information
+      updateInfo, 
     };
 
     const { scripts = [] } = await chrome.storage.local.get("scripts");
@@ -966,11 +936,10 @@ async function importGreasyforkScript(codeUrl) {
     showNotification("Script imported successfully", "success");
     chrome.runtime.sendMessage({ action: "scriptsUpdated" });
 
-    // Close the modal
     const modal = document.getElementById("greasyforkModal");
     modal.setAttribute("aria-hidden", "true");
 
-    // Refresh the dashboard
+    // refresh
     await refreshDashboard();
   } catch (error) {
     console.error("Error importing script:", error);
@@ -1043,7 +1012,7 @@ async function checkForUpdates(script) {
   }
 }
 
-// Add this helper function
+// refresh dash
 async function refreshDashboard() {
   const elements = {
     scriptsTable: document.getElementById("scriptsTable"),
@@ -1060,7 +1029,6 @@ async function refreshDashboard() {
   const { scripts = [] } = await chrome.storage.local.get("scripts");
   const state = { allScripts: scripts };
 
-  // Update all dashboard components
   updateWebsiteFilterOptions(scripts, elements.filters.websiteFilter);
   filterScripts(elements, state);
 }

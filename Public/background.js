@@ -1,4 +1,3 @@
-// Define injection types
 const INJECTION_TYPES = Object.freeze({
   DOCUMENT_START: "document_start",
   DOCUMENT_END: "document_end",
@@ -6,26 +5,21 @@ const INJECTION_TYPES = Object.freeze({
   ELEMENT_READY: "element_ready",
 });
 
-// Cache and state management
 let scriptCache = null;
 let lastCacheUpdate = 0;
 const CACHE_LIFETIME = 5000;
 let isRunning = false;
 let activeRules = new Set();
 let ports = new Set();
-let executedScripts = new Map(); // Track executed scripts by tab and script ID
+let executedScripts = new Map();
 
-/**
- * Message handling for script updates
- */
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   switch (message.action) {
     case "scriptsUpdated":
-      scriptCache = null; // Invalidate cache to force refresh
+      scriptCache = null;
       lastCacheUpdate = 0;
       sendResponse({ success: true });
 
-      // Notify any connected ports
       ports.forEach((port) => {
         try {
           port.postMessage({ action: "scriptsUpdated" });
@@ -47,7 +41,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           .get(message.tabId)
           .then((tab) => {
             if (tab && message.scriptCode && message.scriptId) {
-              // Check if this script has already been executed on this tab
               const tabScripts =
                 executedScripts.get(message.tabId) || new Set();
               if (!tabScripts.has(message.scriptId)) {
@@ -77,7 +70,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return false;
 
     case "contentScriptReady":
-      // Reset executed scripts when content script loads
       if (sender.tab && sender.tab.id) {
         executedScripts.set(sender.tab.id, new Set());
       }
@@ -88,9 +80,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-/**
- * Context menu functionality
- */
 function createContextMenu() {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
@@ -101,19 +90,14 @@ function createContextMenu() {
   });
 }
 
-// Create context menu when extension loads
 createContextMenu();
 
-// Handle context menu clicks
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "selectElement") {
     chrome.tabs.sendMessage(tab.id, { action: "startSelection" });
   }
 });
 
-/**
- * Port connection management
- */
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name === "CodeTweak") {
     if (ports.has(port)) {
@@ -131,7 +115,6 @@ chrome.runtime.onConnect.addListener((port) => {
     port.onMessage.addListener((message) => {
       try {
         console.log("Port message received:", message);
-        // Handle specific port messages if needed
       } catch (error) {
         console.error("Port message error:", error);
         port.disconnect();
@@ -140,13 +123,8 @@ chrome.runtime.onConnect.addListener((port) => {
   }
 });
 
-/**
- * Rule and tab management
- */
-// Generate a unique rule ID
 const generateUniqueRuleId = () => Math.floor(Math.random() * 100000000);
 
-// Retrieve the current active tab
 async function getCurrentTab() {
   const [tab] = await chrome.tabs.query({
     active: true,
@@ -155,10 +133,6 @@ async function getCurrentTab() {
   return tab;
 }
 
-/**
- * CSP handling
- */
-// Disable CSP for a given tab and URL
 async function disableCSP(tabId, url) {
   if (isRunning) return;
   isRunning = true;
@@ -207,7 +181,6 @@ async function disableCSP(tabId, url) {
   }
 }
 
-// Cleanup CSP rules for a specific URL
 async function cleanupCSPRules(url) {
   if (isRunning) return;
   isRunning = true;
@@ -236,7 +209,6 @@ async function cleanupCSPRules(url) {
   }
 }
 
-// Bypass Trusted Types restrictions
 function bypassTrustedTypes(tabId) {
   chrome.scripting
     .executeScript({
@@ -257,10 +229,6 @@ function bypassTrustedTypes(tabId) {
     .catch(console.warn);
 }
 
-/**
- * Script handling and injection
- */
-// Get filtered scripts based on URL and run-at stage
 async function getFilteredScripts(url, runAt) {
   const currentTime = Date.now();
   if (!scriptCache || currentTime - lastCacheUpdate > CACHE_LIFETIME) {
@@ -282,7 +250,6 @@ async function getFilteredScripts(url, runAt) {
       script.targetUrls.some((targetUrl) => urlMatchesPattern(url, targetUrl))
   );
 
-  // Separate scripts based on CSP requirement
   return {
     normalScripts: matchingScripts.filter(
       (script) => !script.permissions?.cspDisabled
@@ -293,7 +260,6 @@ async function getFilteredScripts(url, runAt) {
   };
 }
 
-// Inject scripts for a specific stage
 async function injectScriptsForStage(details, runAt) {
   if (details.frameId !== 0) return;
 
@@ -301,12 +267,10 @@ async function injectScriptsForStage(details, runAt) {
     const { settings = {} } = await chrome.storage.local.get("settings");
     const url = details.url;
 
-    // Clear executed scripts for this tab on new navigation
     if (runAt === INJECTION_TYPES.DOCUMENT_START) {
       executedScripts.set(details.tabId, new Set());
     }
 
-    // Initialize tracking for this tab if needed
     if (!executedScripts.has(details.tabId)) {
       executedScripts.set(details.tabId, new Set());
     }
@@ -317,7 +281,6 @@ async function injectScriptsForStage(details, runAt) {
       runAt
     );
 
-    // Filter out already executed scripts by script ID
     const newNormalScripts = normalScripts.filter(
       (script) => !tabExecutedScripts.has(script.id)
     );
@@ -325,7 +288,6 @@ async function injectScriptsForStage(details, runAt) {
       (script) => !tabExecutedScripts.has(script.id)
     );
 
-    // Handle normal scripts
     if (newNormalScripts.length) {
       newNormalScripts.forEach((script) => {
         tabExecutedScripts.add(script.id);
@@ -340,7 +302,6 @@ async function injectScriptsForStage(details, runAt) {
       });
     }
 
-    // Handle CSP-disabled scripts
     if (newCspScripts.length) {
       await disableCSP(details.tabId, url);
       bypassTrustedTypes(details.tabId);
@@ -358,7 +319,6 @@ async function injectScriptsForStage(details, runAt) {
       });
     }
 
-    // Handle element-ready scripts only during DOCUMENT_IDLE
     if (runAt === INJECTION_TYPES.DOCUMENT_IDLE) {
       const {
         normalScripts: elementReadyNormalScripts,
@@ -386,7 +346,6 @@ async function injectScriptsForStage(details, runAt) {
   }
 }
 
-// Directly inject a script into a tab
 async function injectScriptDirectly(
   tabId,
   code,
@@ -402,28 +361,23 @@ async function injectScriptDirectly(
       return;
     }
 
-    // Single script injection
     await chrome.scripting.executeScript({
       target: { tabId },
       world: "MAIN",
       func: (code, scriptName, hasCSPDisabled, scriptId) => {
         try {
-          // Initialize execution tracking
           window._executedScripts = window._executedScripts || new Set();
           window._executedScriptIds = window._executedScriptIds || new Set();
 
-          // Skip if already executed
           if (window._executedScriptIds.has(scriptId)) {
             return;
           }
 
-          // Mark as executed
           window._executedScriptIds.add(scriptId);
           window._executedScripts.add(code);
 
           window._codeScriptCSPDisabled = hasCSPDisabled;
 
-          // Execute script once
           eval(code);
         } catch (error) {
           console.error("Script execution error:", error);
@@ -433,11 +387,10 @@ async function injectScriptDirectly(
         code,
         scriptName,
         requiresCSP,
-        scriptId || code.substring(0, 100), // Use scriptId if provided, otherwise hash the code
+        scriptId || code.substring(0, 100),
       ],
     });
 
-    // Show notification if enabled
     if (settings.showNotifications) {
       await chrome.scripting.executeScript({
         target: { tabId },
@@ -504,7 +457,6 @@ async function injectScriptDirectly(
   }
 }
 
-// Handle script creation
 async function handleScriptCreation(url, template) {
   try {
     const { scripts = [] } = await chrome.storage.local.get("scripts");
@@ -514,11 +466,9 @@ async function handleScriptCreation(url, template) {
     );
 
     if (existingScript) {
-      // Find the last meaningful code line before the closing IIFE
       const codeLines = existingScript.code.split("\n");
       let insertIndex = codeLines.length - 1;
 
-      // Look for the last non-empty, non-comment line before closing IIFE
       while (insertIndex > 0) {
         const line = codeLines[insertIndex].trim();
         if (line && !line.startsWith("//") && line !== "})();") {
@@ -527,8 +477,7 @@ async function handleScriptCreation(url, template) {
         insertIndex--;
       }
 
-      // Insert new code with proper formatting
-      const indentation = "  "; // Match existing code indentation
+      const indentation = "  ";
       const newCode = [
         "",
         `${indentation}// Added by element selector`,
@@ -536,7 +485,6 @@ async function handleScriptCreation(url, template) {
         "",
       ];
 
-      // Insert the new code while maintaining structure
       codeLines.splice(insertIndex + 1, 0, ...newCode);
       existingScript.code = codeLines.join("\n");
       existingScript.updatedAt = new Date().toISOString();
@@ -548,7 +496,6 @@ async function handleScriptCreation(url, template) {
         url: `${chrome.runtime.getURL("editor.html")}?id=${existingScript.id}`,
       });
     } else {
-      // Create new script
       const editorUrl =
         chrome.runtime.getURL("editor.html") +
         `?targetUrl=${encodeURIComponent(url)}&template=${encodeURIComponent(
@@ -561,75 +508,72 @@ async function handleScriptCreation(url, template) {
   }
 }
 
-// Register navigation event listeners
 ["onCommitted", "onDOMContentLoaded", "onCompleted"].forEach((event, index) => {
   chrome.webNavigation[event].addListener((details) =>
     injectScriptsForStage(details, Object.values(INJECTION_TYPES)[index])
   );
 });
 
-/**
- * Utility functions
- */
-// Efficient URL pattern matching
 function urlMatchesPattern(url, pattern) {
   try {
-    const urlObj = new URL(url);
-
-    // Direct match
+    // Handle edge cases
     if (pattern === url) return true;
-
-    // Extract pattern scheme, host, and path
-    let [patternSchemeHost, ...patternPathParts] = pattern.split("://");
-    let patternPath =
-      patternPathParts.length > 0 ? patternPathParts.join("://") : "/*";
-
-    let [patternScheme, patternHost] = patternSchemeHost.includes("://")
-      ? patternSchemeHost.split("://")
-      : ["*", patternSchemeHost];
-
-    // Handle wildcard subdomains (*.example.com)
-    if (
-      patternHost.startsWith("*.") &&
-      urlObj.hostname.endsWith(patternHost.slice(2))
-    ) {
-      return true;
+    if (!url || !pattern) return false;
+    
+    // Extract scheme, host, and path from pattern
+    let schemeHost, patternPath;
+    
+    if (pattern.includes("://")) {
+      [schemeHost, ...patternPathParts] = pattern.split("/");
+      patternPath = patternPathParts.length > 0 ? "/" + patternPathParts.join("/") : "/*";
+      
+      // Fix handling of the scheme/host part
+      let [patternScheme, patternHost] = schemeHost.split("://");
+      
+      // Create URL object for the input URL
+      const urlObj = new URL(url);
+      
+      // Handle scheme matching
+      if (patternScheme !== "*" && patternScheme !== urlObj.protocol.slice(0, -1)) {
+        return false;
+      }
+      
+      // Handle host matching with wildcard
+      if (patternHost.startsWith("*.")) {
+        if (!urlObj.hostname.endsWith(patternHost.slice(2))) {
+          return false;
+        }
+      } else if (patternHost !== "*" && patternHost !== urlObj.hostname) {
+        return false;
+      }
+      
+      // Handle path matching
+      if (patternPath === "/*") {
+        return true; // Match any path
+      } else {
+        // Convert pattern path to regex pattern
+        const pathPattern = patternPath
+          .split("/")
+          .map(segment => {
+            if (segment === "*") return "[^/]*";
+            if (segment.includes("*")) return segment.replace(/\*/g, "[^/]*");
+            return segment;
+          })
+          .join("/");
+          
+        const pathRegex = new RegExp(`^${pathPattern}$`);
+        return pathRegex.test(urlObj.pathname);
+      }
+    } else {
+      // Handle patterns without scheme
+      return url.includes(pattern);
     }
-
-    // Convert scheme to regex
-    let schemeRegex = patternScheme === "*" ? "(https?|ftp)" : patternScheme;
-
-    // Convert host to regex
-    let hostRegex = patternHost
-      .replace(/^\*\./, "(?:[^/]+\\.)?") // Handle *.example.com
-      .replace(/\*\./g, "(?:[^/.]+\\.)") // Handle multiple wildcard subdomains
-      .replace(/\*/g, "[^/]*") // Handle * in domain
-      .split(".")
-      .map((part) => part.replace(/\./g, "\\.")) // Escape dots
-      .join("\\.");
-
-    // Convert path to regex
-    let pathRegex = patternPath
-      .split("/")
-      .map((part) =>
-        part === "*" ? ".*" : part.replace(/\*/g, ".*").replace(/\./g, "\\.")
-      )
-      .join("/");
-
-    // Construct full regex
-    const finalRegex = new RegExp(
-      `^${schemeRegex}://${hostRegex}/${pathRegex}$`,
-      "i"
-    );
-
-    return finalRegex.test(url);
   } catch (error) {
     console.warn("URL matching error:", error);
     return false;
   }
 }
 
-// Add cleanup for tab tracking when a tab is closed
 chrome.tabs.onRemoved.addListener((tabId) => {
   executedScripts.delete(tabId);
 });
