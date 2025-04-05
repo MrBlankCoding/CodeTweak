@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>User Script Manager - Chrome Extension</title>
+  <title>Code Tweak - Chrome Extension</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="style.css" rel="stylesheet">
 </head>
@@ -14,11 +14,10 @@
     <div class="container">
       <div class="hero-content">
         <div class="logo">
-          <div class="code-brackets">{}</div>
-          <span>USM</span>
+          <div class="code-brackets">{ct}</div>
         </div>
-        <h1 class="glitch" data-text="User Script Manager">User Script Manager</h1>
-        <p>Transform your browsing experience with powerful custom scripts</p>
+        <h1 class="glitch" data-text="Code Tweak">Code Tweak</h1>
+        <p>Code Tweak empowers your browser with custom UserScript support.</p>
         <div class="cta-wrapper">
           <a href="#" class="cta-button">
             <i class="fab fa-chrome"></i> Add to Chrome
@@ -49,7 +48,7 @@
           </div>
           <div class="feature-content">
             <h3 class="feature-title">Built-in Script Editor</h3>
-            <p>Edit user scripts with syntax highlighting and intelligent code completion</p>
+            <p>Edit user scripts in our custom all in browser code editor</p>
           </div>
           <div class="card-flourish"></div>
         </div>
@@ -71,7 +70,7 @@
           </div>
           <div class="feature-content">
             <h3 class="feature-title">Greasy Fork Integration</h3>
-            <p>Browse and install from the largest community script repository</p>
+            <p>Easily import exsisting userscripts</p>
           </div>
           <div class="card-flourish"></div>
         </div>
@@ -82,7 +81,7 @@
           </div>
           <div class="feature-content">
             <h3 class="feature-title">Template Library</h3>
-            <p>Start with pre-built snippets to accelerate your development</p>
+            <p>Use prebuilt template's for common script modifications</p>
           </div>
           <div class="card-flourish"></div>
         </div>
@@ -93,7 +92,7 @@
           </div>
           <div class="feature-content">
             <h3 class="feature-title">Script Management</h3>
-            <p>Organize and control your scripts with an intuitive dashboard</p>
+            <p>Our intuitive and simplistic dashboard makes it easy to manage all of your scripts in one place</p>
           </div>
           <div class="card-flourish"></div>
         </div>
@@ -122,78 +121,7 @@
       </h2>
       
       <div class="preview-wrapper">
-        <div class="browser-mockup">
-          <div class="browser-header">
-            <div class="browser-actions">
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-            <div class="browser-address-bar">
-              <i class="fas fa-lock"></i>
-              <span>chrome://extensions/userscriptmanager</span>
-            </div>
-          </div>
-          <div class="browser-content">
-            <div class="interface-tabs">
-              <div class="tab active">Editor</div>
-              <div class="tab">Scripts</div>
-              <div class="tab">Settings</div>
-            </div>
-            <div class="interface-main">
-              <div class="code-editor-ui">
-                <div class="editor-line-numbers">
-                  <span>1</span>
-                  <span>2</span>
-                  <span>3</span>
-                  <span>4</span>
-                  <span>5</span>
-                  <span>6</span>
-                  <span>7</span>
-                  <span>8</span>
-                </div>
-                <div class="editor-code">
-                  <pre><span class="comment">// ==UserScript==</span>
-<span class="meta">// @name         Website Enhancer</span>
-<span class="meta">// @namespace    http://usm.tools/</span>
-<span class="meta">// @version      1.0</span>
-<span class="meta">// @description  Enhance website functionality</span>
-<span class="meta">// @match        https://example.com/*</span>
-<span class="meta">// ==/UserScript==</span>
-
-<span class="keyword">function</span> <span class="function">enhanceUI</span>() {
-  <span class="keyword">const</span> <span class="variable">elements</span> = <span class="object">document</span>.<span class="method">querySelectorAll</span>(<span class="string">'.target-class'</span>);
-  
-  <span class="variable">elements</span>.<span class="method">forEach</span>(<span class="parameter">el</span> => {
-    <span class="parameter">el</span>.<span class="property">style</span>.<span class="property">transform</span> = <span class="string">'scale(1.05)'</span>;
-    <span class="parameter">el</span>.<span class="property">classList</span>.<span class="method">add</span>(<span class="string">'enhanced'</span>);
-  });
-}</pre>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="preview-carousel" id="preview-carousel">
-          <div class="carousel-item active">
-            <img src="/api/placeholder/400/250" alt="Script Editor" />
-            <div class="carousel-caption">Script Editor</div>
-          </div>
-          <div class="carousel-item">
-            <img src="/api/placeholder/400/250" alt="Script Management" />
-            <div class="carousel-caption">Script Management</div>
-          </div>
-          <div class="carousel-item">
-            <img src="/api/placeholder/400/250" alt="Greasy Fork Integration" />
-            <div class="carousel-caption">Greasy Fork Integration</div>
-          </div>
-          <div class="carousel-indicators">
-            <span class="indicator active" data-index="0"></span>
-            <span class="indicator" data-index="1"></span>
-            <span class="indicator" data-index="2"></span>
-          </div>
-        </div>
+        <img src="screenshots/editor.png">
       </div>
     </div>
   </section>
@@ -214,7 +142,7 @@
           <div class="step-number">01</div>
           <div class="step-content">
             <h3>Install the Extension</h3>
-            <p>Add User Script Manager to Chrome from the Web Store with a single click.</p>
+            <p>Add Code Tweak to Chrome from the Web Store with a single click.</p>
             <div class="step-icon">
               <i class="fas fa-download"></i>
             </div>
@@ -225,7 +153,7 @@
           <div class="step-number">02</div>
           <div class="step-content">
             <h3>Find or Create Scripts</h3>
-            <p>Search for scripts on Greasy Fork or create your own with our intuitive editor.</p>
+            <p>Search for scripts on Greasy Fork or create your own with our editor.</p>
             <div class="step-icon">
               <i class="fas fa-pen-fancy"></i>
             </div>
@@ -236,7 +164,7 @@
           <div class="step-number">03</div>
           <div class="step-content">
             <h3>Target Elements Easily</h3>
-            <p>Right-click on any element to select it directly in your code.</p>
+            <p>Right-click on any element to select it directly into your code.</p>
             <div class="step-icon">
               <i class="fas fa-bullseye"></i>
             </div>
@@ -302,7 +230,7 @@
             </div>
           </div>
           <div class="accordion-content">
-            <p>Absolutely! You can import existing scripts to the extension by using the import feature in the management interface. Simply export your scripts from your current manager and import them with a few clicks.</p>
+            <p>Absolutley, you can easily import and export scripts you or the community has created.</p>
           </div>
         </div>
         
@@ -315,7 +243,7 @@
             </div>
           </div>
           <div class="accordion-content">
-            <p>No, this extension is designed with privacy in mind and doesn't collect or transmit any of your data. Your scripts remain on your device, and we don't track your browsing or usage patterns.</p>
+            <p>No, Code Tweak respects your privacy and doesnt collect your data.</p>
           </div>
         </div>
       </div>
@@ -333,21 +261,7 @@
       
       <div class="community-content">
         <div class="community-text" data-aos="fade-right">
-          <p>Join thousands of developers creating and sharing powerful userscripts. Get help, share your creations, and collaborate with others.</p>
-          <div class="community-stats">
-            <div class="stat">
-              <div class="stat-number">10k+</div>
-              <div class="stat-label">Users</div>
-            </div>
-            <div class="stat">
-              <div class="stat-number">5k+</div>
-              <div class="stat-label">Scripts</div>
-            </div>
-            <div class="stat">
-              <div class="stat-number">100+</div>
-              <div class="stat-label">Contributors</div>
-            </div>
-          </div>
+          <p>Join likeminded developers creating and sharing userscripts. Get help, share your creations, and collaborate.</p>
           <div class="community-buttons">
             <a href="#" class="community-button">
               <i class="fab fa-github"></i> GitHub
@@ -376,7 +290,7 @@
     <div class="container">
       <div class="cta-content">
         <h2>Ready to Transform Your Browsing?</h2>
-        <p>Join thousands of developers and users enhancing their web experience with custom scripts</p>
+        <p>Join many developers enhancing their web experience with custom scripts</p>
         <a href="#" class="cta-button large">
           <i class="fab fa-chrome"></i> Add to Chrome
           <span class="button-glow"></span>
@@ -384,57 +298,5 @@
       </div>
     </div>
   </section>
-  
-  <!-- Footer -->
-  <footer>
-    <div class="container">
-      <div class="footer-content">
-        <div class="footer-logo">
-          <div class="code-brackets small">{}</div>
-          <span>USM</span>
-        </div>
-        <div class="footer-links">
-          <div class="footer-column">
-            <h4>Product</h4>
-            <ul>
-              <li><a href="#features">Features</a></li>
-              <li><a href="#preview">Preview</a></li>
-              <li><a href="#how">How It Works</a></li>
-              <li><a href="#faq">FAQ</a></li>
-            </ul>
-          </div>
-          <div class="footer-column">
-            <h4>Community</h4>
-            <ul>
-              <li><a href="#">GitHub</a></li>
-              <li><a href="#">Discord</a></li>
-              <li><a href="#">Forum</a></li>
-              <li><a href="#">Blog</a></li>
-            </ul>
-          </div>
-          <div class="footer-column">
-            <h4>Legal</h4>
-            <ul>
-              <li><a href="#">Privacy Policy</a></li>
-              <li><a href="#">Terms of Use</a></li>
-              <li><a href="#">License</a></li>
-            </ul>
-          </div>
-        </div>
-        <div class="footer-social">
-          <a href="#"><i class="fab fa-github"></i></a>
-          <a href="#"><i class="fab fa-twitter"></i></a>
-          <a href="#"><i class="fab fa-discord"></i></a>
-          <a href="#"><i class="fab fa-reddit"></i></a>
-        </div>
-      </div>
-      <div class="footer-bottom">
-        <p>&copy; 2025 User Script Manager. All rights reserved.</p>
-        <p class="made-with">Made with <i class="fas fa-code"></i> and <i class="fas fa-heart"></i></p>
-      </div>
-    </div>
-  </footer>
-
-  <script src="script.js"></script>
 </body>
 </html>
