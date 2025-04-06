@@ -257,9 +257,6 @@ function urlMatchesPattern(url, script) {
       if (!pattern) return false;
       if (pattern === url) return true;
 
-      // Handle exact match
-      if (pattern === url) return true;
-
       // Normalize pattern if missing scheme
       if (!pattern.includes("://")) {
         pattern = "*://" + pattern;
@@ -296,23 +293,20 @@ function urlMatchesPattern(url, script) {
         if (!(urlHost === domain || urlHost.endsWith("." + domain))) {
           return false;
         }
-      } else if (hostPattern !== "*" && hostPattern !== urlHost) {
-        // Handle direct hostname match or * wildcard
-        if (hostPattern.includes("*")) {
-          // Convert * to regex for partial host matching
-          const hostRegex = new RegExp(
-            "^" + hostPattern.replace(/\./g, "\\.").replace(/\*/g, ".*") + "$"
-          );
-          if (!hostRegex.test(urlHost)) {
-            return false;
-          }
-        } else {
+      } else if (hostPattern.includes("*")) {
+        // Convert * to regex for partial host matching
+        const hostRegex = new RegExp(
+          "^" + hostPattern.replace(/\./g, "\\.").replace(/\*/g, ".*") + "$"
+        );
+        if (!hostRegex.test(urlHost)) {
           return false;
         }
+      } else if (hostPattern !== "*" && hostPattern !== urlHost) {
+        return false;
       }
 
-      // If no path in pattern but URL has path, still consider it a match
-      if (!pathPattern) {
+      // If no path in pattern or just wildcard, consider it a match
+      if (!pathPattern || pathPattern === "*") {
         return true;
       }
 
