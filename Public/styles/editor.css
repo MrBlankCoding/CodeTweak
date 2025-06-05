@@ -1,26 +1,4 @@
 :root {
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
-  --primary-light: rgba(79, 70, 229, 0.12);
-  --bg-color: #f8fafc;
-  --surface: #ffffff;
-  --text-color: #0f172a;
-  --text-secondary: #64748b;
-  --border-color: #e2e8f0;
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
-  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  --radius: 8px;
-  --radius-sm: 6px;
-  --font-mono: "JetBrains Mono", "Fira Code", monospace;
-  --scrollbar-width: 12px;
-  --scrollbar-track: #f1f5f9;
-  --scrollbar-thumb: #cbd5e1;
-  --scrollbar-thumb-hover: #94a3b8;
-  --scrollbar-border: 3px;
-}
-
-[data-theme="dark"] {
   --primary: #818cf8;
   --primary-hover: #6366f1;
   --primary-light: rgba(129, 140, 248, 0.12);
@@ -31,9 +9,15 @@
   --border-color: #334155;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --radius: 8px;
+  --radius-sm: 6px;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+  --scrollbar-width: 12px;
   --scrollbar-track: rgba(15, 23, 42, 0.3);
   --scrollbar-thumb: rgba(148, 163, 184, 0.2);
   --scrollbar-thumb-hover: rgba(148, 163, 184, 0.4);
+  --scrollbar-border: 3px;
 }
 
 /* Base styles */
@@ -55,33 +39,6 @@ body {
   box-sizing: border-box;
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
-}
-
-/* Global scrollbar styling */
-::-webkit-scrollbar {
-  width: var(--scrollbar-width);
-  height: var(--scrollbar-width);
-}
-
-::-webkit-scrollbar-track {
-  background: var(--scrollbar-track);
-  border-radius: var(--radius);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  border: var(--scrollbar-border) solid var(--scrollbar-track);
-  border-radius: var(--radius);
-  transition: var(--transition);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover);
-  border-width: 2px;
-}
-
-::-webkit-scrollbar-corner {
-  background: var(--scrollbar-track);
 }
 
 /* App layout */
@@ -193,14 +150,6 @@ header {
 .logo:hover {
   background-color: var(--bg-color);
   color: var(--text-color);
-}
-
-.logo svg {
-  transition: var(--transition);
-}
-
-.logo:hover svg {
-  transform: rotate(90deg);
 }
 
 /* Headings */
@@ -833,81 +782,6 @@ input[type="url"]::placeholder {
   color: var(--primary);
 }
 
-/* Dark mode specific styles */
-[data-theme="dark"] {
-  .status-message.success {
-    background-color: rgba(22, 101, 52, 0.1);
-    color: #4ade80;
-    border-bottom-color: rgba(22, 101, 52, 0.2);
-  }
-  
-  .status-message.error {
-    background-color: rgba(185, 28, 28, 0.1);
-    color: #f87171;
-    border-bottom-color: rgba(185, 28, 28, 0.2);
-  }
-  
-  .status-message.warning {
-    background-color: rgba(146, 64, 14, 0.1);
-    color: #fbbf24;
-    border-bottom-color: rgba(146, 64, 14, 0.2);
-  }
-  
-  #scriptStatusBadge {
-    background-color: rgba(220, 38, 38, 0.1);
-    color: #f87171;
-  }
-  
-  .url-remove:hover {
-    background-color: rgba(239, 68, 68, 0.1);
-  }
-  
-  .shortcut-key {
-    background-color: rgba(255, 255, 255, 0.05);
-  }
-  
-  .shortcut-item:hover .shortcut-key {
-    background-color: rgba(79, 70, 229, 0.1);
-  }
-  
-  .header-button:hover, .action-button:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-  }
-  
-  .section-toggle:hover {
-    background-color: rgba(255, 255, 255, 0.03);
-  }
-  
-  .url-item:hover {
-    background-color: rgba(79, 70, 229, 0.1);
-  }
-}
-
-/* Animations */
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4);
-  }
-  70% {
-    box-shadow: 0 0 0 6px rgba(79, 70, 229, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0);
-  }
-}
-
-.primary-button:focus {
-  animation: pulse 1.5s infinite;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
 
 .settings-group {
   animation: fadeIn 0.3s ease-out;

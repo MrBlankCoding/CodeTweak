@@ -1,3 +1,5 @@
+import { urlMatchesPattern } from "./utils/urlMatchPattern.js";
+
 const INJECTION_TYPES = Object.freeze({
   DOCUMENT_START: "document_start",
   DOCUMENT_END: "document_end",
@@ -8,10 +10,8 @@ const INJECTION_TYPES = Object.freeze({
 let scriptCache = null;
 let lastCacheUpdate = 0;
 const CACHE_LIFETIME = 5000;
-let isRunning = false;
-let activeRules = new Set();
-let ports = new Set();
-let executedScripts = new Map();
+const ports = new Set();
+const executedScripts = new Map();
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   switch (message.action) {
@@ -19,66 +19,38 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       scriptCache = null;
       lastCacheUpdate = 0;
       sendResponse({ success: true });
-
-      ports.forEach((port) => {
-        try {
-          port.postMessage({ action: "scriptsUpdated" });
-        } catch (error) {
-          console.warn("Failed to notify port:", error);
-          ports.delete(port);
-        }
-      });
+      notifyPorts("scriptsUpdated");
       return false;
 
     case "createScript":
-      const { template, url: scriptUrl } = message.data;
-      handleScriptCreation(scriptUrl, template).catch(console.error);
+      handleScriptCreation(message.data.url, message.data.template).catch(
+        console.error
+      );
       return false;
 
     case "elementFound":
-      if (message.tabId) {
-        chrome.tabs
-          .get(message.tabId)
-          .then((tab) => {
-            if (tab && message.scriptCode && message.scriptId) {
-              const tabScripts =
-                executedScripts.get(message.tabId) || new Set();
-              if (!tabScripts.has(message.scriptId)) {
-                injectScriptDirectly(
-                  tab.id,
-                  message.scriptCode,
-                  "Element Ready Script",
-                  {},
-                  message.requiresCSP || false,
-                  message.scriptId
-                );
-              }
-            }
-          })
-          .catch(() => {
-            console.warn("Target tab no longer exists");
-          });
-      }
-      return false;
-
-    case "cspStateChanged":
-      const { url, enabled } = message.data;
-      if (!enabled) {
-        cleanupCSPRules(url).catch(console.error);
-      }
-      sendResponse({ success: true });
+      handleElementFound(message);
       return false;
 
     case "contentScriptReady":
-      if (sender.tab && sender.tab.id) {
-        executedScripts.set(sender.tab.id, new Set());
-      }
+      if (sender.tab?.id) executedScripts.set(sender.tab.id, new Set());
       return false;
 
     default:
       return false;
   }
 });
+
+function notifyPorts(action) {
+  for (const port of ports) {
+    try {
+      port.postMessage({ action });
+    } catch (error) {
+      console.warn("Failed to notify port:", error);
+      ports.delete(port);
+    }
+  }
+}
 
 function createContextMenu() {
   chrome.contextMenus.removeAll(() => {
@@ -89,7 +61,6 @@ function createContextMenu() {
     });
   });
 }
-
 createContextMenu();
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
@@ -99,250 +70,76 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 });
 
 chrome.runtime.onConnect.addListener((port) => {
-  if (port.name === "CodeTweak") {
-    if (ports.has(port)) {
-      console.warn("Port already connected:", port.name);
-      return;
-    }
+  if (port.name !== "CodeTweak" || ports.has(port)) return;
+  ports.add(port);
 
-    ports.add(port);
-
-    port.onDisconnect.addListener(() => {
-      ports.delete(port);
-      console.log("Port disconnected:", port.name);
-    });
-
-    port.onMessage.addListener((message) => {
-      try {
-        console.log("Port message received:", message);
-      } catch (error) {
-        console.error("Port message error:", error);
-        port.disconnect();
-      }
-    });
-  }
+  port.onDisconnect.addListener(() => ports.delete(port));
+  port.onMessage.addListener(console.log);
 });
 
-const generateUniqueRuleId = () => Math.floor(Math.random() * 100000000);
-
-async function getCurrentTab() {
-  const [tab] = await chrome.tabs.query({
-    active: true,
-    lastFocusedWindow: true,
-  });
-  return tab;
-}
-
-async function disableCSP(tabId, url) {
-  if (isRunning) return;
-  isRunning = true;
-
-  try {
-    const existingRules = await chrome.declarativeNetRequest.getSessionRules();
-    const staleRules = existingRules.filter(
-      (rule) => rule.condition.urlFilter === url
-    );
-
-    if (staleRules.length) {
-      await chrome.declarativeNetRequest.updateSessionRules({
-        removeRuleIds: staleRules.map((rule) => rule.id),
-      });
-    }
-
-    const newRuleId = generateUniqueRuleId();
-    activeRules.add(newRuleId);
-
-    await chrome.declarativeNetRequest.updateSessionRules({
-      addRules: [
-        {
-          id: newRuleId,
-          action: {
-            type: "modifyHeaders",
-            responseHeaders: [
-              { header: "content-security-policy", operation: "remove" },
-              {
-                header: "content-security-policy-report-only",
-                operation: "remove",
-              },
-            ],
-          },
-          condition: {
-            urlFilter: url,
-            resourceTypes: ["main_frame", "sub_frame"],
-          },
-        },
-      ],
-    });
-  } catch (error) {
-    console.error("Failed to disable CSP:", error);
-    activeRules.clear();
-  } finally {
-    isRunning = false;
-  }
-}
-
-async function cleanupCSPRules(url) {
-  if (isRunning) return;
-  isRunning = true;
-
-  try {
-    const existingRules = await chrome.declarativeNetRequest.getSessionRules();
-    const staleRules = existingRules.filter(
-      (rule) => rule.condition.urlFilter === url
-    );
-
-    if (staleRules.length) {
-      await chrome.declarativeNetRequest.updateSessionRules({
-        removeRuleIds: staleRules.map((rule) => rule.id),
-      });
-
-      activeRules = new Set(
-        [...activeRules].filter(
-          (id) => !staleRules.some((rule) => rule.id === id)
-        )
-      );
-    }
-  } catch (error) {
-    console.error("Failed to cleanup CSP rules:", error);
-  } finally {
-    isRunning = false;
-  }
-}
-
-function bypassTrustedTypes(tabId) {
-  chrome.scripting
-    .executeScript({
-      target: { tabId },
-      world: "MAIN",
-      func: () => {
-        try {
-          window.trustedTypes.createPolicy = () => ({
-            createHTML: (input) => input,
-            createScript: (input) => input,
-            createScriptURL: (input) => input,
-          });
-        } catch (error) {
-          console.error("Failed to bypass Trusted Types:", error);
-        }
-      },
-    })
-    .catch(console.warn);
-}
-
 async function getFilteredScripts(url, runAt) {
-  const currentTime = Date.now();
-  if (!scriptCache || currentTime - lastCacheUpdate > CACHE_LIFETIME) {
+  const now = Date.now();
+  if (!scriptCache || now - lastCacheUpdate > CACHE_LIFETIME) {
     const { scripts = [] } = await chrome.storage.local.get("scripts");
-    scriptCache = scripts.map((script) => ({
-      ...script,
-      id: script.id || crypto.randomUUID(),
-      targetUrls:
-        script.targetUrls || (script.targetUrl ? [script.targetUrl] : []),
+    scriptCache = scripts.map((s) => ({
+      ...s,
+      id: s.id || crypto.randomUUID(),
+      targetUrls: s.targetUrls || [s.targetUrl].filter(Boolean),
     }));
     await chrome.storage.local.set({ scripts: scriptCache });
-    lastCacheUpdate = currentTime;
+    lastCacheUpdate = now;
   }
 
-  const matchingScripts = scriptCache.filter(
+  return scriptCache.filter(
     (script) =>
       script.enabled &&
       (!runAt || script.runAt === runAt) &&
-      script.targetUrls.some((targetUrl) => urlMatchesPattern(url, targetUrl))
+      script.targetUrls.some((target) => urlMatchesPattern(url, target))
   );
-
-  return {
-    normalScripts: matchingScripts.filter(
-      (script) => !script.permissions?.cspDisabled
-    ),
-    cspDisabledScripts: matchingScripts.filter(
-      (script) => script.permissions?.cspDisabled
-    ),
-  };
 }
 
 async function injectScriptsForStage(details, runAt) {
   if (details.frameId !== 0) return;
-
   try {
     const { settings = {} } = await chrome.storage.local.get("settings");
     const url = details.url;
 
-    if (runAt === INJECTION_TYPES.DOCUMENT_START) {
-      executedScripts.set(details.tabId, new Set());
-    }
+    const tabId = details.tabId;
+    if (!executedScripts.has(tabId)) executedScripts.set(tabId, new Set());
+    const tabScripts = executedScripts.get(tabId);
 
-    if (!executedScripts.has(details.tabId)) {
-      executedScripts.set(details.tabId, new Set());
-    }
+    if (runAt === INJECTION_TYPES.DOCUMENT_START) tabScripts.clear();
 
-    const tabExecutedScripts = executedScripts.get(details.tabId);
-    const { normalScripts, cspDisabledScripts } = await getFilteredScripts(
-      url,
-      runAt
-    );
+    const matching = await getFilteredScripts(url, runAt);
+    const newScripts = matching.filter((s) => !tabScripts.has(s.id));
 
-    const newNormalScripts = normalScripts.filter(
-      (script) => !tabExecutedScripts.has(script.id)
-    );
-    const newCspScripts = cspDisabledScripts.filter(
-      (script) => !tabExecutedScripts.has(script.id)
-    );
+    if (newScripts.length) bypassTrustedTypes(tabId);
 
-    if (newNormalScripts.length) {
-      newNormalScripts.forEach((script) => {
-        tabExecutedScripts.add(script.id);
-        injectScriptDirectly(
-          details.tabId,
-          script.code,
-          script.name,
-          settings,
-          false,
-          script.id
-        );
-      });
-    }
-
-    if (newCspScripts.length) {
-      await disableCSP(details.tabId, url);
-      bypassTrustedTypes(details.tabId);
-
-      newCspScripts.forEach((script) => {
-        tabExecutedScripts.add(script.id);
-        injectScriptDirectly(
-          details.tabId,
-          script.code,
-          script.name,
-          settings,
-          true,
-          script.id
-        );
-      });
+    for (const script of newScripts) {
+      tabScripts.add(script.id);
+      injectScriptDirectly(
+        tabId,
+        script.code,
+        script.name,
+        settings,
+        script.id
+      );
     }
 
     if (runAt === INJECTION_TYPES.DOCUMENT_IDLE) {
-      const {
-        normalScripts: elementReadyNormalScripts,
-        cspDisabledScripts: elementReadyCspScripts,
-      } = await getFilteredScripts(url, INJECTION_TYPES.ELEMENT_READY);
-
-      if (elementReadyNormalScripts.length || elementReadyCspScripts.length) {
-        const elementReadyScripts = [
-          ...elementReadyNormalScripts,
-          ...elementReadyCspScripts,
-        ].filter((script) => !tabExecutedScripts.has(script.id));
-
-        if (elementReadyScripts.length) {
-          chrome.tabs
-            .sendMessage(details.tabId, {
-              action: "waitForElements",
-              scripts: elementReadyScripts,
-            })
-            .catch(console.warn);
-        }
+      const readyScripts = await getFilteredScripts(
+        url,
+        INJECTION_TYPES.ELEMENT_READY
+      );
+      const newReady = readyScripts.filter((s) => !tabScripts.has(s.id));
+      if (newReady.length) {
+        chrome.tabs
+          .sendMessage(tabId, { action: "waitForElements", scripts: newReady })
+          .catch(console.warn);
       }
     }
-  } catch (error) {
-    console.error("Error injecting scripts:", error);
+  } catch (err) {
+    console.error("Injection error:", err);
   }
 }
 
@@ -351,161 +148,141 @@ async function injectScriptDirectly(
   code,
   scriptName,
   settings,
-  requiresCSP = false,
-  scriptId = null
+  scriptId
 ) {
   try {
     const tab = await chrome.tabs.get(tabId);
-    if (!tab) {
-      console.warn("Target tab no longer exists");
-      return;
-    }
+    if (!tab) return;
 
     await chrome.scripting.executeScript({
       target: { tabId },
       world: "MAIN",
-      func: (code, scriptName, hasCSPDisabled, scriptId) => {
+      func: (code, scriptId) => {
         try {
-          window._executedScripts = window._executedScripts || new Set();
           window._executedScriptIds = window._executedScriptIds || new Set();
-
-          if (window._executedScriptIds.has(scriptId)) {
-            return;
-          }
-
+          if (window._executedScriptIds.has(scriptId)) return;
           window._executedScriptIds.add(scriptId);
-          window._executedScripts.add(code);
-
-          window._codeScriptCSPDisabled = hasCSPDisabled;
-
           eval(code);
-        } catch (error) {
-          console.error("Script execution error:", error);
+        } catch (e) {
+          console.error("Script error:", e);
         }
       },
-      args: [
-        code,
-        scriptName,
-        requiresCSP,
-        scriptId || code.substring(0, 100),
-      ],
+      args: [code, scriptId || code.slice(0, 100)],
     });
 
-    if (settings.showNotifications) {
-      await chrome.scripting.executeScript({
-        target: { tabId },
-        world: "MAIN",
-        func: (scriptName) => {
-          const notification = document.createElement("div");
-          notification.style.cssText = `
-            position: fixed;
-            bottom: 16px;
-            right: 16px;
-            z-index: 999999;
-            display: inline-flex;
-            align-items: center;
-            background: linear-gradient(to right, rgba(33, 150, 243, 0.95), rgba(25, 118, 210, 0.95));
-            color: white;
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 500;
-            opacity: 0;
-            transform: translateY(8px);
-            animation: notifyIn 0.3s ease forwards;
-            pointer-events: none;
-            font-family: system-ui, -apple-system, sans-serif;
-          `;
-
-          const text = document.createElement("span");
-          text.textContent = "✓ " + scriptName;
-          text.style.cssText = `
-            max-width: 120px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-          `;
-
-          notification.appendChild(text);
-          document.body.appendChild(notification);
-
-          setTimeout(() => {
-            notification.style.animation = "notifyOut 0.2s ease forwards";
-            setTimeout(() => notification.remove(), 200);
-          }, 1500);
-
-          if (!document.getElementById("_scriptNotificationStyles")) {
-            const style = document.createElement("style");
-            style.id = "_scriptNotificationStyles";
-            style.innerHTML = `
-              @keyframes notifyIn {
-                from { opacity: 0; transform: translateY(8px); }
-                to { opacity: 1; transform: translateY(0); }
-              }
-              @keyframes notifyOut {
-                to { opacity: 0; transform: translateY(8px); }
-              }
-            `;
-            document.head.appendChild(style);
-          }
-        },
-        args: [scriptName || "Unknown script"],
-      });
-    }
-  } catch (error) {
-    console.warn("Script injection error:", error);
+    if (settings.showNotifications) showNotification(tabId, scriptName);
+  } catch (err) {
+    console.warn("Direct injection failed:", err);
   }
+}
+
+function showNotification(tabId, scriptName) {
+  chrome.scripting.executeScript({
+    target: { tabId },
+    world: "MAIN",
+    func: (name) => {
+      const div = document.createElement("div");
+      div.textContent = `\u2713 ${name}`;
+      Object.assign(div.style, {
+        position: "fixed",
+        bottom: "16px",
+        right: "16px",
+        zIndex: 999999,
+        background: "rgba(33, 150, 243, 0.95)",
+        color: "white",
+        padding: "6px 12px",
+        borderRadius: "8px",
+        fontSize: "12px",
+        fontFamily: "system-ui, sans-serif",
+        pointerEvents: "none",
+      });
+      document.body.appendChild(div);
+      setTimeout(() => div.remove(), 2000);
+    },
+    args: [scriptName || "Unknown script"],
+  });
+}
+
+function bypassTrustedTypes(tabId) {
+  chrome.scripting.executeScript({
+    target: { tabId },
+    world: "MAIN",
+    func: () => {
+      try {
+        window.trustedTypes.createPolicy = () => ({
+          createHTML: (x) => x,
+          createScript: (x) => x,
+          createScriptURL: (x) => x,
+        });
+      } catch (e) {
+        console.error("Bypass failed:", e);
+      }
+    },
+  });
 }
 
 async function handleScriptCreation(url, template) {
   try {
     const { scripts = [] } = await chrome.storage.local.get("scripts");
-
-    const existingScript = scripts.find((script) =>
-      script.targetUrls?.some((targetUrl) => urlMatchesPattern(url, targetUrl))
+    const existing = scripts.find((s) =>
+      s.targetUrls?.some((t) => urlMatchesPattern(url, t))
     );
 
-    if (existingScript) {
-      const codeLines = existingScript.code.split("\n");
-      let insertIndex = codeLines.length - 1;
+    if (existing) {
+      const lines = existing.code.split("\n");
+      let i = lines.length - 1;
+      while (i > 0 && (!lines[i].trim() || lines[i].trim() === "})();")) i--;
 
-      while (insertIndex > 0) {
-        const line = codeLines[insertIndex].trim();
-        if (line && !line.startsWith("//") && line !== "})();") {
-          break;
-        }
-        insertIndex--;
-      }
-
-      const indentation = "  ";
-      const newCode = [
+      const indent = "  ";
+      const newLines = [
         "",
-        `${indentation}// Added by element selector`,
-        `${indentation}${template.trim().split("\n").join(`\n${indentation}`)}`,
+        `${indent}// Added by element selector`,
+        ...template
+          .trim()
+          .split("\n")
+          .map((line) => indent + line),
         "",
       ];
 
-      codeLines.splice(insertIndex + 1, 0, ...newCode);
-      existingScript.code = codeLines.join("\n");
-      existingScript.updatedAt = new Date().toISOString();
+      lines.splice(i + 1, 0, ...newLines);
+      existing.code = lines.join("\n");
+      existing.updatedAt = new Date().toISOString();
 
       await chrome.storage.local.set({ scripts });
       chrome.runtime.sendMessage({ action: "scriptsUpdated" });
-
       chrome.tabs.create({
-        url: `${chrome.runtime.getURL("editor.html")}?id=${existingScript.id}`,
+        url: `${chrome.runtime.getURL("editor.html")}?id=${existing.id}`,
       });
     } else {
-      const editorUrl =
-        chrome.runtime.getURL("editor.html") +
-        `?targetUrl=${encodeURIComponent(url)}&template=${encodeURIComponent(
-          template
-        )}`;
-      chrome.tabs.create({ url: editorUrl });
+      const urlParams = new URLSearchParams({ targetUrl: url, template });
+      chrome.tabs.create({
+        url: `${chrome.runtime.getURL("editor.html")}?${urlParams}`,
+      });
     }
-  } catch (error) {
-    console.error("Error handling script creation:", error);
+  } catch (e) {
+    console.error("Script creation error:", e);
   }
+}
+
+function handleElementFound(message) {
+  const { tabId, scriptCode, scriptId } = message;
+  if (!tabId) return;
+  chrome.tabs
+    .get(tabId)
+    .then((tab) => {
+      if (!tab || !scriptCode || !scriptId) return;
+      const tabScripts = executedScripts.get(tabId) || new Set();
+      if (!tabScripts.has(scriptId)) {
+        injectScriptDirectly(
+          tab.id,
+          scriptCode,
+          "Element Ready Script",
+          {},
+          scriptId
+        );
+      }
+    })
+    .catch(() => console.warn("Tab not found for elementFound"));
 }
 
 ["onCommitted", "onDOMContentLoaded", "onCompleted"].forEach((event, index) => {
@@ -514,127 +291,4 @@ async function handleScriptCreation(url, template) {
   );
 });
 
-function urlMatchesPattern(url, pattern) {
-  try {
-    // Handle edge cases
-    if (pattern === url) return true;
-    if (!url || !pattern) return false;
-
-    // Normalize pattern if missing scheme
-    if (!pattern.includes("://")) {
-      pattern = "*://" + pattern;
-    }
-
-    // Extract scheme, host, and path from pattern
-    let [schemeHostPart, ...patternPathParts] = pattern.split("/");
-    let patternPath =
-      patternPathParts.length > 0 ? "/" + patternPathParts.join("/") : "/";
-
-    // Fix handling of the scheme/host part
-    let [patternScheme, ...hostParts] = schemeHostPart.split("://");
-    let patternHost = hostParts.join("://"); // In case there's :// in the hostname (unlikely but safe)
-
-    // Create URL object for the input URL
-    const urlObj = new URL(url);
-    const urlPath = urlObj.pathname;
-
-    // Handle scheme matching
-    if (
-      patternScheme !== "*" &&
-      patternScheme !== urlObj.protocol.slice(0, -1)
-    ) {
-      return false;
-    }
-
-    // Handle host matching with wildcards
-    if (patternHost.startsWith("*.")) {
-      // *.domain.com pattern - match domain or any subdomain
-      const domain = patternHost.slice(2);
-      if (
-        !(urlObj.hostname === domain || urlObj.hostname.endsWith("." + domain))
-      ) {
-        return false;
-      }
-    } else if (patternHost.includes("*")) {
-      // Handle other wildcards in hostname
-      const hostRegex = new RegExp(
-        "^" + patternHost.replace(/\./g, "\\.").replace(/\*/g, ".*") + "$"
-      );
-      if (!hostRegex.test(urlObj.hostname)) {
-        return false;
-      }
-    } else if (patternHost !== "*" && patternHost !== urlObj.hostname) {
-      // Direct hostname match
-      return false;
-    }
-
-    // If pattern path is empty or just "/" or "/*", match any path
-    if (patternPath === "/" || patternPath === "/*") {
-      return true;
-    }
-
-    // Handle special case for /** at the end
-    if (patternPath.endsWith("/**")) {
-      const basePath = patternPath.slice(0, -3);
-      return urlPath === basePath || urlPath.startsWith(basePath);
-    }
-
-    // Handle path matching with both * and ** wildcards
-    const pathSegments = patternPath
-      .split("/")
-      .filter((segment) => segment !== "");
-    const urlSegments = urlPath.split("/").filter((segment) => segment !== "");
-
-    // Simple case: if pattern is just /* match any single-level path
-    if (pathSegments.length === 1 && pathSegments[0] === "*") {
-      return true;
-    }
-
-    let pathRegexParts = ["^"];
-    let i = 0;
-
-    for (i = 0; i < pathSegments.length; i++) {
-      const segment = pathSegments[i];
-
-      // Handle ** wildcard (matches across multiple path segments)
-      if (segment === "**") {
-        // If this is the last segment, match anything that follows
-        if (i === pathSegments.length - 1) {
-          pathRegexParts.push(".*");
-          break;
-        }
-
-        // Otherwise, match anything until we find the next segment
-        const nextSegment = pathSegments[i + 1];
-        const nextSegmentRegex = nextSegment
-          .replace(/\*/g, "[^/]*")
-          .replace(/\./g, "\\.");
-
-        pathRegexParts.push(`(?:.*?\\/)?${nextSegmentRegex}`);
-        i++; // Skip the next segment as we've already included it
-      } else {
-        // Handle regular segment with potential * wildcards
-        const segmentRegex = segment
-          .replace(/\*/g, "[^/]*")
-          .replace(/\./g, "\\.");
-        if (i === 0) {
-          pathRegexParts.push(`\\/?${segmentRegex}`); // Make the first slash optional
-        } else {
-          pathRegexParts.push(`\\/${segmentRegex}`);
-        }
-      }
-    }
-
-    pathRegexParts.push("$");
-    const pathRegex = new RegExp(pathRegexParts.join(""));
-
-    return pathRegex.test(urlPath);
-  } catch (error) {
-    console.warn("URL matching error:", error);
-    return false;
-  }
-}
-
-chrome.tabs.onRemoved.addListener((tabId) => {
-  executedScripts.delete(tabId);
-});
+chrome.tabs.onRemoved.addListener((tabId) => executedScripts.delete(tabId));

@@ -18,7 +18,6 @@
       rel="stylesheet"
       href="codemirror/addon/scroll/simplescrollbars.css"
     />
-    <script src="utils/theme.js"></script>
   </head>
   <body>
     <div class="app-container">
@@ -40,34 +39,7 @@
               <line x1="3" y1="18" x2="21" y2="18"></line>
             </svg>
           </button>
-          <a href="dashboard.html" class="logo">
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M12 3C7.02944 3 3 7.02944 3 12C3 16.9706 7.02944 21 12 21C16.9706 21 21 16.9706 21 12"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-              />
-              <path
-                d="M14 6.5C11.5 6.5 9.5 7.5 8.5 9.5C7.5 11.5 8 14 10 15.5C11.5 16.5 13.5 16.5 15 15.5"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-              />
-              <path
-                d="M17 7L19.5 9.5L17 12"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
+          <a href="dashboard.html" class="logo color: #333">
             <span>Dashboard</span>
           </a>
         </div>
@@ -220,12 +192,6 @@
                   <option value="element_ready">When element exists</option>
                 </select>
               </div>
-              <div class="settings-group">
-                <label class="checkbox-label">
-                  <input type="checkbox" id="cspDisabled" />
-                  Disable Content Security Policy (CSP)
-                </label>
-              </div>
               <div class="settings-group" id="selectorContainer">
                 <label for="waitForSelector"
                   >Wait for element (CSS selector)</label
@@ -235,45 +201,6 @@
                   id="waitForSelector"
                   placeholder="#main-content"
                 />
-              </div>
-            </div>
-          </div>
-
-          <div class="settings-section collapsible">
-            <h3 class="section-toggle">
-              <span>Permissions</span>
-              <svg
-                class="toggle-icon"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <polyline points="6 9 12 15 18 9"></polyline>
-              </svg>
-            </h3>
-            <div class="section-content">
-              <div class="checkbox-group">
-                <label class="checkbox-label">
-                  <input type="checkbox" id="domAccess" checked />
-                  DOM Manipulation
-                </label>
-                <label class="checkbox-label">
-                  <input type="checkbox" id="storageAccess" />
-                  Storage Access
-                </label>
-                <label class="checkbox-label">
-                  <input type="checkbox" id="ajaxAccess" />
-                  Network Requests
-                </label>
-                <label class="checkbox-label">
-                  <input type="checkbox" id="cookieAccess" />
-                  Cookie Access
-                </label>
               </div>
             </div>
           </div>
@@ -333,8 +260,8 @@
     <script src="codemirror/addon/scroll/simplescrollbars.js"></script>
     <script src="codemirror/addon/edit/trailingspace.js"></script>
     <script src="codemirror/addon/edit/continuelist.js"></script>
-    <script defer src="lib/jshint.js"></script>
-    <script defer src="lib/beautify.min.js"></script>
+    <script defer src="codemirror/lib/jshint.js"></script>
+    <script defer src="codemirror/lib/beautify.min.js"></script>
     <script src="editor.js"></script>
   </body>
 </html>

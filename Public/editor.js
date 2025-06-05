@@ -1,9 +1,4 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const THEMES = {
-    LIGHT: "default",
-    DARK: "ayu-dark",
-  };
-
   const RUN_MODES = {
     ELEMENT_READY: "element_ready",
   };
@@ -21,11 +16,6 @@ document.addEventListener("DOMContentLoaded", () => {
     ["runAt", document.getElementById("runAt")],
     ["scriptVersion", document.getElementById("scriptVersion")],
     ["scriptDescription", document.getElementById("scriptDescription")],
-    ["domAccess", document.getElementById("domAccess")],
-    ["storageAccess", document.getElementById("storageAccess")],
-    ["ajaxAccess", document.getElementById("ajaxAccess")],
-    ["cookieAccess", document.getElementById("cookieAccess")],
-    ["cspDisabled", document.getElementById("cspDisabled")],
     ["saveBtn", document.getElementById("saveBtn")],
     ["sidebarToggle", document.getElementById("sidebarToggle")],
     ["selectorContainer", document.getElementById("selectorContainer")],
@@ -51,7 +41,6 @@ document.addEventListener("DOMContentLoaded", () => {
     isEditMode: false,
     scriptId: null,
     isDarkMode: window.matchMedia("(prefers-color-scheme: dark)").matches,
-    currentTheme: null,
     hasUnsavedChanges: false,
     isSidebarVisible: window.innerWidth > SIDEBAR_BREAKPOINT,
     lintingEnabled: localStorage.getItem("lintingEnabled") === "true",
@@ -61,10 +50,7 @@ document.addEventListener("DOMContentLoaded", () => {
     hasUserInteraction: false,
   };
 
-  state.currentTheme = state.isDarkMode ? THEMES.DARK : THEMES.LIGHT;
-
   function init() {
-    initDarkMode();
     setDefaultValues();
     initializeCodeEditor();
     parseUrlParams(); 
@@ -122,7 +108,7 @@ ${decodedTemplate}
     // Code mirror init
     state.codeEditor = CodeMirror.fromTextArea(elements.codeEditor, {
       mode: "javascript",
-      theme: state.currentTheme,
+      theme: "ayu-dark",
       lineNumbers: true,
       lineWrapping: true,
       indentUnit: 2,
@@ -147,7 +133,7 @@ ${decodedTemplate}
       extraKeys: {
         "Ctrl-Space": "autocomplete",
         "Ctrl-S": (cm) => {
-          event.preventDefault(); 
+          event.preventDefault();
           saveScript();
         },
         "Cmd-S": (cm) => {
@@ -172,6 +158,7 @@ ${decodedTemplate}
       },
       scrollbarStyle: "simple",
     });
+
     state.codeEditor.on("cursorActivity", (cm) => {
       const cursor = cm.getCursor();
       if (elements.cursorInfo) {
@@ -335,11 +322,6 @@ ${decodedTemplate}
       elements.scriptDescription,
       elements.targetUrl,
       elements.waitForSelector,
-      elements.domAccess,
-      elements.storageAccess,
-      elements.ajaxAccess,
-      elements.cookieAccess,
-      elements.cspDisabled,
     ];
 
     formElements.forEach((element) => {
@@ -348,29 +330,6 @@ ${decodedTemplate}
       }
     });
 
-    // CSP warning... (Need to comply with policy)
-    elements.cspDisabled.addEventListener("change", function () {
-      if (this.checked) {
-        showStatusMessage(
-          "Warning: Disabling CSP can expose the site to security vulnerabilities. Only use this if absolutely necessary.",
-          "warning"
-        );
-        setTimeout(clearStatusMessage, 5000);
-      } else {
-        clearStatusMessage();
-        // notif background
-        const urls = Array.from(document.querySelectorAll(".url-item")).map(
-          (item) => item.dataset.url
-        );
-
-        urls.forEach((url) => {
-          chrome.runtime.sendMessage({
-            action: "cspStateChanged",
-            data: { url, enabled: false },
-          });
-        });
-      }
-    });
     document.getElementById("addUrlBtn").addEventListener("click", () => {
       const url = elements.targetUrl.value.trim();
       if (url) {
@@ -478,24 +437,11 @@ ${decodedTemplate}
 
       elements.scriptName.value = script.name || "";
       elements.scriptAuthor.value = script.author || "";
-      if (Array.isArray(script.targetUrls)) {
-        script.targetUrls.forEach((url) => addUrlToList(url));
-      } else if (script.targetUrl) {
-        // legacy support
-        addUrlToList(script.targetUrl);
-      }
-
+      script.targetUrls.forEach((url) => addUrlToList(url));
       elements.runAt.value = script.runAt || "document_idle";
       elements.scriptVersion.value = script.version || DEFAULT_VERSION;
       elements.scriptDescription.value = script.description || "";
       state.codeEditor.setValue(script.code || "");
-
-      const permissions = script.permissions || {};
-      elements.domAccess.checked = permissions.domAccess ?? true;
-      elements.storageAccess.checked = permissions.storageAccess ?? false;
-      elements.ajaxAccess.checked = permissions.ajaxAccess ?? false;
-      elements.cookieAccess.checked = permissions.cookieAccess ?? false;
-      elements.cspDisabled.checked = permissions.cspDisabled ?? false; // Add this line
 
       if (script.runAt === RUN_MODES.ELEMENT_READY) {
         elements.selectorContainer.style.display = "block";
@@ -532,18 +478,6 @@ ${decodedTemplate}
       showStatusMessage("Please specify an element selector.", "error");
       return false;
     }
-
-    // another CSP warning
-    if (elements.cspDisabled.checked) {
-      if (
-        !confirm(
-          "Warning: Disabling CSP can expose the site to security vulnerabilities. Are you sure you want to continue?"
-        )
-      ) {
-        return false;
-      }
-    }
-
     return true;
   }
 
@@ -565,13 +499,6 @@ ${decodedTemplate}
       description: elements.scriptDescription.value.trim(),
       code: state.codeEditor.getValue(),
       enabled: true,
-      permissions: {
-        domAccess: elements.domAccess.checked,
-        storageAccess: elements.storageAccess.checked,
-        ajaxAccess: elements.ajaxAccess.checked,
-        cookieAccess: elements.cookieAccess.checked,
-        cspDisabled: elements.cspDisabled.checked,
-      },
       updatedAt: new Date().toISOString(),
     };
 
@@ -653,14 +580,17 @@ ${decodedTemplate}
 
   function formatCode(showMessage = true) {
     try {
-      const unformattedCode = state.codeEditor.getValue();
+      const editor = state.codeEditor;
+      if (!editor) throw new Error("Code editor not initialized");
+
+      const unformattedCode = editor.getValue();
 
       const formattedCode = js_beautify(unformattedCode, {
         indent_size: 2,
         space_in_empty_paren: true,
       });
 
-      state.codeEditor.setValue(formattedCode);
+      editor.setValue(formattedCode);
 
       if (showMessage) {
         showStatusMessage("Code formatted", "success");
@@ -672,7 +602,7 @@ ${decodedTemplate}
         showStatusMessage("Could not format code", "error");
       }
     }
-  }
+  }  
 
   function updateScriptStatus() {
     const badge = elements.scriptStatusBadge;

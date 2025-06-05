@@ -1,22 +1,4 @@
 :root {
-  /* Light theme variables */
-  --primary: #4285f4;
-  --primary-hover: #2a75f3;
-  --bg-color: #ffffff;
-  --text-color: #333333;
-  --border-color: #e0e0e0;
-  --secondary-text: #666666;
-  --success: #34a853;
-  --danger: #ea4335;
-  --warning: #fbbc05;
-  --light-bg: #f8f9fa;
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  --radius: 8px;
-  --transition: all 0.2s ease;
-}
-
-/* Dark theme variables */
-[data-theme="dark"] {
   --primary: #81a9f7;
   --primary-hover: #a1bff8;
   --bg-color: #1e1e1e;
@@ -25,12 +7,8 @@
   --secondary-text: #b0b0b0;
   --light-bg: #2d2d2d;
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+  --radius: 8px;
+  --transition: all 0.2s ease;
 }
 
 body {
@@ -361,86 +339,6 @@ a {
 a:hover {
   text-decoration: underline;
   opacity: 0.9;
-}
-
-/* Scroll bar styling */
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--bg-color); 
-}
-   
-::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--secondary-text); 
-}
-
-/* Animations */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes menuFadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-/* Tooltip */
-.tooltip {
-  position: relative;
-}
-
-.tooltip:hover::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: 110%;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 6px 10px;
-  border-radius: var(--radius);
-  background-color: rgba(0, 0, 0, 0.8);
-  color: white;
-  font-size: 12px;
-  white-space: nowrap;
-  z-index: 100;
-  pointer-events: none;
-  animation: fadeIn 0.2s ease-out;
-}
-
-/* Toast notifications */
-#toast {
-  position: fixed;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%) translateY(20px);
-  padding: 10px 20px;
-  background: linear-gradient(to right, var(--primary), var(--primary-hover));
-  color: white;
-  border-radius: 20px;
-  font-size: 13px;
-  font-weight: 500;
-  z-index: 1000;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  opacity: 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-#toast.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
 }
 
 /* Add these styles at the end of the file */

@@ -9,7 +9,6 @@
     />
     <title>CodeTweak Dashboard</title>
     <link rel="stylesheet" href="styles/dashboard.css" />
-    <script src="utils/theme.js" defer></script>
   </head>
   <body>
     <div class="container">
@@ -25,37 +24,11 @@
             style="display: none"
             aria-label="Import scripts file"
           />
-          <button id="importBtn" class="secondary" title="Import scripts">
-            <svg
-              class="icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              aria-hidden="true"
-            >
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            Import
-          </button>
           <button
             id="greasyforkBtn"
             class="secondary"
             title="Search Greasy Fork"
           >
-            <svg
-              class="icon"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              aria-hidden="true"
-            >
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
             Browse Scripts
           </button>
           <button
@@ -165,17 +138,6 @@
           <div class="script-list">
             <div class="script-controls">
               <div class="search-box">
-                <svg
-                  class="icon"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  aria-hidden="true"
-                >
-                  <circle cx="11" cy="11" r="8"></circle>
-                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
                 <input
                   type="text"
                   id="scriptSearch"
@@ -252,33 +214,6 @@
           <form id="settingsForm">
             <div class="settings-section">
               <h2>General Settings</h2>
-
-              <div class="form-group">
-                <label class="checkbox-label" for="darkModeToggle">
-                  <button
-                    id="darkModeToggle"
-                    class="icon-button"
-                    aria-label="Toggle dark mode"
-                    title="Toggle dark mode"
-                  >
-                    <svg
-                      class="icon-lg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M21 12.79A9 9 0 1 1 11.21 3 A7 7 0 0 0 21 12.79z"
-                      />
-                    </svg>
-                  </button>
-                  Toggle dark mode
-                </label>
-                <p class="form-help">Switch between light and dark theme</p>
-              </div>
-
               <div class="form-group">
                 <label class="checkbox-label" for="enableAllScripts">
                   <input type="checkbox" id="enableAllScripts" checked />
@@ -309,32 +244,6 @@
                 </p>
               </div>
             </div>
-
-            <div class="settings-section">
-              <h2>Security</h2>
-
-              <div class="form-group">
-                <label class="checkbox-label" for="allowThirdPartyScripts">
-                  <input type="checkbox" id="allowThirdPartyScripts" />
-                  Allow scripts to load external resources
-                </label>
-                <p class="form-help">
-                  Enable loading of third-party libraries and external scripts
-                </p>
-              </div>
-
-              <div class="form-group">
-                <label class="checkbox-label" for="confirmBeforeRunning">
-                  <input type="checkbox" id="confirmBeforeRunning" />
-                  Confirm before running scripts on new websites
-                </label>
-                <p class="form-help">
-                  Ask for confirmation when a script runs on a website for the
-                  first time
-                </p>
-              </div>
-            </div>
-
             <div class="settings-actions">
               <button type="submit" id="saveSettingsBtn" class="primary">
                 Save Settings
@@ -376,109 +285,6 @@
               </li>
             </ol>
           </div>
-
-          <div class="settings-section">
-            <h2>Features</h2>
-            <div class="feature-list">
-              <div class="feature-item">
-                <div class="feature-item-icon">
-                  <svg
-                    class="icon"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"
-                    ></path>
-                    <line x1="16" y1="8" x2="2" y2="22"></line>
-                    <line x1="17.5" y1="15" x2="9" y2="15"></line>
-                  </svg>
-                </div>
-                <h3 class="feature-item-title">Custom Scripts</h3>
-                <p>
-                  Write and inject JavaScript into any website to enhance
-                  functionality
-                </p>
-              </div>
-
-              <div class="feature-item">
-                <div class="feature-item-icon">
-                  <svg
-                    class="icon"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    aria-hidden="true"
-                  >
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <polyline points="12 6 12 12 16 14"></polyline>
-                  </svg>
-                </div>
-                <h3 class="feature-item-title">Execution Control</h3>
-                <p>
-                  Choose exactly when your scripts run during the page loading
-                  process
-                </p>
-              </div>
-
-              <div class="feature-item">
-                <div class="feature-item-icon">
-                  <svg
-                    class="icon"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    aria-hidden="true"
-                  >
-                    <rect
-                      x="3"
-                      y="3"
-                      width="18"
-                      height="18"
-                      rx="2"
-                      ry="2"
-                    ></rect>
-                    <line x1="9" y1="9" x2="15" y2="15"></line>
-                    <line x1="15" y1="9" x2="9" y2="15"></line>
-                  </svg>
-                </div>
-                <h3 class="feature-item-title">Enable/Disable</h3>
-                <p>
-                  Toggle scripts on and off with a single click without deleting
-                  them
-                </p>
-              </div>
-
-              <div class="feature-item">
-                <div class="feature-item-icon">
-                  <svg
-                    class="icon"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    aria-hidden="true"
-                  >
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                  </svg>
-                </div>
-                <h3 class="feature-item-title">Sharing</h3>
-                <p>Export and import scripts to easily share with others</p>
-              </div>
-            </div>
-          </div>
-
-          <footer class="about-footer">
-            <p>CodeTweak &copy; 2025 - All rights reserved.</p>
-          </footer>
         </section>
       </main>
     </div>

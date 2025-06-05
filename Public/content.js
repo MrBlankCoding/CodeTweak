@@ -1,7 +1,3 @@
-//ONLY FOR CHECKING IF ELEMENTS EXIST
-// WHYYYYYYYYYYYYYYY
-
-//The vibes got this one :D
 function checkForElement(selector, callback, options = {}) {
   const config = {
     initialDelay: 50,
@@ -11,16 +7,34 @@ function checkForElement(selector, callback, options = {}) {
     ...options,
   };
 
-  const element = document.querySelector(selector);
-  if (element) {
-    callback(element);
-    return;
-  }
+  let attempts = 0;
+  let delay = config.initialDelay;
 
-  const observer = new MutationObserver((mutations, obs) => {
+  const tryFindElement = () => {
     const element = document.querySelector(selector);
     if (element) {
-      obs.disconnect();
+      callback(element);
+      return;
+    }
+
+    if (++attempts >= config.maxAttempts) {
+      console.warn(
+        `Element '${selector}' not found after ${attempts} attempts.`
+      );
+      return;
+    }
+
+    delay = Math.min(delay * config.backoffFactor, config.maxDelay);
+    setTimeout(tryFindElement, delay);
+  };
+
+  // Start searching and observe DOM mutations
+  tryFindElement();
+
+  const observer = new MutationObserver(() => {
+    const element = document.querySelector(selector);
+    if (element) {
+      observer.disconnect();
       callback(element);
     }
   });
@@ -29,132 +43,92 @@ function checkForElement(selector, callback, options = {}) {
     childList: true,
     subtree: true,
   });
-
-  let attempts = 0;
-  let currentDelay = config.initialDelay;
-
-  const checkElement = () => {
-    attempts++;
-
-    if (attempts >= config.maxAttempts) {
-      console.warn(
-        `Element '${selector}' not found after ${config.maxAttempts} attempts`
-      );
-      observer.disconnect();
-      return;
-    }
-
-    currentDelay = Math.min(
-      currentDelay * config.backoffFactor,
-      config.maxDelay
-    );
-    setTimeout(checkElement, currentDelay);
-  };
-
-  setTimeout(checkElement, config.initialDelay);
 }
 
-// watch changess
+// Element watcher with batching logic
 class ElementWatcher {
-  constructor() {
+  constructor(timeout = 30000) {
     this.watchList = new Map();
-    this.isWatching = false;
     this.observer = null;
-    this.processedScripts = new Set(); // track processed scripts
+    this.timeout = timeout;
+    this.executedScripts = new Set();
   }
 
   watch(selector, callback, scriptId) {
-    // dont process the same script multiple times
-    if (this.processedScripts.has(scriptId)) {
-      return;
-    }
-
-    this.processedScripts.add(scriptId);
+    if (this.executedScripts.has(scriptId)) return;
+    this.executedScripts.add(scriptId);
 
     if (!this.watchList.has(selector)) {
       this.watchList.set(selector, []);
     }
-
     this.watchList.get(selector).push(callback);
 
-    if (!this.isWatching) {
-      this.startWatching();
-    }
+    this.startObserver();
   }
 
-  startWatching() {
-    if (this.isWatching) return;
-    this.isWatching = true;
+  startObserver() {
+    if (this.observer) return;
 
-    this.observer = new MutationObserver(() => this.checkElements());
-
+    this.observer = new MutationObserver(() => this.checkWatchList());
     this.observer.observe(document.body || document.documentElement, {
       childList: true,
       subtree: true,
     });
 
-    this.checkElements();
+    // Final fallback to clean up
+    setTimeout(() => this.disconnect(), this.timeout);
 
-    setTimeout(() => this.stopWatching(), 30000);
+    // Initial check
+    this.checkWatchList();
   }
 
-  checkElements() {
+  checkWatchList() {
     for (const [selector, callbacks] of this.watchList.entries()) {
       const element = document.querySelector(selector);
-
       if (element) {
-        callbacks.forEach((callback) => callback(element));
+        callbacks.forEach((cb) => cb(element));
         this.watchList.delete(selector);
       }
     }
 
     if (this.watchList.size === 0) {
-      this.stopWatching();
+      this.disconnect();
     }
   }
 
-  stopWatching() {
-    if (this.observer) {
-      this.observer.disconnect();
-      this.observer = null;
-    }
-
-    this.isWatching = false;
+  disconnect() {
+    this.observer?.disconnect();
+    this.observer = null;
   }
 }
 
-// create watcher (I need a init function)
+// Single instance
 const elementWatcher = new ElementWatcher();
-const executedScripts = new Set(); 
 
-// Get messages from the background
+// Message handling
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "waitForElements") {
     console.log("Received element-ready scripts:", message.scripts.length);
 
     message.scripts.forEach((script) => {
-      if (executedScripts.has(script.id)) {
+      if (
+        !script.waitForSelector ||
+        elementWatcher.executedScripts.has(script.id)
+      )
         return;
-      }
 
-      if (script.waitForSelector) {
-        checkForElement(
-          script.waitForSelector,
-          () => {
-            executedScripts.add(script.id);
-            chrome.runtime.sendMessage({
-              action: "elementFound",
-              tabId: sender.tab ? sender.tab.id : null,
-              scriptCode: script.code,
-              scriptId: script.id,
-              requiresCSP: script.permissions?.cspDisabled || false,
-            });
-          },
-          {
-            maxAttempts: 75,
-          }
-        );
-      }
+      checkForElement(
+        script.waitForSelector,
+        () => {
+          chrome.runtime.sendMessage({
+            action: "elementFound",
+            tabId: sender.tab?.id || null,
+            scriptCode: script.code,
+            scriptId: script.id,
+          });
+        },
+        { maxAttempts: 75 }
+      );
     });
 
     sendResponse({
@@ -166,7 +140,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
-// Notif 
+// Notify background script content is ready
 chrome.runtime.sendMessage({
   action: "contentScriptReady",
   url: window.location.href,

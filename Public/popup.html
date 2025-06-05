@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CodeTweak</title>
     <link rel="stylesheet" href="styles/popup.css" />
-    <script src="utils/theme.js"></script>
   </head>
   <body>
     <header>
@@ -13,7 +12,7 @@
         <h1>CodeTweak</h1>
       </div>
       <div class="buttons">
-        <button id="openDashboard" class="primary tooltip">
+        <button id="openDashboard" class="primary">
           <span class="btn-icon">
             <svg
               width="16"
@@ -30,7 +29,7 @@
           </span>
           <span>Dashboard</span>
         </button>
-        <button id="createScript" class="primary tooltip">
+        <button id="createScript" class="primary">
           <span class="btn-icon">
             <svg
               width="16"
@@ -76,9 +75,9 @@
 
     <footer>
       <div>v1.0.0</div>
-      <div><a href="#" id="reportIssue">Report issue</a></div>
+      <div><a href="https://github.com/MrBlankCoding/CodeTweak/issues" id="reportIssue">Report issue</a></div>
     </footer>
 
-    <script src="popup.js"></script>
+    <script type="module" src="popup.js"></script>
   </body>
 </html>

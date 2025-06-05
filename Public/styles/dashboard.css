@@ -190,7 +190,6 @@ header:hover:after {
   margin: 0;
   font-weight: 700;
   background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-  -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   letter-spacing: -0.025em;
   font-size: 1.75rem;
@@ -1789,7 +1788,6 @@ label {
   color: var(--text-secondary);
   margin-bottom: 1rem;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

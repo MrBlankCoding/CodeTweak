@@ -20,12 +20,6 @@ function initDashboard() {
       enableAllScripts: document.getElementById("enableAllScripts"),
       showNotifications: document.getElementById("showNotifications"),
       debugMode: document.getElementById("debugMode"),
-      allowThirdPartyScripts: document.getElementById("allowThirdPartyScripts"),
-      confirmBeforeRunning: document.getElementById("confirmBeforeRunning"),
-    },
-    import: {
-      importBtn: document.getElementById("importBtn"),
-      importInput: document.getElementById("importInput"),
     },
     greasyfork: {
       button: document.getElementById("greasyforkBtn"),
@@ -46,7 +40,6 @@ function initDashboard() {
   loadScripts(elements, state);
   loadSettings(elements.settings);
   setupTabs(elements.tabs, elements.tabContents);
-  initDarkMode();
   setupGreasyfork(elements.greasyfork);
 }
 
@@ -81,15 +74,6 @@ function setupEventListeners(elements, state) {
     filterChangeHandler
   );
   elements.filters.runAtFilter?.addEventListener("change", filterChangeHandler);
-
-  // imports
-  elements.import.importBtn?.addEventListener("click", () => {
-    elements.import.importInput?.click();
-  });
-
-  elements.import.importInput?.addEventListener("change", (event) => {
-    handleScriptImport(event, elements, state);
-  });
 }
 
 function debounce(func, delay) {
@@ -415,16 +399,7 @@ function createActionsCell(script) {
             </svg>`,
       title: "Edit Script",
       handler: () => editScript(script.id),
-    },
-    {
-      icon: `<svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>`,
-      title: "Export Script",
-      handler: () => downloadScript(script),
-    },
+    }
   ];
 
   // check for update button
@@ -511,7 +486,6 @@ async function deleteScript(scriptId) {
       },
     };
 
-    const state = { allScripts: updatedScripts };
     updateWebsiteFilterOptions(updatedScripts, elements.filters.websiteFilter);
     updateScriptsList(updatedScripts, elements);
   } catch (error) {
@@ -540,7 +514,6 @@ async function loadSettings(settingsElements) {
       enableAllScripts: true,
       showNotifications: true,
       debugMode: false,
-      allowThirdPartyScripts: false,
       confirmBeforeRunning: false,
     }).forEach(([key, defaultValue]) => {
       const element = settingsElements[key];
@@ -573,131 +546,6 @@ async function saveSettings(settingsElements) {
   } catch (error) {
     console.error("Error saving settings:", error);
     showNotification("Failed to save settings: " + error.message, "error");
-  }
-}
-
-function downloadScript(script) {
-  try {
-    const scriptData = {
-      name: script.name,
-      author: script.author || "Anonymous",
-      code: script.code,
-      targetUrls: script.targetUrls || [script.targetUrl], // Legacy support
-      runAt: script.runAt,
-      enabled: script.enabled,
-      version: script.version || "1.0.0",
-      description: script.description || "",
-      permissions: {
-        ...script.permissions,
-        cspDisabled: script.permissions?.cspDisabled || false,
-      },
-      settings: {
-        requiresConfirmation: script.settings?.requiresConfirmation || false,
-        showNotifications: script.settings?.showNotifications || false,
-        customCss: script.settings?.customCss || "",
-        customSettings: script.settings?.customSettings || {},
-        elementSelector: script.settings?.elementSelector || "",
-        timeout: script.settings?.timeout || 0,
-        dependencies: script.settings?.dependencies || [],
-        ...script.settings,
-      },
-      exportedAt: new Date().toISOString(),
-      metadata: {
-        scriptId: script.id,
-        createdAt: script.createdAt,
-        updatedAt: script.updatedAt,
-      },
-    };
-
-    const fileName = `${script.name
-      .replace(/[^a-z0-9]/gi, "_")
-      .toLowerCase()}.json`;
-
-    const blob = new Blob([JSON.stringify(scriptData, null, 2)], {
-      type: "application/json",
-    });
-
-    // Download (chrome needs a easier way to downlaod)
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
-    a.style.display = "none";
-    document.body.appendChild(a);
-    a.click();
-
-    // clean up.
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }, 100);
-
-    showNotification(`Exported: ${script.name}`, "success");
-  } catch (error) {
-    console.error("Error exporting script:", error);
-    showNotification("Error exporting script", "error");
-  }
-}
-
-async function handleScriptImport(event, elements, state) {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  try {
-    const fileContent = await file.text();
-    const scriptData = JSON.parse(fileContent);
-    const { settings = {} } = await chrome.storage.local.get("settings");
-
-    // validate 
-    if (
-      !scriptData.name ||
-      !scriptData.code ||
-      (!scriptData.targetUrls && !scriptData.targetUrl)
-    ) {
-      throw new Error("Invalid script file format");
-    }
-
-    let { scripts = [] } = await chrome.storage.local.get("scripts");
-    const newScript = {
-      ...scriptData,
-      id: crypto.randomUUID(),
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      enabled: settings.enableAllScripts !== false,
-      targetUrls: scriptData.targetUrls || [scriptData.targetUrl],
-      permissions: {
-        domAccess: scriptData.permissions?.domAccess ?? true,
-        storageAccess: scriptData.permissions?.storageAccess ?? false,
-        ajaxAccess: scriptData.permissions?.ajaxAccess ?? false,
-        cookieAccess: scriptData.permissions?.cookieAccess ?? false,
-        cspDisabled: scriptData.permissions?.cspDisabled ?? false,
-      },
-    };
-
-    // check for dupes
-    const duplicate = scripts.find((s) => s.name === newScript.name);
-    if (duplicate) {
-      const overwrite = confirm(
-        `Script with name "${newScript.name}" already exists. Do you want to overwrite it?`
-      );
-      if (!overwrite) return;
-      scripts = scripts.filter((s) => s.id !== duplicate.id);
-    }
-
-    scripts.push(newScript);
-    await chrome.storage.local.set({ scripts });
-
-    // finnaly update
-    state.allScripts = scripts;
-    updateWebsiteFilterOptions(scripts, elements.filters.websiteFilter);
-    filterScripts(elements, state);
-    event.target.value = "";
-
-    showNotification("Script imported successfully", "success");
-    chrome.runtime.sendMessage({ action: "scriptsUpdated" });
-  } catch (error) {
-    console.error("Error importing script:", error);
-    showNotification("Failed to import script: " + error.message, "error");
   }
 }
 
