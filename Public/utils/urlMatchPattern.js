@@ -10,13 +10,21 @@ export function urlMatchesPattern(url, pattern) {
     }
 
     // Extract scheme, host, and path from pattern
-    let [schemeHostPart, ...patternPathParts] = pattern.split("/");
-    let patternPath =
-      patternPathParts.length > 0 ? "/" + patternPathParts.join("/") : "/";
+    const protocolSeparatorIndex = pattern.indexOf("://");
+    const patternScheme = pattern.substring(0, protocolSeparatorIndex);
+    const remainingPattern = pattern.substring(protocolSeparatorIndex + 3);
 
-    // Fix handling of the scheme/host part
-    let [patternScheme, ...hostParts] = schemeHostPart.split("://");
-    let patternHost = hostParts.join("://"); // In case there's :// in the hostname (unlikely but safe)
+    // Split remaining pattern into host and path parts
+    const firstSlashIndex = remainingPattern.indexOf("/");
+    let patternHost, patternPath;
+
+    if (firstSlashIndex === -1) {
+      patternHost = remainingPattern;
+      patternPath = "/";
+    } else {
+      patternHost = remainingPattern.substring(0, firstSlashIndex);
+      patternPath = remainingPattern.substring(firstSlashIndex);
+    }
 
     // Create URL object for the input URL
     const urlObj = new URL(url);

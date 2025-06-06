@@ -15,11 +15,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       currentWindow: true,
     });
     currentTabUrl = tab?.url || "";
-  } catch (error) {
-    console.error("Error getting current tab:", error);
+  } catch (err) {
+    console.error("Error getting current tab:", err);
   }
-
-  loadScripts(currentTabUrl);
 
   createScriptBtn.addEventListener("click", () => {
     chrome.tabs.create({
@@ -40,6 +38,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   });
 
+  await loadScripts(currentTabUrl);
+
   async function loadScripts(url) {
     const { scripts = [] } = await chrome.storage.local.get("scripts");
     const matchingScripts = scripts.filter((script) => {
@@ -51,26 +51,25 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (matchingScripts.length === 0) {
       emptyState.style.display = "flex";
-      emptyState.innerHTML =
-        scripts.length > 0
-          ? `
-          <div class="empty-icon">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <circle cx="11" cy="11" r="8"/>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-          </div>
-          <p>No scripts match this page.</p>
-        `
-          : `
-          <div class="empty-icon">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
-              <path d="M14 3v5h5M8 13h8M8 17h8"/>
-            </svg>
-          </div>
-          <p>No scripts yet. Create your first script to enhance websites.</p>
-        `;
+      emptyState.innerHTML = scripts.length
+        ? `
+        <div class="empty-icon">
+          <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </div>
+        <p>No scripts match this page.<br>Create a new script or visit a different page.</p>
+      `
+        : `
+        <div class="empty-icon">
+          <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+            <path d="M14 3v5h5M8 13h8M8 17h8"/>
+          </svg>
+        </div>
+        <p>Ready to enhance the web?<br>Create your first script to get started.</p>
+      `;
       return;
     }
 
@@ -84,48 +83,99 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function createScriptElement(script, index) {
-    const scriptItem = document.createElement("div");
-    scriptItem.className = "script-item";
-    scriptItem.dataset.id = index;
+    const item = document.createElement("div");
+    item.className = "script-item";
+    item.dataset.id = index;
 
-    const scriptInfo = document.createElement("div");
-    scriptInfo.className = "script-info";
+    const toggleContainer = document.createElement("div");
+    toggleContainer.className = "script-toggle";
 
-    const scriptName = document.createElement("div");
-    scriptName.className = "script-name";
-    scriptName.textContent = script.name;
+    const label = document.createElement("label");
+    label.className = "toggle-switch";
+    label.title = script.enabled !== false ? "Disable script" : "Enable script";
 
-    const scriptTarget = document.createElement("div");
-    scriptTarget.className = "script-target";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = script.enabled !== false;
+    checkbox.addEventListener("change", (e) => {
+      e.stopPropagation();
+      toggleScript(script.id, checkbox.checked);
+    });
 
-    const urls = script.targetUrls || [script.targetUrl];
-    const displayUrl =
-      urls.length > 1 ? `${urls[0]} +${urls.length - 1} more` : urls[0];
+    const slider = document.createElement("span");
+    slider.className = "slider";
 
-    scriptTarget.title = urls.join("\n");
-    scriptTarget.innerHTML = `
+    label.appendChild(checkbox);
+    label.appendChild(slider);
+    toggleContainer.appendChild(label);
+
+    const info = document.createElement("div");
+    info.className = "script-info";
+
+    const name = document.createElement("div");
+    name.className = "script-name";
+    name.textContent = script.name;
+
+    const target = document.createElement("div");
+    target.className = "script-target";
+    target.innerHTML = `
       <span class="script-type">${formatRunAt(script.runAt)}</span>
-      <span>${displayUrl}</span>
+      <span class="script-description">${getScriptDescription(script)}</span>
     `;
 
-    scriptInfo.appendChild(scriptName);
-    scriptInfo.appendChild(scriptTarget);
-    scriptItem.appendChild(scriptInfo);
-
-    scriptItem.addEventListener("click", () => {
+    info.appendChild(name);
+    info.appendChild(target);
+    info.addEventListener("click", () => {
       chrome.tabs.create({ url: `editor.html?id=${script.id}` });
     });
 
-    return scriptItem;
+    item.appendChild(toggleContainer);
+    item.appendChild(info);
+
+    if (script.enabled === false) {
+      item.classList.add("script-disabled");
+    }
+
+    return item;
+  }
+
+  async function toggleScript(scriptId, enabled) {
+    try {
+      const { scripts = [] } = await chrome.storage.local.get("scripts");
+      const index = scripts.findIndex((s) => s.id === scriptId);
+      if (index === -1) return;
+
+      scripts[index].enabled = enabled;
+      await chrome.storage.local.set({ scripts });
+      chrome.runtime.sendMessage({ action: "scriptsUpdated" });
+
+      const item = document.querySelector(`[data-id="${index}"]`);
+      if (item) {
+        const label = item.querySelector(".toggle-switch");
+        item.classList.toggle("script-disabled", !enabled);
+        label.title = enabled ? "Disable script" : "Enable script";
+      }
+    } catch (err) {
+      console.error("Error toggling script:", err);
+    }
   }
 
   function formatRunAt(runAt) {
-    const labels = {
+    const map = {
       document_start: "Start",
       document_end: "DOM",
       document_idle: "Load",
       element_ready: "Element",
     };
-    return labels[runAt] || runAt;
+    return map[runAt] || runAt || "Load";
+  }
+
+  function getScriptDescription(script) {
+    const urls = script.targetUrls || [script.targetUrl];
+    const features = [];
+    if (script.css?.trim()) features.push("styles");
+    if (script.js?.trim()) features.push("scripts");
+    const siteText = urls.length > 1 ? `${urls.length} sites` : "Current site";
+    return `${features.join(" + ")} • ${siteText}`;
   }
 });

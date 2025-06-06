@@ -1,112 +1,122 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const RUN_MODES = {
-    ELEMENT_READY: "element_ready",
-  };
+class ScriptEditor {
+  constructor() {
+    this.config = {
+      RUN_MODES: {
+        ELEMENT_READY: "element_ready",
+        DOCUMENT_START: "document_start",
+        DOCUMENT_END: "document_end",
+        DOCUMENT_IDLE: "document_idle",
+      },
+      DEFAULT_VERSION: "1.0.0",
+      SIDEBAR_BREAKPOINT: 900,
+      AUTOSAVE_DELAY: 1220,
+      STATUS_TIMEOUT: 2000,
+    };
 
-  const DEFAULT_VERSION = "1.0.0";
-  const SIDEBAR_BREAKPOINT = 900;
-  const AUTOSAVE_DELAY = 1220;
+    this.state = {
+      isEditMode: false,
+      scriptId: null,
+      hasUnsavedChanges: false,
+      isSidebarVisible: window.innerWidth > this.config.SIDEBAR_BREAKPOINT,
+      lintingEnabled: localStorage.getItem("lintingEnabled") === "true",
+      isAutosaveEnabled: localStorage.getItem("autosaveEnabled") === "true",
+      autosaveTimeout: null,
+      hasUserInteraction: false,
+      codeEditor: null,
+    };
 
-  // cache dom
-  const elements = Object.fromEntries([
-    ["pageTitle", document.getElementById("pageTitle")],
-    ["scriptName", document.getElementById("scriptName")],
-    ["scriptAuthor", document.getElementById("scriptAuthor")],
-    ["targetUrl", document.getElementById("targetUrl")],
-    ["runAt", document.getElementById("runAt")],
-    ["scriptVersion", document.getElementById("scriptVersion")],
-    ["scriptDescription", document.getElementById("scriptDescription")],
-    ["saveBtn", document.getElementById("saveBtn")],
-    ["sidebarToggle", document.getElementById("sidebarToggle")],
-    ["selectorContainer", document.getElementById("selectorContainer")],
-    ["waitForSelector", document.getElementById("waitForSelector")],
-    ["statusMessage", document.getElementById("statusMessage")],
-    ["formatBtn", document.getElementById("formatBtn")],
-    ["lintBtn", document.getElementById("lintBtn")],
-    ["lintBtnText", document.getElementById("lintBtnText")],
-    ["cursorInfo", document.getElementById("cursorInfo")],
-    ["scriptStatusBadge", document.getElementById("scriptStatusBadge")],
-    ["autosaveBtn", document.getElementById("autosaveBtn")],
-    ["autosaveBtnText", document.getElementById("autosaveBtnText")],
-    ["codeEditor", document.getElementById("codeEditor")],
-  ]);
-
-  // I got lazy.
-  elements.sidebar = document.querySelector(".sidebar");
-  elements.sectionToggles = document.querySelectorAll(".section-toggle");
-  elements.mainContent = document.querySelector(".main-content");
-
-  // Main state
-  const state = {
-    isEditMode: false,
-    scriptId: null,
-    isDarkMode: window.matchMedia("(prefers-color-scheme: dark)").matches,
-    hasUnsavedChanges: false,
-    isSidebarVisible: window.innerWidth > SIDEBAR_BREAKPOINT,
-    lintingEnabled: localStorage.getItem("lintingEnabled") === "true",
-    codeEditor: null,
-    isAutosaveEnabled: localStorage.getItem("autosaveEnabled") === "true",
-    autosaveTimeout: null,
-    hasUserInteraction: false,
-  };
-
-  function init() {
-    setDefaultValues();
-    initializeCodeEditor();
-    parseUrlParams(); 
-    setupEditorMode();
-    initializeCollapsibleSections();
-    updateSidebarState();
-    registerEventListeners();
-    setupBackgroundConnection();
-    setTimeout(() => state.codeEditor?.focus(), 100);
+    this.elements = this.cacheElements();
+    this.ui = new UIManager(this.elements, this.state, this.config);
+    this.storage = new StorageManager();
+    this.validator = new FormValidator(this.elements);
   }
 
-  function parseUrlParams() {
-    const urlParams = new URLSearchParams(window.location.search);
-    state.scriptId = urlParams.get("id");
-    const initialTargetUrl = urlParams.get("targetUrl");
-    const template = urlParams.get("template");
-    state.isEditMode = Boolean(state.scriptId);
+  cacheElements() {
+    const elementIds = [
+      "pageTitle",
+      "scriptName",
+      "scriptAuthor",
+      "targetUrl",
+      "runAt",
+      "scriptVersion",
+      "scriptDescription",
+      "saveBtn",
+      "sidebarToggle",
+      "selectorContainer",
+      "waitForSelector",
+      "statusMessage",
+      "formatBtn",
+      "lintBtn",
+      "lintBtnText",
+      "cursorInfo",
+      "scriptStatusBadge",
+      "autosaveBtn",
+      "autosaveBtnText",
+      "codeEditor",
+    ];
 
-    if (initialTargetUrl && elements.targetUrl) {
-      elements.targetUrl.value = decodeURIComponent(initialTargetUrl);
-      addUrlToList(decodeURIComponent(initialTargetUrl));
-    }
-    if (template) {
-      const decodedTemplate = decodeURIComponent(template);
-      state.codeEditor.setValue(`(function() {
-  'use strict';
-  
-${decodedTemplate}
+    const elements = {};
+    elementIds.forEach((id) => {
+      elements[id] = document.getElementById(id);
+    });
 
-})();`);
-      formatCode(false);
-    } else if (!state.isEditMode && !state.codeEditor.getValue()) {
-      insertDefaultTemplate();
+    // Additional elements
+    elements.sidebar = document.querySelector(".sidebar");
+    elements.sectionToggles = document.querySelectorAll(".section-toggle");
+    elements.mainContent = document.querySelector(".main-content");
+    elements.urlList = document.getElementById("urlList");
+    elements.addUrlBtn = document.getElementById("addUrlBtn");
+
+    return elements;
+  }
+
+  /**
+   * Initialize the entire application
+   */
+  async init() {
+    try {
+      this.setDefaultValues();
+      this.initializeCodeEditor();
+      await this.parseUrlParams();
+      this.setupEditorMode();
+      this.ui.initializeCollapsibleSections();
+      this.ui.updateSidebarState();
+      this.registerEventListeners();
+      this.setupBackgroundConnection();
+
+      // Focus editor after initialization
+      setTimeout(() => this.state.codeEditor?.focus(), 100);
+    } catch (error) {
+      console.error("Failed to initialize editor:", error);
+      this.ui.showStatusMessage("Failed to initialize editor", "error");
     }
   }
 
-  function setDefaultValues() {
-    if (!elements.scriptVersion.value) {
-      elements.scriptVersion.value = DEFAULT_VERSION;
+  /**
+   * Set default form values
+   */
+  setDefaultValues() {
+    if (!this.elements.scriptVersion.value) {
+      this.elements.scriptVersion.value = this.config.DEFAULT_VERSION;
     }
-    elements.autosaveBtnText.textContent = `Autosave: ${
-      state.isAutosaveEnabled ? "On" : "Off"
+
+    this.elements.autosaveBtnText.textContent = `Autosave: ${
+      this.state.isAutosaveEnabled ? "On" : "Off"
     }`;
-    elements.lintBtnText.textContent = `Lint: ${
-      state.lintingEnabled ? "On" : "Off"
+    this.elements.lintBtnText.textContent = `Lint: ${
+      this.state.lintingEnabled ? "On" : "Off"
     }`;
   }
 
-  function initializeCodeEditor() {
-    if (!elements.codeEditor) {
-      console.error("Code editor element not found");
-      return;
+  /**
+   * Initialize CodeMirror editor with all configurations
+   */
+  initializeCodeEditor() {
+    if (!this.elements.codeEditor) {
+      throw new Error("Code editor element not found");
     }
 
-    // Code mirror init
-    state.codeEditor = CodeMirror.fromTextArea(elements.codeEditor, {
+    const editorConfig = {
       mode: "javascript",
       theme: "ayu-dark",
       lineNumbers: true,
@@ -121,76 +131,339 @@ ${decodedTemplate}
       showTrailingSpace: true,
       continueComments: true,
       foldGutter: true,
-      lint:
-        typeof getLintOptions === "function"
-          ? getLintOptions(state.lintingEnabled)
-          : false,
+      lint: this.getLintOptions(this.state.lintingEnabled),
       gutters: [
         "CodeMirror-linenumbers",
         "CodeMirror-foldgutter",
         "CodeMirror-lint-markers",
       ],
-      extraKeys: {
-        "Ctrl-Space": "autocomplete",
-        "Ctrl-S": (cm) => {
-          event.preventDefault();
-          saveScript();
-        },
-        "Cmd-S": (cm) => {
-          event.preventDefault();
-          saveScript();
-        },
-        "Alt-F": (cm) => formatCode(true),
-        F11: (cm) => cm.setOption("fullScreen", !cm.getOption("fullScreen")),
-        Esc: (cm) => {
-          if (cm.getOption("fullScreen")) cm.setOption("fullScreen", false);
-        },
-        Tab: (cm) => {
-          if (cm.somethingSelected()) {
-            cm.indentSelection("add");
-          } else {
-            const spaces = " ".repeat(cm.getOption("indentUnit"));
-            cm.replaceSelection(spaces, "end", "+input");
-          }
-        },
-        "Ctrl-/": (cm) => cm.toggleComment({ indent: true }),
-        "Cmd-/": (cm) => cm.toggleComment({ indent: true }),
-      },
       scrollbarStyle: "simple",
-    });
+      extraKeys: this.getEditorKeybindings(),
+    };
 
-    state.codeEditor.on("cursorActivity", (cm) => {
+    this.state.codeEditor = CodeMirror.fromTextArea(
+      this.elements.codeEditor,
+      editorConfig
+    );
+    this.setupEditorEventHandlers();
+  }
+
+  /**
+   * Get editor keybindings configuration
+   */
+  getEditorKeybindings() {
+    return {
+      "Ctrl-Space": "autocomplete",
+      "Ctrl-S": (cm) => {
+        event.preventDefault();
+        this.saveScript();
+      },
+      "Cmd-S": (cm) => {
+        event.preventDefault();
+        this.saveScript();
+      },
+      "Alt-F": (cm) => this.formatCode(true),
+      F11: (cm) => cm.setOption("fullScreen", !cm.getOption("fullScreen")),
+      Esc: (cm) => {
+        if (cm.getOption("fullScreen")) cm.setOption("fullScreen", false);
+      },
+      Tab: (cm) => this.handleTabKey(cm),
+      "Ctrl-/": (cm) => cm.toggleComment({ indent: true }),
+      "Cmd-/": (cm) => cm.toggleComment({ indent: true }),
+    };
+  }
+
+  /**
+   * Handle tab key behavior in editor
+   */
+  handleTabKey(cm) {
+    if (cm.somethingSelected()) {
+      cm.indentSelection("add");
+    } else {
+      const spaces = " ".repeat(cm.getOption("indentUnit"));
+      cm.replaceSelection(spaces, "end", "+input");
+    }
+  }
+
+  /**
+   * Setup editor event handlers
+   */
+  setupEditorEventHandlers() {
+    this.state.codeEditor.on("cursorActivity", (cm) => {
       const cursor = cm.getCursor();
-      if (elements.cursorInfo) {
-        elements.cursorInfo.textContent = `Line: ${cursor.line + 1}, Col: ${
-          cursor.ch + 1
-        }`;
+      if (this.elements.cursorInfo) {
+        this.elements.cursorInfo.textContent = `Line: ${
+          cursor.line + 1
+        }, Col: ${cursor.ch + 1}`;
       }
     });
 
-    state.codeEditor.on("change", () => {
-      if (!state.hasUnsavedChanges) {
-        markAsUnsaved();
+    this.state.codeEditor.on("change", () => {
+      if (!this.state.hasUnsavedChanges) {
+        this.markAsUnsaved();
       }
 
-      if (state.isAutosaveEnabled && state.hasUserInteraction) {
-        triggerAutosave();
+      if (this.state.isAutosaveEnabled && this.state.hasUserInteraction) {
+        this.triggerAutosave();
       }
     });
   }
 
-  function triggerAutosave() {
-    if (state.autosaveTimeout) {
-      clearTimeout(state.autosaveTimeout);
+  /**
+   * Parse URL parameters and setup editor state
+   */
+  async parseUrlParams() {
+    const urlParams = new URLSearchParams(window.location.search);
+    this.state.scriptId = urlParams.get("id");
+    const initialTargetUrl = urlParams.get("targetUrl");
+    const template = urlParams.get("template");
+    this.state.isEditMode = Boolean(this.state.scriptId);
+
+    if (initialTargetUrl && this.elements.targetUrl) {
+      const decodedUrl = decodeURIComponent(initialTargetUrl);
+      this.elements.targetUrl.value = decodedUrl;
+      this.addUrlToList(decodedUrl);
     }
 
-    state.autosaveTimeout = setTimeout(() => {
-      saveScript(true);
-      state.autosaveTimeout = null;
-    }, AUTOSAVE_DELAY);
+    if (template) {
+      const decodedTemplate = decodeURIComponent(template);
+      this.insertTemplateCode(decodedTemplate);
+    } else if (!this.state.isEditMode && !this.state.codeEditor.getValue()) {
+      this.insertDefaultTemplate();
+    }
   }
 
-  function getLintOptions(enable) {
+  /**
+   * Insert template code with proper formatting
+   */
+  insertTemplateCode(template) {
+    const wrappedCode = `(function() {
+  'use strict';
+  
+${template}
+
+})();`;
+    this.state.codeEditor.setValue(wrappedCode);
+    this.formatCode(false);
+  }
+
+  /**
+   * Setup editor mode (edit vs create)
+   */
+  async setupEditorMode() {
+    if (this.state.isEditMode) {
+      await this.loadScript(this.state.scriptId);
+    } else if (!this.state.codeEditor.getValue()) {
+      this.insertDefaultTemplate();
+    }
+
+    this.updateSelectorVisibility();
+    this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
+  }
+
+  /**
+   * Update selector container visibility based on run mode
+   */
+  updateSelectorVisibility() {
+    const isElementReady =
+      this.elements.runAt.value === this.config.RUN_MODES.ELEMENT_READY;
+    this.elements.selectorContainer.style.display = isElementReady
+      ? "block"
+      : "none";
+    this.elements.waitForSelector.required = isElementReady;
+  }
+
+  /**
+   * Register all event listeners
+   */
+  registerEventListeners() {
+    this.setupUserInteractionTracking();
+    this.setupGlobalEventListeners();
+    this.setupButtonEventListeners();
+    this.setupFormEventListeners();
+    this.setupUrlManagement();
+  }
+
+  /**
+   * Setup user interaction tracking
+   */
+  setupUserInteractionTracking() {
+    const trackUserInteraction = () => {
+      this.state.hasUserInteraction = true;
+    };
+
+    document.addEventListener("mousedown", trackUserInteraction, {
+      once: true,
+    });
+    document.addEventListener("keydown", trackUserInteraction, { once: true });
+
+    window.addEventListener("beforeunload", (e) => {
+      if (this.state.hasUnsavedChanges && this.state.hasUserInteraction) {
+        e.preventDefault();
+        e.returnValue =
+          "You have unsaved changes. Are you sure you want to leave?";
+        return e.returnValue;
+      }
+    });
+  }
+
+  /**
+   * Setup global event listeners
+   */
+  setupGlobalEventListeners() {
+    document.addEventListener("click", (e) => this.handleDocumentClick(e));
+    document.addEventListener("keydown", (e) => this.handleKeyDown(e));
+  }
+
+  /**
+   * Setup button event listeners
+   */
+  setupButtonEventListeners() {
+    const buttonHandlers = {
+      sidebarToggle: () => this.ui.toggleSidebar(),
+      lintBtn: () => this.toggleLinting(),
+      saveBtn: () => this.saveScript(),
+      formatBtn: () => this.formatCode(true),
+      autosaveBtn: () => this.toggleAutosave(),
+    };
+
+    Object.entries(buttonHandlers).forEach(([elementKey, handler]) => {
+      if (this.elements[elementKey]) {
+        this.elements[elementKey].addEventListener("click", handler);
+      }
+    });
+  }
+
+  /**
+   * Setup form event listeners
+   */
+  setupFormEventListeners() {
+    this.elements.runAt.addEventListener("change", () => {
+      this.updateSelectorVisibility();
+      this.markAsUnsaved();
+    });
+
+    const formElements = [
+      "scriptName",
+      "scriptAuthor",
+      "scriptVersion",
+      "scriptDescription",
+      "targetUrl",
+      "waitForSelector",
+    ];
+
+    formElements.forEach((elementKey) => {
+      if (this.elements[elementKey]) {
+        this.elements[elementKey].addEventListener("change", () =>
+          this.markAsUnsaved()
+        );
+      }
+    });
+  }
+
+  /**
+   * Setup URL management event listeners
+   */
+  setupUrlManagement() {
+    this.elements.addUrlBtn?.addEventListener("click", () => {
+      const url = this.elements.targetUrl.value.trim();
+      if (url) {
+        this.addUrlToList(url);
+      }
+    });
+
+    this.elements.urlList?.addEventListener("click", (e) => {
+      if (e.target.classList.contains("remove-url-btn")) {
+        e.target.closest(".url-item").remove();
+        this.markAsUnsaved();
+      }
+    });
+
+    this.elements.targetUrl?.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const url = this.elements.targetUrl.value.trim();
+        if (url) {
+          this.addUrlToList(url);
+        }
+      }
+    });
+  }
+
+  /**
+   * Handle document click events
+   */
+  handleDocumentClick(event) {
+    if (
+      window.innerWidth <= this.config.SIDEBAR_BREAKPOINT &&
+      this.elements.sidebar.classList.contains("active") &&
+      !this.elements.sidebar.contains(event.target) &&
+      event.target !== this.elements.sidebarToggle
+    ) {
+      this.state.isSidebarVisible = false;
+      this.ui.updateSidebarState();
+    }
+  }
+
+  /**
+   * Handle global keyboard shortcuts
+   */
+  handleKeyDown(e) {
+    const shortcuts = {
+      s: () => this.saveScript(),
+      b: () => this.ui.toggleSidebar(),
+    };
+
+    if ((e.ctrlKey || e.metaKey) && shortcuts[e.key]) {
+      e.preventDefault();
+      shortcuts[e.key]();
+    }
+  }
+
+  /**
+   * Toggle code linting
+   */
+  toggleLinting() {
+    this.state.lintingEnabled = !this.state.lintingEnabled;
+    this.state.codeEditor.setOption(
+      "lint",
+      this.getLintOptions(this.state.lintingEnabled)
+    );
+    this.elements.lintBtnText.textContent = `Lint: ${
+      this.state.lintingEnabled ? "On" : "Off"
+    }`;
+    localStorage.setItem("lintingEnabled", this.state.lintingEnabled);
+  }
+
+  /**
+   * Toggle autosave functionality
+   */
+  toggleAutosave() {
+    this.state.isAutosaveEnabled = !this.state.isAutosaveEnabled;
+    this.elements.autosaveBtnText.textContent = `Autosave: ${
+      this.state.isAutosaveEnabled ? "On" : "Off"
+    }`;
+    localStorage.setItem("autosaveEnabled", this.state.isAutosaveEnabled);
+  }
+
+  /**
+   * Trigger autosave with debouncing
+   */
+  triggerAutosave() {
+    if (this.state.autosaveTimeout) {
+      clearTimeout(this.state.autosaveTimeout);
+    }
+
+    this.state.autosaveTimeout = setTimeout(() => {
+      this.saveScript(true);
+      this.state.autosaveTimeout = null;
+    }, this.config.AUTOSAVE_DELAY);
+  }
+
+  /**
+   * Get linting configuration
+   */
+  getLintOptions(enable) {
     if (!enable || typeof window.JSHINT === "undefined") return false;
 
     return {
@@ -238,402 +511,210 @@ ${decodedTemplate}
     };
   }
 
-  function initializeCollapsibleSections() {
-    elements.sectionToggles.forEach((toggle) => {
-      toggle.addEventListener("click", function () {
-        this.closest(".collapsible").classList.toggle("collapsed");
-      });
-    });
+  /**
+   * Mark script as having unsaved changes
+   */
+  markAsUnsaved() {
+    this.state.hasUnsavedChanges = true;
+    this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
   }
 
-  function updateSidebarState() {
-    const { sidebar, mainContent } = elements;
-
-    sidebar.classList.toggle("active", state.isSidebarVisible);
-
-    if (window.innerWidth > SIDEBAR_BREAKPOINT) {
-      mainContent.style.gridTemplateColumns = state.isSidebarVisible
-        ? "280px 1fr"
-        : "0 1fr";
-    }
-    setTimeout(() => state.codeEditor?.refresh(), 300);
-  }
-
-  function setupEditorMode() {
-    elements.pageTitle.textContent = state.isEditMode
-      ? "Edit UserScript"
-      : "Create UserScript";
-
-    if (state.isEditMode) {
-      loadScript(state.scriptId);
-    } else if (!state.codeEditor.getValue()) {
-      insertDefaultTemplate();
-    }
-
-    const isElementReady = elements.runAt.value === RUN_MODES.ELEMENT_READY;
-    elements.selectorContainer.style.display = isElementReady
-      ? "block"
-      : "none";
-    elements.waitForSelector.required = isElementReady;
-
-    updateScriptStatus();
-  }
-
-  function registerEventListeners() {
-    const trackUserInteraction = () => {
-      state.hasUserInteraction = true;
-    };
-    document.addEventListener("mousedown", trackUserInteraction, {
-      once: true,
-    });
-    document.addEventListener("keydown", trackUserInteraction, { once: true });
-    window.addEventListener("beforeunload", (e) => {
-      if (state.hasUnsavedChanges && state.hasUserInteraction) {
-        e.preventDefault();
-        e.returnValue =
-          "You have unsaved changes. Are you sure you want to leave?";
-        return e.returnValue;
-      }
-    });
-
-    document.addEventListener("click", handleDocumentClick);
-    document.addEventListener("keydown", handleKeyDown);
-
-    //buttons
-    elements.sidebarToggle.addEventListener("click", toggleSidebar);
-    elements.lintBtn.addEventListener("click", toggleLinting);
-    elements.saveBtn.addEventListener("click", saveScript);
-    elements.formatBtn.addEventListener("click", () => formatCode(true));
-    elements.autosaveBtn.addEventListener("click", toggleAutosave);
-
-    // form
-    elements.runAt.addEventListener("change", function () {
-      const isElementReady = this.value === RUN_MODES.ELEMENT_READY;
-      elements.selectorContainer.style.display = isElementReady
-        ? "block"
-        : "none";
-      elements.waitForSelector.required = isElementReady;
-      markAsUnsaved();
-    });
-    const formElements = [
-      elements.scriptName,
-      elements.scriptAuthor,
-      elements.scriptVersion,
-      elements.scriptDescription,
-      elements.targetUrl,
-      elements.waitForSelector,
-    ];
-
-    formElements.forEach((element) => {
-      if (element) {
-        element.addEventListener("change", markAsUnsaved);
-      }
-    });
-
-    document.getElementById("addUrlBtn").addEventListener("click", () => {
-      const url = elements.targetUrl.value.trim();
-      if (url) {
-        addUrlToList(url);
-      }
-    });
-
-    document.getElementById("urlList").addEventListener("click", (e) => {
-      if (e.target.classList.contains("remove-url-btn")) {
-        e.target.closest(".url-item").remove();
-        markAsUnsaved();
-      }
-    });
-    // Handle Enter key for adding URLS (We all like our shortcuts)
-    elements.targetUrl.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        const url = elements.targetUrl.value.trim();
-        if (url) {
-          addUrlToList(url);
-        }
-      }
-    });
-  }
-
-  function handleDocumentClick(event) {
-    if (
-      window.innerWidth <= SIDEBAR_BREAKPOINT &&
-      elements.sidebar.classList.contains("active") &&
-      !elements.sidebar.contains(event.target) &&
-      event.target !== elements.sidebarToggle
-    ) {
-      state.isSidebarVisible = false;
-      updateSidebarState();
-    }
-  }
-
-  function handleKeyDown(e) {
-    if ((e.ctrlKey || e.metaKey) && e.key === "s") {
-      e.preventDefault();
-      saveScript();
-    }
-    // Toggle sidebar
-    if ((e.ctrlKey || e.metaKey) && e.key === "b") {
-      e.preventDefault();
-      toggleSidebar(e);
-    }
-  }
-
-  function toggleSidebar(e) {
-    if (e) e.stopPropagation();
-    state.isSidebarVisible = !state.isSidebarVisible;
-    updateSidebarState();
-  }
-
-  function toggleLinting() {
-    state.lintingEnabled = !state.lintingEnabled;
-    state.codeEditor.setOption("lint", getLintOptions(state.lintingEnabled));
-    elements.lintBtnText.textContent = `Lint: ${
-      state.lintingEnabled ? "On" : "Off"
-    }`;
-    localStorage.setItem("lintingEnabled", state.lintingEnabled);
-  }
-
-  function toggleAutosave() {
-    state.isAutosaveEnabled = !state.isAutosaveEnabled;
-    elements.autosaveBtnText.textContent = `Autosave: ${
-      state.isAutosaveEnabled ? "On" : "Off"
-    }`;
-    localStorage.setItem("autosaveEnabled", state.isAutosaveEnabled);
-  }
-
-  function markAsUnsaved() {
-    state.hasUnsavedChanges = true;
-    updateScriptStatus();
-  }
-
-  function insertDefaultTemplate() {
-    state.codeEditor.setValue(`(function() {
+  /**
+   * Insert default template code
+   */
+  insertDefaultTemplate() {
+    const defaultCode = `(function() {
   'use strict';
   
   // Your code here...
   console.log('CodeTweak: Custom script is running!');
 
-})();`);
+})();`;
 
-    formatCode(false);
+    this.state.codeEditor.setValue(defaultCode);
+    this.formatCode(false);
   }
 
-  function generateUniqueId() {
-    return `${Date.now().toString(36)}${Math.random()
-      .toString(36)
-      .substring(2)}`;
-  }
-
-  async function loadScript(id) {
+  /**
+   * Load script data from storage
+   */
+  async loadScript(id) {
     try {
-      const { scripts = [] } = await chrome.storage.local.get("scripts");
-      const script = scripts.find((s) => s.id === id);
-
+      const script = await this.storage.getScript(id);
       if (!script) {
-        showStatusMessage("Script not found.", "error");
+        this.ui.showStatusMessage("Script not found.", "error");
         return;
       }
 
-      elements.scriptName.value = script.name || "";
-      elements.scriptAuthor.value = script.author || "";
-      script.targetUrls.forEach((url) => addUrlToList(url));
-      elements.runAt.value = script.runAt || "document_idle";
-      elements.scriptVersion.value = script.version || DEFAULT_VERSION;
-      elements.scriptDescription.value = script.description || "";
-      state.codeEditor.setValue(script.code || "");
-
-      if (script.runAt === RUN_MODES.ELEMENT_READY) {
-        elements.selectorContainer.style.display = "block";
-        elements.waitForSelector.value = script.waitForSelector || "";
-      }
-
-      state.hasUnsavedChanges = false;
-      updateScriptStatus();
+      this.populateFormWithScript(script);
+      this.state.hasUnsavedChanges = false;
+      this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
     } catch (error) {
       console.error("Error loading script:", error);
-      showStatusMessage(`Failed to load script: ${error.message}`, "error");
+      this.ui.showStatusMessage(
+        `Failed to load script: ${error.message}`,
+        "error"
+      );
     }
   }
 
-  function validateForm() {
-    if (!elements.scriptName.value.trim()) {
-      showStatusMessage("Please enter a script name.", "error");
-      return false;
-    }
-    const urlList = Array.from(document.querySelectorAll(".url-item")).map(
-      (item) => item.dataset.url
-    );
-    const currentUrl = elements.targetUrl.value.trim();
+  /**
+   * Populate form fields with script data
+   */
+  populateFormWithScript(script) {
+    this.elements.scriptName.value = script.name || "";
+    this.elements.scriptAuthor.value = script.author || "";
+    this.elements.runAt.value = script.runAt || "document_idle";
+    this.elements.scriptVersion.value =
+      script.version || this.config.DEFAULT_VERSION;
+    this.elements.scriptDescription.value = script.description || "";
+    this.state.codeEditor.setValue(script.code || "");
 
-    if (urlList.length === 0 && !currentUrl) {
-      showStatusMessage("Please add at least one target URL.", "error");
-      return false;
-    }
+    script.targetUrls?.forEach((url) => this.addUrlToList(url));
 
-    if (
-      elements.runAt.value === RUN_MODES.ELEMENT_READY &&
-      !elements.waitForSelector.value.trim()
-    ) {
-      showStatusMessage("Please specify an element selector.", "error");
-      return false;
+    if (script.runAt === this.config.RUN_MODES.ELEMENT_READY) {
+      this.elements.selectorContainer.style.display = "block";
+      this.elements.waitForSelector.value = script.waitForSelector || "";
     }
-    return true;
   }
 
-  function gatherScriptData() {
+  /**
+   * Gather script data from form
+   */
+  gatherScriptData() {
     const urlList = Array.from(document.querySelectorAll(".url-item")).map(
       (item) => item.dataset.url
     );
-    const currentUrl = elements.targetUrl.value.trim();
+
+    const currentUrl = this.elements.targetUrl.value.trim();
     if (currentUrl && !urlList.includes(currentUrl)) {
       urlList.push(currentUrl);
     }
 
     const scriptData = {
-      name: elements.scriptName.value.trim(),
-      author: elements.scriptAuthor.value.trim() || "Anonymous",
+      name: this.elements.scriptName.value.trim(),
+      author: this.elements.scriptAuthor.value.trim() || "Anonymous",
       targetUrls: urlList,
-      runAt: elements.runAt.value,
-      version: elements.scriptVersion.value.trim() || DEFAULT_VERSION,
-      description: elements.scriptDescription.value.trim(),
-      code: state.codeEditor.getValue(),
+      runAt: this.elements.runAt.value,
+      version:
+        this.elements.scriptVersion.value.trim() || this.config.DEFAULT_VERSION,
+      description: this.elements.scriptDescription.value.trim(),
+      code: this.state.codeEditor.getValue(),
       enabled: true,
       updatedAt: new Date().toISOString(),
     };
 
-    if (elements.runAt.value === RUN_MODES.ELEMENT_READY) {
-      scriptData.waitForSelector = elements.waitForSelector.value.trim();
+    if (this.elements.runAt.value === this.config.RUN_MODES.ELEMENT_READY) {
+      scriptData.waitForSelector = this.elements.waitForSelector.value.trim();
     }
 
     return scriptData;
   }
 
-  async function saveScript(quiet = false) {
+  /**
+   * Save script to storage
+   */
+  async saveScript(quiet = false) {
     try {
-      if (!validateForm()) return;
+      if (!this.validator.validateForm()) return;
 
-      const scriptData = gatherScriptData();
-      const { scripts = [] } = await chrome.storage.local.get("scripts");
+      const scriptData = this.gatherScriptData();
+      const savedScript = await this.storage.saveScript(
+        scriptData,
+        this.state.scriptId,
+        this.state.isEditMode
+      );
 
-      if (state.isEditMode && state.scriptId) {
-        const scriptIndex = scripts.findIndex((s) => s.id === state.scriptId);
-        if (scriptIndex !== -1) {
-          scriptData.id = state.scriptId;
-          scriptData.createdAt =
-            scripts[scriptIndex].createdAt || scriptData.updatedAt;
-          scripts[scriptIndex] = scriptData;
-        } else {
-          if (!quiet) showStatusMessage("Script not found.", "error");
-          return;
-        }
-      } else {
-        scriptData.id = generateUniqueId();
-        scriptData.createdAt = scriptData.updatedAt;
-        scripts.push(scriptData);
-      }
-
-      await chrome.storage.local.set({ scripts });
-
-      // Notify bg. (This code is cauing some weird behavior, need to investigate)
-      try {
-        const port = chrome.runtime.connect({ name: "CodeTweak" });
-        await new Promise((resolve) => {
-          chrome.runtime.sendMessage(
-            { action: "scriptsUpdated" },
-            (response) => {
-              if (chrome.runtime.lastError) {
-                console.warn(
-                  "Background sync warning:",
-                  chrome.runtime.lastError
-                );
-                // Continue 
-              }
-              resolve();
-            }
-          );
-        });
-      } catch (error) {
-        // Log 
-        console.warn("Background sync warning:", error);
-      }
-      if (!state.isEditMode) {
-        state.isEditMode = true;
-        state.scriptId = scriptData.id;
-        window.history.replaceState({}, "", `editor.html?id=${scriptData.id}`);
-      }
-
-      state.hasUnsavedChanges = false;
-      updateScriptStatus();
+      this.updateEditorStateAfterSave(savedScript);
+      this.state.hasUnsavedChanges = false;
+      this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
 
       if (!quiet) {
-        showStatusMessage("Script saved successfully!", "success");
-        setTimeout(clearStatusMessage, 2000);
+        this.ui.showStatusMessage("Script saved successfully!", "success");
+        setTimeout(
+          () => this.ui.clearStatusMessage(),
+          this.config.STATUS_TIMEOUT
+        );
       }
+
+      this.notifyBackgroundScript();
     } catch (error) {
       console.error("Error saving script:", error);
       if (!quiet) {
-        showStatusMessage(`Failed to save script: ${error.message}`, "error");
+        this.ui.showStatusMessage(
+          `Failed to save script: ${error.message}`,
+          "error"
+        );
       }
     }
   }
 
-  function formatCode(showMessage = true) {
+  /**
+   * Update editor state after successful save
+   */
+  updateEditorStateAfterSave(savedScript) {
+    if (!this.state.isEditMode) {
+      this.state.isEditMode = true;
+      this.state.scriptId = savedScript.id;
+      window.history.replaceState({}, "", `editor.html?id=${savedScript.id}`);
+    }
+  }
+
+  /**
+   * Notify background script of changes
+   */
+  async notifyBackgroundScript() {
     try {
-      const editor = state.codeEditor;
-      if (!editor) throw new Error("Code editor not initialized");
+      const port = chrome.runtime.connect({ name: "CodeTweak" });
+      await new Promise((resolve) => {
+        chrome.runtime.sendMessage({ action: "scriptsUpdated" }, (response) => {
+          if (chrome.runtime.lastError) {
+            console.warn("Background sync warning:", chrome.runtime.lastError);
+          }
+          resolve();
+        });
+      });
+    } catch (error) {
+      console.warn("Background sync warning:", error);
+    }
+  }
 
-      const unformattedCode = editor.getValue();
+  /**
+   * Format code using js-beautify
+   */
+  formatCode(showMessage = true) {
+    try {
+      if (!this.state.codeEditor) {
+        throw new Error("Code editor not initialized");
+      }
 
+      const unformattedCode = this.state.codeEditor.getValue();
       const formattedCode = js_beautify(unformattedCode, {
         indent_size: 2,
         space_in_empty_paren: true,
       });
 
-      editor.setValue(formattedCode);
+      this.state.codeEditor.setValue(formattedCode);
 
       if (showMessage) {
-        showStatusMessage("Code formatted", "success");
-        setTimeout(clearStatusMessage, 2000);
+        this.ui.showStatusMessage("Code formatted", "success");
+        setTimeout(
+          () => this.ui.clearStatusMessage(),
+          this.config.STATUS_TIMEOUT
+        );
       }
     } catch (error) {
       console.error("Error formatting code:", error);
       if (showMessage) {
-        showStatusMessage("Could not format code", "error");
+        this.ui.showStatusMessage("Could not format code", "error");
       }
     }
-  }  
-
-  function updateScriptStatus() {
-    const badge = elements.scriptStatusBadge;
-
-    if (state.hasUnsavedChanges) {
-      badge.textContent = "Unsaved Changes";
-      badge.style.backgroundColor = state.isDarkMode ? "#4B5563" : "#F3F4F6";
-      badge.style.color = state.isDarkMode ? "#D1D5DB" : "#4B5563";
-    } else {
-      badge.textContent = "Saved";
-      badge.style.backgroundColor = state.isDarkMode ? "#065F46" : "#D1FAE5";
-      badge.style.color = state.isDarkMode ? "#A7F3D0" : "#065F46";
-    }
   }
 
-  function showStatusMessage(message, type = "success") {
-    const { statusMessage } = elements;
-    statusMessage.textContent = message;
-    statusMessage.className = `status-message ${type}`;
-    statusMessage.style.display = "block";
-  }
-
-  function clearStatusMessage() {
-    const { statusMessage } = elements;
-    statusMessage.textContent = "";
-    statusMessage.className = "status-message";
-    statusMessage.style.display = "none";
-  }
-
-  function addUrlToList(url) {
-    const urlList = document.getElementById("urlList");
+  /**
+   * Add URL to the target URL list
+   */
+  addUrlToList(url) {
     const urlItem = document.createElement("div");
     urlItem.className = "url-item";
     urlItem.dataset.url = url;
@@ -641,12 +722,16 @@ ${decodedTemplate}
       <span>${url}</span>
       <button type="button" class="remove-url-btn">×</button>
     `;
-    urlList.appendChild(urlItem);
-    elements.targetUrl.value = "";
-    markAsUnsaved();
+
+    this.elements.urlList.appendChild(urlItem);
+    this.elements.targetUrl.value = "";
+    this.markAsUnsaved();
   }
 
-  function setupBackgroundConnection() {
+  /**
+   * Setup background connection
+   */
+  setupBackgroundConnection() {
     try {
       const port = chrome.runtime.connect({ name: "CodeTweak" });
       port.onDisconnect.addListener(() => {
@@ -656,6 +741,176 @@ ${decodedTemplate}
       console.warn("Initial background connection failed:", error);
     }
   }
+}
 
-  init();
+/**
+ * UI Manager - Handles all UI-related operations
+ */
+class UIManager {
+  constructor(elements, state, config) {
+    this.elements = elements;
+    this.state = state;
+    this.config = config;
+  }
+
+  initializeCollapsibleSections() {
+    this.elements.sectionToggles.forEach((toggle) => {
+      toggle.addEventListener("click", function () {
+        this.closest(".collapsible").classList.toggle("collapsed");
+      });
+    });
+  }
+
+  updateSidebarState() {
+    const { sidebar, mainContent } = this.elements;
+
+    sidebar.classList.toggle("active", this.state.isSidebarVisible);
+
+    if (window.innerWidth > this.config.SIDEBAR_BREAKPOINT) {
+      mainContent.style.gridTemplateColumns = this.state.isSidebarVisible
+        ? "280px 1fr"
+        : "0 1fr";
+    }
+
+    setTimeout(() => this.state.codeEditor?.refresh(), 300);
+  }
+
+  toggleSidebar(e) {
+    if (e) e.stopPropagation();
+    this.state.isSidebarVisible = !this.state.isSidebarVisible;
+    this.updateSidebarState();
+  }
+
+  updateScriptStatus(hasUnsavedChanges) {
+    const badge = this.elements.scriptStatusBadge;
+
+    if (hasUnsavedChanges) {
+      badge.textContent = "Unsaved Changes";
+      badge.style.backgroundColor = "#4B5563"; // dark gray
+      badge.style.color = "#D1D5DB"; // light gray
+    } else {
+      badge.textContent = "Saved";
+      badge.style.backgroundColor = "#065F46"; // dark green
+      badge.style.color = "#A7F3D0"; // light green
+    }
+  }
+
+  showStatusMessage(message, type = "success") {
+    const { statusMessage } = this.elements;
+    statusMessage.textContent = message;
+    statusMessage.className = `status-message ${type}`;
+    statusMessage.style.display = "block";
+  }
+
+  clearStatusMessage() {
+    const { statusMessage } = this.elements;
+    statusMessage.textContent = "";
+    statusMessage.className = "status-message";
+    statusMessage.style.display = "none";
+  }
+}
+
+/**
+ * Storage Manager - Handles all storage operations
+ */
+class StorageManager {
+  async getScript(id) {
+    const { scripts = [] } = await chrome.storage.local.get("scripts");
+    return scripts.find((s) => s.id === id);
+  }
+
+  async saveScript(scriptData, scriptId, isEditMode) {
+    const { scripts = [] } = await chrome.storage.local.get("scripts");
+
+    if (isEditMode && scriptId) {
+      const scriptIndex = scripts.findIndex((s) => s.id === scriptId);
+      if (scriptIndex !== -1) {
+        scriptData.id = scriptId;
+        scriptData.createdAt =
+          scripts[scriptIndex].createdAt || scriptData.updatedAt;
+        scripts[scriptIndex] = scriptData;
+      } else {
+        throw new Error("Script not found");
+      }
+    } else {
+      scriptData.id = this.generateUniqueId();
+      scriptData.createdAt = scriptData.updatedAt;
+      scripts.push(scriptData);
+    }
+
+    await chrome.storage.local.set({ scripts });
+    return scriptData;
+  }
+
+  generateUniqueId() {
+    return `${Date.now().toString(36)}${Math.random()
+      .toString(36)
+      .substring(2)}`;
+  }
+}
+
+/**
+ * Form Validator - Handles form validation
+ */
+class FormValidator {
+  constructor(elements) {
+    this.elements = elements;
+  }
+
+  validateForm() {
+    const validations = [
+      this.validateScriptName(),
+      this.validateTargetUrls(),
+      this.validateElementSelector(),
+    ];
+
+    return validations.every((validation) => validation.isValid);
+  }
+
+  validateScriptName() {
+    if (!this.elements.scriptName.value.trim()) {
+      this.showValidationError("Please enter a script name.");
+      return { isValid: false };
+    }
+    return { isValid: true };
+  }
+
+  validateTargetUrls() {
+    const urlList = Array.from(document.querySelectorAll(".url-item")).map(
+      (item) => item.dataset.url
+    );
+    const currentUrl = this.elements.targetUrl.value.trim();
+
+    if (urlList.length === 0 && !currentUrl) {
+      this.showValidationError("Please add at least one target URL.");
+      return { isValid: false };
+    }
+    return { isValid: true };
+  }
+
+  validateElementSelector() {
+    if (
+      this.elements.runAt.value === "element_ready" &&
+      !this.elements.waitForSelector.value.trim()
+    ) {
+      this.showValidationError("Please specify an element selector.");
+      return { isValid: false };
+    }
+    return { isValid: true };
+  }
+
+  showValidationError(message) {
+    const statusMessage = this.elements.statusMessage;
+    statusMessage.textContent = message;
+    statusMessage.className = "status-message error";
+    statusMessage.style.display = "block";
+  }
+}
+
+// Initialize the application when DOM is ready
+document.addEventListener("DOMContentLoaded", () => {
+  const editor = new ScriptEditor();
+  editor.init().catch((error) => {
+    console.error("Failed to initialize script editor:", error);
+  });
 });
