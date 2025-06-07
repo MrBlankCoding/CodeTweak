@@ -1,11 +1,9 @@
 import { urlMatchesPattern } from "./utils/urlMatchPattern.js";
-
-const INJECTION_TYPES = Object.freeze({
-  DOCUMENT_START: "document_start",
-  DOCUMENT_END: "document_end",
-  DOCUMENT_IDLE: "document_idle",
-  ELEMENT_READY: "element_ready",
-});
+import {
+  injectScriptsForStage,
+  handleElementFound as handleElementFoundInjection,
+  INJECTION_TYPES,
+} from "./utils/inject.js";
 
 let scriptCache = null;
 let lastCacheUpdate = 0;
@@ -98,129 +96,6 @@ async function getFilteredScripts(url, runAt) {
   );
 }
 
-async function injectScriptsForStage(details, runAt) {
-  if (details.frameId !== 0) return;
-  try {
-    const { settings = {} } = await chrome.storage.local.get("settings");
-    const url = details.url;
-
-    const tabId = details.tabId;
-    if (!executedScripts.has(tabId)) executedScripts.set(tabId, new Set());
-    const tabScripts = executedScripts.get(tabId);
-
-    if (runAt === INJECTION_TYPES.DOCUMENT_START) tabScripts.clear();
-
-    const matching = await getFilteredScripts(url, runAt);
-    const newScripts = matching.filter((s) => !tabScripts.has(s.id));
-
-    if (newScripts.length) bypassTrustedTypes(tabId);
-
-    for (const script of newScripts) {
-      tabScripts.add(script.id);
-      injectScriptDirectly(
-        tabId,
-        script.code,
-        script.name,
-        settings,
-        script.id
-      );
-    }
-
-    if (runAt === INJECTION_TYPES.DOCUMENT_IDLE) {
-      const readyScripts = await getFilteredScripts(
-        url,
-        INJECTION_TYPES.ELEMENT_READY
-      );
-      const newReady = readyScripts.filter((s) => !tabScripts.has(s.id));
-      if (newReady.length) {
-        chrome.tabs
-          .sendMessage(tabId, { action: "waitForElements", scripts: newReady })
-          .catch(console.warn);
-      }
-    }
-  } catch (err) {
-    console.error("Injection error:", err);
-  }
-}
-
-async function injectScriptDirectly(
-  tabId,
-  code,
-  scriptName,
-  settings,
-  scriptId
-) {
-  try {
-    const tab = await chrome.tabs.get(tabId);
-    if (!tab) return;
-
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      world: "MAIN",
-      func: (code, scriptId) => {
-        try {
-          window._executedScriptIds = window._executedScriptIds || new Set();
-          if (window._executedScriptIds.has(scriptId)) return;
-          window._executedScriptIds.add(scriptId);
-          eval(code);
-        } catch (e) {
-          console.error("Script error:", e);
-        }
-      },
-      args: [code, scriptId || code.slice(0, 100)],
-    });
-
-    if (settings.showNotifications) showNotification(tabId, scriptName);
-  } catch (err) {
-    console.warn("Direct injection failed:", err);
-  }
-}
-
-function showNotification(tabId, scriptName) {
-  chrome.scripting.executeScript({
-    target: { tabId },
-    world: "MAIN",
-    func: (name) => {
-      const div = document.createElement("div");
-      div.textContent = `\u2713 ${name}`;
-      Object.assign(div.style, {
-        position: "fixed",
-        bottom: "16px",
-        right: "16px",
-        zIndex: 999999,
-        background: "rgba(33, 150, 243, 0.95)",
-        color: "white",
-        padding: "6px 12px",
-        borderRadius: "8px",
-        fontSize: "12px",
-        fontFamily: "system-ui, sans-serif",
-        pointerEvents: "none",
-      });
-      document.body.appendChild(div);
-      setTimeout(() => div.remove(), 2000);
-    },
-    args: [scriptName || "Unknown script"],
-  });
-}
-
-function bypassTrustedTypes(tabId) {
-  chrome.scripting.executeScript({
-    target: { tabId },
-    world: "MAIN",
-    func: () => {
-      try {
-        window.trustedTypes.createPolicy = () => ({
-          createHTML: (x) => x,
-          createScript: (x) => x,
-          createScriptURL: (x) => x,
-        });
-      } catch (e) {
-        console.error("Bypass failed:", e);
-      }
-    },
-  });
-}
-
 async function handleScriptCreation(url, template) {
   try {
     const { scripts = [] } = await chrome.storage.local.get("scripts");
@@ -265,29 +140,18 @@ async function handleScriptCreation(url, template) {
 }
 
 function handleElementFound(message) {
-  const { tabId, scriptCode, scriptId } = message;
-  if (!tabId) return;
-  chrome.tabs
-    .get(tabId)
-    .then((tab) => {
-      if (!tab || !scriptCode || !scriptId) return;
-      const tabScripts = executedScripts.get(tabId) || new Set();
-      if (!tabScripts.has(scriptId)) {
-        injectScriptDirectly(
-          tab.id,
-          scriptCode,
-          "Element Ready Script",
-          {},
-          scriptId
-        );
-      }
-    })
-    .catch(() => console.warn("Tab not found for elementFound"));
+  handleElementFoundInjection(message, executedScripts);
 }
 
+// Web navigation event handlers
 ["onCommitted", "onDOMContentLoaded", "onCompleted"].forEach((event, index) => {
   chrome.webNavigation[event].addListener((details) =>
-    injectScriptsForStage(details, Object.values(INJECTION_TYPES)[index])
+    injectScriptsForStage(
+      details,
+      Object.values(INJECTION_TYPES)[index],
+      getFilteredScripts,
+      executedScripts
+    )
   );
 });
 

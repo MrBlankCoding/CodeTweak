@@ -1,125 +1,104 @@
+/**
+ * URL support for wildcards
+ * People usally mess this stuff up so we need to be flexible
+ * Supports:
+ *   - Wildcards in host (e.g., *.example.com, *oogle.com)
+ *   - Wildcards in path (e.g., /foo/*, /foo/**)
+ *   - Wildcard schemes (*://)
+ */
 export function urlMatchesPattern(url, pattern) {
   try {
-    // Handle edge cases
-    if (pattern === url) return true;
+    // Edge cases
     if (!url || !pattern) return false;
+    if (pattern === url) return true;
 
-    // Normalize pattern if missing scheme
+    // Ensure it has a host
     if (!pattern.includes("://")) {
       pattern = "*://" + pattern;
     }
 
-    // Extract scheme, host, and path from pattern
-    const protocolSeparatorIndex = pattern.indexOf("://");
-    const patternScheme = pattern.substring(0, protocolSeparatorIndex);
-    const remainingPattern = pattern.substring(protocolSeparatorIndex + 3);
+    // Get the host and the path
+    const [patternScheme, patternRest] = pattern.split("://");
+    const [patternHost, ...pathParts] = patternRest.split("/");
+    const patternPath = "/" + pathParts.join("/");
 
-    // Split remaining pattern into host and path parts
-    const firstSlashIndex = remainingPattern.indexOf("/");
-    let patternHost, patternPath;
-
-    if (firstSlashIndex === -1) {
-      patternHost = remainingPattern;
-      patternPath = "/";
-    } else {
-      patternHost = remainingPattern.substring(0, firstSlashIndex);
-      patternPath = remainingPattern.substring(firstSlashIndex);
-    }
-
-    // Create URL object for the input URL
     const urlObj = new URL(url);
-    const urlPath = urlObj.pathname;
 
-    // Handle scheme matching
-    if (
-      patternScheme !== "*" &&
-      patternScheme !== urlObj.protocol.slice(0, -1)
-    ) {
+    // === SCHEME MATCHING ===
+    const urlScheme = urlObj.protocol.slice(0, -1); // remove the ":"
+    if (patternScheme !== "*" && patternScheme !== urlScheme) {
       return false;
     }
 
-    // Handle host matching with wildcards
-    if (patternHost.startsWith("*.")) {
-      // *.domain.com pattern - match domain or any subdomain
+    // === HOST MATCHING ===
+    const urlHost = urlObj.hostname;
+    if (patternHost === "*") {
+      // Match for any host
+    } else if (patternHost.startsWith("*.")) {
+      // Subdomain matching
       const domain = patternHost.slice(2);
-      if (
-        !(urlObj.hostname === domain || urlObj.hostname.endsWith("." + domain))
-      ) {
+      if (!(urlHost === domain || urlHost.endsWith("." + domain))) {
         return false;
       }
     } else if (patternHost.includes("*")) {
-      // Handle other wildcards in hostname
+      // General Matching
       const hostRegex = new RegExp(
         "^" + patternHost.replace(/\./g, "\\.").replace(/\*/g, ".*") + "$"
       );
-      if (!hostRegex.test(urlObj.hostname)) {
+      if (!hostRegex.test(urlHost)) {
         return false;
       }
-    } else if (patternHost !== "*" && patternHost !== urlObj.hostname) {
-      // Direct hostname match
-      return false;
+    } else {
+      // Direct match
+      if (urlHost !== patternHost) {
+        return false;
+      }
     }
 
-    // If pattern path is empty or just "/" or "/*", match any path
-    if (patternPath === "/" || patternPath === "/*") {
+    // === PATH MATCHING ===
+    const urlPath = urlObj.pathname;
+
+    // Match root and all paths
+    if (["/", "/*"].includes(patternPath)) {
       return true;
     }
 
-    // Handle special case for /** at the end
+    // Special case: /** means match this path and everything under it
     if (patternPath.endsWith("/**")) {
       const basePath = patternPath.slice(0, -3);
       return urlPath === basePath || urlPath.startsWith(basePath);
     }
 
-    // Handle path matching with both * and ** wildcards
-    const pathSegments = patternPath
-      .split("/")
-      .filter((segment) => segment !== "");
-    const urlSegments = urlPath.split("/").filter((segment) => segment !== "");
+    // Build the final regex for the path
+    const segments = patternPath.split("/").filter(Boolean); // remove any empty segments
+    const regexParts = ["^"];
 
-    // Simple case: if pattern is just /* match any single-level path
-    if (pathSegments.length === 1 && pathSegments[0] === "*") {
-      return true;
-    }
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
 
-    let pathRegexParts = ["^"];
-    let i = 0;
-
-    for (i = 0; i < pathSegments.length; i++) {
-      const segment = pathSegments[i];
-
-      // Handle ** wildcard (matches across multiple path segments)
       if (segment === "**") {
-        // If this is the last segment, match anything that follows
-        if (i === pathSegments.length - 1) {
-          pathRegexParts.push(".*");
-          break;
+        // Match everything until next segment
+        if (i === segments.length - 1) {
+          regexParts.push("(?:\\/.*)?");
+        } else {
+          // Non-last segment, match until next segment
+          const next = segments[i + 1]
+            .replace(/\*/g, "[^/]*")
+            .replace(/\./g, "\\.");
+          regexParts.push(`(?:\\/.*?\\/${next})`);
+          i++; // Skip next
         }
-
-        // Otherwise, match anything until we find the next segment
-        const nextSegment = pathSegments[i + 1];
-        const nextSegmentRegex = nextSegment
-          .replace(/\*/g, "[^/]*")
-          .replace(/\./g, "\\.");
-
-        pathRegexParts.push(`(?:.*?\\/)?${nextSegmentRegex}`);
-        i++; // Skip the next segment as we've already included it
       } else {
-        // Handle regular segment with potential * wildcards
+        // Match segment with possible wildcar
         const segmentRegex = segment
           .replace(/\*/g, "[^/]*")
           .replace(/\./g, "\\.");
-        if (i === 0) {
-          pathRegexParts.push(`\\/?${segmentRegex}`); // Make the first slash optional
-        } else {
-          pathRegexParts.push(`\\/${segmentRegex}`);
-        }
+        regexParts.push(`\\/${segmentRegex}`);
       }
     }
 
-    pathRegexParts.push("$");
-    const pathRegex = new RegExp(pathRegexParts.join(""));
-
+    regexParts.push("$");
+    const pathRegex = new RegExp(regexParts.join(""));
     return pathRegex.test(urlPath);
   } catch (error) {
     console.warn("URL matching error:", error);
