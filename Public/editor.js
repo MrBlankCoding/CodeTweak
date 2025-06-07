@@ -143,6 +143,17 @@ class ScriptEditor {
       this.elements.codeEditor,
       editorConfig
     );
+    
+    this.state.codeEditor.on("inputRead", (cm, change) => {
+      if (
+        change.text[0] &&
+        /[\w.]/.test(change.text[0]) &&
+        !cm.state.completionActive
+      ) {
+        CodeMirror.commands.autocomplete(cm, null, { completeSingle: false });
+      }
+    });
+
     this.setupEditorEventHandlers();
   }
 
