@@ -164,8 +164,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const map = {
       document_start: "Start",
       document_end: "DOM",
-      document_idle: "Load",
-      element_ready: "Element",
+      document_idle: "Load"
     };
     return map[runAt] || runAt || "Load";
   }

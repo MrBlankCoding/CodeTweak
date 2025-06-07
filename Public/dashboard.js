@@ -499,7 +499,6 @@ function formatRunAt(runAt) {
     document_start: "Page Start",
     document_end: "DOM Ready",
     document_idle: "Page Load",
-    element_ready: "Element Ready",
   };
 
   return formats[runAt] || runAt;

@@ -1,8 +1,7 @@
 const INJECTION_TYPES = Object.freeze({
   DOCUMENT_START: "document_start",
   DOCUMENT_END: "document_end",
-  DOCUMENT_IDLE: "document_idle",
-  ELEMENT_READY: "element_ready",
+  DOCUMENT_IDLE: "document_idle"
 });
 
 // nice and safe sandboxing
@@ -109,20 +108,6 @@ export async function injectScriptsForStage(
 
       if (settings.showNotifications) {
         showNotification(tabId, script.name);
-      }
-    }
-
-    // For element-ready stage, delegate to content script
-    if (runAt === INJECTION_TYPES.DOCUMENT_IDLE) {
-      const readyScripts = await getFilteredScripts(
-        url,
-        INJECTION_TYPES.ELEMENT_READY
-      );
-      const newReady = readyScripts.filter((s) => !tabScripts.has(s.id));
-      if (newReady.length) {
-        chrome.tabs
-          .sendMessage(tabId, { action: "waitForElements", scripts: newReady })
-          .catch(console.warn);
       }
     }
   } catch (err) {

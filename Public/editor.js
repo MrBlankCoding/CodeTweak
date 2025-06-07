@@ -2,7 +2,6 @@ class ScriptEditor {
   constructor() {
     this.config = {
       RUN_MODES: {
-        ELEMENT_READY: "element_ready",
         DOCUMENT_START: "document_start",
         DOCUMENT_END: "document_end",
         DOCUMENT_IDLE: "document_idle",
@@ -42,7 +41,6 @@ class ScriptEditor {
       "scriptDescription",
       "saveBtn",
       "sidebarToggle",
-      "selectorContainer",
       "waitForSelector",
       "statusMessage",
       "formatBtn",
@@ -256,21 +254,7 @@ ${template}
     } else if (!this.state.codeEditor.getValue()) {
       this.insertDefaultTemplate();
     }
-
-    this.updateSelectorVisibility();
     this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
-  }
-
-  /**
-   * Update selector container visibility based on run mode
-   */
-  updateSelectorVisibility() {
-    const isElementReady =
-      this.elements.runAt.value === this.config.RUN_MODES.ELEMENT_READY;
-    this.elements.selectorContainer.style.display = isElementReady
-      ? "block"
-      : "none";
-    this.elements.waitForSelector.required = isElementReady;
   }
 
   /**
@@ -339,7 +323,6 @@ ${template}
    */
   setupFormEventListeners() {
     this.elements.runAt.addEventListener("change", () => {
-      this.updateSelectorVisibility();
       this.markAsUnsaved();
     });
 
@@ -571,11 +554,6 @@ ${template}
     this.state.codeEditor.setValue(script.code || "");
 
     script.targetUrls?.forEach((url) => this.addUrlToList(url));
-
-    if (script.runAt === this.config.RUN_MODES.ELEMENT_READY) {
-      this.elements.selectorContainer.style.display = "block";
-      this.elements.waitForSelector.value = script.waitForSelector || "";
-    }
   }
 
   /**
@@ -603,10 +581,6 @@ ${template}
       enabled: true,
       updatedAt: new Date().toISOString(),
     };
-
-    if (this.elements.runAt.value === this.config.RUN_MODES.ELEMENT_READY) {
-      scriptData.waitForSelector = this.elements.waitForSelector.value.trim();
-    }
 
     return scriptData;
   }
@@ -861,7 +835,6 @@ class FormValidator {
     const validations = [
       this.validateScriptName(),
       this.validateTargetUrls(),
-      this.validateElementSelector(),
     ];
 
     return validations.every((validation) => validation.isValid);
@@ -883,17 +856,6 @@ class FormValidator {
 
     if (urlList.length === 0 && !currentUrl) {
       this.showValidationError("Please add at least one target URL.");
-      return { isValid: false };
-    }
-    return { isValid: true };
-  }
-
-  validateElementSelector() {
-    if (
-      this.elements.runAt.value === "element_ready" &&
-      !this.elements.waitForSelector.value.trim()
-    ) {
-      this.showValidationError("Please specify an element selector.");
       return { isValid: false };
     }
     return { isValid: true };
