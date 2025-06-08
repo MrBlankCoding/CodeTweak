@@ -509,18 +509,30 @@ async function loadSettings(settingsElements) {
     const { settings = {} } = await chrome.storage.local.get("settings");
 
     // default values
-    Object.entries({
+    const defaultSettings = {
       enableAllScripts: true,
       showNotifications: true,
       debugMode: false,
       confirmBeforeRunning: false,
-    }).forEach(([key, defaultValue]) => {
+    };
+
+    // Apply defaults and update storage if needed
+    let shouldSaveDefaults = false;
+    Object.entries(defaultSettings).forEach(([key, defaultValue]) => {
       const element = settingsElements[key];
       if (element) {
-        element.checked =
-          settings[key] !== undefined ? settings[key] : defaultValue;
+        if (settings[key] === undefined) {
+          settings[key] = defaultValue;
+          shouldSaveDefaults = true;
+        }
+        element.checked = settings[key];
       }
     });
+
+    // Save defaults to storage if any were missing
+    if (shouldSaveDefaults) {
+      await chrome.storage.local.set({ settings });
+    }
   } catch (error) {
     console.error("Error loading settings:", error);
     showNotification("Error loading settings", "error");

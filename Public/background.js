@@ -1,7 +1,6 @@
 import { urlMatchesPattern } from "./utils/urlMatchPattern.js";
 import {
   injectScriptsForStage,
-  handleElementFound as handleElementFoundInjection,
   INJECTION_TYPES,
 } from "./utils/inject.js";
 
@@ -24,10 +23,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       handleScriptCreation(message.data.url, message.data.template).catch(
         console.error
       );
-      return false;
-
-    case "elementFound":
-      handleElementFound(message);
       return false;
 
     case "contentScriptReady":
@@ -137,10 +132,6 @@ async function handleScriptCreation(url, template) {
   } catch (e) {
     console.error("Script creation error:", e);
   }
-}
-
-function handleElementFound(message) {
-  handleElementFoundInjection(message, executedScripts);
 }
 
 // Web navigation event handlers
