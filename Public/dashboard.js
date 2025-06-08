@@ -19,7 +19,6 @@ function initDashboard() {
     settings: {
       enableAllScripts: document.getElementById("enableAllScripts"),
       showNotifications: document.getElementById("showNotifications"),
-      debugMode: document.getElementById("debugMode"),
     },
     greasyfork: {
       button: document.getElementById("greasyforkBtn"),
@@ -512,7 +511,6 @@ async function loadSettings(settingsElements) {
     const defaultSettings = {
       enableAllScripts: true,
       showNotifications: true,
-      debugMode: false,
       confirmBeforeRunning: false,
     };
 
