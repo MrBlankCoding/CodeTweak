@@ -28,6 +28,161 @@ class ScriptEditor {
     this.ui = new UIManager(this.elements, this.state, this.config);
     this.storage = new StorageManager();
     this.validator = new FormValidator(this.elements);
+    this.gmApiDefinitions = {
+      GM_setValue: {
+        signature:
+          "declare function GM_setValue(name: string, value: any): Promise<void>;",
+        name: "GM_setValue",
+        el: "gmSetValue",
+      },
+      GM_getValue: {
+        signature:
+          "declare function GM_getValue(name: string, defaultValue?: any): Promise<any>;",
+        name: "GM_getValue",
+        el: "gmGetValue",
+      },
+      GM_deleteValue: {
+        signature:
+          "declare function GM_deleteValue(name: string): Promise<void>;",
+        name: "GM_deleteValue",
+        el: "gmDeleteValue",
+      },
+      GM_listValues: {
+        signature: "declare function GM_listValues(): Promise<string[]>;",
+        name: "GM_listValues",
+        el: "gmListValues",
+      },
+      GM_openInTab: {
+        signature:
+          "declare function GM_openInTab(url: string, options?: { active?: boolean, insert?: boolean, setParent?: boolean } | boolean): void;",
+        name: "GM_openInTab",
+        el: "gmOpenInTab",
+      },
+      GM_notification: {
+        signature:
+          "declare function GM_notification(details: { text?: string, title?: string, image?: string, highlight?: boolean, silent?: boolean, timeout?: number, ondone?: Function, onclick?: Function } | string, ondone?: Function): void;",
+        name: "GM_notification",
+        el: "gmNotification",
+      },
+      GM_getResourceText: {
+        signature: "declare function GM_getResourceText(name: string): string;",
+        name: "GM_getResourceText",
+        el: "gmGetResourceText",
+      },
+      GM_getResourceURL: {
+        signature: "declare function GM_getResourceURL(name: string): string;",
+        name: "GM_getResourceURL",
+        el: "gmGetResourceURL",
+      },
+      GM_setClipboard: {
+        signature:
+          "declare function GM_setClipboard(data: string, type?: string): Promise<void>;",
+        name: "GM_setClipboard",
+        el: "gmSetClipboard",
+      },
+    };
+  }
+
+  _debouncedSave() {
+    if (this.state.autosaveTimeout) {
+      clearTimeout(this.state.autosaveTimeout);
+    }
+    this.state.autosaveTimeout = setTimeout(async () => {
+      if (
+        this.state.hasUnsavedChanges &&
+        this.state.isAutosaveEnabled &&
+        this.state.codeEditor
+      ) {
+        console.log("Autosaving due to debounced request...");
+        await this.saveScript();
+      }
+    }, this.config.AUTOSAVE_DELAY);
+  }
+
+  markAsDirty() {
+    if (this.state.hasUnsavedChanges && !this.state.isEditMode) return; // Allow re-dirtying in edit mode for autosave trigger
+    this.state.hasUnsavedChanges = true;
+    this.ui.updateScriptStatus(true);
+  }
+
+  getEnabledGmApis() {
+    return Object.values(this.gmApiDefinitions)
+      .filter((api) => this.elements[api.el] && this.elements[api.el].checked)
+      .map((api) => api.name);
+  }
+
+  updateEditorLintAndAutocomplete() {
+    if (!this.state.codeEditor) return;
+
+    const enabledApiNames = this.getEnabledGmApis();
+    const lintOptions = this.getLintOptions(
+      this.state.lintingEnabled,
+      enabledApiNames
+    );
+    this.state.codeEditor.setOption("lint", lintOptions);
+
+    // Delay performLint slightly to ensure options are set and editor is ready
+    setTimeout(() => {
+      if (
+        this.state.codeEditor &&
+        (this.state.lintingEnabled || typeof lintOptions === "object")
+      ) {
+        this.state.codeEditor.performLint();
+      }
+    }, 200);
+
+    const globalDefsForHinting = {};
+    enabledApiNames.forEach((apiName) => {
+      globalDefsForHinting[apiName] = true; // Mark as known global
+    });
+
+    this.state.codeEditor.setOption("hintOptions", {
+      ...(this.state.codeEditor.getOption("hintOptions") || {}),
+      globals: globalDefsForHinting,
+      // For more advanced autocompletion (e.g. with TernJS), one might add the libSource:
+      // defs: [libSource]
+    });
+  }
+
+  getLintOptions(lintingEnabled, activeGmApiNames = []) {
+    if (!lintingEnabled) {
+      return false;
+    }
+
+    const globals = {
+      // Common browser globals
+      window: "readonly",
+      document: "readonly",
+      console: "readonly",
+      // Add other common utility globals if needed by scripts
+      unsafeWindow: "readonly", // Often used in userscripts
+      GM: "readonly", // Declare the GM namespace object as a global
+    };
+    activeGmApiNames.forEach((name) => {
+      globals[name] = "readonly";
+    });
+
+    return {
+      async: true,
+      getAnnotations: CodeMirror.lint.javascript,
+      options: {
+        parserOptions: {
+          ecmaVersion: 2020,
+          sourceType: "script",
+        },
+        env: {
+          browser: true,
+          es2020: true,
+        },
+        globals: globals,
+        rules: {
+          "no-undef": "error",
+          // Consider adding other useful rules, e.g.:
+          // "no-unused-vars": ["warn", { "vars": "all", "args": "after-used", "ignoreRestSiblings": false }],
+          // "no-console": "warn",
+        },
+      },
+    };
   }
 
   cacheElements() {
@@ -51,6 +206,16 @@ class ScriptEditor {
       "autosaveBtn",
       "autosaveBtnText",
       "codeEditor",
+      "gmSetValue",
+      "gmGetValue",
+      "gmDeleteValue",
+      "gmListValues",
+      "gmOpenInTab",
+      "gmNotification",
+      "gmGetResourceText",
+      "gmGetResourceURL",
+      "gmSetClipboard",
+      "scriptResources",
     ];
 
     const elements = {};
@@ -81,6 +246,7 @@ class ScriptEditor {
       this.ui.updateSidebarState();
       this.registerEventListeners();
       this.setupBackgroundConnection();
+      this.updateEditorLintAndAutocomplete(); // Ensure it's updated after potential script load
 
       // Focus editor after initialization
       setTimeout(() => this.state.codeEditor?.focus(), 100);
@@ -129,7 +295,10 @@ class ScriptEditor {
       showTrailingSpace: true,
       continueComments: true,
       foldGutter: true,
-      lint: this.getLintOptions(this.state.lintingEnabled),
+      lint: this.getLintOptions(
+        this.state.lintingEnabled,
+        this.getEnabledGmApis()
+      ),
       gutters: [
         "CodeMirror-linenumbers",
         "CodeMirror-foldgutter",
@@ -143,7 +312,7 @@ class ScriptEditor {
       this.elements.codeEditor,
       editorConfig
     );
-    
+
     this.state.codeEditor.on("inputRead", (cm, change) => {
       if (
         change.text[0] &&
@@ -155,6 +324,7 @@ class ScriptEditor {
     });
 
     this.setupEditorEventHandlers();
+    this.updateEditorLintAndAutocomplete(); // Initial call after editor setup
   }
 
   /**
@@ -163,15 +333,15 @@ class ScriptEditor {
   getEditorKeybindings() {
     return {
       "Ctrl-Space": "autocomplete",
-      "Ctrl-S": (cm) => {
+      "Ctrl-S": () => {
         event.preventDefault();
         this.saveScript();
       },
-      "Cmd-S": (cm) => {
+      "Cmd-S": () => {
         event.preventDefault();
         this.saveScript();
       },
-      "Alt-F": (cm) => this.formatCode(true),
+      "Alt-F": () => this.formatCode(true),
       F11: (cm) => cm.setOption("fullScreen", !cm.getOption("fullScreen")),
       Esc: (cm) => {
         if (cm.getOption("fullScreen")) cm.setOption("fullScreen", false);
@@ -207,13 +377,14 @@ class ScriptEditor {
       }
     });
 
-    this.state.codeEditor.on("change", () => {
-      if (!this.state.hasUnsavedChanges) {
-        this.markAsUnsaved();
-      }
-
-      if (this.state.isAutosaveEnabled && this.state.hasUserInteraction) {
-        this.triggerAutosave();
+    this.state.codeEditor.on("change", (cm, change) => {
+      if (change.origin !== "setValue") {
+        // Ignore programmatic changes
+        this.state.hasUserInteraction = true;
+        this.markAsDirty();
+        if (this.state.isAutosaveEnabled) {
+          this._debouncedSave();
+        }
       }
     });
   }
@@ -272,6 +443,19 @@ ${template}
    * Register all event listeners
    */
   registerEventListeners() {
+    Object.values(this.gmApiDefinitions).forEach((apiDef) => {
+      const checkbox = this.elements[apiDef.el];
+      if (checkbox) {
+        checkbox.addEventListener("change", () => {
+          this.markAsDirty();
+          if (this.state.isAutosaveEnabled) {
+            this._debouncedSave();
+          }
+          this.updateEditorLintAndAutocomplete();
+        });
+      }
+    });
+
     this.setupUserInteractionTracking();
     this.setupGlobalEventListeners();
     this.setupButtonEventListeners();
@@ -455,57 +639,6 @@ ${template}
   }
 
   /**
-   * Get linting configuration
-   */
-  getLintOptions(enable) {
-    if (!enable || typeof window.JSHINT === "undefined") return false;
-
-    return {
-      getAnnotations: (text) => {
-        const errors = [];
-
-        if (
-          !window.JSHINT(text, {
-            esversion: 9,
-            asi: true,
-            browser: true,
-            devel: true,
-            undef: true,
-            unused: true,
-            curly: true,
-            eqeqeq: true,
-            laxbreak: true,
-            loopfunc: true,
-            sub: true,
-            shadow: false,
-            strict: true,
-            globals: {
-              chrome: false,
-              CodeMirror: false,
-            },
-          })
-        ) {
-          const jshintErrors = window.JSHINT.errors;
-
-          for (const err of jshintErrors) {
-            if (!err) continue;
-
-            errors.push({
-              message: err.reason,
-              severity: err.code?.startsWith("E") ? "error" : "warning",
-              from: CodeMirror.Pos(err.line - 1, err.character - 1),
-              to: CodeMirror.Pos(err.line - 1, err.character),
-            });
-          }
-        }
-
-        return errors;
-      },
-      hasGutters: true,
-    };
-  }
-
-  /**
    * Mark script as having unsaved changes
    */
   markAsUnsaved() {
@@ -543,6 +676,7 @@ ${template}
       this.populateFormWithScript(script);
       this.state.hasUnsavedChanges = false;
       this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
+      this.updateEditorLintAndAutocomplete();
     } catch (error) {
       console.error("Error loading script:", error);
       this.ui.showStatusMessage(
@@ -565,6 +699,38 @@ ${template}
     this.state.codeEditor.setValue(script.code || "");
 
     script.targetUrls?.forEach((url) => this.addUrlToList(url));
+
+    // Set GM API checkboxes
+    if (this.elements.gmSetValue)
+      this.elements.gmSetValue.checked = !!script.gmSetValue;
+    if (this.elements.gmGetValue)
+      this.elements.gmGetValue.checked = !!script.gmGetValue;
+    if (this.elements.gmDeleteValue)
+      this.elements.gmDeleteValue.checked = !!script.gmDeleteValue;
+    if (this.elements.gmListValues)
+      this.elements.gmListValues.checked = !!script.gmListValues;
+    if (this.elements.gmOpenInTab)
+      this.elements.gmOpenInTab.checked = !!script.gmOpenInTab;
+    if (this.elements.gmNotification)
+      this.elements.gmNotification.checked = !!script.gmNotification;
+    if (this.elements.gmGetResourceText)
+      this.elements.gmGetResourceText.checked = !!script.gmGetResourceText;
+    if (this.elements.gmGetResourceURL)
+      this.elements.gmGetResourceURL.checked = !!script.gmGetResourceURL;
+    if (this.elements.gmSetClipboard)
+      this.elements.gmSetClipboard.checked = !!script.gmSetClipboard;
+
+    if (
+      this.elements.scriptResources &&
+      script.resources &&
+      Array.isArray(script.resources)
+    ) {
+      this.elements.scriptResources.value = script.resources
+        .map((res) => `@resource ${res.name} ${res.url}`)
+        .join("\n");
+    } else if (this.elements.scriptResources) {
+      this.elements.scriptResources.value = "";
+    }
   }
 
   /**
@@ -593,6 +759,32 @@ ${template}
       updatedAt: new Date().toISOString(),
     };
 
+    // GM APIs
+    scriptData.gmSetValue = this.elements.gmSetValue?.checked || false;
+    scriptData.gmGetValue = this.elements.gmGetValue?.checked || false;
+    scriptData.gmDeleteValue = this.elements.gmDeleteValue?.checked || false;
+    scriptData.gmListValues = this.elements.gmListValues?.checked || false;
+    scriptData.gmOpenInTab = this.elements.gmOpenInTab?.checked || false;
+    scriptData.gmNotification = this.elements.gmNotification?.checked || false;
+    scriptData.gmGetResourceText =
+      this.elements.gmGetResourceText?.checked || false;
+    scriptData.gmGetResourceURL =
+      this.elements.gmGetResourceURL?.checked || false;
+    scriptData.gmSetClipboard = this.elements.gmSetClipboard?.checked || false;
+
+    // Parse resource declarations
+    scriptData.resources = [];
+    if (this.elements.scriptResources && this.elements.scriptResources.value) {
+      const lines = this.elements.scriptResources.value.split("\n");
+      const resourceRegex = /^@resource\s+(\S+)\s+(\S+)/;
+      for (const line of lines) {
+        const match = line.trim().match(resourceRegex);
+        if (match) {
+          scriptData.resources.push({ name: match[1], url: match[2] });
+        }
+      }
+    }
+
     return scriptData;
   }
 
@@ -604,6 +796,32 @@ ${template}
       if (!this.validator.validateForm()) return;
 
       const scriptData = this.gatherScriptData();
+      // Fetch and store resource contents
+      if (scriptData.resources && scriptData.resources.length > 0) {
+        scriptData.resourceContents = {};
+        const fetchPromises = scriptData.resources.map(async (resource) => {
+          try {
+            const response = await fetch(resource.url);
+            if (response.ok) {
+              scriptData.resourceContents[resource.name] =
+                await response.text();
+            } else {
+              console.error(
+                `Failed to fetch resource '${resource.name}' from ${resource.url}: ${response.status} ${response.statusText}`
+              );
+              scriptData.resourceContents[resource.name] = null;
+            }
+          } catch (error) {
+            console.error(
+              `Error fetching resource '${resource.name}' from ${resource.url}:`,
+              error
+            );
+            scriptData.resourceContents[resource.name] = null;
+          }
+        });
+        await Promise.all(fetchPromises);
+      }
+
       const savedScript = await this.storage.saveScript(
         scriptData,
         this.state.scriptId,
@@ -651,7 +869,7 @@ ${template}
   async notifyBackgroundScript() {
     try {
       await new Promise((resolve) => {
-        chrome.runtime.sendMessage({ action: "scriptsUpdated" }, (response) => {
+        chrome.runtime.sendMessage({ action: "scriptsUpdated" }, () => {
           if (chrome.runtime.lastError) {
             console.warn("Background sync warning:", chrome.runtime.lastError);
           }

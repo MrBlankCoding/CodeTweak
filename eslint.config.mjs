@@ -5,17 +5,17 @@ import { defineConfig } from "eslint/config";
 export default defineConfig([
   {
     files: ["**/*.{js,mjs,cjs}"],
-    plugins: { js },
-    extends: ["js/recommended"],
     languageOptions: {
-      env: {
-        browser: true,
-        webextensions: true,
-      },
+      ecmaVersion: "latest",
+      sourceType: "module",
       globals: {
-        ...globals.browser,
-        chrome: "readonly", 
+        ...globals.browser, // adds `window`, `document`, etc.
+        chrome: "readonly", // fixes 'chrome is not defined'
       },
+    },
+    plugins: { js },
+    rules: {
+      ...js.configs.recommended.rules,
     },
   },
 ]);
