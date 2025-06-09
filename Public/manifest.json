@@ -9,8 +9,10 @@
     "scripting",
     "webNavigation",
     "declarativeNetRequest",
-    "tabs",
-    "contextMenus"
+    "contextMenus",
+    "clipboardWrite",
+    "notifications",
+    "offscreen"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -38,6 +40,12 @@
       "js": ["./utils/elementSelector.js"],
       "css": ["./styles/elementSelector.css"],
       "run_at": "document_start"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["./utils/content_bridge.js"],
+      "run_at": "document_start",
+      "world": "ISOLATED"
     }
   ],
   "web_accessible_resources": [

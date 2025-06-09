@@ -125,6 +125,81 @@
                         </div>
                      </div>
                   </div>
+                  <!-- GM API Access -->
+                  <div class="settings-section collapsible" data-section="api">
+                     <button class="section-header" type="button">
+                        <div class="section-icon">
+                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <path d="M12 2 L12 22 M2 12 L22 12"></path> 
+                           </svg>
+                        </div>
+                        <span class="section-title">GM API Access</span>
+                        <svg class="section-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                           <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                     </button>
+                     <div class="section-content">
+                        <div class="form-group-checkbox">
+                           <input type="checkbox" id="gmSetValue" class="form-checkbox">
+                           <label for="gmSetValue">GM_setValue</label>
+                        </div>
+                        <div class="form-group-checkbox">
+                           <input type="checkbox" id="gmGetValue" class="form-checkbox">
+                           <label for="gmGetValue">GM_getValue</label>
+                        </div>
+                        <div class="form-group-checkbox">
+                           <input type="checkbox" id="gmDeleteValue" class="form-checkbox">
+                           <label for="gmDeleteValue">GM_deleteValue</label>
+                        </div>
+                        <div class="form-group-checkbox">
+                           <input type="checkbox" id="gmListValues" class="form-checkbox">
+                           <label for="gmListValues">GM_listValues</label>
+                        </div>
+                        <div class="form-group-checkbox">
+                           <input type="checkbox" id="gmOpenInTab" class="form-checkbox">
+                           <label for="gmOpenInTab">GM_openInTab</label>
+                        </div>
+                        <div class="form-group-checkbox">
+                           <input type="checkbox" id="gmNotification" class="form-checkbox">
+                           <label for="gmNotification">GM_notification</label>
+                        </div>
+                        <div class="form-group-checkbox">
+                           <input type="checkbox" id="gmGetResourceText" class="form-checkbox">
+                           <label for="gmGetResourceText">GM_getResourceText</label>
+                        </div>
+                        <div class="form-group-checkbox">
+                           <input type="checkbox" id="gmGetResourceURL" class="form-checkbox">
+                           <label for="gmGetResourceURL">GM_getResourceURL</label>
+                        </div>
+                        <div class="form-group-checkbox">
+                           <input type="checkbox" id="gmSetClipboard" class="form-checkbox">
+                           <label for="gmSetClipboard">GM_setClipboard</label>
+                        </div>
+                     </div>
+                  </div>
+                  <!-- Script Resources -->
+                  <div class="settings-section collapsible" data-section="resources">
+                     <button class="section-header" type="button">
+                        <div class="section-icon">
+                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                              <polyline points="7 10 12 15 17 10"></polyline>
+                              <line x1="12" y1="15" x2="12" y2="3"></line>
+                           </svg>
+                        </div>
+                        <span class="section-title">Script Resources</span>
+                        <svg class="section-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                           <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                     </button>
+                     <div class="section-content">
+                        <div class="form-group">
+                           <label for="scriptResources" class="form-label">Resource Declarations</label>
+                           <textarea id="scriptResources" class="form-textarea" placeholder="@resource resourceName resourceURL\n@resource anotherName anotherURL" rows="4"></textarea>
+                           <p class="form-hint">Declare resources one per line, e.g., @resource customCSS https://example.com/styles.css</p>
+                        </div>
+                     </div>
+                  </div>
                   <!-- Exec -->
                   <div class="settings-section collapsible" data-section="execution">
                      <button class="section-header" type="button">
@@ -208,7 +283,7 @@
       <script src="codemirror/addon/edit/continuelist.js"></script>
       <script defer src="codemirror/lib/jshint.js"></script>
       <script defer src="codemirror/lib/beautify.min.js"></script>
-      <script src="editor-managers.js"></script>
+      <script src="./utils/editor-managers.js"></script>
       <script src="editor.js"></script>
    </body>
 </html>

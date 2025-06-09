@@ -1,103 +1,76 @@
 import { urlMatchesPattern } from "./utils/urlMatchPattern.js";
-import {
-  injectScriptsForStage,
-  INJECTION_TYPES,
-} from "./utils/inject.js";
+import { injectScriptsForStage, INJECTION_TYPES } from "./utils/inject.js";
 
-let scriptCache = null;
-let lastCacheUpdate = 0;
-const CACHE_LIFETIME = 5000;
-const ports = new Set();
-const executedScripts = new Map();
-
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  switch (message.action) {
-    case "scriptsUpdated":
-      scriptCache = null;
-      lastCacheUpdate = 0;
-      sendResponse({ success: true }); // This is synchronous
-      notifyPorts("scriptsUpdated");
-      // Update badges for all tabs
-      chrome.tabs.query({}, (tabs) => {
-        tabs.forEach(tab => {
-          if (tab.id && tab.url) {
-            updateBadgeForTab(tab.id, tab.url);
-          } else if (tab.id) { // Tab exists but no URL (e.g. chrome://newtab or internal pages)
-            chrome.action.setBadgeText({ tabId: tab.id, text: '' }).catch(e => {
-              if (!e.message.includes("No tab with id") && !e.message.includes("Invalid tab ID") && !e.message.includes("Receiving end does not exist")) {
-                console.warn("Error clearing badge on script update:", e.message);
-              }
-            });
-          }
-        });
-      });
-      return false; // Stays false as sendResponse was synchronous and further async work is fire-and-forget
-
-    case "createScript":
-      handleScriptCreation(message.data.url, message.data.template).catch(
-        console.error
-      );
-      return false;
-
-    case "contentScriptReady":
-      if (sender.tab?.id) executedScripts.set(sender.tab.id, new Set());
-      return false;
-
-    default:
-      return false;
+// State management
+class BackgroundState {
+  constructor() {
+    this.scriptCache = null;
+    this.lastCacheUpdate = 0;
+    this.cacheTtl = 5000;
+    this.ports = new Set();
+    this.executedScripts = new Map();
+    this.creatingOffscreenDocument = null;
   }
-});
+
+  clearCache() {
+    this.scriptCache = null;
+    this.lastCacheUpdate = 0;
+  }
+
+  isCacheValid() {
+    return (
+      this.scriptCache && Date.now() - this.lastCacheUpdate <= this.cacheTtl
+    );
+  }
+}
+
+const state = new BackgroundState();
+const OFFSCREEN_DOCUMENT_PATH = "offscreen.html";
+
+// Utility functions
+function safeSetBadge(tabId, text = "", color = "#007bff") {
+  chrome.action.setBadgeText({ tabId, text }).catch((err) => {
+    if (!isIgnorableTabError(err)) {
+      console.warn(`Error setting badge for tab ${tabId}:`, err.message);
+    }
+  });
+
+  if (text) {
+    chrome.action.setBadgeBackgroundColor({ tabId, color }).catch(() => {});
+  }
+}
+
+function isIgnorableTabError(error) {
+  const ignorableMessages = [
+    "No tab with id",
+    "Invalid tab ID",
+    "Receiving end does not exist",
+  ];
+  return ignorableMessages.some((msg) => error.message?.includes(msg));
+}
 
 function notifyPorts(action) {
-  for (const port of ports) {
+  const disconnectedPorts = [];
+
+  for (const port of state.ports) {
     try {
       port.postMessage({ action });
     } catch (error) {
       console.warn("Failed to notify port:", error);
-      ports.delete(port);
+      disconnectedPorts.push(port);
     }
   }
+
+  disconnectedPorts.forEach((port) => state.ports.delete(port));
 }
 
-function createContextMenu() {
-  chrome.contextMenus.removeAll(() => {
-    chrome.contextMenus.create({
-      id: "selectElement",
-      title: "Select Element for Script",
-      contexts: ["page"],
-    });
-  });
-}
-createContextMenu();
-
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "selectElement") {
-    chrome.tabs.sendMessage(tab.id, { action: "startSelection" });
-  }
-});
-
-chrome.runtime.onConnect.addListener((port) => {
-  if (port.name !== "CodeTweak" || ports.has(port)) return;
-  ports.add(port);
-
-  port.onDisconnect.addListener(() => ports.delete(port));
-  port.onMessage.addListener(console.log);
-});
-
-async function getFilteredScripts(url, runAt) {
-  const now = Date.now();
-  if (!scriptCache || now - lastCacheUpdate > CACHE_LIFETIME) {
-    const { scripts = [] } = await chrome.storage.local.get("scripts");
-    scriptCache = scripts.map((s) => ({
-      ...s,
-      id: s.id || crypto.randomUUID(),
-      targetUrls: s.targetUrls || [s.targetUrl].filter(Boolean),
-    }));
-    await chrome.storage.local.set({ scripts: scriptCache });
-    lastCacheUpdate = now;
+// Script management
+async function getFilteredScripts(url, runAt = null) {
+  if (!state.isCacheValid()) {
+    await refreshScriptCache();
   }
 
-  return scriptCache.filter(
+  return state.scriptCache.filter(
     (script) =>
       script.enabled &&
       (!runAt || script.runAt === runAt) &&
@@ -105,46 +78,192 @@ async function getFilteredScripts(url, runAt) {
   );
 }
 
-// Function to update the badge for a specific tab
+async function refreshScriptCache() {
+  const { scripts = [] } = await chrome.storage.local.get("scripts");
+
+  state.scriptCache = scripts.map((script) => ({
+    ...script,
+    id: script.id || crypto.randomUUID(),
+    targetUrls: script.targetUrls || [script.targetUrl].filter(Boolean),
+  }));
+
+  await chrome.storage.local.set({ scripts: state.scriptCache });
+  state.lastCacheUpdate = Date.now();
+}
+
 async function updateBadgeForTab(tabId, url) {
-  if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
-    try {
-      await chrome.action.setBadgeText({ tabId: tabId, text: '' });
-    } catch (e) {
-      // Ignore errors if tabId is no longer valid or port disconnected
-      if (!e.message.includes("No tab with id") && !e.message.includes("Invalid tab ID") && !e.message.includes("Receiving end does not exist")) {
-        console.warn(`Error clearing badge for non-http tab ${tabId}:`, e.message);
-      }
-    }
+  if (!url?.startsWith("http")) {
+    safeSetBadge(tabId);
     return;
   }
 
   try {
-    const scriptsToRun = await getFilteredScripts(url); // Assumes getFilteredScripts can be called with just URL
+    const scriptsToRun = await getFilteredScripts(url);
     const count = scriptsToRun.length;
-
-    await chrome.action.setBadgeText({
-      tabId: tabId,
-      text: count > 0 ? count.toString() : '',
-    });
-
-    if (count > 0) {
-      await chrome.action.setBadgeBackgroundColor({ tabId: tabId, color: '#007bff' });
-    } 
-    // If count is 0, badge text is empty, effectively hiding it. Background color doesn't matter then.
+    safeSetBadge(tabId, count > 0 ? count.toString() : "");
   } catch (error) {
-    console.error(`Error updating badge for tab ${tabId} (${url}):`, error);
-    try {
-      await chrome.action.setBadgeText({ tabId: tabId, text: '' }); // Clear badge on error
-    } catch (e) {
-      // Ignore errors if tabId is no longer valid or port disconnected
-      if (!e.message.includes("No tab with id") && !e.message.includes("Invalid tab ID") && !e.message.includes("Receiving end does not exist")) {
-         console.warn(`Error clearing badge on error for tab ${tabId}:`, e.message);
-      }
-    }
+    console.error(`Error updating badge for tab ${tabId}:`, error);
+    safeSetBadge(tabId);
   }
 }
 
+async function updateAllTabBadges() {
+  const tabs = await chrome.tabs.query({});
+
+  tabs.forEach((tab) => {
+    if (tab.id) {
+      if (tab.url) {
+        updateBadgeForTab(tab.id, tab.url);
+      } else {
+        safeSetBadge(tab.id);
+      }
+    }
+  });
+}
+
+// GM API handlers
+const gmApiHandlers = {
+  async setValue(message) {
+    await chrome.storage.local.set({ [message.name]: message.value });
+    return undefined;
+  },
+
+  async getValue(message) {
+    const data = await chrome.storage.local.get(message.name);
+    return data[message.name] === undefined
+      ? message.defaultValue
+      : data[message.name];
+  },
+
+  async deleteValue(message) {
+    await chrome.storage.local.remove(message.name);
+    return undefined;
+  },
+
+  async listValues() {
+    const allItems = await chrome.storage.local.get(null);
+    return Object.keys(allItems);
+  },
+
+  async openInTab(message) {
+    const tabOptions = { url: message.url };
+
+    if (message.options) {
+      if (typeof message.options.active === "boolean") {
+        tabOptions.active = message.options.active;
+      } else if (typeof message.options.loadInBackground === "boolean") {
+        tabOptions.active = !message.options.loadInBackground;
+      }
+    }
+
+    const newTab = await chrome.tabs.create(tabOptions);
+    return { id: newTab.id, url: newTab.url };
+  },
+
+  async notification(message) {
+    const options = {
+      type: message.details.image ? "image" : "basic",
+      iconUrl: chrome.runtime.getURL("icons/icon128.png"),
+      title: message.details.title || "Notification",
+      message: message.details.text || "",
+    };
+
+    if (message.details.image) {
+      options.imageUrl = message.details.image;
+    }
+
+    const notificationId = `gm_notification_${Date.now()}`;
+    await chrome.notifications.create(notificationId, options);
+    return notificationId;
+  },
+
+  async setClipboard(message) {
+    return handleSetClipboard(message);
+  },
+};
+
+async function handleGmApiRequest(message, sender, sendResponse) {
+  try {
+    console.log("[CodeTweak] GM_API request:", message.action);
+
+    const handler = gmApiHandlers[message.action];
+    if (!handler) {
+      throw new Error(`Unknown GM_API action: ${message.action}`);
+    }
+
+    const result = await handler(message);
+    sendResponse({ result });
+  } catch (error) {
+    console.error(`Error handling GM_API action ${message.action}:`, error);
+    sendResponse({ error: error.message || "An unexpected error occurred." });
+  }
+}
+
+// Clipboard handling
+async function ensureOffscreenDocument() {
+  if (state.creatingOffscreenDocument) {
+    await state.creatingOffscreenDocument;
+    return;
+  }
+
+  const contexts = await chrome.runtime.getContexts({
+    contextTypes: ["OFFSCREEN_DOCUMENT"],
+    documentUrls: [chrome.runtime.getURL(OFFSCREEN_DOCUMENT_PATH)],
+  });
+
+  if (contexts.length > 0) return;
+
+  state.creatingOffscreenDocument = chrome.offscreen.createDocument({
+    url: OFFSCREEN_DOCUMENT_PATH,
+    reasons: ["CLIPBOARD"],
+    justification: "Need to write to the clipboard for GM_setClipboard API.",
+  });
+
+  await state.creatingOffscreenDocument;
+  state.creatingOffscreenDocument = null;
+}
+
+async function handleSetClipboard(request) {
+  await ensureOffscreenDocument();
+
+  const requestId = `clipboard-${Date.now()}-${Math.random()
+    .toString(36)
+    .substring(2, 10)}`;
+
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      chrome.runtime.onMessage.removeListener(listener);
+      reject(new Error("Timeout waiting for clipboard response."));
+    }, 5000);
+
+    const listener = (message) => {
+      if (
+        message.type === "offscreen-clipboard-response" &&
+        message.requestId === requestId
+      ) {
+        clearTimeout(timeout);
+        chrome.runtime.onMessage.removeListener(listener);
+
+        if (message.success) {
+          resolve(undefined);
+        } else {
+          reject(new Error(message.error || "Failed to copy to clipboard."));
+        }
+      }
+    };
+
+    chrome.runtime.onMessage.addListener(listener);
+
+    chrome.runtime.sendMessage({
+      target: "offscreen",
+      type: "copy-to-clipboard",
+      data: request.data,
+      requestId,
+    });
+  });
+}
+
+// Script creation
 async function handleScriptCreation(url, template) {
   try {
     const { scripts = [] } = await chrome.storage.local.get("scripts");
@@ -154,21 +273,27 @@ async function handleScriptCreation(url, template) {
 
     if (existing) {
       const lines = existing.code.split("\n");
-      let i = lines.length - 1;
-      while (i > 0 && (!lines[i].trim() || lines[i].trim() === "})();")) i--;
+      let insertIndex = lines.length - 1;
 
-      const indent = "  ";
+      // Find insertion point (skip empty lines and closing IIFE)
+      while (
+        insertIndex > 0 &&
+        (!lines[insertIndex].trim() || lines[insertIndex].trim() === "})();")
+      ) {
+        insertIndex--;
+      }
+
       const newLines = [
         "",
-        `${indent}// Added by element selector`,
+        "  // Added by element selector",
         ...template
           .trim()
           .split("\n")
-          .map((line) => indent + line),
+          .map((line) => "  " + line),
         "",
       ];
 
-      lines.splice(i + 1, 0, ...newLines);
+      lines.splice(insertIndex + 1, 0, ...newLines);
       existing.code = lines.join("\n");
       existing.updatedAt = new Date().toISOString();
 
@@ -178,91 +303,118 @@ async function handleScriptCreation(url, template) {
         url: `${chrome.runtime.getURL("editor.html")}?id=${existing.id}`,
       });
     } else {
-      const urlParams = new URLSearchParams({ targetUrl: url, template });
+      const params = new URLSearchParams({ targetUrl: url, template });
       chrome.tabs.create({
-        url: `${chrome.runtime.getURL("editor.html")}?${urlParams}`,
+        url: `${chrome.runtime.getURL("editor.html")}?${params}`,
       });
     }
-  } catch (e) {
-    console.error("Script creation error:", e);
+  } catch (error) {
+    console.error("Script creation error:", error);
   }
 }
 
-// Web navigation event handlers
-["onCommitted", "onDOMContentLoaded", "onCompleted"].forEach((event, index) => {
+// Message handling
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log("[CodeTweak] Message received:", message.type || message.action);
+
+  if (message.type === "GM_API_REQUEST") {
+    handleGmApiRequest(message.payload, sender, sendResponse);
+    return true; // Async response
+  }
+
+  if (message.type === "offscreen-clipboard-response") {
+    return false; // Handled by promise in handleSetClipboard
+  }
+
+  const messageHandlers = {
+    scriptsUpdated: () => {
+      state.clearCache();
+      notifyPorts("scriptsUpdated");
+      updateAllTabBadges();
+      sendResponse({ success: true });
+    },
+
+    createScript: () => {
+      handleScriptCreation(message.data.url, message.data.template);
+    },
+
+    contentScriptReady: () => {
+      if (sender.tab?.id) {
+        state.executedScripts.set(sender.tab.id, new Set());
+      }
+    },
+  };
+
+  const handler = messageHandlers[message.action];
+  if (handler) {
+    handler();
+    return false;
+  }
+
+  sendResponse({ error: "Unknown action" });
+  return false;
+});
+
+// Context menu
+chrome.contextMenus.removeAll(() => {
+  chrome.contextMenus.create({
+    id: "selectElement",
+    title: "Select Element for Script",
+    contexts: ["page"],
+  });
+});
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === "selectElement") {
+    chrome.tabs.sendMessage(tab.id, { action: "startSelection" });
+  }
+});
+
+// Port connections
+chrome.runtime.onConnect.addListener((port) => {
+  if (port.name !== "CodeTweak" || state.ports.has(port)) return;
+
+  state.ports.add(port);
+  port.onDisconnect.addListener(() => state.ports.delete(port));
+  port.onMessage.addListener(console.log);
+});
+
+// Web navigation injection
+const navigationEvents = ["onCommitted", "onDOMContentLoaded", "onCompleted"];
+navigationEvents.forEach((event, index) => {
   chrome.webNavigation[event].addListener((details) =>
     injectScriptsForStage(
       details,
       Object.values(INJECTION_TYPES)[index],
       getFilteredScripts,
-      executedScripts
+      state.executedScripts
     )
   );
 });
 
-chrome.tabs.onRemoved.addListener((tabId) => executedScripts.delete(tabId));
+// Tab event listeners
+chrome.tabs.onRemoved.addListener((tabId) =>
+  state.executedScripts.delete(tabId)
+);
 
-// Listeners for tab updates and activation to manage badge text
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  // Update badge when a tab finishes loading or its URL changes significantly
-  if (changeInfo.status === 'complete' && tab && tab.url) {
+  if (changeInfo.status === "complete" && tab?.url) {
     updateBadgeForTab(tabId, tab.url);
-  } else if (changeInfo.status === 'complete' && tab && (!tab.url || (!tab.url.startsWith("http://") && !tab.url.startsWith("https://")))) {
-    // Tab completed loading but it's not an http/https page (e.g., chrome://extensions)
-    chrome.action.setBadgeText({ tabId: tabId, text: '' }).catch(e => {
-      if (!e.message.includes("No tab with id") && !e.message.includes("Invalid tab ID") && !e.message.includes("Receiving end does not exist")) {
-        console.warn("Error clearing badge for non-http onUpdated:", e.message);
-      }
-    });
   }
 });
 
-chrome.tabs.onActivated.addListener(activeInfo => {
-  chrome.tabs.get(activeInfo.tabId, (tab) => {
-    if (tab) { // Check if tab exists
-      if (tab.url) {
-        updateBadgeForTab(tab.id, tab.url);
-      } else {
-        // Tab exists but no URL (e.g. chrome://newtab or internal pages)
-        chrome.action.setBadgeText({ tabId: tab.id, text: '' }).catch(e => {
-          if (!e.message.includes("No tab with id") && !e.message.includes("Invalid tab ID") && !e.message.includes("Receiving end does not exist")) {
-            console.warn("Error clearing badge onActivated:", e.message);
-          }
-        });
-      }
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  try {
+    const tab = await chrome.tabs.get(activeInfo.tabId);
+    updateBadgeForTab(tab.id, tab.url);
+  } catch (error) {
+    // Tab may have been closed
+    if (!isIgnorableTabError(error)) {
+      console.warn("Error getting activated tab:", error);
     }
-  });
+  }
 });
 
-// Initial badge setup on extension install/update or browser startup
-chrome.runtime.onInstalled.addListener((details) => {
-  chrome.tabs.query({}, (tabs) => {
-    tabs.forEach(tab => {
-      if (tab.id && tab.url) {
-        updateBadgeForTab(tab.id, tab.url);
-      } else if (tab.id) {
-         chrome.action.setBadgeText({ tabId: tab.id, text: '' }).catch(e => {
-           if (!e.message.includes("No tab with id") && !e.message.includes("Invalid tab ID") && !e.message.includes("Receiving end does not exist")) {
-             console.warn("Error clearing badge onInstalled:", e.message);
-           }
-         });
-      }
-    });
-  });
-});
-
-chrome.runtime.onStartup.addListener(() => {
-  chrome.tabs.query({}, (tabs) => {
-    tabs.forEach(tab => {
-      if (tab.id && tab.url) {
-        updateBadgeForTab(tab.id, tab.url);
-      } else if (tab.id) {
-         chrome.action.setBadgeText({ tabId: tab.id, text: '' }).catch(e => {
-           if (!e.message.includes("No tab with id") && !e.message.includes("Invalid tab ID") && !e.message.includes("Receiving end does not exist")) {
-             console.warn("Error clearing badge onStartup:", e.message);
-           }
-         });
-      }
-    });
-  });
-});
+// Extension lifecycle
+chrome.runtime.onInstalled.addListener(updateAllTabBadges);
+chrome.runtime.onStartup.addListener(updateAllTabBadges);
