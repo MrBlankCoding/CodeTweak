@@ -81,6 +81,13 @@ class ScriptEditor {
         el: "gmSetClipboard",
       },
     };
+
+    this.codeEditorManager = new CodeEditorManager(
+      this.elements,
+      this.state,
+      this.config,
+      this.gmApiDefinitions
+    );
   }
 
   _debouncedSave() {
@@ -103,86 +110,6 @@ class ScriptEditor {
     if (this.state.hasUnsavedChanges && !this.state.isEditMode) return; // Allow re-dirtying in edit mode for autosave trigger
     this.state.hasUnsavedChanges = true;
     this.ui.updateScriptStatus(true);
-  }
-
-  getEnabledGmApis() {
-    return Object.values(this.gmApiDefinitions)
-      .filter((api) => this.elements[api.el] && this.elements[api.el].checked)
-      .map((api) => api.name);
-  }
-
-  updateEditorLintAndAutocomplete() {
-    if (!this.state.codeEditor) return;
-
-    const enabledApiNames = this.getEnabledGmApis();
-    const lintOptions = this.getLintOptions(
-      this.state.lintingEnabled,
-      enabledApiNames
-    );
-    this.state.codeEditor.setOption("lint", lintOptions);
-
-    // Delay performLint slightly to ensure options are set and editor is ready
-    setTimeout(() => {
-      if (
-        this.state.codeEditor &&
-        (this.state.lintingEnabled || typeof lintOptions === "object")
-      ) {
-        this.state.codeEditor.performLint();
-      }
-    }, 200);
-
-    const globalDefsForHinting = {};
-    enabledApiNames.forEach((apiName) => {
-      globalDefsForHinting[apiName] = true; // Mark as known global
-    });
-
-    this.state.codeEditor.setOption("hintOptions", {
-      ...(this.state.codeEditor.getOption("hintOptions") || {}),
-      globals: globalDefsForHinting,
-      // For more advanced autocompletion (e.g. with TernJS), one might add the libSource:
-      // defs: [libSource]
-    });
-  }
-
-  getLintOptions(lintingEnabled, activeGmApiNames = []) {
-    if (!lintingEnabled) {
-      return false;
-    }
-
-    const globals = {
-      // Common browser globals
-      window: "readonly",
-      document: "readonly",
-      console: "readonly",
-      // Add other common utility globals if needed by scripts
-      unsafeWindow: "readonly", // Often used in userscripts
-      GM: "readonly", // Declare the GM namespace object as a global
-    };
-    activeGmApiNames.forEach((name) => {
-      globals[name] = "readonly";
-    });
-
-    return {
-      async: true,
-      getAnnotations: CodeMirror.lint.javascript,
-      options: {
-        parserOptions: {
-          ecmaVersion: 2020,
-          sourceType: "script",
-        },
-        env: {
-          browser: true,
-          es2020: true,
-        },
-        globals: globals,
-        rules: {
-          "no-undef": "error",
-          // Consider adding other useful rules, e.g.:
-          // "no-unused-vars": ["warn", { "vars": "all", "args": "after-used", "ignoreRestSiblings": false }],
-          // "no-console": "warn",
-        },
-      },
-    };
   }
 
   cacheElements() {
@@ -239,17 +166,31 @@ class ScriptEditor {
   async init() {
     try {
       this.setDefaultValues();
-      this.initializeCodeEditor();
+      this.codeEditorManager.initializeCodeEditor();
+      this.codeEditorManager.setSaveCallback(() => this.saveScript());
+      this.codeEditorManager.setChangeCallback(() => {
+        this.markAsDirty();
+        if (this.state.isAutosaveEnabled) {
+          this._debouncedSave();
+        }
+      });
+      this.codeEditorManager.setStatusCallback((message, type) => {
+        if (message) {
+          this.ui.showStatusMessage(message, type);
+        } else {
+          this.ui.clearStatusMessage();
+        }
+      });
       await this.parseUrlParams();
       this.setupEditorMode();
       this.ui.initializeCollapsibleSections();
       this.ui.updateSidebarState();
       this.registerEventListeners();
       this.setupBackgroundConnection();
-      this.updateEditorLintAndAutocomplete(); // Ensure it's updated after potential script load
+      this.codeEditorManager.updateEditorLintAndAutocomplete(); // Ensure it's updated after potential script load
 
       // Focus editor after initialization
-      setTimeout(() => this.state.codeEditor?.focus(), 100);
+      setTimeout(() => this.codeEditorManager.focus(), 100);
     } catch (error) {
       console.error("Failed to initialize editor:", error);
       this.ui.showStatusMessage("Failed to initialize editor", "error");
@@ -273,123 +214,6 @@ class ScriptEditor {
   }
 
   /**
-   * Initialize CodeMirror editor with all configurations
-   */
-  initializeCodeEditor() {
-    if (!this.elements.codeEditor) {
-      throw new Error("Code editor element not found");
-    }
-
-    const editorConfig = {
-      mode: "javascript",
-      theme: "ayu-dark",
-      lineNumbers: true,
-      lineWrapping: true,
-      indentUnit: 2,
-      tabSize: 2,
-      indentWithTabs: false,
-      smartIndent: true,
-      electricChars: true,
-      matchBrackets: true,
-      autoCloseBrackets: true,
-      showTrailingSpace: true,
-      continueComments: true,
-      foldGutter: true,
-      lint: this.getLintOptions(
-        this.state.lintingEnabled,
-        this.getEnabledGmApis()
-      ),
-      gutters: [
-        "CodeMirror-linenumbers",
-        "CodeMirror-foldgutter",
-        "CodeMirror-lint-markers",
-      ],
-      scrollbarStyle: "simple",
-      extraKeys: this.getEditorKeybindings(),
-    };
-
-    this.state.codeEditor = CodeMirror.fromTextArea(
-      this.elements.codeEditor,
-      editorConfig
-    );
-
-    this.state.codeEditor.on("inputRead", (cm, change) => {
-      if (
-        change.text[0] &&
-        /[\w.]/.test(change.text[0]) &&
-        !cm.state.completionActive
-      ) {
-        CodeMirror.commands.autocomplete(cm, null, { completeSingle: false });
-      }
-    });
-
-    this.setupEditorEventHandlers();
-    this.updateEditorLintAndAutocomplete(); // Initial call after editor setup
-  }
-
-  /**
-   * Get editor keybindings configuration
-   */
-  getEditorKeybindings() {
-    return {
-      "Ctrl-Space": "autocomplete",
-      "Ctrl-S": () => {
-        event.preventDefault();
-        this.saveScript();
-      },
-      "Cmd-S": () => {
-        event.preventDefault();
-        this.saveScript();
-      },
-      "Alt-F": () => this.formatCode(true),
-      F11: (cm) => cm.setOption("fullScreen", !cm.getOption("fullScreen")),
-      Esc: (cm) => {
-        if (cm.getOption("fullScreen")) cm.setOption("fullScreen", false);
-      },
-      Tab: (cm) => this.handleTabKey(cm),
-      "Ctrl-/": (cm) => cm.toggleComment({ indent: true }),
-      "Cmd-/": (cm) => cm.toggleComment({ indent: true }),
-    };
-  }
-
-  /**
-   * Handle tab key behavior in editor
-   */
-  handleTabKey(cm) {
-    if (cm.somethingSelected()) {
-      cm.indentSelection("add");
-    } else {
-      const spaces = " ".repeat(cm.getOption("indentUnit"));
-      cm.replaceSelection(spaces, "end", "+input");
-    }
-  }
-
-  /**
-   * Setup editor event handlers
-   */
-  setupEditorEventHandlers() {
-    this.state.codeEditor.on("cursorActivity", (cm) => {
-      const cursor = cm.getCursor();
-      if (this.elements.cursorInfo) {
-        this.elements.cursorInfo.textContent = `Line: ${
-          cursor.line + 1
-        }, Col: ${cursor.ch + 1}`;
-      }
-    });
-
-    this.state.codeEditor.on("change", (cm, change) => {
-      if (change.origin !== "setValue") {
-        // Ignore programmatic changes
-        this.state.hasUserInteraction = true;
-        this.markAsDirty();
-        if (this.state.isAutosaveEnabled) {
-          this._debouncedSave();
-        }
-      }
-    });
-  }
-
-  /**
    * Parse URL parameters and setup editor state
    */
   async parseUrlParams() {
@@ -407,24 +231,10 @@ class ScriptEditor {
 
     if (template) {
       const decodedTemplate = decodeURIComponent(template);
-      this.insertTemplateCode(decodedTemplate);
-    } else if (!this.state.isEditMode && !this.state.codeEditor.getValue()) {
-      this.insertDefaultTemplate();
+      this.codeEditorManager.insertTemplateCode(decodedTemplate);
+    } else if (!this.state.isEditMode && !this.codeEditorManager.getValue()) {
+      this.codeEditorManager.insertDefaultTemplate();
     }
-  }
-
-  /**
-   * Insert template code with proper formatting
-   */
-  insertTemplateCode(template) {
-    const wrappedCode = `(function() {
-  'use strict';
-  
-${template}
-
-})();`;
-    this.state.codeEditor.setValue(wrappedCode);
-    this.formatCode(false);
   }
 
   /**
@@ -433,8 +243,8 @@ ${template}
   async setupEditorMode() {
     if (this.state.isEditMode) {
       await this.loadScript(this.state.scriptId);
-    } else if (!this.state.codeEditor.getValue()) {
-      this.insertDefaultTemplate();
+    } else if (!this.codeEditorManager.getValue()) {
+      this.codeEditorManager.insertDefaultTemplate();
     }
     this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
   }
@@ -451,7 +261,7 @@ ${template}
           if (this.state.isAutosaveEnabled) {
             this._debouncedSave();
           }
-          this.updateEditorLintAndAutocomplete();
+          this.codeEditorManager.updateEditorLintAndAutocomplete();
         });
       }
     });
@@ -500,9 +310,9 @@ ${template}
   setupButtonEventListeners() {
     const buttonHandlers = {
       sidebarToggle: () => this.ui.toggleSidebar(),
-      lintBtn: () => this.toggleLinting(),
+      lintBtn: () => this.codeEditorManager.toggleLinting(),
       saveBtn: () => this.saveScript(),
-      formatBtn: () => this.formatCode(true),
+      formatBtn: () => this.codeEditorManager.formatCode(true),
       autosaveBtn: () => this.toggleAutosave(),
     };
 
@@ -599,21 +409,6 @@ ${template}
   }
 
   /**
-   * Toggle code linting
-   */
-  toggleLinting() {
-    this.state.lintingEnabled = !this.state.lintingEnabled;
-    this.state.codeEditor.setOption(
-      "lint",
-      this.getLintOptions(this.state.lintingEnabled)
-    );
-    this.elements.lintBtnText.textContent = `Lint: ${
-      this.state.lintingEnabled ? "On" : "Off"
-    }`;
-    localStorage.setItem("lintingEnabled", this.state.lintingEnabled);
-  }
-
-  /**
    * Toggle autosave functionality
    */
   toggleAutosave() {
@@ -647,22 +442,6 @@ ${template}
   }
 
   /**
-   * Insert default template code
-   */
-  insertDefaultTemplate() {
-    const defaultCode = `(function() {
-  'use strict';
-  
-  // Your code here...
-  console.log('CodeTweak: Custom script is running!');
-
-})();`;
-
-    this.state.codeEditor.setValue(defaultCode);
-    this.formatCode(false);
-  }
-
-  /**
    * Load script data from storage
    */
   async loadScript(id) {
@@ -676,7 +455,7 @@ ${template}
       this.populateFormWithScript(script);
       this.state.hasUnsavedChanges = false;
       this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
-      this.updateEditorLintAndAutocomplete();
+      this.codeEditorManager.updateEditorLintAndAutocomplete();
     } catch (error) {
       console.error("Error loading script:", error);
       this.ui.showStatusMessage(
@@ -696,7 +475,7 @@ ${template}
     this.elements.scriptVersion.value =
       script.version || this.config.DEFAULT_VERSION;
     this.elements.scriptDescription.value = script.description || "";
-    this.state.codeEditor.setValue(script.code || "");
+    this.codeEditorManager.setValue(script.code || "");
 
     script.targetUrls?.forEach((url) => this.addUrlToList(url));
 
@@ -754,7 +533,7 @@ ${template}
       version:
         this.elements.scriptVersion.value.trim() || this.config.DEFAULT_VERSION,
       description: this.elements.scriptDescription.value.trim(),
-      code: this.state.codeEditor.getValue(),
+      code: this.codeEditorManager.getValue(),
       enabled: true,
       updatedAt: new Date().toISOString(),
     };
@@ -882,38 +661,6 @@ ${template}
   }
 
   /**
-   * Format code using js-beautify
-   */
-  formatCode(showMessage = true) {
-    try {
-      if (!this.state.codeEditor) {
-        throw new Error("Code editor not initialized");
-      }
-
-      const unformattedCode = this.state.codeEditor.getValue();
-      const formattedCode = js_beautify(unformattedCode, {
-        indent_size: 2,
-        space_in_empty_paren: true,
-      });
-
-      this.state.codeEditor.setValue(formattedCode);
-
-      if (showMessage) {
-        this.ui.showStatusMessage("Code formatted", "success");
-        setTimeout(
-          () => this.ui.clearStatusMessage(),
-          this.config.STATUS_TIMEOUT
-        );
-      }
-    } catch (error) {
-      console.error("Error formatting code:", error);
-      if (showMessage) {
-        this.ui.showStatusMessage("Could not format code", "error");
-      }
-    }
-  }
-
-  /**
    * Add URL to the target URL list
    */
   addUrlToList(url) {
@@ -944,8 +691,6 @@ ${template}
     }
   }
 }
-
-
 
 // Initialize the application when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {

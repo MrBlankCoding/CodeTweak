@@ -1,6 +1,3 @@
-/**
- * UI Manager - Handles all UI-related operations
- */
 class UIManager {
   constructor(elements, state, config) {
     this.elements = elements;
@@ -8,32 +5,70 @@ class UIManager {
     this.config = config;
   }
 
+  //side bar collapse
   initializeCollapsibleSections() {
-    this.elements.sectionToggles.forEach((toggle) => {
-      toggle.addEventListener("click", function () {
-        this.closest(".collapsible").classList.toggle("collapsed");
+    const { sidebar } = this.elements;
+    const sections = sidebar.querySelectorAll(".collapsible");
+    chrome.storage.local.get(["collapsedSections"], (result) => {
+      const collapsedSections = result.collapsedSections || {};
+
+      sections.forEach((section) => {
+        const sectionId = section.dataset.section;
+        const isCollapsed = collapsedSections[sectionId];
+
+        if (isCollapsed) {
+          section.classList.add("collapsed");
+        }
+
+        const header = section.querySelector(".section-header");
+        if (header) {
+          header.addEventListener("click", () => this.toggleSection(section));
+        }
       });
     });
   }
 
+  toggleSection(section) {
+    const sectionId = section.dataset.section;
+    const isCollapsing = !section.classList.contains("collapsed");
+    section.classList.toggle("collapsed");
+
+    chrome.storage.local.get(["collapsedSections"], (result) => {
+      const collapsedSections = result.collapsedSections || {};
+      collapsedSections[sectionId] = isCollapsing;
+      chrome.storage.local.set({ collapsedSections });
+    });
+
+    setTimeout(() => this.state.codeEditor?.refresh(), 100);
+  }
+
   updateSidebarState() {
-    const { sidebar, mainContent } = this.elements;
+    const { sidebar } = this.elements;
+    const { isSidebarVisible } = this.state;
 
-    sidebar.classList.toggle("active", this.state.isSidebarVisible);
-
-    if (window.innerWidth > this.config.SIDEBAR_BREAKPOINT) {
-      mainContent.style.gridTemplateColumns = this.state.isSidebarVisible
-        ? "280px 1fr"
-        : "0 1fr";
+    if (isSidebarVisible) {
+      sidebar.classList.remove("collapsed");
+      sidebar.style.width = "300px";
+    } else {
+      sidebar.classList.add("collapsed");
+      sidebar.style.width = "0";
     }
 
     setTimeout(() => this.state.codeEditor?.refresh(), 300);
   }
 
   toggleSidebar(e) {
-    if (e) e.stopPropagation();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
     this.state.isSidebarVisible = !this.state.isSidebarVisible;
     this.updateSidebarState();
+
+    chrome.storage.local.set({
+      isSidebarCollapsed: !this.state.isSidebarVisible,
+    });
   }
 
   updateScriptStatus(hasUnsavedChanges) {
@@ -65,9 +100,6 @@ class UIManager {
   }
 }
 
-/**
- * Storage Manager - Handles all storage operations
- */
 class StorageManager {
   async getScript(id) {
     const { scripts = [] } = await chrome.storage.local.get("scripts");
@@ -104,19 +136,13 @@ class StorageManager {
   }
 }
 
-/**
- * Form Validator - Handles form validation
- */
 class FormValidator {
   constructor(elements) {
     this.elements = elements;
   }
 
   validateForm() {
-    const validations = [
-      this.validateScriptName(),
-      this.validateTargetUrls(),
-    ];
+    const validations = [this.validateScriptName(), this.validateTargetUrls()];
 
     return validations.every((validation) => validation.isValid);
   }
