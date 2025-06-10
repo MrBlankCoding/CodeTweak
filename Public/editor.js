@@ -302,10 +302,18 @@ class ScriptEditor {
       debouncedSave: () => this._debouncedSave(),
       updateEditorLintAndAutocomplete: () =>
         this.codeEditorManager.updateEditorLintAndAutocomplete(),
-      saveSettings: (settings) => this.codeEditorManager.saveSettings(settings),
+      saveSettings: (settings) => {
+        this.codeEditorManager.saveSettings(settings);
+        // Update the editor with the new settings
+        this.codeEditorManager.applySettings(settings);
+      },
       loadSettings: () => this.codeEditorManager.loadSettings(),
-      resetToDefaultSettings: () =>
-        this.codeEditorManager.resetToDefaultSettings(),
+      resetToDefaultSettings: () => {
+        const defaultSettings = this.codeEditorManager.resetToDefaultSettings();
+        // Update the editor with the default settings
+        this.codeEditorManager.applySettings(defaultSettings);
+        return defaultSettings;
+      },
       toggleLinting: (enabled) => this.codeEditorManager.toggleLinting(enabled),
     };
 

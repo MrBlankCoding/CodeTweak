@@ -58,17 +58,27 @@ export class ModalManager extends BaseUIComponent {
   showModal(modalType) {
     const modal = this.elements[`${modalType}Modal`];
     if (modal) {
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = 'hidden';
       modal.classList.add('show');
       modal.style.display = 'flex';
+      // Focus the first focusable element
+      const focusable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      if (focusable) focusable.focus();
       this.emit('modalOpened', { type: modalType });
     }
   }
 
   hideModal(modalType) {
     const modal = this.elements[`${modalType}Modal`];
-    if (modal) {
+    if (modal && modal.classList.contains('show')) {
+      // Restore body scroll
+      document.body.style.overflow = '';
       modal.classList.remove('show');
-      modal.style.display = 'none';
+      // Wait for the transition to complete before hiding
+      setTimeout(() => {
+        modal.style.display = 'none';
+      }, 200);
       this.emit('modalClosed', { type: modalType });
     }
   }
@@ -374,17 +384,34 @@ export class SettingsManager extends BaseUIComponent {
   setupActionButtons() {
     const saveBtn = document.getElementById('saveSettings');
     const resetBtn = document.getElementById('resetSettings');
+    const closeBtn = document.querySelector('#settingsModal .close');
 
     if (saveBtn) {
-      this.addEventListener(saveBtn, 'click', () => {
-        this.saveAllSettings();
-        this.emit('modalClosed', { type: 'settings' });
+      this.addEventListener(saveBtn, 'click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const success = await this.saveAllSettings();
+        // Modal closing is now handled in saveAllSettings
       });
     }
 
     if (resetBtn) {
-      this.addEventListener(resetBtn, 'click', () => {
+      this.addEventListener(resetBtn, 'click', (e) => {
+        e.preventDefault();
         this.resetToDefaults();
+      });
+    }
+
+    if (closeBtn) {
+      this.addEventListener(closeBtn, 'click', (e) => {
+        e.preventDefault();
+        const modal = document.getElementById('settingsModal');
+        if (modal) {
+          modal.classList.remove('show');
+          modal.style.display = 'none';
+          document.body.style.overflow = '';
+        }
       });
     }
   }
@@ -425,18 +452,47 @@ export class SettingsManager extends BaseUIComponent {
     }
   }
 
-  saveAllSettings() {
-    const { settingsInputs } = this;
-    const newSettings = {
-      theme: settingsInputs.theme?.value || 'ayu-dark',
-      fontSize: parseInt(settingsInputs.fontSize?.value, 10) || 14,
-      tabSize: parseInt(settingsInputs.tabSize?.value, 10) || 2,
-      lineNumbers: !!settingsInputs.lineNumbers?.checked,
-      lineWrapping: !!settingsInputs.lineWrapping?.checked,
-      matchBrackets: !!settingsInputs.matchBrackets?.checked
-    };
+  async saveAllSettings() {
+    try {
+      const { settingsInputs } = this;
+      const newSettings = {
+        theme: settingsInputs.theme?.value || 'ayu-dark',
+        fontSize: parseInt(settingsInputs.fontSize?.value, 10) || 14,
+        tabSize: parseInt(settingsInputs.tabSize?.value, 10) || 2,
+        lineNumbers: !!settingsInputs.lineNumbers?.checked,
+        lineWrapping: !!settingsInputs.lineWrapping?.checked,
+        matchBrackets: !!settingsInputs.matchBrackets?.checked
+      };
 
-    this.emit('settingsSaved', newSettings);
+      // Save to chrome.storage.local
+      await chrome.storage.local.set({ editorSettings: newSettings });
+      
+      // Emit the event with the new settings
+      this.emit('settingsSaved', newSettings);
+      
+      // Apply the settings to the editor
+      this.emit('settingChanged', newSettings);
+      
+      // Show success message
+      this.emit('showStatus', { message: 'Settings saved successfully', type: 'success' });
+      
+      // Close the modal immediately
+      const modal = document.getElementById('settingsModal');
+      if (modal) {
+        modal.classList.remove('show');
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+      this.emit('showStatus', { 
+        message: 'Failed to save settings: ' + (error.message || 'Unknown error'),
+        type: 'error' 
+      });
+      return false;
+    }
   }
 
   resetToDefaults() {

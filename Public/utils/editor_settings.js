@@ -18,6 +18,14 @@ export class CodeEditorManager {
     };
     
     this.currentSettings = {...this.defaultSettings};
+    
+    // Add storage change listener
+    chrome.storage.onChanged.addListener((changes, namespace) => {
+      if (namespace === 'local' && changes.editorSettings) {
+        this.currentSettings = {...this.defaultSettings, ...changes.editorSettings.newValue};
+        this.applySettings(this.currentSettings);
+      }
+    });
   }
   // main code config
   async initializeCodeEditor() {
@@ -129,6 +137,15 @@ export class CodeEditorManager {
   applySettings(settings) {
     if (!this.codeEditor) return;
 
+    // Refresh editor after applying settings to ensure changes take effect
+    const refreshEditor = () => {
+      this.codeEditor.refresh();
+      if (this.onStatusCallback) {
+        this.onStatusCallback('Settings updated', 'success');
+        setTimeout(() => this.onStatusCallback(null), this.config.STATUS_TIMEOUT);
+      }
+    };
+
     if (settings.theme !== undefined) {
       const theme = settings.theme || this.defaultSettings.theme;
       const themeLink = document.querySelector('link[href*="codemirror/theme/"]');
@@ -136,30 +153,35 @@ export class CodeEditorManager {
         themeLink.href = `codemirror/theme/${theme}.css`;
       }
       this.codeEditor.setOption('theme', theme);
+      refreshEditor();
     }
 
     if (settings.fontSize !== undefined) {
       const size = settings.fontSize || this.defaultSettings.fontSize;
       this.codeEditor.getWrapperElement().style.fontSize = `${size}px`;
-      this.codeEditor.refresh();
+      refreshEditor();
     }
 
     if (settings.tabSize !== undefined) {
       const tabSize = settings.tabSize || this.defaultSettings.tabSize;
       this.codeEditor.setOption('tabSize', tabSize);
       this.codeEditor.setOption('indentUnit', tabSize);
+      refreshEditor();
     }
 
     if (settings.lineNumbers !== undefined) {
       this.codeEditor.setOption('lineNumbers', settings.lineNumbers);
+      refreshEditor();
     }
 
     if (settings.lineWrapping !== undefined) {
       this.codeEditor.setOption('lineWrapping', settings.lineWrapping);
+      refreshEditor();
     }
 
     if (settings.matchBrackets !== undefined) {
       this.codeEditor.setOption('matchBrackets', settings.matchBrackets);
+      refreshEditor();
     }
   }
 
