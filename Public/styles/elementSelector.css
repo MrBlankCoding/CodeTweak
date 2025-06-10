@@ -1,51 +1,43 @@
-:root {
-  --highlight-color: #81a9f7;
-  --highlight-bg: rgba(129, 169, 247, 0.1);
-  --menu-bg: rgba(30, 41, 59, 0.95);
-  --menu-hover: rgba(129, 169, 247, 0.1);
-  --text-color: #f0f0f0;
-  --indicator-bg: rgba(15, 23, 42, 0.9);
-  --indicator-text: #f0f0f0;
-}
+@import './global_theme.css';
 
 .CodeTweak-highlight {
-  outline: 2px dashed var(--highlight-color) !important;
+  outline: 2px dashed var(--primary) !important;
   outline-offset: 1px !important;
-  background-color: var(--highlight-bg) !important;
-  animation: highlight-pulse 1.5s ease-in-out infinite !important;
+  background-color: var(--primary-light) !important;
+  animation: highlight-pulse var(--transition-slower) ease-in-out infinite !important;
 }
 
 .CodeTweak-menu {
   position: fixed;
-  z-index: 999999;
-  background: var(--menu-bg);
+  z-index: var(--z-modal);
+  background: var(--bg-secondary);
   border: none;
-  border-radius: 4px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-  padding: 8px 0;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-sm) 0;
   min-width: 200px;
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: 14px;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
   backdrop-filter: blur(8px);
-  animation: menu-appear 0.2s ease-out;
-  color: var(--text-color);
+  animation: menu-appear var(--transition-normal) ease-out;
+  color: var(--text-primary);
 }
 
 .CodeTweak-menu-item {
-  padding: 8px 16px;
+  padding: var(--space-sm) var(--space-md);
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px;
-  transition: all 0.2s ease;
-  border-radius: 4px;
-  margin: 0 4px;
-  color: var(--text-color);
+  gap: var(--space-sm);
+  transition: var(--transition-all);
+  border-radius: var(--radius-sm);
+  margin: 0 var(--space-xs);
+  color: var(--text-primary);
 }
 
 .CodeTweak-menu-item:hover {
-  background-color: var(--menu-hover);
-  transform: translateX(4px);
+  background-color: var(--bg-hover);
+  transform: translateX(var(--space-xs));
 }
 
 .CodeTweak-menu-item-icon {
@@ -55,31 +47,75 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-color);
+  color: var(--text-secondary);
 }
 
 .CodeTweak-selector-mode {
   position: fixed;
-  top: 16px;
+  top: var(--space-md);
   left: 50%;
   transform: translateX(-50%);
-  background: var(--indicator-bg);
-  color: var(--indicator-text);
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: 14px;
-  z-index: 999999;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-full);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  z-index: var(--z-modal);
   pointer-events: none;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-sm);
   backdrop-filter: blur(4px);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-  animation: indicator-appear 0.3s ease-out;
+  box-shadow: var(--shadow-modal);
+  animation: indicator-appear var(--transition-slow) ease-out;
+  border: 1px solid var(--border-primary);
 }
 
 .CodeTweak-selector-mode .icon {
-  color: var(--highlight-color);
+  color: var(--primary);
   animation: icon-bounce 1s ease-in-out infinite;
+}
+
+/* Animation keyframes using theme variables */
+@keyframes highlight-pulse {
+  0%, 100% {
+    outline-color: var(--primary);
+    background-color: var(--primary-light);
+  }
+  50% {
+    outline-color: var(--secondary);
+    background-color: var(--info-light);
+  }
+}
+
+@keyframes menu-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-var(--space-sm));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes indicator-appear {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-var(--space-sm));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes icon-bounce {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
 }

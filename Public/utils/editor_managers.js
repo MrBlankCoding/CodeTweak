@@ -151,15 +151,29 @@ export class SidebarManager extends BaseUIComponent {
     
     sections.forEach((section) => {
       const sectionId = section.dataset.section;
-      const isCollapsed = this.collapsedSections[sectionId];
-
-      if (isCollapsed) {
+      
+      // Initialize collapsed state from storage or default to false
+      if (this.collapsedSections[sectionId] === undefined) {
+        this.collapsedSections[sectionId] = false;
+      }
+      
+      // Set initial state
+      if (this.collapsedSections[sectionId]) {
         section.classList.add('collapsed');
+      } else {
+        section.classList.remove('collapsed');
       }
 
+      // Add click handler to section headers
       const header = section.querySelector('.section-header');
       if (header) {
-        this.addEventListener(header, 'click', () => {
+        // Remove any existing click handlers to prevent duplicates
+        const newHeader = header.cloneNode(true);
+        header.parentNode.replaceChild(newHeader, header);
+        
+        this.addEventListener(newHeader, 'click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
           this.toggleSection(section);
         });
       }
@@ -168,13 +182,24 @@ export class SidebarManager extends BaseUIComponent {
 
   toggleSection(section) {
     const sectionId = section.dataset.section;
-    const isCollapsing = !section.classList.contains('collapsed');
+    if (!sectionId) return;
     
-    section.classList.toggle('collapsed');
+    // Toggle the collapsed state
+    const isCollapsing = !section.classList.contains('collapsed');
     this.collapsedSections[sectionId] = isCollapsing;
     
-    this.saveState();
+    // Update the DOM
+    if (isCollapsing) {
+      section.classList.add('collapsed');
+    } else {
+      section.classList.remove('collapsed');
+    }
     
+    // Save the state and notify any listeners
+    this.saveState();
+    this.emit('sectionToggled', { sectionId, isCollapsed: isCollapsing });
+    
+    // Trigger layout update after a short delay to allow for CSS transitions
     setTimeout(() => {
       this.emit('layoutChanged');
     }, 100);
@@ -566,7 +591,7 @@ export class ResourceManager extends BaseUIComponent {
     item.dataset.name = name;
     item.dataset.url = url;
     item.innerHTML = `
-      <span>@resource ${this.escapeHtml(name)} ${this.escapeHtml(url)}</span>
+      <span>resource: ${this.escapeHtml(name)} ${this.escapeHtml(url)}</span>
       <button type="button" class="remove-resource-btn" aria-label="Remove resource">×</button>
     `;
     
@@ -710,7 +735,26 @@ export class KeyboardManager extends BaseUIComponent {
     if (e.altKey) parts.push('alt');
     if (e.shiftKey) parts.push('shift');
     
-    parts.push(e.key.toLowerCase());
+    // Safely handle the key property
+    if (e.key) {
+      // Skip if it's a modifier key that we've already handled
+      const key = e.key.toLowerCase();
+      if (!['control', 'shift', 'alt', 'meta', 'command', 'cmd', 'ctrl'].includes(key)) {
+        parts.push(key);
+      } else if (parts.length === 0) {
+        // If only a modifier key is pressed, include it
+        parts.push(key);
+      }
+    } else if (e.keyCode) {
+      // Fallback for older browsers
+      const key = String.fromCharCode(e.keyCode).toLowerCase();
+      if (key && key.length === 1) {
+        parts.push(key);
+      }
+    }
+    
+    // If no valid key was found, return an empty string
+    if (parts.length === 0) return '';
     
     return parts.join('+');
   }
@@ -796,6 +840,19 @@ export class UIManager {
 
   emit(eventName, data) {
     this.eventBus.emit(eventName, data);
+  }
+  
+  /**
+   * Add a resource to the resource list
+   * @param {string} name - The name of the resource
+   * @param {string} url - The URL of the resource
+   */
+  addResourceToList(name, url) {
+    if (this.components.resource && typeof this.components.resource.addResourceToList === 'function') {
+      this.components.resource.addResourceToList(name, url);
+    } else {
+      console.warn('ResourceManager not properly initialized');
+    }
   }
 
   getComponent(name) {

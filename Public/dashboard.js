@@ -19,6 +19,7 @@ function initDashboard() {
     settings: {
       enableAllScripts: document.getElementById("enableAllScripts"),
       showNotifications: document.getElementById("showNotifications"),
+      darkMode: document.getElementById("darkMode"),
     },
     greasyfork: {
       button: document.getElementById("greasyforkBtn"),

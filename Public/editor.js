@@ -1,5 +1,9 @@
-import { UIManager, StorageManager, FormValidator } from './utils/editor_managers.js';
-import { CodeEditorManager } from './utils/editor_settings.js';
+import {
+  UIManager,
+  StorageManager,
+  FormValidator,
+} from "./utils/editor_managers.js";
+import { CodeEditorManager } from "./utils/editor_settings.js";
 
 class ScriptEditor {
   constructor() {
@@ -107,7 +111,7 @@ class ScriptEditor {
           console.log("Autosaving due to debounced request...");
           try {
             await this.saveScript(true);
-            
+
             if (!force) {
               setTimeout(() => {
                 if (!this.state.hasUnsavedChanges) {
@@ -189,8 +193,10 @@ class ScriptEditor {
   async init() {
     try {
       this.setDefaultValues();
-      this.state.isAutosaveEnabled = localStorage.getItem("autosaveEnabled") !== "false";
-      this.state.lintingEnabled = localStorage.getItem("lintingEnabled") !== "false";
+      this.state.isAutosaveEnabled =
+        localStorage.getItem("autosaveEnabled") !== "false";
+      this.state.lintingEnabled =
+        localStorage.getItem("lintingEnabled") !== "false";
       await this.codeEditorManager.initializeCodeEditor();
       this.codeEditorManager.toggleLinting(this.state.lintingEnabled);
       this.codeEditorManager.setSaveCallback(() => this.saveScript());
@@ -207,7 +213,6 @@ class ScriptEditor {
           this.ui.clearStatusMessage();
         }
       });
-
 
       this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
 
@@ -263,6 +268,31 @@ class ScriptEditor {
     this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
   }
 
+  toggleResourcesSection(show) {
+    const resourcesSection = document.getElementById('resourcesSection');
+    if (resourcesSection) {
+      if (show) {
+        resourcesSection.classList.remove('hidden');
+      } else if (!this.elements.gmGetResourceText.checked && !this.elements.gmGetResourceURL.checked) {
+        resourcesSection.classList.add('hidden');
+      }
+    }
+  }
+
+  setupResourceApiListeners() {
+    const resourceCheckboxes = [this.elements.gmGetResourceText, this.elements.gmGetResourceURL];
+    
+    resourceCheckboxes.forEach(checkbox => {
+      if (checkbox) {
+        checkbox.addEventListener('change', () => {
+          const shouldShow = this.elements.gmGetResourceText.checked || this.elements.gmGetResourceURL.checked;
+          this.toggleResourcesSection(shouldShow);
+          this.markAsDirty();
+        });
+      }
+    });
+  }
+
   registerEventListeners() {
     const callbacks = {
       saveScript: () => this.saveScript(),
@@ -287,10 +317,13 @@ class ScriptEditor {
     this.ui.setupSettingsModal(callbacks);
     this.ui.setupGlobalEventListeners(callbacks);
     this.ui.setupResourceManagement(callbacks);
-
-    // Some bugs around this
-    if (typeof this.ui.toggleResourceSection === "function") {
-      this.ui.toggleResourceSection();
+    
+    // Setup resource API listeners
+    this.setupResourceApiListeners();
+    
+    // Show resources section if either resource API is checked
+    if (this.elements.gmGetResourceText?.checked || this.elements.gmGetResourceURL?.checked) {
+      this.toggleResourcesSection(true);
     }
   }
 
@@ -350,6 +383,11 @@ class ScriptEditor {
       this.elements.gmGetResourceURL.checked = !!script.gmGetResourceURL;
     if (this.elements.gmSetClipboard)
       this.elements.gmSetClipboard.checked = !!script.gmSetClipboard;
+      
+    // Show resources section if either resource API is checked
+    if (script.gmGetResourceText || script.gmGetResourceURL) {
+      this.toggleResourcesSection(true);
+    }
 
     if (
       this.elements.resourceList &&
@@ -406,9 +444,9 @@ class ScriptEditor {
     // Parse resource items
     scriptData.resources = [];
     if (this.elements.resourceList) {
-      const items = Array.from(this.elements.resourceList.querySelectorAll(
-        ".resource-item"
-      ));
+      const items = Array.from(
+        this.elements.resourceList.querySelectorAll(".resource-item")
+      );
       items.forEach((item) => {
         scriptData.resources.push({
           name: item.dataset.name,
@@ -421,13 +459,13 @@ class ScriptEditor {
   }
 
   // Save script to storage
-  async saveScript() {
+  async saveScript(quiet = false) {
     try {
       if (!this.validator.validateForm()) return null;
 
       const scriptData = this.gatherScriptData();
       const isNewScript = !this.state.scriptId;
-      
+
       // Only if new changes or is a new script
       if (!this.state.hasUnsavedChanges && !isNewScript) {
         return null;
@@ -441,7 +479,8 @@ class ScriptEditor {
             try {
               const response = await fetch(resource.url);
               if (response.ok) {
-                scriptData.resourceContents[resource.name] = await response.text();
+                scriptData.resourceContents[resource.name] =
+                  await response.text();
               } else {
                 console.error(
                   `Failed to fetch resource '${resource.name}' from ${resource.url}: ${response.status} ${response.statusText}`
@@ -458,7 +497,7 @@ class ScriptEditor {
           })
         );
       }
-      
+
       // Saved
       const savedScript = await this.storage.saveScript(
         scriptData,
@@ -474,8 +513,8 @@ class ScriptEditor {
       // Update URL if its a new script
       if (isNewScript) {
         const newUrl = new URL(window.location);
-        newUrl.searchParams.set('id', savedScript.id);
-        window.history.pushState({}, '', newUrl);
+        newUrl.searchParams.set("id", savedScript.id);
+        window.history.pushState({}, "", newUrl);
         this.state.isEditMode = true;
       }
 
@@ -483,10 +522,10 @@ class ScriptEditor {
 
       if (!quiet) {
         this.ui.showStatusMessage(
-          `Script ${isNewScript ? 'created' : 'saved'} successfully`,
-          'success'
+          `Script ${isNewScript ? "created" : "saved"} successfully`,
+          "success"
         );
-        
+
         setTimeout(() => {
           if (!this.state.hasUnsavedChanges) {
             this.ui.clearStatusMessage();
@@ -496,25 +535,24 @@ class ScriptEditor {
 
       return savedScript;
     } catch (error) {
-      console.error('Error saving script:', error);
-      const errorMessage = error.message || 'Unknown error occurred';
+      console.error("Error saving script:", error);
+      const errorMessage = error.message || "Unknown error occurred";
       this.ui.showStatusMessage(
         `Failed to save script: ${errorMessage}`,
-        'error'
+        "error"
       );
-      
+
       setTimeout(() => {
         if (this.state.hasUnsavedChanges) {
-          this.ui.showStatusMessage('Unsaved changes', 'warning');
+          this.ui.showStatusMessage("Unsaved changes", "warning");
         } else {
           this.ui.clearStatusMessage();
         }
       }, 5000);
-      
+
       throw error;
     }
   }
-
 
   updateEditorStateAfterSave(savedScript) {
     if (!this.state.isEditMode) {
@@ -555,8 +593,31 @@ class ScriptEditor {
 
 // Main init for editor
 document.addEventListener("DOMContentLoaded", () => {
-  const editor = new ScriptEditor();
-  editor.init().catch((error) => {
-    console.error("Failed to initialize script editor:", error);
+  applyThemeFromSettings().then(() => {
+    const editor = new ScriptEditor();
+    editor.init().catch((error) => {
+      console.error("Failed to initialize script editor:", error);
+    });
+  });
+
+  // Listen for runtime theme changes
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.action === "settingsUpdated") {
+      applyThemeFromSettings();
+    }
   });
 });
+
+/**
+ * Reads darkMode from storage and toggles body.light-theme.
+ */
+async function applyThemeFromSettings() {
+  try {
+    const { settings = {} } = await chrome.storage.local.get("settings");
+    const isDark = settings.darkMode !== false; // default dark mode true
+    document.body.classList.toggle("light-theme", !isDark);
+  } catch (err) {
+    console.error("Error applying theme:", err);
+  }
+}
+

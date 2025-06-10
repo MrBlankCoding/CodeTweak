@@ -232,13 +232,25 @@
                   Display a notification when a script executes on a page
                 </p>
               </div>
-            <div class="settings-actions">
-              <button type="submit" id="saveSettingsBtn" class="primary">
-                Save Settings
-              </button>
-              <button type="reset" id="resetSettingsBtn" class="secondary">
-                Reset to Defaults
-              </button>
+
+              <div class="form-group">
+                <label class="checkbox-label" for="darkMode">
+                  <input type="checkbox" id="darkMode" checked />
+                  Enable dark mode (toggle for light mode)
+                </label>
+                <p class="form-help">
+                  Disable to switch to the light theme
+                </p>
+              </div>
+
+              <div class="settings-actions">
+                <button type="submit" id="saveSettingsBtn" class="primary">
+                  Save Settings
+                </button>
+                <button type="reset" id="resetSettingsBtn" class="secondary">
+                  Reset to Defaults
+                </button>
+              </div>
             </div>
           </form>
         </section>

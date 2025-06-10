@@ -1,6 +1,9 @@
 import { urlMatchesPattern } from "./utils/urlMatchPattern.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
+  // Apply theme first
+  await applyThemeFromSettings();
+
   const scriptList = document.getElementById("scriptList");
   const emptyState = document.getElementById("emptyState");
   const createScriptBtn = document.getElementById("createScript");
@@ -39,6 +42,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   await loadScripts(currentTabUrl);
+
+  // Listen for settings changes
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.action === "settingsUpdated") {
+      applyThemeFromSettings();
+    }
+  });
 
   async function loadScripts(url) {
     const { scripts = [] } = await chrome.storage.local.get("scripts");
@@ -176,5 +186,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (script.js?.trim()) features.push("scripts");
     const siteText = urls.length > 1 ? `${urls.length} sites` : "Current site";
     return `${features.join(" + ")} • ${siteText}`;
+  }
+
+  /**
+   * Retrieves darkMode from storage and toggles body class.
+   */
+  async function applyThemeFromSettings() {
+    try {
+      const { settings = {} } = await chrome.storage.local.get("settings");
+      const isDark = settings.darkMode !== false; // default dark mode true
+      document.body.classList.toggle("light-theme", !isDark);
+    } catch (err) {
+      console.error("Error applying theme:", err);
+    }
   }
 });

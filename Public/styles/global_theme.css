@@ -107,3 +107,48 @@
   --scrollbar-thumb: var(--border-secondary);
   --scrollbar-thumb-hover: var(--text-muted);
 }
+
+body.light-theme {
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-light: rgba(79, 70, 229, 0.08);
+  --secondary: #7c3aed;
+  --accent: #0ea5e9;
+
+  --bg-primary: #f8fafc;        
+  --bg-secondary: #f1f5f9;       
+  --bg-tertiary: #e2e8f0;       
+  --bg-hover: #dbeafe;           
+
+  --text-primary: #1e293b;       
+  --text-secondary: #334155;     
+  --text-muted: #64748b;        
+  --text-accent: #2563eb;        
+
+  --border-primary: #e2e8f0;     
+  --border-secondary: #cbd5e1;   
+  --border-accent: #4f46e5;
+  --border-focus: var(--primary);
+
+  --success: #059669;
+  --success-light: rgba(5, 150, 105, 0.08);
+  --warning: #d97706;
+  --warning-light: rgba(217, 119, 6, 0.08);
+  --error: #dc2626;
+  --error-light: rgba(220, 38, 38, 0.08);
+  --info: #2563eb;
+  --info-light: rgba(37, 99, 235, 0.08);
+
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+  --shadow-glow: 0 0 0 1px rgba(79, 70, 229, 0.04), 0 0 20px rgba(79, 70, 229, 0.08);
+  --shadow-focus: 0 0 0 3px var(--primary-light);
+
+  --shadow-modal: 0 10px 25px rgba(0, 0, 0, 0.1);
+
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: var(--border-secondary);
+  --scrollbar-thumb-hover: var(--text-muted);
+}
