@@ -601,7 +601,6 @@ input:checked + .slider:before {
 
 .script-card:hover {
   border-color: var(--primary);
-  transform: translateY(-2px);
 }
 
 .script-card h3 {

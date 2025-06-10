@@ -15,6 +15,135 @@ function createMainWorldExecutor(
   resourceURLs,
   extensionId
 ) {
+  // Helper: Creates a bridge for GM API communication between main world and content scripts
+  function createGMBridge(scriptId, extensionId) {
+    let messageIdCounter = 0;
+    const pendingPromises = {};
+
+    // Listen for responses from content bridge
+    window.addEventListener("message", (event) => {
+      if (
+        event.source === window &&
+        event.data?.type === "GM_API_RESPONSE" &&
+        event.data.extensionId === extensionId &&
+        pendingPromises[event.data.messageId]
+      ) {
+        const { messageId, error, result } = event.data;
+        const promise = pendingPromises[messageId];
+
+        if (error) {
+          promise.reject(new Error(error));
+        } else {
+          promise.resolve(result);
+        }
+        delete pendingPromises[messageId];
+      }
+    });
+
+    return function callGmBridge(action, payload) {
+      return new Promise((resolve, reject) => {
+        const messageId = `gm_${scriptId}_${messageIdCounter++}`;
+        pendingPromises[messageId] = { resolve, reject };
+
+        window.postMessage(
+          {
+            type: "GM_API_REQUEST",
+            extensionId,
+            messageId,
+            action,
+            payload,
+          },
+          "*"
+        );
+      });
+    };
+  }
+
+  // GM apis
+  function registerGMAPIs(enabledApis, gmBridge, resourceContents, resourceURLs) {
+    const GM = window.GM;
+
+    // Storage APIs
+    if (enabledApis.gmSetValue) {
+      const setValue = (name, value) => gmBridge("setValue", { name, value });
+      window.GM_setValue = setValue;
+      GM.setValue = setValue;
+    }
+
+    if (enabledApis.gmGetValue) {
+      const getValue = (name, defaultValue) =>
+        gmBridge("getValue", { name, defaultValue });
+      window.GM_getValue = getValue;
+      GM.getValue = getValue;
+    }
+
+    if (enabledApis.gmDeleteValue) {
+      const deleteValue = (name) => gmBridge("deleteValue", { name });
+      window.GM_deleteValue = deleteValue;
+      GM.deleteValue = deleteValue;
+    }
+
+    if (enabledApis.gmListValues) {
+      const listValues = () => gmBridge("listValues", {});
+      window.GM_listValues = listValues;
+      GM.listValues = listValues;
+    }
+
+    // Tab and UI APIs
+    if (enabledApis.gmOpenInTab) {
+      const openInTab = (url, options = {}) =>
+        gmBridge("openInTab", { url, options });
+      window.GM_openInTab = openInTab;
+      GM.openInTab = openInTab;
+    }
+
+    if (enabledApis.gmNotification) {
+      const notification = (textOrDetails, titleOrOnDone, image) => {
+        const details =
+          typeof textOrDetails === "object" && textOrDetails !== null
+            ? { ...textOrDetails }
+            : { text: textOrDetails, title: titleOrOnDone, image };
+
+        // Remove non clonable properties
+        const cloneableDetails = Object.fromEntries(
+          Object.entries(details).filter(([, value]) => typeof value !== "function")
+        );
+
+        return gmBridge("notification", { details: cloneableDetails });
+      };
+      window.GM_notification = notification;
+      GM.notification = notification;
+    }
+
+    if (enabledApis.gmSetClipboard) {
+      const setClipboard = (data, type) => gmBridge("setClipboard", { data, type });
+      window.GM_setClipboard = setClipboard;
+      GM.setClipboard = setClipboard;
+    }
+
+    // No privlages -> Handle directly
+    if (enabledApis.gmGetResourceText) {
+      const getResourceText = (resourceName) => resourceContents[resourceName] || null;
+      window.GM_getResourceText = getResourceText;
+      GM.getResourceText = getResourceText;
+    }
+
+    if (enabledApis.gmGetResourceURL) {
+      const getResourceURL = (resourceName) => resourceURLs[resourceName] || null;
+      window.GM_getResourceURL = getResourceURL;
+      GM.getResourceURL = getResourceURL;
+    }
+  }
+
+  // For error handeling
+  function executeUserScript(userCode, scriptId) {
+    try {
+      new Function(userCode)();
+    } catch (error) {
+      console.error(`CodeTweak: Error executing user script ${scriptId}:`, error);
+    }
+  }
+
   // Prevent re-execution
   window._executedScriptIds = window._executedScriptIds || new Set();
   if (window._executedScriptIds.has(scriptId)) {
@@ -37,148 +166,7 @@ function createMainWorldExecutor(
   executeUserScript(userCode, scriptId);
 }
 
-/**
- * Creates a bridge for GM API communication between main world and content scripts
- */
-function createGMBridge(scriptId, extensionId) {
-  let messageIdCounter = 0;
-  const pendingPromises = {};
-
-  // Listen for responses from content bridge
-  window.addEventListener("message", (event) => {
-    if (
-      event.source === window &&
-      event.data?.type === "GM_API_RESPONSE" &&
-      event.data.extensionId === extensionId &&
-      pendingPromises[event.data.messageId]
-    ) {
-      const { messageId, error, result } = event.data;
-      const promise = pendingPromises[messageId];
-
-      if (error) {
-        promise.reject(new Error(error));
-      } else {
-        promise.resolve(result);
-      }
-      delete pendingPromises[messageId];
-    }
-  });
-
-  return function callGmBridge(action, payload) {
-    return new Promise((resolve, reject) => {
-      const messageId = `gm_${scriptId}_${messageIdCounter++}`;
-      pendingPromises[messageId] = { resolve, reject };
-
-      window.postMessage(
-        {
-          type: "GM_API_REQUEST",
-          extensionId,
-          messageId,
-          action,
-          payload,
-        },
-        "*"
-      );
-    });
-  };
-}
-
-/**
- * Registers GM APIs based on enabled permissions
- */
-function registerGMAPIs(enabledApis, gmBridge, resourceContents, resourceURLs) {
-  const GM = window.GM;
-
-  // Storage APIs
-  if (enabledApis.gmSetValue) {
-    const setValue = (name, value) => gmBridge("setValue", { name, value });
-    window.GM_setValue = setValue;
-    GM.setValue = setValue;
-  }
-
-  if (enabledApis.gmGetValue) {
-    const getValue = (name, defaultValue) =>
-      gmBridge("getValue", { name, defaultValue });
-    window.GM_getValue = getValue;
-    GM.getValue = getValue;
-  }
-
-  if (enabledApis.gmDeleteValue) {
-    const deleteValue = (name) => gmBridge("deleteValue", { name });
-    window.GM_deleteValue = deleteValue;
-    GM.deleteValue = deleteValue;
-  }
-
-  if (enabledApis.gmListValues) {
-    const listValues = () => gmBridge("listValues", {});
-    window.GM_listValues = listValues;
-    GM.listValues = listValues;
-  }
-
-  // Tab and UI APIs
-  if (enabledApis.gmOpenInTab) {
-    const openInTab = (url, options = {}) =>
-      gmBridge("openInTab", { url, options });
-    window.GM_openInTab = openInTab;
-    GM.openInTab = openInTab;
-  }
-
-  if (enabledApis.gmNotification) {
-    const notification = (textOrDetails, titleOrOnDone, image) => {
-      const details =
-        typeof textOrDetails === "object" && textOrDetails !== null
-          ? { ...textOrDetails }
-          : { text: textOrDetails, title: titleOrOnDone, image };
-
-      // Remove non-cloneable properties (functions)
-      const cloneableDetails = Object.fromEntries(
-        Object.entries(details).filter(
-          ([, value]) => typeof value !== "function"
-        )
-      );
-
-      return gmBridge("notification", { details: cloneableDetails });
-    };
-    window.GM_notification = notification;
-    GM.notification = notification;
-  }
-
-  if (enabledApis.gmSetClipboard) {
-    const setClipboard = (data, type) =>
-      gmBridge("setClipboard", { data, type });
-    window.GM_setClipboard = setClipboard;
-    GM.setClipboard = setClipboard;
-  }
-
-  // Resource APIs (non-privileged, handled directly)
-  if (enabledApis.gmGetResourceText) {
-    const getResourceText = (resourceName) =>
-      resourceContents[resourceName] || null;
-    window.GM_getResourceText = getResourceText;
-    GM.getResourceText = getResourceText;
-  }
-
-  if (enabledApis.gmGetResourceURL) {
-    const getResourceURL = (resourceName) => resourceURLs[resourceName] || null;
-    window.GM_getResourceURL = getResourceURL;
-    GM.getResourceURL = getResourceURL;
-  }
-}
-
-/**
- * Safely executes user script code
- */
-function executeUserScript(userCode, scriptId) {
-  try {
-    new Function(userCode)();
-  } catch (error) {
-    console.error(`CodeTweak: Error executing user script ${scriptId}:`, error);
-  }
-}
-
-/**
- * Injects a single script into a tab
- */
+// Inject a script
 export async function injectScriptDirectly(tabId, script, settings) {
   try {
     const tab = await chrome.tabs.get(tabId);
@@ -213,9 +201,7 @@ export async function injectScriptDirectly(tabId, script, settings) {
   }
 }
 
-/**
- * Prepares script configuration for injection
- */
+//GM api preperation
 function prepareScriptConfig(script) {
   const scriptId = script.id || script.name || `anonymous_script_${Date.now()}`;
 
@@ -249,33 +235,29 @@ function prepareScriptConfig(script) {
   };
 }
 
-/**
- * Injects scripts for a specific execution stage
- */
 export async function injectScriptsForStage(
   details,
   runAt,
   getFilteredScripts,
   executedScripts
 ) {
-  if (details.frameId !== 0) return; // Only inject in top frame
+  if (details.frameId !== 0) return; // ONLY INJECT IN TOP FRAME
 
   try {
     const { settings = {} } = await chrome.storage.local.get("settings");
     const { url, tabId } = details;
 
-    // Initialize or get executed scripts for this tab
+    // init or get already exacuted
     if (!executedScripts.has(tabId)) {
       executedScripts.set(tabId, new Set());
     }
     const tabScripts = executedScripts.get(tabId);
 
-    // Clear executed scripts on new navigation
+    // Clear on new nav
     if (runAt === INJECTION_TYPES.DOCUMENT_START) {
       tabScripts.clear();
     }
 
-    // Inject matching scripts
     await injectMatchingScripts(
       url,
       runAt,
@@ -289,9 +271,7 @@ export async function injectScriptsForStage(
   }
 }
 
-/**
- * Injects scripts matching the current URL and execution stage
- */
+// inject based on URL
 async function injectMatchingScripts(
   url,
   runAt,
@@ -311,9 +291,7 @@ async function injectMatchingScripts(
   }
 }
 
-/**
- * Shows a notification when a script is executed
- */
+// show notif on exacute
 export function showNotification(tabId, scriptName) {
   chrome.scripting
     .executeScript({

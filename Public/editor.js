@@ -1,3 +1,6 @@
+import { UIManager, StorageManager, FormValidator } from './utils/editor_managers.js';
+import { CodeEditorManager } from './utils/editor_settings.js';
+
 class ScriptEditor {
   constructor() {
     this.config = {
@@ -82,6 +85,7 @@ class ScriptEditor {
       },
     };
 
+    // Init code mirror
     this.codeEditorManager = new CodeEditorManager(
       this.elements,
       this.state,
@@ -90,24 +94,40 @@ class ScriptEditor {
     );
   }
 
-  _debouncedSave() {
+  _debouncedSave(force = false) {
+    // Clear existing timeout
     if (this.state.autosaveTimeout) {
       clearTimeout(this.state.autosaveTimeout);
+      this.state.autosaveTimeout = null;
     }
-    this.state.autosaveTimeout = setTimeout(async () => {
-      if (
-        this.state.hasUnsavedChanges &&
-        this.state.isAutosaveEnabled &&
-        this.state.codeEditor
-      ) {
-        console.log("Autosaving due to debounced request...");
-        await this.saveScript();
-      }
-    }, this.config.AUTOSAVE_DELAY);
+
+    if (this.state.isAutosaveEnabled || force) {
+      this.state.autosaveTimeout = setTimeout(async () => {
+        if (this.state.hasUnsavedChanges && this.state.codeEditor) {
+          console.log("Autosaving due to debounced request...");
+          try {
+            await this.saveScript(true);
+            
+            if (!force) {
+              setTimeout(() => {
+                if (!this.state.hasUnsavedChanges) {
+                  this.ui.clearStatusMessage();
+                }
+              }, 2000);
+            }
+          } catch (error) {
+            console.error("Error during autosave:", error);
+            if (!force) {
+              this.ui.showStatusMessage("Autosave failed", "error");
+            }
+          }
+        }
+      }, this.config.AUTOSAVE_DELAY);
+    }
   }
 
   markAsDirty() {
-    if (this.state.hasUnsavedChanges && !this.state.isEditMode) return; // Allow re-dirtying in edit mode for autosave trigger
+    if (this.state.hasUnsavedChanges && !this.state.isEditMode) return; // Allow dirting in edit mode for autosave
     this.state.hasUnsavedChanges = true;
     this.ui.updateScriptStatus(true);
   }
@@ -115,6 +135,8 @@ class ScriptEditor {
   cacheElements() {
     const elementIds = [
       "pageTitle",
+      "settingsBtn",
+      "closeSettings",
       "scriptName",
       "scriptAuthor",
       "targetUrl",
@@ -142,7 +164,10 @@ class ScriptEditor {
       "gmGetResourceText",
       "gmGetResourceURL",
       "gmSetClipboard",
-      "scriptResources",
+      "resourceName",
+      "resourceURL",
+      "addResourceBtn",
+      "resourceList",
     ];
 
     const elements = {};
@@ -150,23 +175,24 @@ class ScriptEditor {
       elements[id] = document.getElementById(id);
     });
 
-    // Additional elements
+    // ANything else
     elements.sidebar = document.querySelector(".sidebar");
     elements.sectionToggles = document.querySelectorAll(".section-toggle");
     elements.mainContent = document.querySelector(".main-content");
     elements.urlList = document.getElementById("urlList");
     elements.addUrlBtn = document.getElementById("addUrlBtn");
+    elements.settingsModal = document.getElementById("settingsModal");
 
     return elements;
   }
 
-  /**
-   * Initialize the entire application
-   */
   async init() {
     try {
       this.setDefaultValues();
-      this.codeEditorManager.initializeCodeEditor();
+      this.state.isAutosaveEnabled = localStorage.getItem("autosaveEnabled") !== "false";
+      this.state.lintingEnabled = localStorage.getItem("lintingEnabled") !== "false";
+      await this.codeEditorManager.initializeCodeEditor();
+      this.codeEditorManager.toggleLinting(this.state.lintingEnabled);
       this.codeEditorManager.setSaveCallback(() => this.saveScript());
       this.codeEditorManager.setChangeCallback(() => {
         this.markAsDirty();
@@ -181,15 +207,18 @@ class ScriptEditor {
           this.ui.clearStatusMessage();
         }
       });
+
+
+      this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
+
       await this.parseUrlParams();
       this.setupEditorMode();
       this.ui.initializeCollapsibleSections();
       this.ui.updateSidebarState();
       this.registerEventListeners();
       this.setupBackgroundConnection();
-      this.codeEditorManager.updateEditorLintAndAutocomplete(); // Ensure it's updated after potential script load
+      this.codeEditorManager.updateEditorLintAndAutocomplete();
 
-      // Focus editor after initialization
       setTimeout(() => this.codeEditorManager.focus(), 100);
     } catch (error) {
       console.error("Failed to initialize editor:", error);
@@ -197,25 +226,12 @@ class ScriptEditor {
     }
   }
 
-  /**
-   * Set default form values
-   */
   setDefaultValues() {
     if (!this.elements.scriptVersion.value) {
       this.elements.scriptVersion.value = this.config.DEFAULT_VERSION;
     }
-
-    this.elements.autosaveBtnText.textContent = `Autosave: ${
-      this.state.isAutosaveEnabled ? "On" : "Off"
-    }`;
-    this.elements.lintBtnText.textContent = `Lint: ${
-      this.state.lintingEnabled ? "On" : "Off"
-    }`;
   }
 
-  /**
-   * Parse URL parameters and setup editor state
-   */
   async parseUrlParams() {
     const urlParams = new URLSearchParams(window.location.search);
     this.state.scriptId = urlParams.get("id");
@@ -226,7 +242,7 @@ class ScriptEditor {
     if (initialTargetUrl && this.elements.targetUrl) {
       const decodedUrl = decodeURIComponent(initialTargetUrl);
       this.elements.targetUrl.value = decodedUrl;
-      this.addUrlToList(decodedUrl);
+      this.ui.addUrlToList(decodedUrl);
     }
 
     if (template) {
@@ -237,9 +253,7 @@ class ScriptEditor {
     }
   }
 
-  /**
-   * Setup editor mode (edit vs create)
-   */
+  // edit vs create
   async setupEditorMode() {
     if (this.state.isEditMode) {
       await this.loadScript(this.state.scriptId);
@@ -249,201 +263,42 @@ class ScriptEditor {
     this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
   }
 
-  /**
-   * Register all event listeners
-   */
   registerEventListeners() {
-    Object.values(this.gmApiDefinitions).forEach((apiDef) => {
-      const checkbox = this.elements[apiDef.el];
-      if (checkbox) {
-        checkbox.addEventListener("change", () => {
-          this.markAsDirty();
-          if (this.state.isAutosaveEnabled) {
-            this._debouncedSave();
-          }
-          this.codeEditorManager.updateEditorLintAndAutocomplete();
-        });
-      }
-    });
-
-    this.setupUserInteractionTracking();
-    this.setupGlobalEventListeners();
-    this.setupButtonEventListeners();
-    this.setupFormEventListeners();
-    this.setupUrlManagement();
-  }
-
-  /**
-   * Setup user interaction tracking
-   */
-  setupUserInteractionTracking() {
-    const trackUserInteraction = () => {
-      this.state.hasUserInteraction = true;
+    const callbacks = {
+      saveScript: () => this.saveScript(),
+      formatCode: () => this.codeEditorManager.formatCode(true),
+      markAsUnsaved: () => this.markAsUnsaved(),
+      markAsDirty: () => this.markAsDirty(),
+      debouncedSave: () => this._debouncedSave(),
+      updateEditorLintAndAutocomplete: () =>
+        this.codeEditorManager.updateEditorLintAndAutocomplete(),
+      saveSettings: (settings) => this.codeEditorManager.saveSettings(settings),
+      loadSettings: () => this.codeEditorManager.loadSettings(),
+      resetToDefaultSettings: () =>
+        this.codeEditorManager.resetToDefaultSettings(),
+      toggleLinting: (enabled) => this.codeEditorManager.toggleLinting(enabled),
     };
 
-    document.addEventListener("mousedown", trackUserInteraction, {
-      once: true,
+    this.ui.setupButtonEventListeners(callbacks);
+    this.ui.setupFormEventListeners(() => this.markAsUnsaved());
+    this.ui.setupUrlManagement({
+      markAsUnsaved: () => this.markAsUnsaved(),
     });
-    document.addEventListener("keydown", trackUserInteraction, { once: true });
+    this.ui.setupSettingsModal(callbacks);
+    this.ui.setupGlobalEventListeners(callbacks);
+    this.ui.setupResourceManagement(callbacks);
 
-    window.addEventListener("beforeunload", (e) => {
-      if (this.state.hasUnsavedChanges && this.state.hasUserInteraction) {
-        e.preventDefault();
-        e.returnValue =
-          "You have unsaved changes. Are you sure you want to leave?";
-        return e.returnValue;
-      }
-    });
-  }
-
-  /**
-   * Setup global event listeners
-   */
-  setupGlobalEventListeners() {
-    document.addEventListener("click", (e) => this.handleDocumentClick(e));
-    document.addEventListener("keydown", (e) => this.handleKeyDown(e));
-  }
-
-  /**
-   * Setup button event listeners
-   */
-  setupButtonEventListeners() {
-    const buttonHandlers = {
-      sidebarToggle: () => this.ui.toggleSidebar(),
-      lintBtn: () => this.codeEditorManager.toggleLinting(),
-      saveBtn: () => this.saveScript(),
-      formatBtn: () => this.codeEditorManager.formatCode(true),
-      autosaveBtn: () => this.toggleAutosave(),
-    };
-
-    Object.entries(buttonHandlers).forEach(([elementKey, handler]) => {
-      if (this.elements[elementKey]) {
-        this.elements[elementKey].addEventListener("click", handler);
-      }
-    });
-  }
-
-  /**
-   * Setup form event listeners
-   */
-  setupFormEventListeners() {
-    this.elements.runAt.addEventListener("change", () => {
-      this.markAsUnsaved();
-    });
-
-    const formElements = [
-      "scriptName",
-      "scriptAuthor",
-      "scriptVersion",
-      "scriptDescription",
-      "targetUrl",
-      "waitForSelector",
-    ];
-
-    formElements.forEach((elementKey) => {
-      if (this.elements[elementKey]) {
-        this.elements[elementKey].addEventListener("change", () =>
-          this.markAsUnsaved()
-        );
-      }
-    });
-  }
-
-  /**
-   * Setup URL management event listeners
-   */
-  setupUrlManagement() {
-    this.elements.addUrlBtn?.addEventListener("click", () => {
-      const url = this.elements.targetUrl.value.trim();
-      if (url) {
-        this.addUrlToList(url);
-      }
-    });
-
-    this.elements.urlList?.addEventListener("click", (e) => {
-      if (e.target.classList.contains("remove-url-btn")) {
-        e.target.closest(".url-item").remove();
-        this.markAsUnsaved();
-      }
-    });
-
-    this.elements.targetUrl?.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        const url = this.elements.targetUrl.value.trim();
-        if (url) {
-          this.addUrlToList(url);
-        }
-      }
-    });
-  }
-
-  /**
-   * Handle document click events
-   */
-  handleDocumentClick(event) {
-    if (
-      window.innerWidth <= this.config.SIDEBAR_BREAKPOINT &&
-      this.elements.sidebar.classList.contains("active") &&
-      !this.elements.sidebar.contains(event.target) &&
-      event.target !== this.elements.sidebarToggle
-    ) {
-      this.state.isSidebarVisible = false;
-      this.ui.updateSidebarState();
+    // Some bugs around this
+    if (typeof this.ui.toggleResourceSection === "function") {
+      this.ui.toggleResourceSection();
     }
   }
 
-  /**
-   * Handle global keyboard shortcuts
-   */
-  handleKeyDown(e) {
-    const shortcuts = {
-      s: () => this.saveScript(),
-      b: () => this.ui.toggleSidebar(),
-    };
-
-    if ((e.ctrlKey || e.metaKey) && shortcuts[e.key]) {
-      e.preventDefault();
-      shortcuts[e.key]();
-    }
-  }
-
-  /**
-   * Toggle autosave functionality
-   */
-  toggleAutosave() {
-    this.state.isAutosaveEnabled = !this.state.isAutosaveEnabled;
-    this.elements.autosaveBtnText.textContent = `Autosave: ${
-      this.state.isAutosaveEnabled ? "On" : "Off"
-    }`;
-    localStorage.setItem("autosaveEnabled", this.state.isAutosaveEnabled);
-  }
-
-  /**
-   * Trigger autosave with debouncing
-   */
-  triggerAutosave() {
-    if (this.state.autosaveTimeout) {
-      clearTimeout(this.state.autosaveTimeout);
-    }
-
-    this.state.autosaveTimeout = setTimeout(() => {
-      this.saveScript(true);
-      this.state.autosaveTimeout = null;
-    }, this.config.AUTOSAVE_DELAY);
-  }
-
-  /**
-   * Mark script as having unsaved changes
-   */
   markAsUnsaved() {
     this.state.hasUnsavedChanges = true;
     this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
   }
 
-  /**
-   * Load script data from storage
-   */
   async loadScript(id) {
     try {
       const script = await this.storage.getScript(id);
@@ -465,9 +320,6 @@ class ScriptEditor {
     }
   }
 
-  /**
-   * Populate form fields with script data
-   */
   populateFormWithScript(script) {
     this.elements.scriptName.value = script.name || "";
     this.elements.scriptAuthor.value = script.author || "";
@@ -477,9 +329,9 @@ class ScriptEditor {
     this.elements.scriptDescription.value = script.description || "";
     this.codeEditorManager.setValue(script.code || "");
 
-    script.targetUrls?.forEach((url) => this.addUrlToList(url));
+    script.targetUrls?.forEach((url) => this.ui.addUrlToList(url));
 
-    // Set GM API checkboxes
+    // Set the sidebar checkboxes -> Not clean but its okay
     if (this.elements.gmSetValue)
       this.elements.gmSetValue.checked = !!script.gmSetValue;
     if (this.elements.gmGetValue)
@@ -500,21 +352,21 @@ class ScriptEditor {
       this.elements.gmSetClipboard.checked = !!script.gmSetClipboard;
 
     if (
-      this.elements.scriptResources &&
+      this.elements.resourceList &&
       script.resources &&
       Array.isArray(script.resources)
     ) {
-      this.elements.scriptResources.value = script.resources
-        .map((res) => `@resource ${res.name} ${res.url}`)
-        .join("\n");
-    } else if (this.elements.scriptResources) {
-      this.elements.scriptResources.value = "";
+      // Clear list
+      this.elements.resourceList.innerHTML = "";
+      script.resources.forEach((res) =>
+        this.ui.addResourceToList(res.name, res.url)
+      );
+    } else if (this.elements.resourceList) {
+      this.elements.resourceList.innerHTML = "";
     }
   }
 
-  /**
-   * Gather script data from form
-   */
+  // get script data from our sidebar form
   gatherScriptData() {
     const urlList = Array.from(document.querySelectorAll(".url-item")).map(
       (item) => item.dataset.url
@@ -551,89 +403,119 @@ class ScriptEditor {
       this.elements.gmGetResourceURL?.checked || false;
     scriptData.gmSetClipboard = this.elements.gmSetClipboard?.checked || false;
 
-    // Parse resource declarations
+    // Parse resource items
     scriptData.resources = [];
-    if (this.elements.scriptResources && this.elements.scriptResources.value) {
-      const lines = this.elements.scriptResources.value.split("\n");
-      const resourceRegex = /^@resource\s+(\S+)\s+(\S+)/;
-      for (const line of lines) {
-        const match = line.trim().match(resourceRegex);
-        if (match) {
-          scriptData.resources.push({ name: match[1], url: match[2] });
-        }
-      }
+    if (this.elements.resourceList) {
+      const items = Array.from(this.elements.resourceList.querySelectorAll(
+        ".resource-item"
+      ));
+      items.forEach((item) => {
+        scriptData.resources.push({
+          name: item.dataset.name,
+          url: item.dataset.url,
+        });
+      });
     }
 
     return scriptData;
   }
 
-  /**
-   * Save script to storage
-   */
-  async saveScript(quiet = false) {
+  // Save script to storage
+  async saveScript() {
     try {
-      if (!this.validator.validateForm()) return;
+      if (!this.validator.validateForm()) return null;
 
       const scriptData = this.gatherScriptData();
-      // Fetch and store resource contents
+      const isNewScript = !this.state.scriptId;
+      
+      // Only if new changes or is a new script
+      if (!this.state.hasUnsavedChanges && !isNewScript) {
+        return null;
+      }
+
+      // Only fetch and store if needed
       if (scriptData.resources && scriptData.resources.length > 0) {
         scriptData.resourceContents = {};
-        const fetchPromises = scriptData.resources.map(async (resource) => {
-          try {
-            const response = await fetch(resource.url);
-            if (response.ok) {
-              scriptData.resourceContents[resource.name] =
-                await response.text();
-            } else {
+        await Promise.all(
+          scriptData.resources.map(async (resource) => {
+            try {
+              const response = await fetch(resource.url);
+              if (response.ok) {
+                scriptData.resourceContents[resource.name] = await response.text();
+              } else {
+                console.error(
+                  `Failed to fetch resource '${resource.name}' from ${resource.url}: ${response.status} ${response.statusText}`
+                );
+                scriptData.resourceContents[resource.name] = null;
+              }
+            } catch (error) {
               console.error(
-                `Failed to fetch resource '${resource.name}' from ${resource.url}: ${response.status} ${response.statusText}`
+                `Error fetching resource '${resource.name}':`,
+                error
               );
               scriptData.resourceContents[resource.name] = null;
             }
-          } catch (error) {
-            console.error(
-              `Error fetching resource '${resource.name}' from ${resource.url}:`,
-              error
-            );
-            scriptData.resourceContents[resource.name] = null;
-          }
-        });
-        await Promise.all(fetchPromises);
+          })
+        );
       }
-
+      
+      // Saved
       const savedScript = await this.storage.saveScript(
         scriptData,
         this.state.scriptId,
         this.state.isEditMode
       );
 
-      this.updateEditorStateAfterSave(savedScript);
+      // Update UI
+      this.state.scriptId = savedScript.id;
       this.state.hasUnsavedChanges = false;
-      this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
+      this.ui.updateScriptStatus(false);
 
-      if (!quiet) {
-        this.ui.showStatusMessage("Script saved successfully!", "success");
-        setTimeout(
-          () => this.ui.clearStatusMessage(),
-          this.config.STATUS_TIMEOUT
-        );
+      // Update URL if its a new script
+      if (isNewScript) {
+        const newUrl = new URL(window.location);
+        newUrl.searchParams.set('id', savedScript.id);
+        window.history.pushState({}, '', newUrl);
+        this.state.isEditMode = true;
       }
 
       this.notifyBackgroundScript();
-    } catch (error) {
-      console.error("Error saving script:", error);
+
       if (!quiet) {
         this.ui.showStatusMessage(
-          `Failed to save script: ${error.message}`,
-          "error"
+          `Script ${isNewScript ? 'created' : 'saved'} successfully`,
+          'success'
         );
+        
+        setTimeout(() => {
+          if (!this.state.hasUnsavedChanges) {
+            this.ui.clearStatusMessage();
+          }
+        }, 3000);
       }
+
+      return savedScript;
+    } catch (error) {
+      console.error('Error saving script:', error);
+      const errorMessage = error.message || 'Unknown error occurred';
+      this.ui.showStatusMessage(
+        `Failed to save script: ${errorMessage}`,
+        'error'
+      );
+      
+      setTimeout(() => {
+        if (this.state.hasUnsavedChanges) {
+          this.ui.showStatusMessage('Unsaved changes', 'warning');
+        } else {
+          this.ui.clearStatusMessage();
+        }
+      }, 5000);
+      
+      throw error;
     }
   }
 
-  /**
-   * Update editor state after successful save
-   */
+
   updateEditorStateAfterSave(savedScript) {
     if (!this.state.isEditMode) {
       this.state.isEditMode = true;
@@ -642,9 +524,7 @@ class ScriptEditor {
     }
   }
 
-  /**
-   * Notify background script of changes
-   */
+  // Notif background for script update changes
   async notifyBackgroundScript() {
     try {
       await new Promise((resolve) => {
@@ -660,26 +540,7 @@ class ScriptEditor {
     }
   }
 
-  /**
-   * Add URL to the target URL list
-   */
-  addUrlToList(url) {
-    const urlItem = document.createElement("div");
-    urlItem.className = "url-item";
-    urlItem.dataset.url = url;
-    urlItem.innerHTML = `
-      <span>${url}</span>
-      <button type="button" class="remove-url-btn">×</button>
-    `;
-
-    this.elements.urlList.appendChild(urlItem);
-    this.elements.targetUrl.value = "";
-    this.markAsUnsaved();
-  }
-
-  /**
-   * Setup background connection
-   */
+  // Connect to backround.js
   setupBackgroundConnection() {
     try {
       const port = chrome.runtime.connect({ name: "CodeTweak" });
@@ -692,7 +553,7 @@ class ScriptEditor {
   }
 }
 
-// Initialize the application when DOM is ready
+// Main init for editor
 document.addEventListener("DOMContentLoaded", () => {
   const editor = new ScriptEditor();
   editor.init().catch((error) => {

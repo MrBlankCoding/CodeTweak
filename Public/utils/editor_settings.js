@@ -1,20 +1,36 @@
-class CodeEditorManager {
+// Settings for the editor
+export class CodeEditorManager {
   constructor(elements, state, config, gmApiDefinitions) {
     this.elements = elements;
     this.state = state;
     this.config = config;
     this.gmApiDefinitions = gmApiDefinitions;
     this.codeEditor = null;
+    
+    // Default settings
+    this.defaultSettings = {
+      theme: 'ayu-dark',
+      fontSize: 14,
+      tabSize: 2,
+      lineNumbers: true,
+      lineWrapping: false,
+      matchBrackets: true
+    };
+    
+    this.currentSettings = {...this.defaultSettings};
   }
   // main code config
-  initializeCodeEditor() {
+  async initializeCodeEditor() {
     if (!this.elements.codeEditor) {
       throw new Error("Code editor element not found");
     }
 
+    // Ensure settings are loaded first
+    await this.loadSettings();
+
     const editorConfig = {
       mode: "javascript",
-      theme: "ayu-dark",
+      theme: this.currentSettings?.theme || 'ayu-dark',
       lineNumbers: true,
       lineWrapping: true,
       indentUnit: 2,
@@ -58,8 +74,11 @@ class CodeEditorManager {
     this.setupEditorEventHandlers();
     this.updateEditorLintAndAutocomplete(); // call after editor setup
 
-    // Update state reference
+    // Update state reference first
     this.state.codeEditor = this.codeEditor;
+
+    // Apply all current settings to the editor
+    this.applySettings(this.currentSettings);
 
     return this.codeEditor;
   }
@@ -85,6 +104,68 @@ class CodeEditorManager {
       "Ctrl-/": (cm) => cm.toggleComment({ indent: true }),
       "Cmd-/": (cm) => cm.toggleComment({ indent: true }),
     };
+  }
+
+  // Settings Management
+  loadSettings() {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['editorSettings'], (result) => {
+        if (result.editorSettings) {
+          this.currentSettings = {...this.defaultSettings, ...result.editorSettings};
+        } else {
+          this.currentSettings = {...this.defaultSettings};
+        }
+        resolve(this.currentSettings);
+      });
+    });
+  }
+
+  saveSettings(settings) {
+    this.currentSettings = {...this.currentSettings, ...settings};
+    chrome.storage.local.set({ editorSettings: this.currentSettings });
+    this.applySettings(settings);
+  }
+
+  applySettings(settings) {
+    if (!this.codeEditor) return;
+
+    if (settings.theme !== undefined) {
+      const theme = settings.theme || this.defaultSettings.theme;
+      const themeLink = document.querySelector('link[href*="codemirror/theme/"]');
+      if (themeLink) {
+        themeLink.href = `codemirror/theme/${theme}.css`;
+      }
+      this.codeEditor.setOption('theme', theme);
+    }
+
+    if (settings.fontSize !== undefined) {
+      const size = settings.fontSize || this.defaultSettings.fontSize;
+      this.codeEditor.getWrapperElement().style.fontSize = `${size}px`;
+      this.codeEditor.refresh();
+    }
+
+    if (settings.tabSize !== undefined) {
+      const tabSize = settings.tabSize || this.defaultSettings.tabSize;
+      this.codeEditor.setOption('tabSize', tabSize);
+      this.codeEditor.setOption('indentUnit', tabSize);
+    }
+
+    if (settings.lineNumbers !== undefined) {
+      this.codeEditor.setOption('lineNumbers', settings.lineNumbers);
+    }
+
+    if (settings.lineWrapping !== undefined) {
+      this.codeEditor.setOption('lineWrapping', settings.lineWrapping);
+    }
+
+    if (settings.matchBrackets !== undefined) {
+      this.codeEditor.setOption('matchBrackets', settings.matchBrackets);
+    }
+  }
+
+  resetToDefaultSettings() {
+    this.saveSettings({...this.defaultSettings});
+    return {...this.defaultSettings};
   }
 
   // tab override
@@ -162,7 +243,7 @@ class CodeEditorManager {
 
         if (
           !window.JSHINT(text, {
-            esversion: 9,
+            esversion: 11,
             asi: true,
             browser: true,
             devel: true,
@@ -178,6 +259,7 @@ class CodeEditorManager {
             globals: {
               chrome: false,
               CodeMirror: false,
+              GM: false,
             },
           })
         ) {
@@ -201,16 +283,22 @@ class CodeEditorManager {
     };
   }
 
-  toggleLinting() {
-    this.state.lintingEnabled = !this.state.lintingEnabled;
-    this.codeEditor.setOption(
-      "lint",
-      this.getLintOptions(this.state.lintingEnabled)
-    );
-    this.elements.lintBtnText.textContent = `Lint: ${
-      this.state.lintingEnabled ? "On" : "Off"
-    }`;
+  toggleLinting(enabled) {
+    this.state.lintingEnabled = enabled !== undefined ? enabled : !this.state.lintingEnabled;
+    const lintOptions = this.getLintOptions(this.state.lintingEnabled);
+    this.codeEditor.setOption("lint", lintOptions);
+    
+    // Force a re-lint when enabling
+    if (this.state.lintingEnabled) {
+      setTimeout(() => {
+        if (this.codeEditor) {
+          this.codeEditor.performLint();
+        }
+      }, 100);
+    }
+    
     localStorage.setItem("lintingEnabled", this.state.lintingEnabled);
+    return this.state.lintingEnabled;
   }
 
   formatCode(showMessage = true) {
