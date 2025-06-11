@@ -13,7 +13,8 @@ function createMainWorldExecutor(
   enabledApis,
   resourceContents,
   resourceURLs,
-  extensionId
+  extensionId,
+  initialValues = {}
 ) {
   // Helper: Creates a bridge for GM API communication between main world and content scripts
   function createGMBridge(scriptId, extensionId) {
@@ -60,31 +61,57 @@ function createMainWorldExecutor(
   }
 
   // GM apis
-  function registerGMAPIs(enabledApis, gmBridge, resourceContents, resourceURLs) {
+  function registerGMAPIs(
+    enabledApis,
+    gmBridge,
+    resourceContents,
+    resourceURLs,
+    valueCache
+  ) {
     const GM = window.GM;
+
+    // Local cache for GM_*Value APIs to enable synchronous reads
+    valueCache = valueCache || {};
 
     // Storage APIs
     if (enabledApis.gmSetValue) {
-      const setValue = (name, value) => gmBridge("setValue", { name, value });
+      const setValue = async (name, value) => {
+        if (value instanceof Promise) {
+          value = await value;
+        }
+        valueCache[name] = value;
+        gmBridge("setValue", { name, value });
+      };
       window.GM_setValue = setValue;
       GM.setValue = setValue;
     }
 
     if (enabledApis.gmGetValue) {
-      const getValue = (name, defaultValue) =>
-        gmBridge("getValue", { name, defaultValue });
+      const getValue = (name, defaultValue) => {
+        if (Object.prototype.hasOwnProperty.call(valueCache, name)) {
+          return valueCache[name];
+        }
+        // Fire async fetch to update cache for next call
+        gmBridge("getValue", { name, defaultValue }).then((val) => {
+          valueCache[name] = val;
+        });
+        return defaultValue;
+      };
       window.GM_getValue = getValue;
       GM.getValue = getValue;
     }
 
     if (enabledApis.gmDeleteValue) {
-      const deleteValue = (name) => gmBridge("deleteValue", { name });
+      const deleteValue = async (name) => {
+        delete valueCache[name];
+        gmBridge("deleteValue", { name });
+      };
       window.GM_deleteValue = deleteValue;
       GM.deleteValue = deleteValue;
     }
 
     if (enabledApis.gmListValues) {
-      const listValues = () => gmBridge("listValues", {});
+      const listValues = () => Object.keys(valueCache);
       window.GM_listValues = listValues;
       GM.listValues = listValues;
     }
@@ -106,7 +133,9 @@ function createMainWorldExecutor(
 
         // Remove non clonable properties
         const cloneableDetails = Object.fromEntries(
-          Object.entries(details).filter(([, value]) => typeof value !== "function")
+          Object.entries(details).filter(
+            ([, value]) => typeof value !== "function"
+          )
         );
 
         return gmBridge("notification", { details: cloneableDetails });
@@ -116,7 +145,8 @@ function createMainWorldExecutor(
     }
 
     if (enabledApis.gmSetClipboard) {
-      const setClipboard = (data, type) => gmBridge("setClipboard", { data, type });
+      const setClipboard = (data, type) =>
+        gmBridge("setClipboard", { data, type });
       window.GM_setClipboard = setClipboard;
       GM.setClipboard = setClipboard;
     }
@@ -174,9 +204,11 @@ function createMainWorldExecutor(
         if (typeof css !== "string") return null;
         const style = document.createElement("style");
         style.textContent = css;
-        (document.head || document.documentElement || document.body).appendChild(
-          style
-        );
+        (
+          document.head ||
+          document.documentElement ||
+          document.body
+        ).appendChild(style);
         return style;
       };
       window.GM_addStyle = addStyle;
@@ -198,7 +230,12 @@ function createMainWorldExecutor(
         const commandId = `gm_menu_${Date.now()}_${Math.random()
           .toString(36)
           .substring(2, 8)}`;
-        window.__gmMenuCommands.push({ commandId, caption, onClick, accessKey });
+        window.__gmMenuCommands.push({
+          commandId,
+          caption,
+          onClick,
+          accessKey,
+        });
 
         // For now just log registration – future enhancement could expose a UI
         console.log(
@@ -212,13 +249,15 @@ function createMainWorldExecutor(
 
     // No privlages -> Handle directly
     if (enabledApis.gmGetResourceText) {
-      const getResourceText = (resourceName) => resourceContents[resourceName] || null;
+      const getResourceText = (resourceName) =>
+        resourceContents[resourceName] || null;
       window.GM_getResourceText = getResourceText;
       GM.getResourceText = getResourceText;
     }
 
     if (enabledApis.gmGetResourceURL) {
-      const getResourceURL = (resourceName) => resourceURLs[resourceName] || null;
+      const getResourceURL = (resourceName) =>
+        resourceURLs[resourceName] || null;
       window.GM_getResourceURL = getResourceURL;
       GM.getResourceURL = getResourceURL;
     }
@@ -229,7 +268,10 @@ function createMainWorldExecutor(
     try {
       new Function(userCode)();
     } catch (error) {
-      console.error(`CodeTweak: Error executing user script ${scriptId}:`, error);
+      console.error(
+        `CodeTweak: Error executing user script ${scriptId}:`,
+        error
+      );
     }
   }
 
@@ -249,7 +291,13 @@ function createMainWorldExecutor(
   const gmBridge = createGMBridge(scriptId, extensionId);
 
   // Register GM APIs
-  registerGMAPIs(enabledApis, gmBridge, resourceContents, resourceURLs);
+  registerGMAPIs(
+    enabledApis,
+    gmBridge,
+    resourceContents,
+    resourceURLs,
+    initialValues
+  );
 
   // Execute user script
   executeUserScript(userCode, scriptId);
@@ -279,6 +327,7 @@ export async function injectScriptDirectly(tabId, script, settings) {
         scriptConfig.resourceContents,
         scriptConfig.resourceURLs,
         chrome.runtime.id,
+        scriptConfig.initialValues,
       ],
     });
 
@@ -318,12 +367,15 @@ function prepareScriptConfig(script) {
     });
   }
 
+  const initialValues = script.initialValues || {};
+
   return {
     code: script.code,
     id: scriptId,
     enabledApis,
     resourceContents,
     resourceURLs,
+    initialValues,
   };
 }
 

@@ -1,19 +1,16 @@
 if (typeof GM_getValue === 'undefined') {
-  window.GM_getValue = async (name, defaultValue) => {
-    return new Promise((resolve, reject) => {
-      try {
-        chrome.storage.local.get(name, (items) => {
-          if (chrome.runtime.lastError) {
-            console.error('GM_getValue error:', chrome.runtime.lastError.message);
-            reject(chrome.runtime.lastError);
-          } else {
-            resolve(items[name] === undefined ? defaultValue : items[name]);
-          }
-        });
-      } catch (e) {
-        console.error('GM_getValue exception:', e);
-        reject(e);
+  // GM_getValue should be synchronous per Greasemonkey/Tampermonkey spec.
+  // Store values in localStorage so we can return them immediately.
+  window.GM_getValue = (name, defaultValue) => {
+    try {
+      const raw = localStorage.getItem(`GM_value_${name}`);
+      if (raw === null) {
+        return defaultValue;
       }
-    });
+      return JSON.parse(raw);
+    } catch (e) {
+      console.error('GM_getValue exception:', e);
+      return defaultValue;
+    }
   };
 }
