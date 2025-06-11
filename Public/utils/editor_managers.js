@@ -1,3 +1,5 @@
+/* global chrome */
+
 // Base for editor UI
 class BaseUIComponent {
   constructor(elements, eventBus) {
@@ -228,7 +230,6 @@ export class SidebarManager extends BaseUIComponent {
   }
 }
 
-// Editor messages
 export class StatusManager extends BaseUIComponent {
   constructor(elements, eventBus) {
     super(elements, eventBus);
@@ -390,8 +391,6 @@ export class SettingsManager extends BaseUIComponent {
       this.addEventListener(saveBtn, 'click', async (e) => {
         e.preventDefault();
         e.stopPropagation();
-        
-        const success = await this.saveAllSettings();
         // Modal closing is now handled in saveAllSettings
       });
     }
@@ -534,53 +533,100 @@ export class SettingsManager extends BaseUIComponent {
 export class URLManager extends BaseUIComponent {
   constructor(elements, eventBus) {
     super(elements, eventBus);
+    this.statusManager = elements.statusManager || elements.status; // Try both possible locations
     this.setupEventListeners();
   }
 
   setupEventListeners() {
-    this.addEventListener(this.elements.addUrlBtn, 'click', () => {
-      this.addCurrentUrl();
-    });
-
-    this.addEventListener(this.elements.urlList, 'click', (e) => {
-      if (e.target.classList.contains('remove-url-btn')) {
-        this.removeUrl(e.target.closest('.url-item'));
-      }
-    });
-
-    this.addEventListener(this.elements.targetUrl, 'keypress', (e) => {
-      if (e.key === 'Enter') {
+    if (this.elements.addUrlBtn) {
+      this.addEventListener(this.elements.addUrlBtn, 'click', (e) => {
         e.preventDefault();
         this.addCurrentUrl();
-      }
-    });
+      });
+    }
+
+    if (this.elements.urlList) {
+      this.addEventListener(this.elements.urlList, 'click', (e) => {
+        if (e.target.closest('.remove-btn')) {
+          e.preventDefault();
+          this.removeUrl(e.target.closest('.url-item'));
+        }
+      });
+    }
+
+    if (this.elements.targetUrl) {
+      this.addEventListener(this.elements.targetUrl, 'keypress', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.addCurrentUrl();
+        }
+      });
+    }
   }
 
   addCurrentUrl() {
-    const url = this.elements.targetUrl.value.trim();
-    if (url && this.isValidUrl(url)) {
+    const url = this.elements.targetUrl?.value?.trim();
+
+    if (!url) {
+      if (this.statusManager) {
+        this.statusManager.showError('URL cannot be empty.');
+      }
+      return;
+    }
+
+    if (this.isValidUrl(url)) {
       this.addUrlToList(url);
       this.elements.targetUrl.value = '';
       this.emit('urlAdded', { url });
+    } else {
+      if (this.statusManager) {
+        this.statusManager.showError('Invalid URL pattern.');
+      }
     }
   }
 
   addUrlToList(url) {
-    const urlItem = document.createElement('div');
-    urlItem.className = 'url-item';
-    urlItem.dataset.url = url;
-    urlItem.innerHTML = `
-      <span>${this.escapeHtml(url)}</span>
-      <button type="button" class="remove-url-btn" aria-label="Remove URL">×</button>
-    `;
+    // Note: We don't need to validate URL here since it's already validated in addCurrentUrl
+    // This prevents duplicate error messages
+    try {
+      const urlItem = document.createElement('div');
+      urlItem.className = 'url-item';
+      urlItem.dataset.url = url;
+      urlItem.innerHTML = `
+        <span>${this.escapeHtml(url)}</span>
+        <button type="button" class="remove-btn" title="Remove URL">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      `;
 
-    this.elements.urlList.appendChild(urlItem);
+      if (this.elements.urlList) {
+        this.elements.urlList.appendChild(urlItem);
+        this.emit('sidebarChanged');
+        return true;
+      }
+    } catch (e) {
+      console.error('Error adding URL to list:', e);
+    }
+    return false;
   }
 
   removeUrl(urlItem) {
-    const url = urlItem.dataset.url;
-    urlItem.remove();
-    this.emit('urlRemoved', { url });
+    if (!urlItem) return;
+    
+    const url = urlItem.dataset?.url;
+    if (urlItem.remove) {
+      urlItem.remove();
+    } else if (urlItem.parentNode) {
+      urlItem.parentNode.removeChild(urlItem);
+    }
+    
+    if (url) {
+      this.emit('urlRemoved', { url });
+      this.emit('sidebarChanged');
+    }
   }
 
   getUrls() {
@@ -590,11 +636,26 @@ export class URLManager extends BaseUIComponent {
 
   isValidUrl(url) {
     try {
+      // First check if URL has protocol
+      if (!url.match(/^https?:\/\//i)) {
+        if (this.statusManager) {
+          this.statusManager.showError(
+            'Please enter a valid URL in this format: https://example.com (include http:// or https://)'
+          );
+        }
+        return false;
+      }
+      
+      // Then validate the full URL
       new URL(url);
       return true;
     } catch {
-      // Shouldnt need much since we dont have to worry about wildcards here
-      return /^https?:\/\/|^\*|^file:\/\//.test(url);
+      if (this.statusManager) {
+        this.statusManager.showError(
+          'Please enter a valid URL in this format: https://example.com (include http:// or https://)'
+        );
+      }
+      return false;
     }
   }
 
@@ -642,16 +703,20 @@ export class ResourceManager extends BaseUIComponent {
   }
 
   addResourceToList(name, url) {
-    const item = document.createElement('div');
-    item.className = 'resource-item';
-    item.dataset.name = name;
-    item.dataset.url = url;
-    item.innerHTML = `
-      <span>resource: ${this.escapeHtml(name)} ${this.escapeHtml(url)}</span>
-      <button type="button" class="remove-resource-btn" aria-label="Remove resource">×</button>
-    `;
+    if (!name || !url) return;
     
-    this.elements.resourceList.appendChild(item);
+    const resourceItem = document.createElement('li');
+    resourceItem.className = 'resource-item';
+    resourceItem.dataset.name = name;
+    resourceItem.dataset.url = url;
+    resourceItem.innerHTML = `
+      <span>${this.escapeHtml(name)} (${this.escapeHtml(url)})</span>
+      <button class="remove-resource" title="Remove Resource">×</button>
+    `;
+
+    this.elements.resourceList.appendChild(resourceItem);
+    this.emit('resourceAdded', { name, url });
+    this.emit('sidebarChanged');
   }
 
   removeResource(resourceItem) {
@@ -659,6 +724,7 @@ export class ResourceManager extends BaseUIComponent {
     const url = resourceItem.dataset.url;
     resourceItem.remove();
     this.emit('resourceRemoved', { name, url });
+    this.emit('sidebarChanged');
   }
 
   toggleResourceSection() {
@@ -839,6 +905,11 @@ export class UIManager {
     this.components.resource = new ResourceManager(this.elements, this.eventBus);
     this.components.form = new FormManager(this.elements, this.eventBus);
     this.components.keyboard = new KeyboardManager(this.elements, this.eventBus);
+
+    // Manually inject the status manager into the URL manager
+    if (this.components.url && this.components.status) {
+      this.components.url.statusManager = this.components.status;
+    }
   }
 
   setupGlobalEventListeners() {

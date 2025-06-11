@@ -1,7 +1,9 @@
+/* global chrome */
+
 import {
   UIManager,
   StorageManager,
-  FormValidator,
+  FormValidator
 } from "./utils/editor_managers.js";
 import { CodeEditorManager } from "./utils/editor_settings.js";
 
@@ -172,6 +174,8 @@ class ScriptEditor {
       "resourceURL",
       "addResourceBtn",
       "resourceList",
+      "urlList",
+      "addUrlBtn"
     ];
 
     const elements = {};
@@ -179,13 +183,14 @@ class ScriptEditor {
       elements[id] = document.getElementById(id);
     });
 
-    // ANything else
+    // Add any additional elements
     elements.sidebar = document.querySelector(".sidebar");
     elements.sectionToggles = document.querySelectorAll(".section-toggle");
     elements.mainContent = document.querySelector(".main-content");
-    elements.urlList = document.getElementById("urlList");
-    elements.addUrlBtn = document.getElementById("addUrlBtn");
     elements.settingsModal = document.getElementById("settingsModal");
+    
+    // StatusManager will be initialized after UIManager is created
+    elements.status = null;
 
     return elements;
   }
@@ -197,6 +202,8 @@ class ScriptEditor {
         localStorage.getItem("autosaveEnabled") !== "false";
       this.state.lintingEnabled =
         localStorage.getItem("lintingEnabled") !== "false";
+      
+
       await this.codeEditorManager.initializeCodeEditor();
       this.codeEditorManager.toggleLinting(this.state.lintingEnabled);
       this.codeEditorManager.setSaveCallback(() => this.saveScript());
@@ -273,8 +280,14 @@ class ScriptEditor {
     if (resourcesSection) {
       if (show) {
         resourcesSection.classList.remove('hidden');
-      } else if (!this.elements.gmGetResourceText.checked && !this.elements.gmGetResourceURL.checked) {
-        resourcesSection.classList.add('hidden');
+      } else {
+        // Only hide if both APIs are disabled AND no resources exist
+        const hasResources = this.elements.resourceList?.children.length > 0;
+        if (!this.elements.gmGetResourceText.checked && 
+            !this.elements.gmGetResourceURL.checked &&
+            !hasResources) {
+          resourcesSection.classList.add('hidden');
+        }
       }
     }
   }
@@ -287,6 +300,14 @@ class ScriptEditor {
         checkbox.addEventListener('change', () => {
           const shouldShow = this.elements.gmGetResourceText.checked || this.elements.gmGetResourceURL.checked;
           this.toggleResourcesSection(shouldShow);
+          
+          // Clear resources if both APIs are disabled
+          if (!this.elements.gmGetResourceText.checked && 
+              !this.elements.gmGetResourceURL.checked &&
+              this.elements.resourceList) {
+            this.elements.resourceList.innerHTML = '';
+          }
+          
           this.markAsDirty();
         });
       }
@@ -294,6 +315,17 @@ class ScriptEditor {
   }
 
   registerEventListeners() {
+    // Listen for sidebar changes
+    this.ui.on('sidebarChanged', () => {
+      this.markAsUnsaved();
+    });
+    
+    // Directly add click listener to save button
+    this.elements.saveBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.saveScript();
+    });
+    
     const callbacks = {
       saveScript: () => this.saveScript(),
       formatCode: () => this.codeEditorManager.formatCode(true),
@@ -472,6 +504,12 @@ class ScriptEditor {
       if (!this.validator.validateForm()) return null;
 
       const scriptData = this.gatherScriptData();
+      
+      // Auto-generate name if empty
+      if (!scriptData.name || scriptData.name.trim() === '') {
+        scriptData.name = `Untitled Script ${new Date().toISOString().slice(0, 10)}`;
+      }
+      
       const isNewScript = !this.state.scriptId;
 
       // Only if new changes or is a new script
@@ -628,4 +666,3 @@ async function applyThemeFromSettings() {
     console.error("Error applying theme:", err);
   }
 }
-
