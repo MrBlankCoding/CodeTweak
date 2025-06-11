@@ -142,6 +142,9 @@ async function importGreasyforkScript(codeUrl) {
         if (key === "match" || key === "include") {
           metadata.matches = metadata.matches || [];
           metadata.matches.push(value);
+        } else if (key === "grant") {
+          metadata.grants = metadata.grants || [];
+          metadata.grants.push(value.trim());
         } else {
           metadata[key] = value.trim();
         }
@@ -171,6 +174,37 @@ async function importGreasyforkScript(codeUrl) {
       updatedAt: Date.now(),
       updateInfo, 
     };
+
+    // Map @grant directives to internal GM API flags
+    const gmGrantMap = {
+      GM_setValue: "gmSetValue",
+      GM_getValue: "gmGetValue",
+      GM_deleteValue: "gmDeleteValue",
+      GM_listValues: "gmListValues",
+      GM_openInTab: "gmOpenInTab",
+      GM_notification: "gmNotification",
+      GM_getResourceText: "gmGetResourceText",
+      GM_getResourceURL: "gmGetResourceURL",
+      GM_setClipboard: "gmSetClipboard",
+      GM_addStyle: "gmAddStyle",
+      GM_registerMenuCommand: "gmRegisterMenuCommand",
+      GM_xmlHttpRequest: "gmXmlHttpRequest",
+    };
+
+    // Initialize all GM API flags as false
+    Object.values(gmGrantMap).forEach((flag) => {
+      scriptData[flag] = false;
+    });
+
+    // Enable flags for each granted API
+    if (metadata.grants && Array.isArray(metadata.grants)) {
+      metadata.grants.forEach((grant) => {
+        const flag = gmGrantMap[grant];
+        if (flag) {
+          scriptData[flag] = true;
+        }
+      });
+    }
 
     const { scripts = [] } = await chrome.storage.local.get("scripts");
     scripts.push(scriptData);

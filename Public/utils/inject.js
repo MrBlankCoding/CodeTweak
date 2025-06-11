@@ -121,6 +121,95 @@ function createMainWorldExecutor(
       GM.setClipboard = setClipboard;
     }
 
+    // GM_xmlHttpRequest (privileged)
+    if (enabledApis.gmXmlHttpRequest) {
+      const xmlHttpRequest = (details = {}) => {
+        if (typeof details !== "object") {
+          throw new Error("GM_xmlHttpRequest: details must be an object");
+        }
+
+        // Separate callbacks from cloneable data
+        const callbackFns = {};
+        const cloneableDetails = {};
+        for (const [key, value] of Object.entries(details)) {
+          if (typeof value === "function") {
+            callbackFns[key] = value;
+          } else {
+            cloneableDetails[key] = value;
+          }
+        }
+
+        return gmBridge("xmlHttpRequest", { details: cloneableDetails })
+          .then((response) => {
+            // Invoke onload if provided
+            if (callbackFns.onload) {
+              try {
+                callbackFns.onload(response);
+              } catch {
+                console.error("GM_xmlHttpRequest onload error:");
+              }
+            }
+            return response;
+          })
+          .catch((err) => {
+            if (callbackFns.onerror) {
+              try {
+                callbackFns.onerror(err);
+              } catch {
+                // ignore
+              }
+            }
+            throw err;
+          });
+      };
+
+      // Expose both namespace and legacy name
+      window.GM_xmlHttpRequest = xmlHttpRequest;
+      GM.xmlHttpRequest = xmlHttpRequest;
+    }
+
+    // Style injection API (no privileges required)
+    if (enabledApis.gmAddStyle) {
+      const addStyle = (css) => {
+        if (typeof css !== "string") return null;
+        const style = document.createElement("style");
+        style.textContent = css;
+        (document.head || document.documentElement || document.body).appendChild(
+          style
+        );
+        return style;
+      };
+      window.GM_addStyle = addStyle;
+      GM.addStyle = addStyle;
+    }
+
+    // Menu command API (no privileges required)
+    if (enabledApis.gmRegisterMenuCommand) {
+      const registerMenuCommand = (caption, onClick, accessKey) => {
+        if (typeof caption !== "string" || typeof onClick !== "function") {
+          console.warn(
+            "GM_registerMenuCommand: Expected (string caption, function onClick, [string accessKey])"
+          );
+          return null;
+        }
+
+        // Store commands in a global registry for potential future use (e.g., custom UI)
+        window.__gmMenuCommands = window.__gmMenuCommands || [];
+        const commandId = `gm_menu_${Date.now()}_${Math.random()
+          .toString(36)
+          .substring(2, 8)}`;
+        window.__gmMenuCommands.push({ commandId, caption, onClick, accessKey });
+
+        // For now just log registration – future enhancement could expose a UI
+        console.log(
+          `CodeTweak: Registered GM menu command '${caption}' (id: ${commandId})`
+        );
+        return commandId;
+      };
+      window.GM_registerMenuCommand = registerMenuCommand;
+      GM.registerMenuCommand = registerMenuCommand;
+    }
+
     // No privlages -> Handle directly
     if (enabledApis.gmGetResourceText) {
       const getResourceText = (resourceName) => resourceContents[resourceName] || null;
@@ -215,6 +304,9 @@ function prepareScriptConfig(script) {
     gmGetResourceText: script.gmGetResourceText,
     gmGetResourceURL: script.gmGetResourceURL,
     gmSetClipboard: script.gmSetClipboard,
+    gmAddStyle: true,
+    gmRegisterMenuCommand: script.gmRegisterMenuCommand || false,
+    gmXmlHttpRequest: script.gmXmlHttpRequest || false,
   };
 
   const resourceContents = script.resourceContents || {};

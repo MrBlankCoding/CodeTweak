@@ -89,6 +89,24 @@ class ScriptEditor {
         name: "GM_setClipboard",
         el: "gmSetClipboard",
       },
+      GM_addStyle: {
+        signature:
+          "declare function GM_addStyle(css: string): void;",
+        name: "GM_addStyle",
+        el: "gmAddStyle",
+      },
+      GM_registerMenuCommand: {
+        signature:
+          "declare function GM_registerMenuCommand(caption: string, onClick: () => any, accessKey?: string): string;",
+        name: "GM_registerMenuCommand",
+        el: "gmRegisterMenuCommand",
+      },
+      GM_xmlHttpRequest: {
+        signature:
+          "declare function GM_xmlHttpRequest(details: { method: string, url: string, data?: any, headers?: any, timeout?: number, responseType?: string, onload?: Function, onerror?: Function, onprogress?: Function }): void;",
+        name: "GM_xmlHttpRequest",
+        el: "gmXmlHttpRequest",
+      },
     };
 
     // Init code mirror
@@ -170,12 +188,16 @@ class ScriptEditor {
       "gmGetResourceText",
       "gmGetResourceURL",
       "gmSetClipboard",
+      "gmAddStyle",
+      "gmRegisterMenuCommand",
+      "gmXmlHttpRequest",
       "resourceName",
       "resourceURL",
       "addResourceBtn",
       "resourceList",
       "urlList",
-      "addUrlBtn"
+      "addUrlBtn",
+      "apiSearch",
     ];
 
     const elements = {};
@@ -445,6 +467,21 @@ class ScriptEditor {
     if (this.elements.gmGetResourceText?.checked || this.elements.gmGetResourceURL?.checked) {
       this.toggleResourcesSection(true);
     }
+
+    // Setup API search filter
+    if (this.elements.apiSearch) {
+      this.elements.apiSearch.addEventListener("input", () => {
+        const query = this.elements.apiSearch.value.toLowerCase();
+        const checkboxes = this.elements.sidebar.querySelectorAll(".api-list .form-group-checkbox");
+        checkboxes.forEach(cb => {
+          const label = cb.querySelector("label");
+          if (label) {
+            const match = label.textContent.toLowerCase().includes(query);
+            cb.style.display = match ? "flex" : "none";
+          }
+        });
+      });
+    }
   }
 
   markAsUnsaved() {
@@ -503,6 +540,12 @@ class ScriptEditor {
       this.elements.gmGetResourceURL.checked = !!script.gmGetResourceURL;
     if (this.elements.gmSetClipboard)
       this.elements.gmSetClipboard.checked = !!script.gmSetClipboard;
+    if (this.elements.gmAddStyle)
+      this.elements.gmAddStyle.checked = !!script.gmAddStyle;
+    if (this.elements.gmRegisterMenuCommand)
+      this.elements.gmRegisterMenuCommand.checked = !!script.gmRegisterMenuCommand;
+    if (this.elements.gmXmlHttpRequest)
+      this.elements.gmXmlHttpRequest.checked = !!script.gmXmlHttpRequest;
       
     // Show resources section if either resource API is checked
     if (script.gmGetResourceText || script.gmGetResourceURL) {
@@ -560,6 +603,9 @@ class ScriptEditor {
     scriptData.gmGetResourceURL =
       this.elements.gmGetResourceURL?.checked || false;
     scriptData.gmSetClipboard = this.elements.gmSetClipboard?.checked || false;
+    scriptData.gmAddStyle = this.elements.gmAddStyle?.checked || false;
+    scriptData.gmRegisterMenuCommand = this.elements.gmRegisterMenuCommand?.checked || false;
+    scriptData.gmXmlHttpRequest = this.elements.gmXmlHttpRequest?.checked || false;
 
     // Parse resource items
     scriptData.resources = [];

@@ -42,11 +42,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   await loadScripts(currentTabUrl);
+  await loadMenuCommands();
 
   // Listen for settings changes
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg.action === "settingsUpdated") {
       applyThemeFromSettings();
+    }
+    if (msg.action === "scriptsUpdated") {
+      loadMenuCommands();
     }
   });
 
@@ -198,6 +202,65 @@ document.addEventListener("DOMContentLoaded", async () => {
       document.body.classList.toggle("light-theme", !isDark);
     } catch (err) {
       console.error("Error applying theme:", err);
+    }
+  }
+
+  async function loadMenuCommands() {
+    const menuContainer = document.getElementById("menuCommandList");
+    const menuSection = document.getElementById("menuCommandSection");
+    menuContainer.innerHTML = "";
+
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab?.id) return;
+
+      const [{ result: commands = [] }] = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        world: "MAIN",
+        func: () => window.__gmMenuCommands || [],
+      });
+
+      if (!commands.length) {
+        menuSection.style.display = "none";
+        return;
+      }
+
+      // Deduplicate commands with same caption from same scriptId
+      const unique = [];
+      const seen = new Set();
+      commands.forEach((c) => {
+        const key = `${c.commandId}|${c.caption}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          unique.push(c);
+        }
+      });
+
+      menuSection.style.display = "block";
+
+      unique.forEach((cmd) => {
+        const btn = document.createElement("button");
+        btn.className = "menu-command-btn primary";
+        btn.textContent = cmd.caption;
+
+        btn.addEventListener("click", () => {
+          chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            world: "MAIN",
+            func: (id) => {
+              const cmd = (window.__gmMenuCommands || []).find((c) => c.commandId === id);
+              if (cmd) {
+                try { cmd.onClick(); } catch (e) { console.error("Menu command error", e); }
+              }
+            },
+            args: [cmd.commandId],
+          });
+        });
+
+        menuContainer.appendChild(btn);
+      });
+    } catch (e) {
+      console.error("Error loading menu commands", e);
     }
   }
 });

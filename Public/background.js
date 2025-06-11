@@ -180,6 +180,85 @@ const gmApiHandlers = {
   async setClipboard(message) {
     return handleSetClipboard(message);
   },
+
+  // Cross-origin XHR via fetch
+  async xmlHttpRequest(message) {
+    const details = message.details || {};
+
+    if (!details.url) {
+      throw new Error("GM_xmlHttpRequest: 'url' is required");
+    }
+
+    const fetchInit = {
+      method: details.method || "GET",
+      headers: details.headers || {},
+      // Allow sending cookies for same-origin if desired
+      credentials: details.synchronous ? "include" : "same-origin",
+    };
+
+    // Request body
+    if (details.data !== undefined) {
+      if (details.binary && details.data instanceof Blob) {
+        fetchInit.body = details.data;
+      } else {
+        fetchInit.body = details.data;
+      }
+    }
+
+    // Timeout handling
+    let timeoutId;
+    const timeoutPromise =
+      details.timeout && details.timeout > 0
+        ? new Promise((_, reject) => {
+            timeoutId = setTimeout(() => {
+              reject(new Error("GM_xmlHttpRequest timed out"));
+            }, details.timeout);
+          })
+        : null;
+
+    const fetchPromise = fetch(details.url, fetchInit).then(async (resp) => {
+      if (timeoutId) clearTimeout(timeoutId);
+
+      // Headers string
+      const headersArr = [];
+      for (const [key, value] of resp.headers.entries()) {
+        headersArr.push(`${key}: ${value}`);
+      }
+
+      // Select response based on responseType
+      let responseData;
+      switch (details.responseType) {
+        case "arraybuffer":
+          responseData = await resp.arrayBuffer();
+          break;
+        case "blob":
+          responseData = await resp.blob();
+          break;
+        case "json":
+          responseData = await resp.json();
+          break;
+        case "text":
+        case "":
+        default:
+          responseData = await resp.text();
+          break;
+      }
+
+      return {
+        readyState: 4,
+        responseHeaders: headersArr.join("\r\n"),
+        responseText:
+          typeof responseData === "string" ? responseData : undefined,
+        response: responseData,
+        status: resp.status,
+        statusText: resp.statusText,
+        finalUrl: resp.url,
+        context: details.context,
+      };
+    });
+
+    return timeoutPromise ? Promise.race([fetchPromise, timeoutPromise]) : fetchPromise;
+  },
 };
 
 async function handleGmApiRequest(message, sender, sendResponse) {

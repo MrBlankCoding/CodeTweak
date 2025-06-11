@@ -622,3 +622,39 @@ code {
   outline: none;
   box-shadow: 0 0 0 2px var(--error-light);
 }
+
+/* GM API Search */
+.api-search {
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  margin-bottom: var(--space-md);
+  font-size: var(--text-sm);
+}
+
+.api-search::placeholder {
+  color: var(--text-muted);
+}
+
+/* API List Container */
+.api-list {
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: var(--space-sm);
+}
+
+.api-list::-webkit-scrollbar {
+  width: var(--scrollbar-width);
+}
+
+.api-list::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: var(--radius-sm);
+}
+
+.api-list::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
