@@ -238,6 +238,7 @@ class ScriptEditor {
           this._debouncedSave();
         }
       });
+      this.codeEditorManager.setImportCallback((importData) => this.handleScriptImport(importData));
       this.codeEditorManager.setStatusCallback((message, type) => {
         if (message) {
           this.ui.showStatusMessage(message, type);
@@ -300,6 +301,59 @@ class ScriptEditor {
 
     if (importId) {
       await this.loadImportedScript(importId);
+    }
+  }
+
+  handleScriptImport(importData) {
+    try {
+      const { code, ...metadata } = importData;
+      const scriptData = { code };
+      
+      // Map metadata to script data
+      if (metadata.name) scriptData.name = metadata.name;
+      if (metadata.version) scriptData.version = metadata.version;
+      if (metadata.description) scriptData.description = metadata.description;
+      if (metadata.author) scriptData.author = metadata.author;
+      if (metadata.namespace) scriptData.namespace = metadata.namespace;
+      if (metadata.runAt) scriptData.runAt = metadata.runAt;
+      
+      // Handle matches and includes
+      if (metadata.matches?.length) {
+        scriptData.targetUrls = [...new Set(metadata.matches)];
+      }
+      
+      // Handle requires
+      if (metadata.requires?.length) {
+        scriptData.requires = metadata.requires;
+      }
+      
+      // Handle resources
+      if (metadata.resources?.length) {
+        scriptData.resources = metadata.resources;
+      }
+      
+      // Handle GM APIs from @grant directives
+      if (metadata.gmApis) {
+        // Map the GM API flags to the script data
+        Object.entries(metadata.gmApis).forEach(([api, enabled]) => {
+          if (enabled && this.elements[api]) {
+            scriptData[api] = true;
+          }
+        });
+      }
+      
+      // Update the form with the imported data
+      this.populateFormWithScript(scriptData);
+      
+      // Set the code in the editor
+      this.codeEditorManager.setValue(code);
+      
+      // Show success message
+      this.ui.showStatusMessage('Script metadata imported successfully', 'success');
+      
+    } catch (error) {
+      console.error('Error handling script import:', error);
+      this.ui.showStatusMessage('Failed to import script metadata', 'error');
     }
   }
 

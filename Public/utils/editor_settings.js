@@ -1,3 +1,5 @@
+/* global chrome, CodeMirror, js_beautify */
+
 // Settings for the editor
 export class CodeEditorManager {
   constructor(elements, state, config, gmApiDefinitions) {
@@ -200,6 +202,112 @@ export class CodeEditorManager {
     }
   }
 
+  parseUserScriptHeader(content) {
+    const metaMatch = content.match(/==UserScript==([\s\S]*?)==\/UserScript==/);
+    if (!metaMatch) return null;
+
+    const metadata = {};
+    const metaBlock = metaMatch[1];
+    const lines = metaBlock.split('\n').filter(line => line.trim());
+    
+    // Map of grant names to GM API flags
+    const grantToGmApi = {
+      'GM_setValue': 'gmSetValue',
+      'GM_getValue': 'gmGetValue',
+      'GM_deleteValue': 'gmDeleteValue',
+      'GM_listValues': 'gmListValues',
+      'GM_openInTab': 'gmOpenInTab',
+      'GM_notification': 'gmNotification',
+      'GM_getResourceText': 'gmGetResourceText',
+      'GM_getResourceURL': 'gmGetResourceURL',
+      'GM_setClipboard': 'gmSetClipboard',
+      'GM_addStyle': 'gmAddStyle',
+      'GM_registerMenuCommand': 'gmRegisterMenuCommand',
+      'GM_xmlHttpRequest': 'gmXmlHttpRequest',
+      'unsafeWindow': 'unsafeWindow'
+    };
+    
+    // Initialize GM APIs object
+    metadata.gmApis = {};
+    
+    for (const line of lines) {
+      const match = line.match(/@(\w+)\s+(.+)/);
+      if (match) {
+        const [, key, value] = match;
+        if (key === 'match' || key === 'include') {
+          if (!metadata.matches) metadata.matches = [];
+          metadata.matches.push(value);
+        } else if (key === 'require') {
+          if (!metadata.requires) metadata.requires = [];
+          metadata.requires.push(value);
+        } else if (key === 'resource') {
+          if (!metadata.resources) metadata.resources = [];
+          const [name, url] = value.split(/\s+/);
+          if (name && url) {
+            metadata.resources.push({ name, url });
+          }
+        } else if (key === 'run-at') {
+          metadata.runAt = value;
+        } else if (key === 'grant') {
+          // Handle grant directives
+          const grantValue = value.trim();
+          if (grantValue === 'none') {
+            // If 'none' is specified, clear all GM APIs
+            metadata.gmApis = {};
+          } else if (grantValue === 'unsafeWindow') {
+            metadata.gmApis.unsafeWindow = true;
+          } else {
+            // Check if this grant maps to a GM API
+            const apiFlag = grantToGmApi[grantValue];
+            if (apiFlag) {
+              metadata.gmApis[apiFlag] = true;
+            }
+          }
+        } else {
+          metadata[key] = value;
+        }
+      }
+    }
+    
+    return metadata;
+  }
+
+  async handlePaste(editor, event) {
+    // Only handle if we have a callback for handling imports
+    if (!this.onImportCallback) return;
+    
+    try {
+      const clipboardData = event.clipboardData || window.clipboardData;
+      const pastedText = clipboardData.getData('text/plain');
+      
+      // Check if the pasted content has a UserScript header
+      if (pastedText.includes('==UserScript==') && pastedText.includes('==/UserScript==')) {
+        const metadata = this.parseUserScriptHeader(pastedText);
+        if (metadata) {
+          event.preventDefault();
+          
+          const shouldImport = confirm('This looks like a UserScript. Would you like to import its metadata?');
+          if (shouldImport) {
+            // Let the editor handle the import
+            this.onImportCallback({
+              code: pastedText,
+              ...metadata
+            });
+            // Don't insert the pasted content, let the callback handle it
+            return;
+          }
+        }
+      }
+      
+      // Default paste behavior
+      const doc = editor.getDoc();
+      const cursor = doc.getCursor();
+      doc.replaceRange(pastedText, cursor);
+    } catch (error) {
+      console.error('Error handling paste:', error);
+    }
+  }
+
   setupEditorEventHandlers() {
     this.codeEditor.on("cursorActivity", (cm) => {
       const cursor = cm.getCursor();
@@ -216,6 +324,9 @@ export class CodeEditorManager {
         this.onChangeCallback?.(cm, change);
       }
     });
+    
+    // Add paste event listener
+    this.codeEditor.on('paste', (cm, event) => this.handlePaste(cm, event));
   }
 
   // enabled APIS
@@ -410,6 +521,10 @@ export class CodeEditorManager {
 
   setChangeCallback(callback) {
     this.onChangeCallback = callback;
+  }
+  
+  setImportCallback(callback) {
+    this.onImportCallback = callback;
   }
 
   setStatusCallback(callback) {
