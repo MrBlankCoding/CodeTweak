@@ -3,10 +3,12 @@ function setupGreasyfork(elements) {
 
   elements.button.addEventListener("click", () => {
     elements.modal.setAttribute("aria-hidden", "false");
+    elements.modal.classList.add("show");
   });
 
   elements.closeBtn.addEventListener("click", () => {
     elements.modal.setAttribute("aria-hidden", "true");
+    elements.modal.classList.remove("show");
   });
 
   elements.modal.addEventListener("click", (e) => {
@@ -15,6 +17,7 @@ function setupGreasyfork(elements) {
       e.target.classList.contains("modal-overlay")
     ) {
       elements.modal.setAttribute("aria-hidden", "true");
+      elements.modal.classList.remove("show");
     }
   });
 
@@ -215,6 +218,7 @@ async function importGreasyforkScript(codeUrl) {
 
     const modal = document.getElementById("greasyforkModal");
     modal.setAttribute("aria-hidden", "true");
+    modal.classList.remove("show");
 
     // refresh
     await refreshDashboard();
