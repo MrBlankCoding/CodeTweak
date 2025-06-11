@@ -46,6 +46,11 @@
       "js": ["./utils/content_bridge.js"],
       "run_at": "document_start",
       "world": "ISOLATED"
+    },
+    {
+      "matches": ["https://greasyfork.org/*"],
+      "js": ["./utils/greasyfork_interceptor.js"],
+      "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [

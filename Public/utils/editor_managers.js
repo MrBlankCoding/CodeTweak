@@ -715,6 +715,69 @@ export class URLManager extends BaseUIComponent {
   }
 }
 
+export class RequireManager extends BaseUIComponent {
+  constructor(elements, eventBus) {
+    super(elements, eventBus);
+    this.setupEventListeners();
+  }
+
+  setupEventListeners() {
+    if (this.elements.addRequireBtn) {
+      this.addEventListener(this.elements.addRequireBtn, 'click', () => {
+        this.addCurrentRequire();
+      });
+    }
+
+    if (this.elements.requireList) {
+      this.addEventListener(this.elements.requireList, 'click', (e) => {
+        if (e.target.classList.contains('remove-require-btn')) {
+          this.removeRequire(e.target.closest('.require-item'));
+        }
+      });
+    }
+  }
+
+  addCurrentRequire() {
+    const url = this.elements.requireURL.value.trim();
+    if (url) {
+      this.addRequireToList(url);
+      this.elements.requireURL.value = '';
+      this.emit('requireAdded', { url });
+    }
+  }
+
+  addRequireToList(url) {
+    if (!url) return;
+    const item = document.createElement('li');
+    item.className = 'require-item';
+    item.dataset.url = url;
+    item.innerHTML = `
+      <span>${this.escapeHtml(url)}</span>
+      <button class="remove-require-btn" title="Remove Required Script">×</button>
+    `;
+    this.elements.requireList.appendChild(item);
+    this.emit('requireAdded', { url });
+    this.emit('sidebarChanged');
+  }
+
+  removeRequire(item) {
+    const url = item.dataset.url;
+    item.remove();
+    this.emit('requireRemoved', { url });
+    this.emit('sidebarChanged');
+  }
+
+  getRequires() {
+    return Array.from(this.elements.requireList.querySelectorAll('.require-item')).map(i => i.dataset.url);
+  }
+
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+}
+
 export class ResourceManager extends BaseUIComponent {
   constructor(elements, eventBus) {
     super(elements, eventBus);
@@ -960,6 +1023,7 @@ export class UIManager {
     this.components.settings = new SettingsManager(this.elements, this.eventBus);
     this.components.url = new URLManager(this.elements, this.eventBus);
     this.components.resource = new ResourceManager(this.elements, this.eventBus);
+    this.components.require = new RequireManager(this.elements, this.eventBus);
     this.components.form = new FormManager(this.elements, this.eventBus);
     this.components.keyboard = new KeyboardManager(this.elements, this.eventBus);
 
@@ -1036,6 +1100,12 @@ export class UIManager {
       this.components.resource.addResourceToList(name, url);
     } else {
       console.warn('ResourceManager not properly initialized');
+    }
+  }
+
+  addRequireToList(url) {
+    if (this.components.require && typeof this.components.require.addRequireToList === 'function') {
+      this.components.require.addRequireToList(url);
     }
   }
 

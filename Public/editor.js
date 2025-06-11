@@ -198,6 +198,9 @@ class ScriptEditor {
       "urlList",
       "addUrlBtn",
       "apiSearch",
+      "requireURL",
+      "addRequireBtn",
+      "requireList",
     ];
 
     const elements = {};
@@ -279,6 +282,7 @@ class ScriptEditor {
     this.state.scriptId = urlParams.get("id");
     const initialTargetUrl = urlParams.get("targetUrl");
     const template = urlParams.get("template");
+    const importId = urlParams.get("importId");
     this.state.isEditMode = Boolean(this.state.scriptId);
 
     if (initialTargetUrl && this.elements.targetUrl) {
@@ -292,6 +296,68 @@ class ScriptEditor {
       this.codeEditorManager.insertTemplateCode(decodedTemplate);
     } else if (!this.state.isEditMode && !this.codeEditorManager.getValue()) {
       this.codeEditorManager.insertDefaultTemplate();
+    }
+
+    if (importId) {
+      await this.loadImportedScript(importId);
+    }
+  }
+
+  async loadImportedScript(importId) {
+    try {
+      const key = `tempImport_${importId}`;
+      const data = await chrome.storage.local.get(key);
+      const importData = data[key];
+      if (!importData) return;
+      
+      const { code } = importData;
+      
+      // Parse metadata block
+      const metaMatch = code.match(/==UserScript==([\s\S]*?)==\/UserScript==/);
+      const metadata = {};
+      if (metaMatch) {
+        metaMatch[1].split("\n").forEach((line) => {
+          const m = line.match(/@(\w+)\s+(.+)/);
+          if (m) {
+            const [, key, value] = m;
+            if (key === "match" || key === "include") {
+              metadata.matches = metadata.matches || [];
+              metadata.matches.push(value.trim());
+            } else if (key === "grant") {
+              metadata.grants = metadata.grants || [];
+              metadata.grants.push(value.trim());
+            } else if (key === "require") {
+              metadata.requires = metadata.requires || [];
+              metadata.requires.push(value.trim());
+            } else {
+              metadata[key] = value.trim();
+            }
+          }
+        });
+      }
+      
+      const scriptObj = {
+        name: metadata.name || "Imported Script",
+        author: metadata.author || "Anonymous",
+        description: metadata.description || "",
+        version: metadata.version || this.config.DEFAULT_VERSION,
+        targetUrls: metadata.matches || ["*://*/*"],
+        runAt: metadata.runAt || "document_end",
+        code,
+        requires: metadata.requires || [],
+      };
+      
+      this.populateFormWithScript(scriptObj);
+      
+      // Mark as unsaved draft for user review (but DO NOT autosave)
+      this.state.hasUnsavedChanges = true;
+      this.ui.updateScriptStatus(true);
+      
+      // Clean up storage
+      await chrome.storage.local.remove(key);
+    } catch (err) {
+      console.error("Failed to load imported script:", err);
+      this.ui.showStatusMessage("Failed to load imported script", "error");
     }
   }
 
@@ -565,6 +631,13 @@ class ScriptEditor {
     } else if (this.elements.resourceList) {
       this.elements.resourceList.innerHTML = "";
     }
+
+    if (this.elements.requireList && Array.isArray(script.requires)) {
+      this.elements.requireList.innerHTML = "";
+      script.requires.forEach((url) => this.ui.addRequireToList(url));
+    } else if (this.elements.requireList) {
+      this.elements.requireList.innerHTML = "";
+    }
   }
 
   // get script data from our sidebar form
@@ -618,6 +691,17 @@ class ScriptEditor {
           name: item.dataset.name,
           url: item.dataset.url,
         });
+      });
+    }
+
+    // Required scripts
+    scriptData.requires = [];
+    if (this.elements.requireList) {
+      const reqItems = Array.from(
+        this.elements.requireList.querySelectorAll(".require-item")
+      );
+      reqItems.forEach((item) => {
+        scriptData.requires.push(item.dataset.url);
       });
     }
 

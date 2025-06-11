@@ -392,6 +392,24 @@ async function handleScriptCreation(url, template) {
   }
 }
 
+async function handleGreasyForkInstall(url) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+    const code = await response.text();
+
+    const tempId = crypto.randomUUID();
+    const key = `tempImport_${tempId}`;
+    await chrome.storage.local.set({ [key]: { code, sourceUrl: url } });
+
+    chrome.tabs.create({
+      url: `${chrome.runtime.getURL("editor.html")}?importId=${tempId}`,
+    });
+  } catch (err) {
+    console.error("GreasyFork install fetch error:", err);
+  }
+}
+
 // Message handling
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log("[CodeTweak] Message received:", message.type || message.action);
@@ -421,6 +439,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (sender.tab?.id) {
         state.executedScripts.set(sender.tab.id, new Set());
       }
+    },
+
+    greasyForkInstall: () => {
+      handleGreasyForkInstall(message.url);
     },
   };
 

@@ -14,7 +14,8 @@ function createMainWorldExecutor(
   resourceContents,
   resourceURLs,
   extensionId,
-  initialValues = {}
+  initialValues,
+  requiredUrls
 ) {
   // Helper: Creates a bridge for GM API communication between main world and content scripts
   function createGMBridge(scriptId, extensionId) {
@@ -275,6 +276,18 @@ function createMainWorldExecutor(
     }
   }
 
+  // Helper to load external script via URL and return Promise
+  function loadExternalScript(url) {
+    return new Promise((resolve, reject) => {
+      const scriptEl = document.createElement('script');
+      scriptEl.src = url;
+      scriptEl.async = false; // preserve order
+      scriptEl.onload = resolve;
+      scriptEl.onerror = () => reject(new Error(`Failed to load required script: ${url}`));
+      (document.head || document.documentElement).appendChild(scriptEl);
+    });
+  }
+
   // Prevent re-execution
   window._executedScriptIds = window._executedScriptIds || new Set();
   if (window._executedScriptIds.has(scriptId)) {
@@ -300,7 +313,18 @@ function createMainWorldExecutor(
   );
 
   // Execute user script
-  executeUserScript(userCode, scriptId);
+  (async () => {
+    try {
+      if (Array.isArray(requiredUrls) && requiredUrls.length) {
+        for (const req of requiredUrls) {
+          await loadExternalScript(req);
+        }
+      }
+    } catch (e) {
+      console.error('CodeTweak: Failed to load @require scripts', e);
+    }
+    executeUserScript(userCode, scriptId);
+  })();
 }
 
 // Inject a script
@@ -328,6 +352,7 @@ export async function injectScriptDirectly(tabId, script, settings) {
         scriptConfig.resourceURLs,
         chrome.runtime.id,
         scriptConfig.initialValues,
+        scriptConfig.requires,
       ],
     });
 
@@ -369,6 +394,8 @@ function prepareScriptConfig(script) {
 
   const initialValues = script.initialValues || {};
 
+  const requires = Array.isArray(script.requires) ? script.requires : [];
+
   return {
     code: script.code,
     id: scriptId,
@@ -376,6 +403,7 @@ function prepareScriptConfig(script) {
     resourceContents,
     resourceURLs,
     initialValues,
+    requires,
   };
 }
 
