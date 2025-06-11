@@ -163,6 +163,7 @@ class ScriptEditor {
       "closeSettings",
       "scriptName",
       "scriptAuthor",
+      "scriptLicense",
       "targetUrl",
       "runAt",
       "scriptVersion",
@@ -316,6 +317,7 @@ class ScriptEditor {
       if (metadata.author) scriptData.author = metadata.author;
       if (metadata.namespace) scriptData.namespace = metadata.namespace;
       if (metadata.runAt) scriptData.runAt = metadata.runAt;
+      if (metadata.license) scriptData.license = metadata.license;
       
       // Handle matches and includes
       if (metadata.matches?.length) {
@@ -546,19 +548,22 @@ class ScriptEditor {
 
     // Form field change listeners for autosave
     const formFields = [
-      'scriptName', 'scriptAuthor', 'scriptVersion', 'scriptDescription',
+      'scriptName', 'scriptAuthor', 'scriptVersion', 'scriptDescription', 'scriptLicense',
       'runAt', 'waitForSelector', 'targetUrl'
     ];
     
     formFields.forEach(fieldName => {
       const element = this.elements[fieldName];
       if (element) {
-        element.addEventListener('change', () => {
+        // Add both change and input events for better responsiveness
+        const handleChange = () => {
           this.markAsDirty();
           if (this.state.isAutosaveEnabled) {
             this._debouncedSave();
           }
-        });
+        };
+        element.addEventListener('change', handleChange);
+        element.addEventListener('input', handleChange);
       }
     });
 
@@ -637,6 +642,7 @@ class ScriptEditor {
     this.elements.scriptVersion.value =
       script.version || this.config.DEFAULT_VERSION;
     this.elements.scriptDescription.value = script.description || "";
+    this.elements.scriptLicense.value = script.license || "";
     this.codeEditorManager.setValue(script.code || "");
 
     script.targetUrls?.forEach((url) => this.ui.addUrlToList(url));
@@ -713,6 +719,7 @@ class ScriptEditor {
       version:
         this.elements.scriptVersion.value.trim() || this.config.DEFAULT_VERSION,
       description: this.elements.scriptDescription.value.trim(),
+      license: this.elements.scriptLicense?.value.trim() || "",
       code: this.codeEditorManager.getValue(),
       enabled: true,
       updatedAt: new Date().toISOString(),

@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", initDashboard);
+import { setupGreasyfork } from "./dashboard/dashboard-greasyfork.js";
 
 function initDashboard() {
   const elements = {
@@ -36,11 +36,11 @@ function initDashboard() {
     allScripts: [], // This will be populated by loadScripts
   };
 
-  setupEventListeners(elements, state); 
-  loadScripts(elements, state); 
+  setupEventListeners(elements, state);
+  loadScripts(elements, state);
   loadSettings(elements.settings);
   setupTabs(elements.tabs, elements.tabContents);
-  setupGreasyfork(elements.greasyfork); 
+  setupGreasyfork(elements.greasyfork);
 }
 
 function setupEventListeners(elements, state) {
@@ -53,15 +53,15 @@ function setupEventListeners(elements, state) {
   });
 
   elements.saveSettingsBtn?.addEventListener("click", () =>
-    saveSettings(elements.settings) 
+    saveSettings(elements.settings)
   );
 
   elements.filters.scriptSearch?.addEventListener(
     "input",
-    debounce(() => filterScripts(elements, state), 300) 
+    debounce(() => filterScripts(elements, state), 300)
   );
 
-  const filterChangeHandler = () => filterScripts(elements, state); 
+  const filterChangeHandler = () => filterScripts(elements, state);
   elements.filters.websiteFilter?.addEventListener(
     "change",
     filterChangeHandler
@@ -82,3 +82,5 @@ function debounce(func, delay) {
     timeout = setTimeout(() => func.apply(context, args), delay);
   };
 }
+
+document.addEventListener("DOMContentLoaded", initDashboard);

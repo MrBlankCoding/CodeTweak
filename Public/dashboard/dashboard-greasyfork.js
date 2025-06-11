@@ -1,3 +1,5 @@
+import { parseUserScriptMetadata } from "../utils/metadataParser.js";
+
 function setupGreasyfork(elements) {
   if (!elements.button) return;
 
@@ -129,30 +131,12 @@ async function importGreasyforkScript(codeUrl) {
 
     const code = await response.text();
 
-    // check if metadate is valid 
-    const metadataBlock = code.match(
-      /==UserScript==([\s\S]*?)==\/UserScript==/
-    );
-    if (!metadataBlock) {
-      throw new Error("No metadata block found in script");
-    }
+    // Parse the script metadata using our shared utility
+    const metadata = parseUserScriptMetadata(code);
 
-    const metadata = {};
-    metadataBlock[1].split("\n").forEach((line) => {
-      const match = line.match(/@(\w+)\s+(.+)/);
-      if (match) {
-        const [, key, value] = match;
-        if (key === "match" || key === "include") {
-          metadata.matches = metadata.matches || [];
-          metadata.matches.push(value);
-        } else if (key === "grant") {
-          metadata.grants = metadata.grants || [];
-          metadata.grants.push(value.trim());
-        } else {
-          metadata[key] = value.trim();
-        }
-      }
-    });
+    if (!metadata || Object.keys(metadata).length === 0) {
+      throw new Error("No valid metadata found in script");
+    }
 
     const updateInfo = {
       source: "greasyfork",
@@ -175,55 +159,39 @@ async function importGreasyforkScript(codeUrl) {
       id: crypto.randomUUID(),
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      updateInfo, 
+      updateInfo,
+      ...(metadata.resources && { resources: metadata.resources }),
+      ...(metadata.requires && { requires: metadata.requires }),
+      ...(metadata.license && { license: metadata.license }),
     };
-
-    // Map @grant directives to internal GM API flags
-    const gmGrantMap = {
-      GM_setValue: "gmSetValue",
-      GM_getValue: "gmGetValue",
-      GM_deleteValue: "gmDeleteValue",
-      GM_listValues: "gmListValues",
-      GM_openInTab: "gmOpenInTab",
-      GM_notification: "gmNotification",
-      GM_getResourceText: "gmGetResourceText",
-      GM_getResourceURL: "gmGetResourceURL",
-      GM_setClipboard: "gmSetClipboard",
-      GM_addStyle: "gmAddStyle",
-      GM_registerMenuCommand: "gmRegisterMenuCommand",
-      GM_xmlHttpRequest: "gmXmlHttpRequest",
-    };
-
-    // Initialize all GM API flags as false
-    Object.values(gmGrantMap).forEach((flag) => {
-      scriptData[flag] = false;
+    Object.keys(metadata.gmApis).forEach((apiFlag) => {
+      scriptData[apiFlag] = metadata.gmApis[apiFlag];
     });
 
-    // Enable flags for each granted API
-    if (metadata.grants && Array.isArray(metadata.grants)) {
-      metadata.grants.forEach((grant) => {
-        const flag = gmGrantMap[grant];
-        if (flag) {
-          scriptData[flag] = true;
-        }
-      });
+    try {
+      const { scripts = [] } = await chrome.storage.local.get("scripts");
+      scripts.push(scriptData);
+      await chrome.storage.local.set({ scripts });
+
+      showNotification("Script imported successfully", "success");
+      chrome.runtime.sendMessage({ action: "scriptsUpdated" });
+
+      const modal = document.getElementById("greasyforkModal");
+      if (modal) {
+        modal.setAttribute("aria-hidden", "true");
+        modal.classList.remove("show");
+      }
+
+      // Refresh the dashboard by reloading the page
+      window.location.reload();
+    } catch (error) {
+      console.error("Error saving script:", error);
+      throw error;
     }
-
-    const { scripts = [] } = await chrome.storage.local.get("scripts");
-    scripts.push(scriptData);
-    await chrome.storage.local.set({ scripts });
-
-    showNotification("Script imported successfully", "success");
-    chrome.runtime.sendMessage({ action: "scriptsUpdated" });
-
-    const modal = document.getElementById("greasyforkModal");
-    modal.setAttribute("aria-hidden", "true");
-    modal.classList.remove("show");
-
-    // refresh
-    await refreshDashboard();
   } catch (error) {
     console.error("Error importing script:", error);
     showNotification("Error importing script: " + error.message, "error");
   }
 }
+
+export { setupGreasyfork };
