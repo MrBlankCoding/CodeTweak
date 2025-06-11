@@ -3,7 +3,10 @@ export function urlMatchesPattern(url, pattern) {
     if (!url || !pattern) return false;
     if (pattern === url) return true;
 
-    // Default to wildcard scheme if not provided
+    // universal wildcard
+    if (pattern === "*://*/*") return true;
+
+    // Default if nothing provided
     if (!pattern.includes("://")) {
       pattern = "*://" + pattern;
     }
