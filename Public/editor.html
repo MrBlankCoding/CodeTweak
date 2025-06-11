@@ -69,6 +69,9 @@
          <div class="main-content">
             <!-- Sidebar -->
             <aside id="sidebar" class="sidebar">
+               <div class="sidebar-header">
+                  <h3>Script Settings</h3>
+               </div>
                <div class="sidebar-content">
                   <!-- Info-->
                   <div class="settings-section collapsible" data-section="info">
@@ -233,6 +236,16 @@
                      </div>
                   </div>
                </div>
+               <div class="sidebar-footer">
+                  <button id="helpButton" class="help-button" title="Keyboard Shortcuts & Help">
+                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                     </svg>
+                     <span>Help & Shortcuts</span>
+                  </button>
+               </div>
             </aside>
             <!-- Editor-->
             <main class="editor-area">
@@ -262,7 +275,80 @@
             </main>
          </div>
       </div>
-            <!-- Settings Modal -->
+      
+      <!-- Help Modal -->
+      <div id="helpModal" class="modal">
+         <div class="modal-content help-modal">
+            <div class="modal-header">
+               <h2>Help & Keyboard Shortcuts</h2>
+               <button type="button" class="close-help-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+               <div class="help-section">
+                  <h3>Keyboard Shortcuts</h3>
+                  <table class="shortcuts-table">
+                     <thead>
+                        <tr>
+                           <th>Action</th>
+                           <th>Shortcut</th>
+                        </tr>
+                     </thead>
+                     <tbody>
+                        <tr>
+                           <td>Save Script</td>
+                           <td><kbd>Ctrl</kbd> + <kbd>S</kbd></td>
+                        </tr>
+                        <tr>
+                           <td>Format Code</td>
+                           <td><kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>F</kbd></td>
+                        </tr>
+                        <tr>
+                           <td>Toggle Sidebar</td>
+                           <td><kbd>Ctrl</kbd> + <kbd>\</kbd></td>
+                        </tr>
+                        <tr>
+                           <td>Toggle Comment</td>
+                           <td><kbd>Ctrl</kbd> + <kbd>/</kbd></td>
+                        </tr>
+                     </tbody>
+                  </table>
+               </div>
+               
+               <div class="help-section">
+                  <h3>URL Matching with Wildcards</h3>
+                  <p>The URL matching system supports the following patterns:</p>
+                  <table class="wildcards-table">
+                     <thead>
+                        <tr>
+                           <th>Pattern</th>
+                           <th>Description</th>
+                           <th>Example</th>
+                        </tr>
+                     </thead>
+                     <tbody>
+                        <tr>
+                           <td><code>*</code></td>
+                           <td>Matches any characters except <code>/</code></td>
+                           <td><code>https://example.com/*</code> matches any page on example.com</td>
+                        </tr>
+                        <tr>
+                           <td><code>**</code></td>
+                           <td>Matches any characters including <code>/</code></td>
+                           <td><code>https://**/api/**</code> matches any API endpoint on any domain</td>
+                        </tr>
+                        <tr>
+                           <td><code>?</code></td>
+                           <td>Matches any single character</td>
+                           <td><code>file?.js</code> matches file1.js, file2.js, etc.</td>
+                        </tr>
+                     </tbody>
+                  </table>
+               </div>
+            </div>
+         </div>
+      </div>
+            
+      <!-- Settings Modal -->
       <div id="settingsModal" class="modal">
          <div class="modal-content">
             <div class="modal-header">
@@ -344,8 +430,8 @@
       <script src="codemirror/addon/scroll/simplescrollbars.js"></script>
       <script src="codemirror/addon/edit/trailingspace.js"></script>
       <script src="codemirror/addon/edit/continuelist.js"></script>
-      <script defer src="codemirror/lib/jshint.js"></script>
-      <script defer src="codemirror/lib/beautify.min.js"></script>
+      <script src="codemirror/lib/jshint.js"></script>
+      <script src="codemirror/lib/beautify.min.js"></script>
       <script type="module" src="utils/editor_managers.js"></script>
       <script type="module" src="utils/editor_settings.js"></script>
       <script type="module" src="editor.js"></script>

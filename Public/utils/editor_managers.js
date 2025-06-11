@@ -41,46 +41,89 @@ export class ModalManager extends BaseUIComponent {
   }
 
   setupEventListeners() {
-    this.addEventListener(this.elements.settingsBtn, 'click', () => {
-      this.showModal('settings');
-    });
+    // Settings modal
+    if (this.elements.settingsBtn) {
+      this.addEventListener(this.elements.settingsBtn, 'click', () => {
+        this.showModal('settings');
+      });
 
-    this.addEventListener(this.elements.closeSettings, 'click', () => {
-      this.hideModal('settings');
-    });
+      this.addEventListener(this.elements.closeSettings, 'click', () => {
+        this.hideModal('settings');
+      });
+    }
 
-    // Close modal on outside click
+    // Help modal
+    if (this.elements.helpButton) {
+      this.addEventListener(this.elements.helpButton, 'click', (e) => {
+        e.stopPropagation();
+        this.showModal('help');
+      });
+
+      // Close button inside help modal
+      const closeHelpButton = document.querySelector('.close-help-modal');
+      if (closeHelpButton) {
+        this.addEventListener(closeHelpButton, 'click', (e) => {
+          e.stopPropagation();
+          this.hideModal('help');
+        });
+      }
+    }
+
+    // Close modal on outside click or Escape key
     this.addEventListener(document, 'click', (e) => {
       if (e.target.classList.contains('modal') && e.target.classList.contains('show')) {
-        this.hideModal('settings');
+        const modalType = e.target.id.replace('Modal', '');
+        this.hideModal(modalType);
+      }
+    });
+
+    this.addEventListener(document, 'keydown', (e) => {
+      if (e.key === 'Escape') {
+        const openModal = document.querySelector('.modal.show');
+        if (openModal) {
+          const modalType = openModal.id.replace('Modal', '');
+          this.hideModal(modalType);
+        }
       }
     });
   }
 
   showModal(modalType) {
-    const modal = this.elements[`${modalType}Modal`];
+    const modal = document.getElementById(`${modalType}Modal`);
     if (modal) {
       // Prevent body scroll when modal is open
       document.body.style.overflow = 'hidden';
       modal.classList.add('show');
       modal.style.display = 'flex';
+      
+      // Add a class to the body when any modal is open
+      document.body.classList.add('modal-open');
+      
       // Focus the first focusable element
       const focusable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
       if (focusable) focusable.focus();
+      
       this.emit('modalOpened', { type: modalType });
     }
   }
 
   hideModal(modalType) {
-    const modal = this.elements[`${modalType}Modal`];
+    const modal = document.getElementById(`${modalType}Modal`);
     if (modal && modal.classList.contains('show')) {
-      // Restore body scroll
-      document.body.style.overflow = '';
+      // Restore body scroll if no other modals are open
+      const openModals = document.querySelectorAll('.modal.show');
+      if (openModals.length <= 1) {
+        document.body.style.overflow = '';
+        document.body.classList.remove('modal-open');
+      }
+      
       modal.classList.remove('show');
+      
       // Wait for the transition to complete before hiding
       setTimeout(() => {
         modal.style.display = 'none';
       }, 200);
+      
       this.emit('modalClosed', { type: modalType });
     }
   }
@@ -103,6 +146,11 @@ export class SidebarManager extends BaseUIComponent {
 
     this.addEventListener(document, 'click', (e) => {
       this.handleDocumentClick(e);
+    });
+
+    // Listen for keyboard shortcut events
+    this.on('sidebarToggleRequested', () => {
+      this.toggle();
     });
 
     this.initializeCollapsibleSections();
@@ -391,7 +439,8 @@ export class SettingsManager extends BaseUIComponent {
       this.addEventListener(saveBtn, 'click', async (e) => {
         e.preventDefault();
         e.stopPropagation();
-        // Modal closing is now handled in saveAllSettings
+        // Main save action
+        await this.saveAllSettings();
       });
     }
 
@@ -833,6 +882,8 @@ export class KeyboardManager extends BaseUIComponent {
     this.register('cmd+s', () => this.emit('saveRequested'));
     this.register('ctrl+b', () => this.emit('sidebarToggleRequested'));
     this.register('cmd+b', () => this.emit('sidebarToggleRequested'));
+    this.register('ctrl+\\', () => this.emit('sidebarToggleRequested'));
+    this.register('cmd+\\', () => this.emit('sidebarToggleRequested'));
   }
 
   register(combination, handler) {
@@ -897,7 +948,13 @@ export class UIManager {
   }
 
   initializeComponents() {
-    this.components.modal = new ModalManager(this.elements, this.eventBus);
+    // Initialize all UI components
+    this.components.modal = new ModalManager({
+      settingsBtn: this.elements.settingsBtn,
+      closeSettings: this.elements.closeSettings,
+      settingsModal: this.elements.settingsModal,
+      helpButton: document.getElementById('helpButton')
+    }, this.eventBus);
     this.components.sidebar = new SidebarManager(this.elements, this.eventBus, this.config);
     this.components.status = new StatusManager(this.elements, this.eventBus);
     this.components.settings = new SettingsManager(this.elements, this.eventBus);

@@ -228,6 +228,14 @@ class ScriptEditor {
       this.ui.initializeCollapsibleSections();
       this.ui.updateSidebarState();
       this.registerEventListeners();
+
+    // Listen for Ctrl+S / Cmd+S via KeyboardManager
+    if (this.ui && typeof this.ui.on === 'function') {
+      this.ui.on('saveRequested', async () => {
+        await this.saveScript();
+        this.ui.showStatusMessage('Script saved!', 'success', 2000);
+      });
+    }
       this.setupBackgroundConnection();
       this.codeEditorManager.updateEditorLintAndAutocomplete();
 
@@ -321,42 +329,114 @@ class ScriptEditor {
     });
     
     // Directly add click listener to save button
-    this.elements.saveBtn.addEventListener('click', (e) => {
+    this.elements.saveBtn?.addEventListener('click', (e) => {
       e.preventDefault();
       this.saveScript();
     });
     
+    // Setup UI callbacks
     const callbacks = {
       saveScript: () => this.saveScript(),
-      formatCode: () => this.codeEditorManager.formatCode(true),
+      formatCode: async () => {
+        await this.codeEditorManager.formatCode(true, async () => {
+          // Always save after formatting, regardless of autosave setting
+          await this.saveScript(true); // true for quiet mode to prevent duplicate messages
+        });
+      },
       markAsUnsaved: () => this.markAsUnsaved(),
       markAsDirty: () => this.markAsDirty(),
       debouncedSave: () => this._debouncedSave(),
-      updateEditorLintAndAutocomplete: () =>
-        this.codeEditorManager.updateEditorLintAndAutocomplete(),
+      updateEditorLintAndAutocomplete: () => this.codeEditorManager.updateEditorLintAndAutocomplete(),
       saveSettings: (settings) => {
         this.codeEditorManager.saveSettings(settings);
-        // Update the editor with the new settings
         this.codeEditorManager.applySettings(settings);
       },
       loadSettings: () => this.codeEditorManager.loadSettings(),
       resetToDefaultSettings: () => {
         const defaultSettings = this.codeEditorManager.resetToDefaultSettings();
-        // Update the editor with the default settings
         this.codeEditorManager.applySettings(defaultSettings);
         return defaultSettings;
       },
-      toggleLinting: (enabled) => this.codeEditorManager.toggleLinting(enabled),
+      toggleLinting: (enabled) => this.codeEditorManager.toggleLinting(enabled)
     };
 
+    // Initialize UI components with callbacks
     this.ui.setupButtonEventListeners(callbacks);
     this.ui.setupFormEventListeners(() => this.markAsUnsaved());
-    this.ui.setupUrlManagement({
-      markAsUnsaved: () => this.markAsUnsaved(),
-    });
+    this.ui.setupUrlManagement({ markAsUnsaved: () => this.markAsUnsaved() });
     this.ui.setupSettingsModal(callbacks);
     this.ui.setupGlobalEventListeners(callbacks);
     this.ui.setupResourceManagement(callbacks);
+
+    // Format button
+    this.elements.formatBtn?.addEventListener("click", () => this.codeEditorManager.formatCode(true));
+
+    // Lint toggle
+    this.elements.lintBtn?.addEventListener("click", () => {
+      this.state.lintingEnabled = !this.state.lintingEnabled;
+      this.codeEditorManager.toggleLinting(this.state.lintingEnabled);
+      localStorage.setItem("lintingEnabled", this.state.lintingEnabled);
+      this.ui.showStatusMessage(
+        `Linting ${this.state.lintingEnabled ? "enabled" : "disabled"}`,
+        "info"
+      );
+      this.markAsDirty();
+      if (this.state.isAutosaveEnabled) {
+        this._debouncedSave();
+      }
+    });
+
+    // Autosave toggle
+    this.elements.autosaveBtn?.addEventListener("click", () => {
+      this.state.isAutosaveEnabled = !this.state.isAutosaveEnabled;
+      localStorage.setItem("autosaveEnabled", this.state.isAutosaveEnabled);
+      this.ui.showStatusMessage(
+        `Autosave ${this.state.isAutosaveEnabled ? "enabled" : "disabled"}`,
+        "info"
+      );
+      this.ui.updateAutosaveButton(this.state.isAutosaveEnabled);
+      
+      // If enabling autosave and there are unsaved changes, save immediately
+      if (this.state.isAutosaveEnabled && this.state.hasUnsavedChanges) {
+        this._debouncedSave(true);
+      }
+    });
+
+    // Form field change listeners for autosave
+    const formFields = [
+      'scriptName', 'scriptAuthor', 'scriptVersion', 'scriptDescription',
+      'runAt', 'waitForSelector', 'targetUrl'
+    ];
+    
+    formFields.forEach(fieldName => {
+      const element = this.elements[fieldName];
+      if (element) {
+        element.addEventListener('change', () => {
+          this.markAsDirty();
+          if (this.state.isAutosaveEnabled) {
+            this._debouncedSave();
+          }
+        });
+      }
+    });
+
+    // Checkbox change listeners (GM API checkboxes)
+    Object.values(this.gmApiDefinitions).forEach(api => {
+      const element = this.elements[api.el];
+      if (element) {
+        element.addEventListener('change', () => {
+          this.markAsDirty();
+          if (this.state.isAutosaveEnabled) {
+            this._debouncedSave();
+          }
+          
+          // Special handling for resource-related APIs
+          if (['gmGetResourceText', 'gmGetResourceURL'].includes(api.el)) {
+            this.toggleResourcesSection(true);
+          }
+        });
+      }
+    });
     
     // Setup resource API listeners
     this.setupResourceApiListeners();

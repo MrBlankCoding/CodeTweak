@@ -323,7 +323,7 @@ export class CodeEditorManager {
     return this.state.lintingEnabled;
   }
 
-  formatCode(showMessage = true) {
+  async formatCode(showMessage = true, onFormatComplete) {
     try {
       if (!this.codeEditor) {
         throw new Error("Code editor not initialized");
@@ -335,7 +335,12 @@ export class CodeEditorManager {
         space_in_empty_paren: true,
       });
 
-      this.codeEditor.setValue(formattedCode);
+      // Use CodeMirror's operation to make this an atomic operation
+      this.codeEditor.operation(() => {
+        const cursor = this.codeEditor.getCursor();
+        this.codeEditor.setValue(formattedCode);
+        this.codeEditor.setCursor(cursor);
+      });
 
       if (showMessage && this.onStatusCallback) {
         this.onStatusCallback("Code formatted", "success");
@@ -344,11 +349,17 @@ export class CodeEditorManager {
           this.config.STATUS_TIMEOUT
         );
       }
+      
+      // Call the completion callback if provided and wait for it to complete
+      if (typeof onFormatComplete === 'function') {
+        await onFormatComplete();
+      }
     } catch (error) {
       console.error("Error formatting code:", error);
       if (showMessage && this.onStatusCallback) {
         this.onStatusCallback("Could not format code", "error");
       }
+      return false;
     }
   }
 
