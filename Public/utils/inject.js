@@ -405,21 +405,36 @@ class ExternalScriptLoader {
     }
   }
 
-  injectScriptTag(src) {
+  async injectScriptTag(url) {
     return new Promise((resolve, reject) => {
-      const scriptEl = document.createElement("script");
-      scriptEl.src = src;
-      scriptEl.async = false; // Preserve execution order
-      scriptEl.onload = resolve;
-      scriptEl.onerror = () =>
-        reject(new Error(`Failed to load required script: ${src}`));
+      const script = document.createElement("script");
 
-      const target = document.head || document.documentElement;
-      if (target) {
-        target.appendChild(scriptEl);
-      } else {
-        reject(new Error("No valid target element found for script injection"));
+      // Trusted Types compliance
+      let trustedSrc = url;
+      if (window.trustedTypes && window.trustedTypes.createPolicy) {
+        try {
+          if (!window.__ctTrustedScriptURLPolicy) {
+            window.__ctTrustedScriptURLPolicy = window.trustedTypes.createPolicy(
+              "codetweak",
+              {
+                createScriptURL: (input) => input,
+              }
+            );
+          }
+          trustedSrc = window.__ctTrustedScriptURLPolicy.createScriptURL(url);
+        } catch (_e) {
+          console.error("Failed to create trusted script URL:", _e);
+          console.warn("Falling back to raw URL.");
+          // ignore, fall back to raw URL
+          trustedSrc = url;
+        }
       }
+
+      script.src = trustedSrc;
+      script.async = false; // Preserve execution order
+      script.onload = resolve;
+      script.onerror = () => reject(new Error(`Failed to load external script: ${url}`));
+      (document.head || document.documentElement).appendChild(script);
     });
   }
 }
@@ -553,8 +568,51 @@ async function executeUserScriptWithDependencies(
     // Load external dependencies first
     await scriptLoader.loadScripts(requiredUrls);
 
-    // Execute user script
-    new Function(userCode)();
+    // Execute user script using a CSP-compliant blob URL instead of Function()
+    const blob = new Blob([userCode], { type: "text/javascript" });
+    const blobUrl = URL.createObjectURL(blob);
+
+    await new Promise((resolve, reject) => {
+      const scriptEl = document.createElement("script");
+
+      // Trusted Types compliance for blob URL
+      let trustedSrc = blobUrl;
+      if (window.trustedTypes && window.trustedTypes.createPolicy) {
+        try {
+          if (!window.__ctTrustedScriptURLPolicy) {
+            window.__ctTrustedScriptURLPolicy = window.trustedTypes.createPolicy(
+              "codetweak",
+              {
+                createScriptURL: (input) => input,
+              }
+            );
+          }
+          trustedSrc = window.__ctTrustedScriptURLPolicy.createScriptURL(blobUrl);
+        } catch (_e) {
+          console.error("Failed to create trusted script URL:", _e);
+          console.warn("Falling back to raw URL.");
+          trustedSrc = blobUrl;
+        }
+      }
+
+      scriptEl.src = trustedSrc;
+      scriptEl.async = false; // Preserve execution order
+      scriptEl.onload = () => {
+        URL.revokeObjectURL(blobUrl);
+        resolve();
+      };
+      scriptEl.onerror = (event) => {
+        URL.revokeObjectURL(blobUrl);
+        reject(
+          new Error(
+            `Failed to execute user script ${scriptId}: ${event?.message || "unknown error"}`
+          )
+        );
+      };
+      (document.head || document.documentElement || document.body).appendChild(
+        scriptEl
+      );
+    });
   } catch (error) {
     console.error(`CodeTweak: Error executing user script ${scriptId}:`, error);
   }

@@ -141,7 +141,29 @@
     injectScriptTag(src) {
       return new Promise((resolve, reject) => {
         const el = document.createElement("script");
-        el.src = src;
+
+        // Handle Trusted Types enforcement for script URLs
+        let trustedSrc = src;
+        if (window.trustedTypes && window.trustedTypes.createPolicy) {
+          try {
+            if (!window.__ctTrustedScriptURLPolicy) {
+              window.__ctTrustedScriptURLPolicy = window.trustedTypes.createPolicy(
+                "codetweak",
+                {
+                  createScriptURL: (input) => input,
+                }
+              );
+            }
+            trustedSrc = window.__ctTrustedScriptURLPolicy.createScriptURL(src);
+          } catch (e) {
+            console.error("Failed to create trusted script URL:", e);
+            console.warn("Falling back to raw URL.");
+            // If policy creation failed (likely already exists), fall back to raw URL.
+            trustedSrc = src;
+          }
+        }
+
+        el.src = trustedSrc;
         el.async = false; // preserve execution order
         el.onload = resolve;
         el.onerror = () => reject(new Error(`Failed to load script ${src}`));
@@ -268,7 +290,51 @@
   async function executeUserScriptWithDependencies(userCode, scriptId, requireUrls, loader) {
     try {
       await loader.loadScripts(requireUrls);
-      new Function(userCode)();
+      const blob = new Blob([userCode], { type: "text/javascript" });
+      const blobUrl = URL.createObjectURL(blob);
+
+      await new Promise((resolve, reject) => {
+        const scriptEl = document.createElement("script");
+
+        // Handle Trusted Types enforcement for script URLs
+        let trustedSrc = blobUrl;
+        if (window.trustedTypes && window.trustedTypes.createPolicy) {
+          try {
+            if (!window.__ctTrustedScriptURLPolicy) {
+              window.__ctTrustedScriptURLPolicy = window.trustedTypes.createPolicy(
+                "codetweak",
+                {
+                  createScriptURL: (input) => input,
+                }
+              );
+            }
+            trustedSrc = window.__ctTrustedScriptURLPolicy.createScriptURL(blobUrl);
+          } catch (e) {
+            console.error("Failed to create trusted script URL:", e);
+            console.warn("Falling back to raw URL.");
+            // If policy creation failed (likely already exists), fall back to raw URL.
+            trustedSrc = blobUrl;
+          }
+        }
+
+        scriptEl.src = trustedSrc;
+        scriptEl.async = false; // maintain order
+        scriptEl.onload = () => {
+          URL.revokeObjectURL(blobUrl);
+          resolve();
+        };
+        scriptEl.onerror = (event) => {
+          URL.revokeObjectURL(blobUrl);
+          reject(
+            new Error(
+              `Failed to execute user script ${scriptId}: ${event?.message || "unknown error"}`
+            )
+          );
+        };
+        (document.head || document.documentElement || document.body).appendChild(
+          scriptEl
+        );
+      });
     } catch (err) {
       console.error(`CodeTweak: Error executing user script ${scriptId}:`, err);
     }
