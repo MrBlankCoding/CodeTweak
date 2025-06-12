@@ -1,9 +1,6 @@
 /* global chrome */
-// Greasy Fork Install Interceptor
-// Listens for clicks on Greasy Fork "Install" buttons, prevents default navigation,
-// and forwards the script URL to the background service worker so the user can
-// review it inside CodeTweak's editor before installation.
-
+//intercept installs from greasyfork
+//prevent other editors :)
 (function interceptGreasyForkInstall() {
   if (!location.hostname.includes('greasyfork.org')) return;
 

@@ -18,6 +18,7 @@ function parseUserScriptMetadata(content) {
     'GM_addStyle': 'gmAddStyle',
     'GM_registerMenuCommand': 'gmRegisterMenuCommand',
     'GM_xmlHttpRequest': 'gmXmlHttpRequest',
+    'GM_xmlhttpRequest': 'gmXmlHttpRequest',
     'unsafeWindow': 'unsafeWindow'
   };
 

@@ -1,12 +1,433 @@
+// Constants
 const INJECTION_TYPES = Object.freeze({
   DOCUMENT_START: "document_start",
   DOCUMENT_END: "document_end",
   DOCUMENT_IDLE: "document_idle",
 });
 
+const EXECUTION_WORLDS = Object.freeze({
+  MAIN: "MAIN",
+  ISOLATED: "ISOLATED",
+});
+
+// ==================================================
+// CORE CLASSES
+// ==================================================
+class GMBridge {
+  constructor(scriptId, extensionId) {
+    this.scriptId = scriptId;
+    this.extensionId = extensionId;
+    this.messageIdCounter = 0;
+    this.pendingPromises = new Map();
+
+    this.setupMessageListener();
+  }
+
+  setupMessageListener() {
+    window.addEventListener("message", (event) => {
+      if (!this.isValidResponse(event)) return;
+
+      const { messageId, error, result } = event.data;
+      const promise = this.pendingPromises.get(messageId);
+
+      if (!promise) return;
+
+      if (error) {
+        promise.reject(new Error(error));
+      } else {
+        promise.resolve(result);
+      }
+
+      this.pendingPromises.delete(messageId);
+    });
+  }
+
+  isValidResponse(event) {
+    return (
+      event.source === window &&
+      event.data?.type === "GM_API_RESPONSE" &&
+      event.data.extensionId === this.extensionId &&
+      this.pendingPromises.has(event.data.messageId)
+    );
+  }
+
+  call(action, payload = {}) {
+    return new Promise((resolve, reject) => {
+      const messageId = `gm_${this.scriptId}_${this.messageIdCounter++}`;
+      this.pendingPromises.set(messageId, { resolve, reject });
+
+      window.postMessage(
+        {
+          type: "GM_API_REQUEST",
+          extensionId: this.extensionId,
+          messageId,
+          action,
+          payload,
+        },
+        "*"
+      );
+    });
+  }
+}
+
+class GMValueManager {
+  constructor(bridge) {
+    this.bridge = bridge;
+    this.cache = new Map();
+  }
+
+  async setValue(name, value) {
+    const resolvedValue = value instanceof Promise ? await value : value;
+    this.cache.set(name, resolvedValue);
+    return this.bridge.call("setValue", { name, value: resolvedValue });
+  }
+
+  getValue(name, defaultValue) {
+    if (this.cache.has(name)) {
+      return this.cache.get(name);
+    }
+
+    // Async fetch to update cache for next call
+    this.bridge
+      .call("getValue", { name, defaultValue })
+      .then((value) => this.cache.set(name, value))
+      .catch((err) => console.warn("Failed to fetch GM value:", err));
+
+    return defaultValue;
+  }
+
+  async deleteValue(name) {
+    this.cache.delete(name);
+    return this.bridge.call("deleteValue", { name });
+  }
+
+  listValues() {
+    return Array.from(this.cache.keys());
+  }
+
+  initializeCache(initialValues = {}) {
+    this.cache.clear();
+    Object.entries(initialValues).forEach(([key, value]) => {
+      this.cache.set(key, value);
+    });
+  }
+}
+
+class GMAPIRegistry {
+  constructor(bridge, valueManager, resourceManager) {
+    this.bridge = bridge;
+    this.valueManager = valueManager;
+    this.resourceManager = resourceManager;
+    this.menuCommands = [];
+  }
+
+  registerAll(enabledApis) {
+    this.initializeGMNamespace();
+    this.registerStorageAPIs(enabledApis);
+    this.registerUIAPIs(enabledApis);
+    this.registerNetworkAPIs(enabledApis);
+    this.registerUtilityAPIs(enabledApis);
+    this.registerResourceAPIs(enabledApis);
+  }
+
+  initializeGMNamespace() {
+    if (typeof window.GM === "undefined") {
+      window.GM = {};
+    }
+  }
+
+  registerStorageAPIs(enabledApis) {
+    if (enabledApis.gmSetValue) {
+      const setValue = (name, value) => this.valueManager.setValue(name, value);
+      window.GM_setValue = setValue;
+      window.GM.setValue = setValue;
+    }
+
+    if (enabledApis.gmGetValue) {
+      const getValue = (name, defaultValue) =>
+        this.valueManager.getValue(name, defaultValue);
+      window.GM_getValue = getValue;
+      window.GM.getValue = getValue;
+    }
+
+    if (enabledApis.gmDeleteValue) {
+      const deleteValue = (name) => this.valueManager.deleteValue(name);
+      window.GM_deleteValue = deleteValue;
+      window.GM.deleteValue = deleteValue;
+    }
+
+    if (enabledApis.gmListValues) {
+      const listValues = () => this.valueManager.listValues();
+      window.GM_listValues = listValues;
+      window.GM.listValues = listValues;
+    }
+  }
+
+  registerUIAPIs(enabledApis) {
+    if (enabledApis.gmOpenInTab) {
+      const openInTab = (url, options = {}) =>
+        this.bridge.call("openInTab", { url, options });
+      window.GM_openInTab = openInTab;
+      window.GM.openInTab = openInTab;
+    }
+
+    if (enabledApis.gmNotification) {
+      const notification = (textOrDetails, titleOrOnDone, image) => {
+        const details = this.normalizeNotificationDetails(
+          textOrDetails,
+          titleOrOnDone,
+          image
+        );
+        const cloneableDetails = this.removeNonCloneableProperties(details);
+        return this.bridge.call("notification", { details: cloneableDetails });
+      };
+      window.GM_notification = notification;
+      window.GM.notification = notification;
+    }
+
+    if (enabledApis.gmRegisterMenuCommand) {
+      const registerMenuCommand = (caption, onClick, accessKey) => {
+        return this.registerMenuCommand(caption, onClick, accessKey);
+      };
+      window.GM_registerMenuCommand = registerMenuCommand;
+      window.GM.registerMenuCommand = registerMenuCommand;
+    }
+  }
+
+  registerNetworkAPIs(enabledApis) {
+    if (enabledApis.gmXmlHttpRequest) {
+      const xmlHttpRequest = (details = {}) =>
+        this.createXMLHttpRequest(details);
+      window.GM_xmlHttpRequest = xmlHttpRequest;
+      window.GM.xmlHttpRequest = xmlHttpRequest;
+    }
+
+    if (enabledApis.gmSetClipboard) {
+      const setClipboard = (data, type) =>
+        this.bridge.call("setClipboard", { data, type });
+      window.GM_setClipboard = setClipboard;
+      window.GM.setClipboard = setClipboard;
+    }
+  }
+
+  registerUtilityAPIs(enabledApis) {
+    if (enabledApis.gmAddStyle) {
+      const addStyle = (css) => this.addStyleToDocument(css);
+      window.GM_addStyle = addStyle;
+      window.GM.addStyle = addStyle;
+    }
+  }
+
+  registerResourceAPIs(enabledApis) {
+    if (enabledApis.gmGetResourceText) {
+      const getResourceText = (resourceName) =>
+        this.resourceManager.getText(resourceName);
+      window.GM_getResourceText = getResourceText;
+      window.GM.getResourceText = getResourceText;
+    }
+
+    if (enabledApis.gmGetResourceURL) {
+      const getResourceURL = (resourceName) =>
+        this.resourceManager.getURL(resourceName);
+      window.GM_getResourceURL = getResourceURL;
+      window.GM.getResourceURL = getResourceURL;
+    }
+  }
+
+  // Helper methods
+  normalizeNotificationDetails(textOrDetails, titleOrOnDone, image) {
+    return typeof textOrDetails === "object" && textOrDetails !== null
+      ? { ...textOrDetails }
+      : { text: textOrDetails, title: titleOrOnDone, image };
+  }
+
+  removeNonCloneableProperties(obj) {
+    return Object.fromEntries(
+      Object.entries(obj).filter(([, value]) => typeof value !== "function")
+    );
+  }
+
+  createXMLHttpRequest(details) {
+    if (typeof details !== "object") {
+      throw new Error("GM_xmlHttpRequest: details must be an object");
+    }
+
+    const { callbacks, cloneableDetails } =
+      this.separateCallbacksFromDetails(details);
+
+    return this.bridge
+      .call("xmlHttpRequest", { details: cloneableDetails })
+      .then((response) => {
+        if (callbacks.onload) {
+          try {
+            callbacks.onload(response);
+          } catch (error) {
+            console.error("GM_xmlHttpRequest onload error:", error);
+          }
+        }
+        return response;
+      })
+      .catch((error) => {
+        if (callbacks.onerror) {
+          try {
+            callbacks.onerror(error);
+          } catch (callbackError) {
+            console.error(
+              "GM_xmlHttpRequest onerror callback failed:",
+              callbackError
+            );
+          }
+        }
+        throw error;
+      });
+  }
+
+  separateCallbacksFromDetails(details) {
+    const callbacks = {};
+    const cloneableDetails = {};
+
+    Object.entries(details).forEach(([key, value]) => {
+      if (typeof value === "function") {
+        callbacks[key] = value;
+      } else {
+        cloneableDetails[key] = value;
+      }
+    });
+
+    return { callbacks, cloneableDetails };
+  }
+
+  addStyleToDocument(css) {
+    if (typeof css !== "string") return null;
+
+    const style = document.createElement("style");
+    style.textContent = css;
+
+    const target = document.head || document.documentElement || document.body;
+    if (target) {
+      target.appendChild(style);
+    }
+
+    return style;
+  }
+
+  registerMenuCommand(caption, onClick, accessKey) {
+    if (typeof caption !== "string" || typeof onClick !== "function") {
+      console.warn(
+        "GM_registerMenuCommand: Expected (string caption, function onClick, [string accessKey])"
+      );
+      return null;
+    }
+
+    const commandId = this.generateCommandId();
+    const command = { commandId, caption, onClick, accessKey };
+
+    this.menuCommands.push(command);
+    this.exposeMenuCommand(command);
+
+    console.log(
+      `CodeTweak: Registered GM menu command '${caption}' (id: ${commandId})`
+    );
+    return commandId;
+  }
+
+  generateCommandId() {
+    return `gm_menu_${Date.now()}_${Math.random()
+      .toString(36)
+      .substring(2, 8)}`;
+  }
+
+  exposeMenuCommand(command) {
+    window.__gmMenuCommands = window.__gmMenuCommands || [];
+    window.__gmMenuCommands.push(command);
+  }
+}
+
 /**
- * Main world execution function that sets up GM APIs and executes user scripts
+ * Manages script resources (text content and URLs)
  */
+class ResourceManager {
+  constructor(resourceContents = {}, resourceURLs = {}) {
+    this.contents = new Map(Object.entries(resourceContents));
+    this.urls = new Map(Object.entries(resourceURLs));
+  }
+
+  getText(resourceName) {
+    return this.contents.get(resourceName) || null;
+  }
+
+  getURL(resourceName) {
+    return this.urls.get(resourceName) || null;
+  }
+
+  static fromScript(script) {
+    const resourceURLs = {};
+
+    if (Array.isArray(script.resources)) {
+      script.resources.forEach((resource) => {
+        resourceURLs[resource.name] = resource.url;
+      });
+    }
+
+    return new ResourceManager(script.resourceContents || {}, resourceURLs);
+  }
+}
+
+/**
+ * Handles external script loading with fallback strategies
+ */
+class ExternalScriptLoader {
+  constructor() {
+    this.loadedScripts = new Set();
+  }
+
+  async loadScript(url) {
+    if (this.loadedScripts.has(url)) {
+      return; // Already loaded
+    }
+
+    try {
+      await this.injectScriptTag(url);
+      this.loadedScripts.add(url);
+    } catch (error) {
+      console.error(`Failed to load external script: ${url}`, error);
+      throw error;
+    }
+  }
+
+  async loadScripts(urls) {
+    if (!Array.isArray(urls) || urls.length === 0) {
+      return;
+    }
+
+    for (const url of urls) {
+      await this.loadScript(url);
+    }
+  }
+
+  injectScriptTag(src) {
+    return new Promise((resolve, reject) => {
+      const scriptEl = document.createElement("script");
+      scriptEl.src = src;
+      scriptEl.async = false; // Preserve execution order
+      scriptEl.onload = resolve;
+      scriptEl.onerror = () =>
+        reject(new Error(`Failed to load required script: ${src}`));
+
+      const target = document.head || document.documentElement;
+      if (target) {
+        target.appendChild(scriptEl);
+      } else {
+        reject(new Error("No valid target element found for script injection"));
+      }
+    });
+  }
+}
+
+// ==================================================
+// SCRIPT EXECUTORS
+// ==================================================
+
 function createMainWorldExecutor(
   userCode,
   scriptId,
@@ -17,277 +438,6 @@ function createMainWorldExecutor(
   initialValues,
   requiredUrls
 ) {
-  // Helper: Creates a bridge for GM API communication between main world and content scripts
-  function createGMBridge(scriptId, extensionId) {
-    let messageIdCounter = 0;
-    const pendingPromises = {};
-
-    // Listen for responses from content bridge
-    window.addEventListener("message", (event) => {
-      if (
-        event.source === window &&
-        event.data?.type === "GM_API_RESPONSE" &&
-        event.data.extensionId === extensionId &&
-        pendingPromises[event.data.messageId]
-      ) {
-        const { messageId, error, result } = event.data;
-        const promise = pendingPromises[messageId];
-
-        if (error) {
-          promise.reject(new Error(error));
-        } else {
-          promise.resolve(result);
-        }
-        delete pendingPromises[messageId];
-      }
-    });
-
-    return function callGmBridge(action, payload) {
-      return new Promise((resolve, reject) => {
-        const messageId = `gm_${scriptId}_${messageIdCounter++}`;
-        pendingPromises[messageId] = { resolve, reject };
-
-        window.postMessage(
-          {
-            type: "GM_API_REQUEST",
-            extensionId,
-            messageId,
-            action,
-            payload,
-          },
-          "*"
-        );
-      });
-    };
-  }
-
-  // GM apis
-  function registerGMAPIs(
-    enabledApis,
-    gmBridge,
-    resourceContents,
-    resourceURLs,
-    valueCache
-  ) {
-    const GM = window.GM;
-
-    // Local cache for GM_*Value APIs to enable synchronous reads
-    valueCache = valueCache || {};
-
-    // Storage APIs
-    if (enabledApis.gmSetValue) {
-      const setValue = async (name, value) => {
-        if (value instanceof Promise) {
-          value = await value;
-        }
-        valueCache[name] = value;
-        gmBridge("setValue", { name, value });
-      };
-      window.GM_setValue = setValue;
-      GM.setValue = setValue;
-    }
-
-    if (enabledApis.gmGetValue) {
-      const getValue = (name, defaultValue) => {
-        if (Object.prototype.hasOwnProperty.call(valueCache, name)) {
-          return valueCache[name];
-        }
-        // Fire async fetch to update cache for next call
-        gmBridge("getValue", { name, defaultValue }).then((val) => {
-          valueCache[name] = val;
-        });
-        return defaultValue;
-      };
-      window.GM_getValue = getValue;
-      GM.getValue = getValue;
-    }
-
-    if (enabledApis.gmDeleteValue) {
-      const deleteValue = async (name) => {
-        delete valueCache[name];
-        gmBridge("deleteValue", { name });
-      };
-      window.GM_deleteValue = deleteValue;
-      GM.deleteValue = deleteValue;
-    }
-
-    if (enabledApis.gmListValues) {
-      const listValues = () => Object.keys(valueCache);
-      window.GM_listValues = listValues;
-      GM.listValues = listValues;
-    }
-
-    // Tab and UI APIs
-    if (enabledApis.gmOpenInTab) {
-      const openInTab = (url, options = {}) =>
-        gmBridge("openInTab", { url, options });
-      window.GM_openInTab = openInTab;
-      GM.openInTab = openInTab;
-    }
-
-    if (enabledApis.gmNotification) {
-      const notification = (textOrDetails, titleOrOnDone, image) => {
-        const details =
-          typeof textOrDetails === "object" && textOrDetails !== null
-            ? { ...textOrDetails }
-            : { text: textOrDetails, title: titleOrOnDone, image };
-
-        // Remove non clonable properties
-        const cloneableDetails = Object.fromEntries(
-          Object.entries(details).filter(
-            ([, value]) => typeof value !== "function"
-          )
-        );
-
-        return gmBridge("notification", { details: cloneableDetails });
-      };
-      window.GM_notification = notification;
-      GM.notification = notification;
-    }
-
-    if (enabledApis.gmSetClipboard) {
-      const setClipboard = (data, type) =>
-        gmBridge("setClipboard", { data, type });
-      window.GM_setClipboard = setClipboard;
-      GM.setClipboard = setClipboard;
-    }
-
-    // GM_xmlHttpRequest (privileged)
-    if (enabledApis.gmXmlHttpRequest) {
-      const xmlHttpRequest = (details = {}) => {
-        if (typeof details !== "object") {
-          throw new Error("GM_xmlHttpRequest: details must be an object");
-        }
-
-        // Separate callbacks from cloneable data
-        const callbackFns = {};
-        const cloneableDetails = {};
-        for (const [key, value] of Object.entries(details)) {
-          if (typeof value === "function") {
-            callbackFns[key] = value;
-          } else {
-            cloneableDetails[key] = value;
-          }
-        }
-
-        return gmBridge("xmlHttpRequest", { details: cloneableDetails })
-          .then((response) => {
-            // Invoke onload if provided
-            if (callbackFns.onload) {
-              try {
-                callbackFns.onload(response);
-              } catch {
-                console.error("GM_xmlHttpRequest onload error:");
-              }
-            }
-            return response;
-          })
-          .catch((err) => {
-            if (callbackFns.onerror) {
-              try {
-                callbackFns.onerror(err);
-              } catch {
-                // ignore
-              }
-            }
-            throw err;
-          });
-      };
-
-      // Expose both namespace and legacy name
-      window.GM_xmlHttpRequest = xmlHttpRequest;
-      GM.xmlHttpRequest = xmlHttpRequest;
-    }
-
-    // Style injection API (no privileges required)
-    if (enabledApis.gmAddStyle) {
-      const addStyle = (css) => {
-        if (typeof css !== "string") return null;
-        const style = document.createElement("style");
-        style.textContent = css;
-        (
-          document.head ||
-          document.documentElement ||
-          document.body
-        ).appendChild(style);
-        return style;
-      };
-      window.GM_addStyle = addStyle;
-      GM.addStyle = addStyle;
-    }
-
-    // Menu command API (no privileges required)
-    if (enabledApis.gmRegisterMenuCommand) {
-      const registerMenuCommand = (caption, onClick, accessKey) => {
-        if (typeof caption !== "string" || typeof onClick !== "function") {
-          console.warn(
-            "GM_registerMenuCommand: Expected (string caption, function onClick, [string accessKey])"
-          );
-          return null;
-        }
-
-        // Store commands in a global registry for potential future use (e.g., custom UI)
-        window.__gmMenuCommands = window.__gmMenuCommands || [];
-        const commandId = `gm_menu_${Date.now()}_${Math.random()
-          .toString(36)
-          .substring(2, 8)}`;
-        window.__gmMenuCommands.push({
-          commandId,
-          caption,
-          onClick,
-          accessKey,
-        });
-
-        // For now just log registration – future enhancement could expose a UI
-        console.log(
-          `CodeTweak: Registered GM menu command '${caption}' (id: ${commandId})`
-        );
-        return commandId;
-      };
-      window.GM_registerMenuCommand = registerMenuCommand;
-      GM.registerMenuCommand = registerMenuCommand;
-    }
-
-    // No privlages -> Handle directly
-    if (enabledApis.gmGetResourceText) {
-      const getResourceText = (resourceName) =>
-        resourceContents[resourceName] || null;
-      window.GM_getResourceText = getResourceText;
-      GM.getResourceText = getResourceText;
-    }
-
-    if (enabledApis.gmGetResourceURL) {
-      const getResourceURL = (resourceName) =>
-        resourceURLs[resourceName] || null;
-      window.GM_getResourceURL = getResourceURL;
-      GM.getResourceURL = getResourceURL;
-    }
-  }
-
-  // For error handeling
-  function executeUserScript(userCode, scriptId) {
-    try {
-      new Function(userCode)();
-    } catch (error) {
-      console.error(
-        `CodeTweak: Error executing user script ${scriptId}:`,
-        error
-      );
-    }
-  }
-
-  // Helper to load external script via URL and return Promise
-  function loadExternalScript(url) {
-    return new Promise((resolve, reject) => {
-      const scriptEl = document.createElement('script');
-      scriptEl.src = url;
-      scriptEl.async = false; // preserve order
-      scriptEl.onload = resolve;
-      scriptEl.onerror = () => reject(new Error(`Failed to load required script: ${url}`));
-      (document.head || document.documentElement).appendChild(scriptEl);
-    });
-  }
-
   // Prevent re-execution
   window._executedScriptIds = window._executedScriptIds || new Set();
   if (window._executedScriptIds.has(scriptId)) {
@@ -295,206 +445,362 @@ function createMainWorldExecutor(
     return;
   }
   window._executedScriptIds.add(scriptId);
+
   console.log(`CodeTweak: Executing script ${scriptId} in main world`);
 
-  // Initialize GM namespace
-  if (typeof window.GM === "undefined") window.GM = {};
+  // Initialize components
+  const bridge = new GMBridge(scriptId, extensionId);
+  const valueManager = new GMValueManager(bridge);
+  const resourceManager = new ResourceManager(resourceContents, resourceURLs);
+  const apiRegistry = new GMAPIRegistry(bridge, valueManager, resourceManager);
+  const scriptLoader = new ExternalScriptLoader();
 
-  // Setup GM API bridge
-  const gmBridge = createGMBridge(scriptId, extensionId);
-
-  // Register GM APIs
-  registerGMAPIs(
-    enabledApis,
-    gmBridge,
-    resourceContents,
-    resourceURLs,
-    initialValues
-  );
+  // Setup
+  valueManager.initializeCache(initialValues);
+  apiRegistry.registerAll(enabledApis);
 
   // Execute user script
-  (async () => {
-    try {
-      if (Array.isArray(requiredUrls) && requiredUrls.length) {
-        for (const req of requiredUrls) {
-          await loadExternalScript(req);
-        }
-      }
-    } catch (e) {
-      console.error('CodeTweak: Failed to load @require scripts', e);
-    }
-    executeUserScript(userCode, scriptId);
-  })();
+  executeUserScriptWithDependencies(
+    userCode,
+    scriptId,
+    requiredUrls,
+    scriptLoader
+  );
 }
 
-// Inject a script
-export async function injectScriptDirectly(tabId, script, settings) {
+/**
+ * Executes user scripts in the isolated world context
+ */
+function createIsolatedWorldExecutor(
+  userCode,
+  scriptId,
+  enabledApis,
+  resourceContents,
+  resourceURLs,
+  initialValues,
+  requiredUrls
+) {
+  // Prevent re-execution
+  window._executedScriptIds = window._executedScriptIds || new Set();
+  if (window._executedScriptIds.has(scriptId)) {
+    console.log(`CodeTweak: Script ${scriptId} already executed (isolated)`);
+    return;
+  }
+  window._executedScriptIds.add(scriptId);
+
+  console.log(`CodeTweak: Executing script ${scriptId} in ISOLATED world`);
+
+  // Create direct background bridge
+  const backgroundBridge = {
+    call: (action, payload = {}) => {
+      return new Promise((resolve, reject) => {
+        try {
+          chrome.runtime.sendMessage(
+            {
+              type: "GM_API_REQUEST",
+              payload: { action, ...payload },
+            },
+            (response) => {
+              if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+              } else if (response?.error) {
+                reject(new Error(response.error));
+              } else {
+                resolve(response?.result);
+              }
+            }
+          );
+        } catch (error) {
+          reject(error);
+        }
+      });
+    },
+  };
+
+  // Initialize components
+  const valueManager = new GMValueManager(backgroundBridge);
+  const resourceManager = new ResourceManager(resourceContents, resourceURLs);
+  const apiRegistry = new GMAPIRegistry(
+    backgroundBridge,
+    valueManager,
+    resourceManager
+  );
+  const scriptLoader = new ExternalScriptLoader();
+
+  // Setup
+  valueManager.initializeCache(initialValues);
+  apiRegistry.registerAll(enabledApis);
+
+  // Execute user script
+  executeUserScriptWithDependencies(
+    userCode,
+    scriptId,
+    requiredUrls,
+    scriptLoader
+  );
+}
+
+/**
+ * Executes user script with dependency loading
+ */
+async function executeUserScriptWithDependencies(
+  userCode,
+  scriptId,
+  requiredUrls,
+  scriptLoader
+) {
   try {
-    const tab = await chrome.tabs.get(tabId);
-    if (!tab || !chrome.runtime?.id) {
+    // Load external dependencies first
+    await scriptLoader.loadScripts(requiredUrls);
+
+    // Execute user script
+    new Function(userCode)();
+  } catch (error) {
+    console.error(`CodeTweak: Error executing user script ${scriptId}:`, error);
+  }
+}
+
+// ==================================================
+// INJECTION SYSTEM
+// ==================================================
+
+/**
+ * Main script injection orchestrator
+ */
+class ScriptInjector {
+  constructor() {
+    this.executedScripts = new Map();
+  }
+
+  async injectScript(tabId, script, settings = {}) {
+    try {
+      const tab = await chrome.tabs.get(tabId);
+      if (!tab || !chrome.runtime?.id) {
+        console.warn(
+          `CodeTweak: Tab or extension runtime not available for ${script?.name}`
+        );
+        return false;
+      }
+
+      const config = this.prepareScriptConfig(script);
+      const injected = await this.tryInjectInBothWorlds(tabId, config);
+
+      if (injected && settings.showNotifications) {
+        this.showNotification(tabId, script.name);
+      }
+
+      return injected;
+    } catch (error) {
       console.warn(
-        `CodeTweak: Tab or extension runtime not available for ${script?.name}`
+        `CodeTweak: Failed to inject script ${script?.name}:`,
+        error
       );
-      return;
+      return false;
+    }
+  }
+
+  async tryInjectInBothWorlds(tabId, config) {
+    // Try MAIN world first (preferred)
+    try {
+      await this.injectInWorld(tabId, config, EXECUTION_WORLDS.MAIN);
+      return true;
+    } catch (error) {
+      console.warn(
+        `CodeTweak: MAIN world injection failed, trying ISOLATED world:`,
+        error?.message
+      );
     }
 
-    const scriptConfig = prepareScriptConfig(script);
+    // Fallback to ISOLATED world
+    try {
+      await this.injectInWorld(tabId, config, EXECUTION_WORLDS.ISOLATED);
+      return true;
+    } catch (error) {
+      console.error(`CodeTweak: ISOLATED world injection also failed:`, error);
+      return false;
+    }
+  }
 
+  async injectInWorld(tabId, config, world) {
+    // Ensure core GM classes are available in the target execution world first
     await chrome.scripting.executeScript({
       target: { tabId },
-      world: "MAIN",
-      func: createMainWorldExecutor,
-      args: [
-        scriptConfig.code,
-        scriptConfig.id,
-        scriptConfig.enabledApis,
-        scriptConfig.resourceContents,
-        scriptConfig.resourceURLs,
-        chrome.runtime.id,
-        scriptConfig.initialValues,
-        scriptConfig.requires,
+      world,
+      files: [
+        "utils/gm_core.js", // contains GMBridge, GMValueManager, GMAPIRegistry, etc.
       ],
     });
 
-    if (settings.showNotifications) {
-      showNotification(tabId, script.name);
-    }
-  } catch (error) {
-    console.warn(`CodeTweak: Failed to inject script ${script?.name}:`, error);
-  }
-}
+    const executor =
+      world === EXECUTION_WORLDS.MAIN
+        ? createMainWorldExecutor
+        : createIsolatedWorldExecutor;
 
-//GM api preperation
-function prepareScriptConfig(script) {
-  const scriptId = script.id || script.name || `anonymous_script_${Date.now()}`;
-
-  const enabledApis = {
-    gmSetValue: script.gmSetValue,
-    gmGetValue: script.gmGetValue,
-    gmDeleteValue: script.gmDeleteValue,
-    gmListValues: script.gmListValues,
-    gmOpenInTab: script.gmOpenInTab,
-    gmNotification: script.gmNotification,
-    gmGetResourceText: script.gmGetResourceText,
-    gmGetResourceURL: script.gmGetResourceURL,
-    gmSetClipboard: script.gmSetClipboard,
-    gmAddStyle: true,
-    gmRegisterMenuCommand: script.gmRegisterMenuCommand || false,
-    gmXmlHttpRequest: script.gmXmlHttpRequest || false,
-  };
-
-  const resourceContents = script.resourceContents || {};
-  const resourceURLs = {};
-
-  if (Array.isArray(script.resources)) {
-    script.resources.forEach((resource) => {
-      resourceURLs[resource.name] = resource.url;
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      world,
+      func: executor,
+      args: [
+        config.code,
+        config.id,
+        config.enabledApis,
+        config.resourceContents,
+        config.resourceURLs,
+        chrome.runtime.id,
+        config.initialValues,
+        config.requires,
+      ],
     });
   }
 
-  const initialValues = script.initialValues || {};
+  prepareScriptConfig(script) {
+    const scriptId =
+      script.id || script.name || `anonymous_script_${Date.now()}`;
 
-  const requires = Array.isArray(script.requires) ? script.requires : [];
+    const enabledApis = {
+      gmSetValue: Boolean(script.gmSetValue),
+      gmGetValue: Boolean(script.gmGetValue),
+      gmDeleteValue: Boolean(script.gmDeleteValue),
+      gmListValues: Boolean(script.gmListValues),
+      gmOpenInTab: Boolean(script.gmOpenInTab),
+      gmNotification: Boolean(script.gmNotification),
+      gmGetResourceText: Boolean(script.gmGetResourceText),
+      gmGetResourceURL: Boolean(script.gmGetResourceURL),
+      gmSetClipboard: Boolean(script.gmSetClipboard),
+      gmAddStyle: Boolean(script.gmAddStyle),
+      gmRegisterMenuCommand: Boolean(script.gmRegisterMenuCommand),
+      gmXmlHttpRequest: Boolean(script.gmXmlHttpRequest),
+    };
 
-  return {
-    code: script.code,
-    id: scriptId,
-    enabledApis,
-    resourceContents,
-    resourceURLs,
-    initialValues,
-    requires,
-  };
+    const resourceManager = ResourceManager.fromScript(script);
+
+    return {
+      code: script.code,
+      id: scriptId,
+      enabledApis,
+      resourceContents: Object.fromEntries(resourceManager.contents),
+      resourceURLs: Object.fromEntries(resourceManager.urls),
+      initialValues: script.initialValues || {},
+      requires: Array.isArray(script.requires) ? script.requires : [],
+    };
+  }
+
+  async injectScriptsForStage(details, runAt, getFilteredScripts) {
+    // Only inject in top frame
+    if (details.frameId !== 0) return;
+
+    try {
+      const { settings = {} } = await chrome.storage.local.get("settings");
+      const { url, tabId } = details;
+
+      // Initialize or get executed scripts for this tab
+      if (!this.executedScripts.has(tabId)) {
+        this.executedScripts.set(tabId, new Set());
+      }
+      const tabScripts = this.executedScripts.get(tabId);
+
+      // Clear executed scripts on navigation start
+      if (runAt === INJECTION_TYPES.DOCUMENT_START) {
+        tabScripts.clear();
+      }
+
+      await this.injectMatchingScripts(
+        url,
+        runAt,
+        tabId,
+        tabScripts,
+        getFilteredScripts,
+        settings
+      );
+    } catch (error) {
+      console.error("CodeTweak: Script injection error:", error);
+    }
+  }
+
+  async injectMatchingScripts(
+    url,
+    runAt,
+    tabId,
+    tabScripts,
+    getFilteredScripts,
+    settings
+  ) {
+    const matchingScripts = await getFilteredScripts(url, runAt);
+    const newScripts = matchingScripts.filter(
+      (script) => !tabScripts.has(script.id)
+    );
+
+    for (const script of newScripts) {
+      tabScripts.add(script.id); // Prevent race conditions
+      await this.injectScript(tabId, script, settings);
+    }
+  }
+
+  showNotification(tabId, scriptName) {
+    chrome.scripting
+      .executeScript({
+        target: { tabId },
+        world: EXECUTION_WORLDS.MAIN,
+        func: this.createNotificationFunction(),
+        args: [scriptName || "Unknown script"],
+      })
+      .catch((error) => {
+        console.warn("CodeTweak: showNotification failed:", error);
+      });
+  }
+
+  createNotificationFunction() {
+    return function (scriptName) {
+      const notification = document.createElement("div");
+      notification.textContent = `✓ ${scriptName}`;
+
+      Object.assign(notification.style, {
+        position: "fixed",
+        bottom: "16px",
+        right: "16px",
+        zIndex: "999999",
+        background: "rgba(33, 150, 243, 0.95)",
+        color: "white",
+        padding: "6px 12px",
+        borderRadius: "8px",
+        fontSize: "12px",
+        fontFamily: "system-ui, sans-serif",
+        pointerEvents: "none",
+        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+      });
+
+      document.body.appendChild(notification);
+      setTimeout(() => notification.remove(), 2000);
+    };
+  }
+}
+
+// ==================================================
+// PUBLIC API
+// ==================================================
+
+// Create singleton instance
+const scriptInjector = new ScriptInjector();
+
+// Legacy function compatibility
+export async function injectScriptDirectly(tabId, script, settings) {
+  return scriptInjector.injectScript(tabId, script, settings);
 }
 
 export async function injectScriptsForStage(
   details,
   runAt,
-  getFilteredScripts,
-  executedScripts
+  getFilteredScripts
 ) {
-  if (details.frameId !== 0) return; // ONLY INJECT IN TOP FRAME
-
-  try {
-    const { settings = {} } = await chrome.storage.local.get("settings");
-    const { url, tabId } = details;
-
-    // init or get already exacuted
-    if (!executedScripts.has(tabId)) {
-      executedScripts.set(tabId, new Set());
-    }
-    const tabScripts = executedScripts.get(tabId);
-
-    // Clear on new nav
-    if (runAt === INJECTION_TYPES.DOCUMENT_START) {
-      tabScripts.clear();
-    }
-
-    await injectMatchingScripts(
-      url,
-      runAt,
-      tabId,
-      tabScripts,
-      getFilteredScripts,
-      settings
-    );
-  } catch (error) {
-    console.error("CodeTweak: Script injection error:", error);
-  }
-}
-
-// inject based on URL
-async function injectMatchingScripts(
-  url,
-  runAt,
-  tabId,
-  tabScripts,
-  getFilteredScripts,
-  settings
-) {
-  const matchingScripts = await getFilteredScripts(url, runAt);
-  const newScripts = matchingScripts.filter(
-    (script) => !tabScripts.has(script.id)
+  return scriptInjector.injectScriptsForStage(
+    details,
+    runAt,
+    getFilteredScripts
   );
-
-  for (const script of newScripts) {
-    tabScripts.add(script.id); // Prevent race conditions
-    await injectScriptDirectly(tabId, script, settings);
-  }
 }
 
-// show notif on exacute
 export function showNotification(tabId, scriptName) {
-  chrome.scripting
-    .executeScript({
-      target: { tabId },
-      world: "MAIN",
-      func: (name) => {
-        const notification = document.createElement("div");
-        notification.textContent = `✓ ${name}`;
-
-        Object.assign(notification.style, {
-          position: "fixed",
-          bottom: "16px",
-          right: "16px",
-          zIndex: "999999",
-          background: "rgba(33, 150, 243, 0.95)",
-          color: "white",
-          padding: "6px 12px",
-          borderRadius: "8px",
-          fontSize: "12px",
-          fontFamily: "system-ui, sans-serif",
-          pointerEvents: "none",
-        });
-
-        document.body.appendChild(notification);
-        setTimeout(() => notification.remove(), 2000);
-      },
-      args: [scriptName || "Unknown script"],
-    })
-    .catch((error) =>
-      console.warn("CodeTweak: showNotification failed:", error)
-    );
+  return scriptInjector.showNotification(tabId, scriptName);
 }
 
-export { INJECTION_TYPES };
+export { INJECTION_TYPES, EXECUTION_WORLDS };
