@@ -1,4 +1,5 @@
 /* global chrome */
+import { generateUrlMatchPattern } from "./urlMatchPattern.js";
 
 // Base for editor UI
 class BaseUIComponent {
@@ -608,6 +609,29 @@ export class URLManager extends BaseUIComponent {
         if (e.key === 'Enter') {
           e.preventDefault();
           this.addCurrentUrl();
+        }
+      });
+    }
+
+    if (this.elements.generatePatternBtn) {
+      this.elements.generatePatternBtn.addEventListener("click", () => {
+        const base = this.elements.patternBaseUrl.value.trim();
+        const scope = this.elements.patternScope.value;
+        const pattern = generateUrlMatchPattern(base, scope);
+        if (pattern) {
+          this.elements.generatedPattern.value = pattern + (scope === "exact" ? "" : "");
+          this.elements.generatedPatternGroup.classList.remove("hidden");
+        }
+      });
+    }
+
+    if (this.elements.insertPatternBtn) {
+      this.elements.insertPatternBtn.addEventListener("click", () => {
+        const pattern = this.elements.generatedPattern.value.trim();
+        if (pattern) {
+          this.addUrlToList(pattern);
+          this.elements.generatedPatternGroup.classList.add("hidden");
+          this.elements.patternBaseUrl.value = "";
         }
       });
     }

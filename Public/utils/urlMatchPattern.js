@@ -72,3 +72,47 @@ export function urlMatchesPattern(url, pattern) {
     return false;
   }
 }
+
+/**
+ * Generate a URL match pattern based on a base URL and desired scope.
+ * @param {string} baseUrl - The base URL provided by the user (e.g. https://example.com).
+ * @param {"exact"|"domain"|"subdomain"} scope - The scope of the pattern:
+ *   exact      – only the exact page.
+ *   domain     – any path on the same host.
+ *   subdomain  – any sub-domain and any path.
+ * @returns {string|null} A match pattern string suitable for storage or null if invalid.
+ */
+export function generateUrlMatchPattern(baseUrl, scope = "domain") {
+  try {
+    if (!baseUrl) return null;
+    // Ensure we have a scheme
+    if (!/^https?:\/\//i.test(baseUrl)) {
+      baseUrl = "https://" + baseUrl.replace(/^\/*/, "");
+    }
+    const { protocol, hostname } = new URL(baseUrl);
+
+    // Normalise protocol (strip trailing :) and add wildcard support
+    const scheme = protocol.replace(":", "");
+
+    let hostPart = hostname;
+    switch (scope) {
+      case "exact":
+        return `${scheme}://${hostPart}`; // Caller should append path manually if needed
+      case "domain":
+        return `${scheme}://${hostPart}/*`;
+      case "subdomain": {
+        // Derive eTLD+1 naive approach (last two labels) for simplicity
+        const parts = hostPart.split(".");
+        if (parts.length > 2) {
+          hostPart = parts.slice(-2).join(".");
+        }
+        return `${scheme}://*.${hostPart}/*`;
+      }
+      default:
+        return `${scheme}://${hostPart}/*`;
+    }
+  } catch (e) {
+    console.warn("Failed to generate match pattern:", e);
+    return null;
+  }
+}

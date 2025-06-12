@@ -202,6 +202,12 @@ class ScriptEditor {
       "requireURL",
       "addRequireBtn",
       "requireList",
+      "patternBaseUrl",
+      "patternScope",
+      "generatePatternBtn",
+      "generatedPattern",
+      "generatedPatternGroup",
+      "insertPatternBtn",
     ];
 
     const elements = {};

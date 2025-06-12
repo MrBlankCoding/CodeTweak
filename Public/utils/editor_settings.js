@@ -22,7 +22,11 @@ export class CodeEditorManager {
     };
     
     this.currentSettings = {...this.defaultSettings};
-    
+
+    // Large file optimization settings
+    this.largeFileOptimized = false; // flag to ensure we only optimize once per large file
+    this.LARGE_FILE_LINE_COUNT = 5000; // threshold to consider a script "large"
+
     // Add storage change listener
     chrome.storage.onChanged.addListener((changes, namespace) => {
       if (namespace === 'local' && changes.editorSettings) {
@@ -83,6 +87,9 @@ export class CodeEditorManager {
       }
     });
 
+    // Apply optimizations straight away (handles pre-loaded textarea content)
+    this.applyLargeFileOptimizations();
+
     this.setupEditorEventHandlers();
     this.updateEditorLintAndAutocomplete(); // call after editor setup
 
@@ -93,6 +100,34 @@ export class CodeEditorManager {
     this.applySettings(this.currentSettings);
 
     return this.codeEditor;
+  }
+
+  // === Performance helpers ===
+  applyLargeFileOptimizations() {
+    if (!this.codeEditor || this.largeFileOptimized) return;
+
+    const lineCount = this.codeEditor.lineCount();
+    if (lineCount <= this.LARGE_FILE_LINE_COUNT) return;
+
+    // Disable heavy features
+    this.codeEditor.setOption("lint", false);
+    this.codeEditor.setOption("lineWrapping", false);
+    this.codeEditor.setOption("foldGutter", false);
+    this.codeEditor.setOption("matchBrackets", false);
+    this.codeEditor.setOption("showTrailingSpace", false);
+    this.codeEditor.setOption("autoCloseBrackets", false);
+    this.codeEditor.setOption("viewportMargin", 20); // keep a small margin around viewport
+
+    // Remove fold gutter from the gutter list if present
+    const gutters = (this.codeEditor.getOption("gutters") || []).filter(
+      (g) => g !== "CodeMirror-foldgutter"
+    );
+    this.codeEditor.setOption("gutters", gutters);
+
+    this.largeFileOptimized = true;
+    console.warn(
+      `CodeMirror: Large file (${lineCount} lines) detected – heavy features disabled for performance.`
+    );
   }
 
   //shortcuts
@@ -264,6 +299,9 @@ export class CodeEditorManager {
     
     // Add paste event listener
     this.codeEditor.on('paste', (cm, event) => this.handlePaste(cm, event));
+
+    // Re-evaluate optimizations on each change (cheap: just track line count flag)
+    this.codeEditor.on('change', () => this.applyLargeFileOptimizations());
   }
 
   // enabled APIS
@@ -305,7 +343,8 @@ export class CodeEditorManager {
 
   //lint options
   getLintOptions(enable) {
-    if (!enable || typeof window.JSHINT === "undefined") return false;
+    // Skip linting entirely for large files to avoid freezes
+    if (this.largeFileOptimized || !enable || typeof window.JSHINT === "undefined") return false;
 
     return {
       getAnnotations: (text) => {
@@ -443,6 +482,8 @@ export class CodeEditorManager {
   setValue(code) {
     if (this.codeEditor) {
       this.codeEditor.setValue(code);
+      // Re-check if we need to optimize for large documents
+      this.applyLargeFileOptimizations();
     }
   }
 

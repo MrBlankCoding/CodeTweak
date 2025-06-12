@@ -275,6 +275,22 @@
                            <div id="urlList" class="url-list"></div>
                         </div>
                         <div class="form-group">
+                           <label class="form-label">Pattern Builder</label>
+                           <div class="pattern-builder">
+                              <input type="url" id="patternBaseUrl" class="form-input" placeholder="https://example.com">
+                              <select id="patternScope" class="form-select">
+                                 <option value="domain" selected>Any path on domain</option>
+                                 <option value="subdomain">Any sub-domain</option>
+                                 <option value="exact">Exact page</option>
+                              </select>
+                              <button type="button" id="generatePatternBtn" class="pattern-btn">Generate</button>
+                           </div>
+                           <div class="generated-pattern-group hidden" id="generatedPatternGroup">
+                              <input type="text" id="generatedPattern" class="form-input" readonly>
+                              <button type="button" id="insertPatternBtn" class="add-btn">Insert</button>
+                           </div>
+                        </div>
+                        <div class="form-group">
                            <label for="runAt" class="form-label">Run Timing</label>
                            <select id="runAt" class="form-select">
                               <option value="document_start">ASAP</option>
