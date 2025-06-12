@@ -1,3 +1,5 @@
+/* global chrome */
+
 // Constants
 const INJECTION_TYPES = Object.freeze({
   DOCUMENT_START: "document_start",
@@ -414,12 +416,10 @@ class ExternalScriptLoader {
       if (window.trustedTypes && window.trustedTypes.createPolicy) {
         try {
           if (!window.__ctTrustedScriptURLPolicy) {
-            window.__ctTrustedScriptURLPolicy = window.trustedTypes.createPolicy(
-              "codetweak",
-              {
+            window.__ctTrustedScriptURLPolicy =
+              window.trustedTypes.createPolicy("codetweak", {
                 createScriptURL: (input) => input,
-              }
-            );
+              });
           }
           trustedSrc = window.__ctTrustedScriptURLPolicy.createScriptURL(url);
         } catch (_e) {
@@ -433,7 +433,8 @@ class ExternalScriptLoader {
       script.src = trustedSrc;
       script.async = false; // Preserve execution order
       script.onload = resolve;
-      script.onerror = () => reject(new Error(`Failed to load external script: ${url}`));
+      script.onerror = () =>
+        reject(new Error(`Failed to load external script: ${url}`));
       (document.head || document.documentElement).appendChild(script);
     });
   }
@@ -580,14 +581,13 @@ async function executeUserScriptWithDependencies(
       if (window.trustedTypes && window.trustedTypes.createPolicy) {
         try {
           if (!window.__ctTrustedScriptURLPolicy) {
-            window.__ctTrustedScriptURLPolicy = window.trustedTypes.createPolicy(
-              "codetweak",
-              {
+            window.__ctTrustedScriptURLPolicy =
+              window.trustedTypes.createPolicy("codetweak", {
                 createScriptURL: (input) => input,
-              }
-            );
+              });
           }
-          trustedSrc = window.__ctTrustedScriptURLPolicy.createScriptURL(blobUrl);
+          trustedSrc =
+            window.__ctTrustedScriptURLPolicy.createScriptURL(blobUrl);
         } catch (_e) {
           console.error("Failed to create trusted script URL:", _e);
           console.warn("Falling back to raw URL.");
@@ -605,7 +605,9 @@ async function executeUserScriptWithDependencies(
         URL.revokeObjectURL(blobUrl);
         reject(
           new Error(
-            `Failed to execute user script ${scriptId}: ${event?.message || "unknown error"}`
+            `Failed to execute user script ${scriptId}: ${
+              event?.message || "unknown error"
+            }`
           )
         );
       };
