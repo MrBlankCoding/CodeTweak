@@ -163,6 +163,7 @@ async function importGreasyforkScript(codeUrl) {
       ...(metadata.resources && { resources: metadata.resources }),
       ...(metadata.requires && { requires: metadata.requires }),
       ...(metadata.license && { license: metadata.license }),
+      ...(metadata.icon && { icon: metadata.icon }),
     };
     Object.keys(metadata.gmApis).forEach((apiFlag) => {
       scriptData[apiFlag] = metadata.gmApis[apiFlag];

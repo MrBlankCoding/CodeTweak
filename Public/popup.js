@@ -126,6 +126,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     const info = document.createElement("div");
     info.className = "script-info";
 
+    // Icon
+    if (script.icon) {
+      const iconImg = document.createElement("img");
+      iconImg.src = script.icon;
+      iconImg.alt = "";
+      iconImg.className = "script-icon";
+      iconImg.onerror = () => iconImg.remove();
+      item.appendChild(iconImg);
+    }
+
     const name = document.createElement("div");
     name.className = "script-name";
     name.textContent = script.name;

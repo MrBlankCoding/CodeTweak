@@ -6,6 +6,7 @@ import {
   FormValidator
 } from "./utils/editor_managers.js";
 import { CodeEditorManager } from "./utils/editor_settings.js";
+import { buildTampermonkeyMetadata, parseUserScriptMetadata } from "./utils/metadataParser.js";
 
 class ScriptEditor {
   constructor() {
@@ -164,6 +165,7 @@ class ScriptEditor {
       "scriptName",
       "scriptAuthor",
       "scriptLicense",
+      "scriptIcon",
       "targetUrl",
       "runAt",
       "scriptVersion",
@@ -324,6 +326,7 @@ class ScriptEditor {
       if (metadata.namespace) scriptData.namespace = metadata.namespace;
       if (metadata.runAt) scriptData.runAt = metadata.runAt;
       if (metadata.license) scriptData.license = metadata.license;
+      if (metadata.icon) scriptData.icon = metadata.icon;
       
       // Handle matches and includes
       if (metadata.matches?.length) {
@@ -373,53 +376,22 @@ class ScriptEditor {
       if (!importData) return;
       
       const { code } = importData;
-      
-      // Parse metadata block
-      const metaMatch = code.match(/==UserScript==([\s\S]*?)==\/UserScript==/);
-      const metadata = {};
-      if (metaMatch) {
-        metaMatch[1].split("\n").forEach((line) => {
-          const m = line.match(/@(\w+)\s+(.+)/);
-          if (m) {
-            const [, key, value] = m;
-            if (key === "match" || key === "include") {
-              metadata.matches = metadata.matches || [];
-              metadata.matches.push(value.trim());
-            } else if (key === "grant") {
-              metadata.grants = metadata.grants || [];
-              metadata.grants.push(value.trim());
-            } else if (key === "require") {
-              metadata.requires = metadata.requires || [];
-              metadata.requires.push(value.trim());
-            } else {
-              metadata[key] = value.trim();
-            }
-          }
-        });
-      }
-      
-      const scriptObj = {
-        name: metadata.name || "Imported Script",
-        author: metadata.author || "Anonymous",
-        description: metadata.description || "",
-        version: metadata.version || this.config.DEFAULT_VERSION,
-        targetUrls: metadata.matches || ["*://*/*"],
-        runAt: metadata.runAt || "document_end",
-        code,
-        requires: metadata.requires || [],
-      };
-      
-      this.populateFormWithScript(scriptObj);
-      
+
+      // Parse metadata using shared utility for full support
+      const metadata = parseUserScriptMetadata(code);
+
+      // Delegate to existing import handler for form population
+      this.handleScriptImport({ code, ...metadata });
+
       // Mark as unsaved draft for user review (but DO NOT autosave)
       this.state.hasUnsavedChanges = true;
       this.ui.updateScriptStatus(true);
-      
+
       // Clean up storage
       await chrome.storage.local.remove(key);
     } catch (err) {
-      console.error("Failed to load imported script:", err);
-      this.ui.showStatusMessage("Failed to load imported script", "error");
+      console.error('Error loading imported script:', err);
+      this.ui.showStatusMessage('Failed to load imported script', 'error');
     }
   }
 
@@ -554,7 +526,7 @@ class ScriptEditor {
 
     // Form field change listeners for autosave
     const formFields = [
-      'scriptName', 'scriptAuthor', 'scriptVersion', 'scriptDescription', 'scriptLicense',
+      'scriptName', 'scriptAuthor', 'scriptVersion', 'scriptDescription', 'scriptLicense', 'scriptIcon',
       'runAt', 'waitForSelector', 'targetUrl'
     ];
     
@@ -649,6 +621,7 @@ class ScriptEditor {
       script.version || this.config.DEFAULT_VERSION;
     this.elements.scriptDescription.value = script.description || "";
     this.elements.scriptLicense.value = script.license || "";
+    this.elements.scriptIcon.value = script.icon || "";
     this.codeEditorManager.setValue(script.code || "");
 
     script.targetUrls?.forEach((url) => this.ui.addUrlToList(url));
@@ -726,6 +699,7 @@ class ScriptEditor {
         this.elements.scriptVersion.value.trim() || this.config.DEFAULT_VERSION,
       description: this.elements.scriptDescription.value.trim(),
       license: this.elements.scriptLicense?.value.trim() || "",
+      icon: this.elements.scriptIcon?.value.trim() || "",
       code: this.codeEditorManager.getValue(),
       enabled: true,
       updatedAt: new Date().toISOString(),
@@ -910,6 +884,37 @@ class ScriptEditor {
       });
     } catch (error) {
       console.warn("Initial background connection failed:", error);
+    }
+  }
+
+  /**
+   * Export current script in classic Tampermonkey format (.user.js)
+   */
+  exportScript() {
+    try {
+      const scriptData = this.gatherScriptData();
+      const metadata = buildTampermonkeyMetadata(scriptData);
+      const content = `${metadata}\n\n${scriptData.code}`;
+
+      const fileNameSafe = (scriptData.name || 'script')
+        .replace(/[^a-z0-9_-]+/gi, '_')
+        .replace(/_{2,}/g, '_')
+        .replace(/^_|_$/g, '') || 'script';
+
+      const blob = new Blob([content], { type: 'text/javascript;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${fileNameSafe}.user.js`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      this.ui.showStatusMessage('Script exported', 'success');
+    } catch (err) {
+      console.error('Export failed:', err);
+      this.ui.showStatusMessage('Export failed', 'error');
     }
   }
 }

@@ -374,6 +374,20 @@ input:checked + .slider:before {
   background: var(--bg-primary);
 }
 
+.icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.script-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-sm);
+  object-fit: contain;
+  background: var(--bg-primary);
+}
+
 .favicon-fallback {
   width: 18px;
   height: 18px;

@@ -1,4 +1,11 @@
 import { setupGreasyfork } from "./dashboard/dashboard-greasyfork.js";
+import {
+  loadScripts,
+  loadSettings,
+  saveSettings,
+  filterScripts,
+} from "./dashboard/dashboard-logic.js";
+import { setupTabs } from "./dashboard/dashboard-ui.js";
 
 function initDashboard() {
   const elements = {

@@ -93,6 +93,9 @@ function createScriptRow(script) {
   // Favicon cell
   row.appendChild(createFaviconCell(script));
 
+  // Icon cell
+  row.appendChild(createIconCell(script));
+
   // Run At cell
   const runAtCell = document.createElement("td");
   const timingInfo = document.createElement("div");
@@ -187,6 +190,29 @@ function createFaviconCell(script) {
   return faviconCell;
 }
 
+function createIconCell(script) {
+  const iconCell = document.createElement("td");
+  const container = document.createElement("div");
+  container.className = "icon-container";
+
+  if (script.icon) {
+    const img = document.createElement("img");
+    img.src = script.icon;
+    img.alt = "";
+    img.className = "script-icon";
+    img.onerror = () => {
+      img.remove();
+      container.textContent = "N/A";
+    };
+    container.appendChild(img);
+  } else {
+    container.textContent = "-";
+  }
+
+  iconCell.appendChild(container);
+  return iconCell;
+}
+
 function createFaviconWrapper(hostname) {
   const faviconWrapper = document.createElement("div");
   faviconWrapper.className = "favicon-wrapper";
@@ -270,6 +296,15 @@ function createActionsCell(script) {
       handler: () => checkForUpdates(script),
     });
   }
+
+  actions.push({
+    icon: `<svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="12 5 12 19" />
+            <polyline points="5 12 12 19 19 12" />
+          </svg>`,
+    title: "Export Script",
+    handler: () => window.exportScript && window.exportScript(script),
+  });
 
   actions.push({
     icon: `<svg class="action-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -364,3 +399,17 @@ function escapeHtml(unsafe) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+
+// Expose helpers for other modules
+window.updateWebsiteFilterOptions = updateWebsiteFilterOptions;
+window.updateScriptsList = updateScriptsList;
+window.showNotification = showNotification;
+window.escapeHtml = escapeHtml;
+
+export {
+  setupTabs,
+  updateWebsiteFilterOptions,
+  updateScriptsList,
+  showNotification,
+  escapeHtml,
+};

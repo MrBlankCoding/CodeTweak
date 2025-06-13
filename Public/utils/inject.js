@@ -202,6 +202,9 @@ class GMAPIRegistry {
         this.createXMLHttpRequest(details);
       window.GM_xmlHttpRequest = xmlHttpRequest;
       window.GM.xmlHttpRequest = xmlHttpRequest;
+      // Alias with lowercase 'h' for widespread script compatibility
+      window.GM_xmlhttpRequest = xmlHttpRequest;
+      window.GM.xmlhttpRequest = xmlHttpRequest;
     }
 
     if (enabledApis.gmSetClipboard) {
@@ -452,7 +455,8 @@ function createMainWorldExecutor(
   resourceURLs,
   extensionId,
   initialValues,
-  requiredUrls
+  requiredUrls,
+  gmInfo
 ) {
   // Prevent re-execution
   window._executedScriptIds = window._executedScriptIds || new Set();
@@ -475,6 +479,19 @@ function createMainWorldExecutor(
   valueManager.initializeCache(initialValues);
   apiRegistry.registerAll(enabledApis);
 
+  // Expose GM_info (read-only)
+  try {
+    Object.defineProperty(window, "GM_info", {
+      value: Object.freeze(gmInfo || {}),
+      writable: false,
+      configurable: false,
+    });
+    window.GM = window.GM || {};
+    window.GM.info = window.GM_info;
+  } catch (e) {
+    console.warn("CodeTweak: Unable to define GM_info", e);
+  }
+
   // Execute user script
   executeUserScriptWithDependencies(
     userCode,
@@ -494,7 +511,8 @@ function createIsolatedWorldExecutor(
   resourceContents,
   resourceURLs,
   initialValues,
-  requiredUrls
+  requiredUrls,
+  gmInfo
 ) {
   // Prevent re-execution
   window._executedScriptIds = window._executedScriptIds || new Set();
@@ -546,6 +564,19 @@ function createIsolatedWorldExecutor(
   // Setup
   valueManager.initializeCache(initialValues);
   apiRegistry.registerAll(enabledApis);
+
+  // Expose GM_info (read-only)
+  try {
+    Object.defineProperty(window, "GM_info", {
+      value: Object.freeze(gmInfo || {}),
+      writable: false,
+      configurable: false,
+    });
+    window.GM = window.GM || {};
+    window.GM.info = window.GM_info;
+  } catch (e) {
+    console.warn("CodeTweak: Unable to define GM_info", e);
+  }
 
   // Execute user script
   executeUserScriptWithDependencies(
@@ -709,6 +740,7 @@ class ScriptInjector {
         chrome.runtime.id,
         config.initialValues,
         config.requires,
+        config.gmInfo,
       ],
     });
   }
@@ -742,6 +774,18 @@ class ScriptInjector {
       resourceURLs: Object.fromEntries(resourceManager.urls),
       initialValues: script.initialValues || {},
       requires: Array.isArray(script.requires) ? script.requires : [],
+      gmInfo: {
+        script: {
+          id: scriptId,
+          name: script.name,
+          version: script.version,
+          description: script.description,
+          author: script.author,
+          namespace: script.namespace || "",
+        },
+        scriptHandler: "CodeTweak",
+        version: chrome.runtime?.getManifest?.().version || "",
+      },
     };
   }
 

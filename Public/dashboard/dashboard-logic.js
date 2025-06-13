@@ -1,3 +1,8 @@
+import {
+  buildTampermonkeyMetadata,
+  extractMetadataBlock,
+} from "../utils/metadataParser.js";
+
 async function loadScripts(elements, state) {
   try {
     const { scripts = [] } = await chrome.storage.local.get("scripts");
@@ -268,3 +273,57 @@ function applyTheme(isDark) {
     body.classList.add("light-theme");
   }
 }
+
+// Export current script in Tampermonkey format (.user.js)
+function exportScript(script) {
+  try {
+    const code = script.code || "";
+    const hasMetadata = !!extractMetadataBlock(code);
+    const metadata = hasMetadata ? "" : buildTampermonkeyMetadata(script);
+    const content = hasMetadata ? code : `${metadata}\n\n${code}`;
+
+    const fileNameSafe = (script.name || "script")
+      .replace(/[^a-z0-9_-]+/gi, "_")
+      .replace(/_{2,}/g, "_")
+      .replace(/^_|_$/g, "") || "script";
+
+    const blob = new Blob([content], {
+      type: "text/javascript;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${fileNameSafe}.user.js`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showNotification("Script exported", "success");
+  } catch (error) {
+    console.error("Export failed:", error);
+    showNotification("Export failed", "error");
+  }
+}
+
+// Attach functions to global so dashboard-ui can use them
+window.exportScript = exportScript;
+window.toggleScript = toggleScript;
+window.editScript = editScript;
+window.deleteScript = deleteScript;
+window.checkForUpdates = checkForUpdates;
+window.refreshDashboard = refreshDashboard;
+
+export {
+  loadScripts,
+  filterScripts,
+  toggleScript,
+  editScript,
+  deleteScript,
+  loadSettings,
+  saveSettings,
+  checkForUpdates,
+  refreshDashboard,
+  applyTheme,
+  exportScript,
+};

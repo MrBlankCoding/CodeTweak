@@ -28,13 +28,13 @@
       event.preventDefault();
       event.stopPropagation();
 
-      chrome.runtime.sendMessage({ action: 'greasyForkInstall', url: href }, (response) => {
-        if (chrome.runtime.lastError) {
-          console.error('CodeTweak: GreasyFork intercept error:', chrome.runtime.lastError.message);
-        } else if (response && response.error) {
-          console.error('CodeTweak: GreasyFork install error:', response.error);
-        }
-      });
+      try {
+        chrome.runtime.sendMessage({ action: 'greasyForkInstall', url: href });
+      } catch (err) {
+        // This can happen if the extension context is getting destroyed (e.g., page nav).
+        // It's safe to just log and ignore.
+        console.warn('CodeTweak: GreasyFork intercept sendMessage failed:', err);
+      }
     },
     true // capture phase to intercept before navigation happens
   );
