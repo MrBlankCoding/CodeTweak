@@ -1,5 +1,5 @@
 import { urlMatchesPattern } from "./utils/urlMatchPattern.js";
-
+/* global chrome */
 document.addEventListener("DOMContentLoaded", async () => {
   // Apply theme first
   await applyThemeFromSettings();
@@ -214,6 +214,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!tab?.id) return;
 
+      //skip exacution on browser pages
+      const restrictedPatterns = /^(chrome|edge|about):\/\//i;
+      if (restrictedPatterns.test(tab.url || "")) {
+        menuSection.style.display = "none";
+        return;
+      }
+
       const [{ result: commands = [] }] = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         world: "MAIN",
@@ -225,7 +232,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
 
-      // Deduplicate commands with same caption from same scriptId
       const unique = [];
       const seen = new Set();
       commands.forEach((c) => {
