@@ -755,6 +755,55 @@ input:checked + .slider:before {
   color: var(--text-primary);
 }
 
+.about-container {
+  display: flex;
+  gap: var(--space-lg);
+  align-items: flex-start;
+}
+
+.about-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.about-nav {
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border-secondary);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition-all);
+  font-size: var(--text-sm);
+  text-align: left;
+}
+
+.about-nav:hover {
+  background: var(--bg-hover);
+  color: var(--primary);
+}
+
+.about-nav.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.about-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.about-section {
+  display: none;
+}
+
+.about-section.active {
+  display: block;
+  animation: fadeIn var(--transition-slow) ease;
+}
+
 @keyframes slideIn {
   from {
     transform: translateX(100%);

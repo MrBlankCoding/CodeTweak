@@ -125,7 +125,8 @@ async function loadSettings(settingsElements) {
       enableAllScripts: true,
       showNotifications: true,
       confirmBeforeRunning: false,
-      darkMode: true,
+      // follow system theme by default
+      darkMode: window.matchMedia("(prefers-color-scheme: dark)").matches,
     };
 
     // Apply defaults and update storage if needed

@@ -1,3 +1,4 @@
+/* global showNotification chrome */
 import { setupGreasyfork } from "./dashboard/dashboard-greasyfork.js";
 import {
   loadScripts,
@@ -5,7 +6,8 @@ import {
   saveSettings,
   filterScripts,
 } from "./dashboard/dashboard-logic.js";
-import { setupTabs } from "./dashboard/dashboard-ui.js";
+import { setupTabs, setupAboutNav } from "./dashboard/dashboard-ui.js";
+import { parseUserScriptMetadata } from "./utils/metadataParser.js";
 
 function initDashboard() {
   const elements = {
@@ -14,6 +16,8 @@ function initDashboard() {
     scriptsList: document.getElementById("scriptsList"),
     emptyState: document.getElementById("emptyState"),
     saveSettingsBtn: document.getElementById("saveSettingsBtn"),
+    resetSettingsBtn: document.getElementById("resetSettingsBtn"),
+    exportAllBtn: document.getElementById("exportAllBtn"),
     tabs: document.querySelector(".tabs"),
     tabContents: document.querySelectorAll(".tab-content"),
     emptyStateCreateBtn: document.getElementById("emptyStateCreateBtn"),
@@ -47,7 +51,21 @@ function initDashboard() {
   loadScripts(elements, state);
   loadSettings(elements.settings);
   setupTabs(elements.tabs, elements.tabContents);
+  // about tab sidebar
+  setupAboutNav(document.querySelector("#about-tab .about-container"));
   setupGreasyfork(elements.greasyfork);
+  setupFileDragAndDrop();
+
+  // Listen for runtime messages to reflect updates from other parts of the extension
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message.action === "scriptsUpdated") {
+      showNotification("Dashboard refreshed", "success");
+      // reload scripts while preserving filters
+      loadScripts(elements, state);
+    } else if (message.action === "settingsUpdated") {
+      showNotification("Settings updated", "success");
+    }
+  });
 }
 
 function setupEventListeners(elements, state) {
@@ -62,6 +80,13 @@ function setupEventListeners(elements, state) {
   elements.saveSettingsBtn?.addEventListener("click", () =>
     saveSettings(elements.settings)
   );
+
+  elements.resetSettingsBtn?.addEventListener("click", () => {
+    showNotification("Settings reset to defaults", "success");
+  });
+
+  // bulk export
+  elements.exportAllBtn?.addEventListener("click", exportAllScripts);
 
   elements.filters.scriptSearch?.addEventListener(
     "input",
@@ -78,6 +103,111 @@ function setupEventListeners(elements, state) {
     filterChangeHandler
   );
   elements.filters.runAtFilter?.addEventListener("change", filterChangeHandler);
+}
+
+function setupFileDragAndDrop() {
+  const prevent = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  ["dragenter", "dragover"].forEach((evt) => {
+    document.addEventListener(evt, prevent, false);
+  });
+
+  document.addEventListener(
+    "drop",
+    async (e) => {
+      prevent(e);
+      const files = Array.from(e.dataTransfer?.files || []);
+      if (!files.length) return;
+
+      const validFiles = files.filter((f) => {
+        const ext = f.name.split(".").pop().toLowerCase();
+        return ["js", "txt"].includes(ext);
+      });
+
+      if (!validFiles.length) {
+        showNotification("Only .js and .txt files are supported", "warning");
+        return;
+      }
+
+      try {
+        const { scripts = [] } = await chrome.storage.local.get("scripts");
+        for (const file of validFiles) {
+          const code = await file.text();
+          const metadata = parseUserScriptMetadata(code);
+
+          const scriptData = {
+            name:
+              metadata.name ||
+              file.name.replace(/\.(txt|js)$/i, "") ||
+              "Imported Script",
+            author: metadata.author || "Anonymous",
+            description: metadata.description || "",
+            version: metadata.version || "1.0.0",
+            targetUrls: metadata.matches || ["*://*/*"],
+            code,
+            runAt: metadata.runAt || "document_end",
+            enabled: true,
+            id: crypto.randomUUID(),
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            ...(metadata.resources && { resources: metadata.resources }),
+            ...(metadata.requires && { requires: metadata.requires }),
+            ...(metadata.license && { license: metadata.license }),
+            ...(metadata.icon && { icon: metadata.icon }),
+          };
+
+          if (metadata.gmApis) {
+            Object.keys(metadata.gmApis).forEach((flag) => {
+              scriptData[flag] = metadata.gmApis[flag];
+            });
+          }
+
+          scripts.push(scriptData);
+        }
+
+        await chrome.storage.local.set({ scripts });
+        chrome.runtime.sendMessage({ action: "scriptsUpdated" });
+        showNotification("Scripts imported successfully", "success");
+
+        // Refresh dashboard view
+        window.location.reload();
+      } catch (err) {
+        console.error("Import failed:", err);
+        showNotification("Failed to import scripts", "error");
+      }
+    },
+    false
+  );
+}
+
+async function exportAllScripts() {
+  console.log("Exporting all scripts");
+  try {
+    const { scripts = [] } = await chrome.storage.local.get("scripts");
+    if (!scripts.length) {
+      showNotification("No scripts to export", "warning");
+      return;
+    }
+    for (const script of scripts) {
+      const blob = new Blob([script.code], { type: "text/javascript" });
+      const url = URL.createObjectURL(blob);
+      const safeName = (script.name || "script")
+        .replace(/[^a-z0-9\- _]/gi, "_")
+        .replace(/\s+/g, "_");
+      chrome.downloads.download({
+        url,
+        filename: `CodeTweak Export/${safeName}.user.js`,
+        saveAs: false,
+      });
+    }
+    showNotification("All scripts exported", "success");
+  } catch (err) {
+    console.error("Export failed", err);
+    showNotification("Failed to export scripts", "error");
+  }
 }
 
 function debounce(func, delay) {

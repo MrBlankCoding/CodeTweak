@@ -396,8 +396,43 @@ function escapeHtml(unsafe) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
+    .replace(/\"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+// ----------------------------------------------
+// About Tab helpers
+// ----------------------------------------------
+function setupAboutNav(aboutContainer) {
+  if (!aboutContainer) return;
+
+  const navButtons = aboutContainer.querySelectorAll(".about-nav");
+  const sections = aboutContainer.querySelectorAll(".about-section");
+
+  // ensure exporting section exists
+  const contentEl = aboutContainer.querySelector(".about-content");
+  if (contentEl && !contentEl.querySelector("#exporting")) {
+    contentEl.insertAdjacentHTML(
+      "beforeend",
+      `<div class="about-section" id="exporting">
+         <h2>Exporting Scripts</h2>
+         <p>Select the export icon in the <em>Scripts</em> table to download a script as a standalone <code>.user.js</code> file for sharing or backups.</p>
+       </div>`
+    );
+  }
+
+  navButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      navButtons.forEach((b) => {
+        b.classList.remove("active");
+      });
+      sections.forEach((s) => s.classList.remove("active"));
+
+      btn.classList.add("active");
+      const targetId = btn.dataset.section;
+      aboutContainer.querySelector(`#${targetId}`)?.classList.add("active");
+    });
+  });
 }
 
 // Expose helpers for other modules
@@ -408,6 +443,7 @@ window.escapeHtml = escapeHtml;
 
 export {
   setupTabs,
+  setupAboutNav,
   updateWebsiteFilterOptions,
   updateScriptsList,
   showNotification,
