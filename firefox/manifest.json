@@ -1,0 +1,60 @@
+{
+  "manifest_version": 3,
+  "name": "CodeTweak",
+  "version": "1.0.0",
+  "description": "Inject custom JavaScript code into specific websites based on user-defined settings",
+  "default_locale": "en",
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting",
+    "webNavigation",
+    "contextMenus",
+    "clipboardWrite",
+    "notifications",
+    "downloads"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "scripts": ["background.bundle.js"]
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["./utils/elementSelector.js"],
+      "css": ["./styles/elementSelector.css"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["./utils/content_bridge.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://greasyfork.org/*"],
+      "js": ["./utils/greasyfork_interceptor.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["injected-scripts/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
