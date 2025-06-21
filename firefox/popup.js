@@ -61,7 +61,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       return targets.some((pattern) => urlMatchesPattern(url, pattern));
     });
 
-    scriptList.innerHTML = "";
 
     if (matchingScripts.length === 0) {
       emptyState.style.display = "flex";
@@ -82,12 +81,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             <path d="M14 3v5h5M8 13h8M8 17h8"/>
           </svg>
         </div>
-        <p>Ready to enhance the web?<br>Create your first script to get started.</p>
+        <p><br>Create your first script to get started.</p>
       `;
       return;
     }
 
-    emptyState.style.display = "none";
     matchingScripts.sort((a, b) => a.name.localeCompare(b.name));
 
     for (const script of matchingScripts) {
@@ -142,10 +140,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const target = document.createElement("div");
     target.className = "script-target";
-    target.innerHTML = `
-      <span class="script-type">${formatRunAt(script.runAt)}</span>
-      <span class="script-description">${getScriptDescription(script)}</span>
-    `;
+
+    // Instead of innerHTML, create and append spans safely:
+    const runAtSpan = document.createElement("span");
+    runAtSpan.className = "script-type";
+    runAtSpan.textContent = formatRunAt(script.runAt);
+
+    const descSpan = document.createElement("span");
+    descSpan.className = "script-description";
+    descSpan.textContent = getScriptDescription(script);
+
+    target.appendChild(runAtSpan);
+    target.appendChild(descSpan);
 
     info.appendChild(name);
     info.appendChild(target);
@@ -188,7 +194,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const map = {
       document_start: "Start",
       document_end: "DOM",
-      document_idle: "Load"
+      document_idle: "Load",
     };
     return map[runAt] || runAt || "Load";
   }
@@ -221,12 +227,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     menuContainer.innerHTML = "";
 
     try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
       if (!tab?.id) return;
 
-      //skip exacution on browser pages
+      // Skip execution on browser pages and extension pages
       const restrictedPatterns = /^(chrome|edge|about):\/\//i;
-      if (restrictedPatterns.test(tab.url || "")) {
+      const isExtensionPage = tab.url?.startsWith("chrome-extension://");
+      if (restrictedPatterns.test(tab.url || "") || isExtensionPage) {
         menuSection.style.display = "none";
         return;
       }
@@ -264,9 +274,15 @@ document.addEventListener("DOMContentLoaded", async () => {
             target: { tabId: tab.id },
             world: "MAIN",
             func: (id) => {
-              const cmd = (window.__gmMenuCommands || []).find((c) => c.commandId === id);
+              const cmd = (window.__gmMenuCommands || []).find(
+                (c) => c.commandId === id
+              );
               if (cmd) {
-                try { cmd.onClick(); } catch (e) { console.error("Menu command error", e); }
+                try {
+                  cmd.onClick();
+                } catch (e) {
+                  console.error("Menu command error", e);
+                }
               }
             },
             args: [cmd.commandId],

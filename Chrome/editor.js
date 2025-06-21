@@ -948,3 +948,24 @@ async function applyThemeFromSettings() {
     console.error("Error applying theme:", err);
   }
 }
+
+function setupHelpModalTabs() {
+  const tabButtons = document.querySelectorAll('.help-tab');
+  const tabContents = document.querySelectorAll('.help-tab-content');
+  if (!tabButtons.length || !tabContents.length) return;
+
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', function () {
+      tabButtons.forEach(b => b.classList.remove('active'));
+      tabContents.forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.getAttribute('data-tab');
+      const content = document.getElementById('help-tab-' + tab);
+      if (content) content.classList.add('active');
+    });
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  setupHelpModalTabs();
+});

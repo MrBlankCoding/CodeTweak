@@ -1,72 +1,77 @@
 .modal {
   display: none;
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.7);
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
   z-index: var(--z-modal);
+  display: flex;
   align-items: center;
   justify-content: center;
+  padding: var(--space-lg);
   opacity: 0;
-  transition: var(--transition-opacity);
+  transition: opacity 0.3s ease;
 }
 
 .modal.show {
-  display: flex;
   opacity: 1;
 }
 
 .modal-content {
   background: var(--bg-secondary);
   border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg);
-  width: 90%;
-  max-width: 600px;
+  border-radius: var(--radius-xl);
+  max-width: 640px;
+  width: 100%;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   box-shadow: var(--shadow-modal);
   transform: translateY(-20px);
-  transition: var(--transition-transform);
+  transition: transform 0.3s ease;
 }
 
 .modal.show .modal-content {
   transform: translateY(0);
 }
 
-.modal-header {
+.modal-header,
+.modal-footer {
   padding: var(--space-lg);
-  border-bottom: 1px solid var(--border-primary);
+  background: var(--bg-tertiary);
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.modal-footer {
+  border-top: 1px solid var(--border-primary);
+  justify-content: flex-end;
+  border-bottom: none;
 }
 
 .modal-header h2 {
   margin: 0;
   font-size: var(--text-xl);
-  font-weight: var(--font-semibold);
+  font-weight: var(--font-bold);
   color: var(--text-primary);
-  line-height: var(--leading-tight);
 }
 
 .close-btn {
   background: none;
   border: none;
-  font-size: var(--text-2xl);
-  cursor: pointer;
   color: var(--text-muted);
+  font-size: var(--text-2xl);
   padding: var(--space-xs);
-  line-height: var(--leading-none);
   border-radius: var(--radius-sm);
-  transition: var(--transition-colors);
+  cursor: pointer;
+  transition: background 0.2s ease;
 }
 
 .close-btn:hover {
-  color: var(--text-primary);
   background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .modal-body {
@@ -75,81 +80,72 @@
   flex: 1;
 }
 
-.setting-group {
-  margin-bottom: var(--space-xl);
+.settings-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
 }
 
-.setting-group:last-child {
-  margin-bottom: 0;
+.setting-group,
+.setting-group-inline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
 }
 
-.setting-group h3 {
-  margin: 0 0 var(--space-md) 0;
+.setting-group-inline {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.setting-group h3,
+.setting-group-inline h3,
+.prefs legend {
   font-size: var(--text-sm);
   font-weight: var(--font-medium);
-  color: var(--text-primary);
   text-transform: uppercase;
+  color: var(--text-secondary);
   letter-spacing: 0.05em;
+  margin: 0;
 }
 
-.setting-select {
-  width: 100%;
-  height: var(--form-element-height);
-  padding: var(--form-element-padding);
+.setting-select,
+.setting-input {
   background: var(--bg-tertiary);
   border: 1px solid var(--form-element-border);
   border-radius: var(--form-element-radius);
+  padding: var(--form-element-padding);
   color: var(--text-primary);
-  font-family: var(--font-sans);
   font-size: var(--text-sm);
-  transition: var(--transition-colors);
-}
-
-.setting-select:focus {
-  outline: none;
-  border-color: var(--border-focus);
-  box-shadow: var(--shadow-focus);
-}
-
-.setting-select:hover {
-  border-color: var(--border-secondary);
+  font-family: var(--font-sans);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .setting-input {
   width: 80px;
-  height: var(--form-element-height);
-  padding: var(--form-element-padding);
-  background: var(--bg-tertiary);
-  border: 1px solid var(--form-element-border);
-  border-radius: var(--form-element-radius);
-  color: var(--text-primary);
-  font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  transition: var(--transition-colors);
-}
-
-.setting-input:focus {
-  outline: none;
-  border-color: var(--border-focus);
-  box-shadow: var(--shadow-focus);
 }
 
 .setting-range {
-  width: 200px;
-  margin-right: var(--space-md);
-  vertical-align: middle;
+  width: 100%;
+  max-width: 250px;
   accent-color: var(--primary);
+}
+
+.range-label {
+  min-width: 40px;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
 }
 
 .setting-checkbox {
   display: flex;
   align-items: center;
-  cursor: pointer;
-  user-select: none;
   gap: var(--space-sm);
-  padding: var(--space-sm);
+  padding: var(--space-xs);
   border-radius: var(--radius-sm);
-  transition: var(--transition-colors);
+  cursor: pointer;
+  transition: background 0.2s ease;
 }
 
 .setting-checkbox:hover {
@@ -161,24 +157,21 @@
   accent-color: var(--primary);
 }
 
-.modal-footer {
-  padding: var(--space-lg);
-  border-top: 1px solid var(--border-primary);
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-md);
+.prefs {
+  display: grid;
+  gap: var(--space-sm);
+  border: none;
+  padding: 0;
 }
 
 .btn {
-  height: var(--button-height);
-  padding: var(--button-padding);
+  padding: var(--space-sm) var(--space-lg);
   border: none;
   border-radius: var(--button-radius);
-  font-family: var(--font-sans);
   font-size: var(--text-sm);
   font-weight: var(--button-font-weight);
   cursor: pointer;
-  transition: var(--transition-all);
+  transition: background 0.2s ease, box-shadow 0.2s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -188,35 +181,20 @@
 .btn-primary {
   background: var(--primary);
   color: white;
-  box-shadow: var(--shadow-sm);
 }
 
 .btn-primary:hover {
   background: var(--primary-hover);
-  transform: translateY(-1px);
   box-shadow: var(--shadow-md);
-}
-
-.btn-primary:focus {
-  outline: none;
-  box-shadow: var(--shadow-focus);
 }
 
 .btn-secondary {
   background: var(--bg-tertiary);
-  color: var(--text-primary);
   border: 1px solid var(--border-primary);
-  box-shadow: var(--shadow-sm);
+  color: var(--text-primary);
 }
 
 .btn-secondary:hover {
   background: var(--bg-hover);
   border-color: var(--border-secondary);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-}
-
-.btn-secondary:focus {
-  outline: none;
-  box-shadow: var(--shadow-focus);
 }

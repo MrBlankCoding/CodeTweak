@@ -278,37 +278,6 @@ async function handleGmApiRequest(message, sender, sendResponse) {
   }
 }
 
-// Clipboard handling
-async function ensureOffscreenDocument() {
-  // Only Chromium supports getContexts/offscreen
-  const isChromium = !!chrome.runtime.getContexts && !!chrome.offscreen;
-  if (!isChromium) {
-    // Firefox: no offscreen support, just return
-    return;
-  }
-
-  if (state.creatingOffscreenDocument) {
-    await state.creatingOffscreenDocument;
-    return;
-  }
-
-  const contexts = await chrome.runtime.getContexts({
-    contextTypes: ["OFFSCREEN_DOCUMENT"],
-    documentUrls: [chrome.runtime.getURL(OFFSCREEN_DOCUMENT_PATH)],
-  });
-
-  if (contexts.length > 0) return;
-
-  state.creatingOffscreenDocument = chrome.offscreen.createDocument({
-    url: OFFSCREEN_DOCUMENT_PATH,
-    reasons: ["CLIPBOARD"],
-    justification: "Need to write to the clipboard for GM_setClipboard API.",
-  });
-
-  await state.creatingOffscreenDocument;
-  state.creatingOffscreenDocument = null;
-}
-
 async function handleSetClipboard(request) {
   // If offscreen is not supported (Firefox), use Clipboard API directly
   const isChromium = !!chrome.runtime.getContexts && !!chrome.offscreen;
@@ -320,9 +289,6 @@ async function handleSetClipboard(request) {
       throw new Error("Clipboard API failed: " + e.message);
     }
   }
-
-  // Chromium/offscreen logic
-  await ensureOffscreenDocument();
 
   const requestId = `clipboard-${Date.now()}-${Math.random()
     .toString(36)

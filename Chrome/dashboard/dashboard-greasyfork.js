@@ -1,5 +1,4 @@
 import { parseUserScriptMetadata } from "../utils/metadataParser.js";
-
 function setupGreasyfork(elements) {
   if (!elements.button) return;
 
@@ -38,7 +37,7 @@ async function searchGreasyfork(elements) {
   const query = elements.searchInput.value.trim();
   if (!query) return;
 
-  elements.results.innerHTML = "";
+  elements.results.textContent = "";
   elements.loading.style.display = "block";
 
   try {
@@ -53,68 +52,82 @@ async function searchGreasyfork(elements) {
 
     const scripts = await response.json();
 
-    if (scripts.length === 0) {
-      elements.results.innerHTML = `
-        <div class="no-results">
-          No scripts found for "${escapeHtml(
-            query
-          )}". Try a different search term.
-        </div>
-      `;
-    } else {
-      elements.results.innerHTML = scripts
-        .map((script) => createScriptCard(script))
-        .join("");
+    elements.results.textContent = ""; // Safer than innerHTML reset
 
-      elements.results
-        .querySelectorAll(".import-greasy-fork")
-        .forEach((button) => {
-          button.addEventListener("click", () => {
-            const codeUrl = button.closest(".script-card").dataset.codeUrl;
-            importGreasyforkScript(codeUrl);
-          });
-        });
+    if (scripts.length === 0) {
+      const div = document.createElement("div");
+      div.className = "no-results";
+      div.textContent = `No scripts found for "${query}". Try a different search term.`;
+      elements.results.appendChild(div);
+    } else {
+      for (const script of scripts) {
+        const card = createScriptCard(script);
+        elements.results.appendChild(card);
+      }
     }
+
+    elements.results
+      .querySelectorAll(".import-greasy-fork")
+      .forEach((button) => {
+        button.addEventListener("click", () => {
+          const codeUrl = button.closest(".script-card").dataset.codeUrl;
+          importGreasyforkScript(codeUrl);
+        });
+      });
   } catch (error) {
     console.error("Error searching Greasy Fork:", error);
-    elements.results.innerHTML = `
-      <div class="error-message">
-        Error searching Greasy Fork: ${error.message}. Please try again later.
-      </div>
-    `;
+    const errorDiv = document.createElement("div");
+    errorDiv.className = "error-message";
+    errorDiv.textContent = `Error searching Greasy Fork: ${error.message}. Please try again later.`;
+    elements.results.appendChild(errorDiv);
   } finally {
     elements.loading.style.display = "none";
   }
 }
 
 function createScriptCard(script) {
-  const formatNumber = (num) => {
-    return num ? num.toLocaleString() : "0";
-  };
+  const formatNumber = (num) => (num ? num.toLocaleString() : "0");
 
-  return `
-    <div class="script-card" data-code-url="${escapeHtml(script.code_url)}">
-      <h3>${escapeHtml(script.name)}</h3>
-      <div class="script-card-meta">
-        <span>👤 ${formatNumber(script.total_installs)}</span>
-        <span>👍 ${formatNumber(script.good_ratings)}</span>
-        <span>v${script.version || "1.0.0"}</span>
-      </div>
-      <p class="script-card-description">${escapeHtml(
-        script.description || ""
-      )}</p>
-      <div class="script-card-actions">
-        <a href="${
-          script.url
-        }" target="_blank" rel="noopener noreferrer" class="secondary">
-          View on Greasy Fork
-        </a>
-        <button class="primary import-greasy-fork">
-          Import
-        </button>
-      </div>
-    </div>
+  const card = document.createElement("div");
+  card.className = "script-card";
+  card.dataset.codeUrl = script.code_url;
+
+  const title = document.createElement("h3");
+  title.textContent = script.name;
+  card.appendChild(title);
+
+  const meta = document.createElement("div");
+  meta.className = "script-card-meta";
+  meta.innerHTML = `
+    <span>👤 ${formatNumber(script.total_installs)}</span>
+    <span>👍 ${formatNumber(script.good_ratings)}</span>
+    <span>v${script.version || "1.0.0"}</span>
   `;
+  card.appendChild(meta);
+
+  const description = document.createElement("p");
+  description.className = "script-card-description";
+  description.textContent = script.description || "";
+  card.appendChild(description);
+
+  const actions = document.createElement("div");
+  actions.className = "script-card-actions";
+
+  const viewLink = document.createElement("a");
+  viewLink.href = script.url;
+  viewLink.target = "_blank";
+  viewLink.rel = "noopener noreferrer";
+  viewLink.className = "secondary";
+  viewLink.textContent = "View on Greasy Fork";
+  actions.appendChild(viewLink);
+
+  const importBtn = document.createElement("button");
+  importBtn.className = "primary import-greasy-fork";
+  importBtn.textContent = "Import";
+  actions.appendChild(importBtn);
+
+  card.appendChild(actions);
+  return card;
 }
 
 async function importGreasyforkScript(codeUrl) {

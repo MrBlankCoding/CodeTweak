@@ -790,7 +790,6 @@
     }
   };
   var state = new BackgroundState();
-  var OFFSCREEN_DOCUMENT_PATH = "offscreen.html";
   function safeSetBadge(tabId, text = "", color = "#007bff") {
     chrome.action.setBadgeText({ tabId, text }).catch((err) => {
       if (!isIgnorableTabError(err)) {
@@ -989,29 +988,6 @@
       sendResponse({ error: error.message || "An unexpected error occurred." });
     }
   }
-  async function ensureOffscreenDocument() {
-    const isChromium = !!chrome.runtime.getContexts && !!chrome.offscreen;
-    if (!isChromium) {
-      return;
-    }
-    if (state.creatingOffscreenDocument) {
-      await state.creatingOffscreenDocument;
-      return;
-    }
-    const contexts = await chrome.runtime.getContexts({
-      contextTypes: ["OFFSCREEN_DOCUMENT"],
-      documentUrls: [chrome.runtime.getURL(OFFSCREEN_DOCUMENT_PATH)]
-    });
-    if (contexts.length > 0)
-      return;
-    state.creatingOffscreenDocument = chrome.offscreen.createDocument({
-      url: OFFSCREEN_DOCUMENT_PATH,
-      reasons: ["CLIPBOARD"],
-      justification: "Need to write to the clipboard for GM_setClipboard API."
-    });
-    await state.creatingOffscreenDocument;
-    state.creatingOffscreenDocument = null;
-  }
   async function handleSetClipboard(request) {
     const isChromium = !!chrome.runtime.getContexts && !!chrome.offscreen;
     if (!isChromium && navigator.clipboard && window.isSecureContext) {
@@ -1022,7 +998,6 @@
         throw new Error("Clipboard API failed: " + e.message);
       }
     }
-    await ensureOffscreenDocument();
     const requestId = `clipboard-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {

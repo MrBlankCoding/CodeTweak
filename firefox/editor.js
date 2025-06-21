@@ -3,10 +3,13 @@
 import {
   UIManager,
   StorageManager,
-  FormValidator
+  FormValidator,
 } from "./utils/editor_managers.js";
 import { CodeEditorManager } from "./utils/editor_settings.js";
-import { buildTampermonkeyMetadata, parseUserScriptMetadata } from "./utils/metadataParser.js";
+import {
+  buildTampermonkeyMetadata,
+  parseUserScriptMetadata,
+} from "./utils/metadataParser.js";
 
 class ScriptEditor {
   constructor() {
@@ -91,8 +94,7 @@ class ScriptEditor {
         el: "gmSetClipboard",
       },
       GM_addStyle: {
-        signature:
-          "declare function GM_addStyle(css: string): void;",
+        signature: "declare function GM_addStyle(css: string): void;",
         name: "GM_addStyle",
         el: "gmAddStyle",
       },
@@ -222,7 +224,7 @@ class ScriptEditor {
     elements.sectionToggles = document.querySelectorAll(".section-toggle");
     elements.mainContent = document.querySelector(".main-content");
     elements.settingsModal = document.getElementById("settingsModal");
-    
+
     // StatusManager will be initialized after UIManager is created
     elements.status = null;
 
@@ -236,7 +238,6 @@ class ScriptEditor {
         localStorage.getItem("autosaveEnabled") !== "false";
       this.state.lintingEnabled =
         localStorage.getItem("lintingEnabled") !== "false";
-      
 
       await this.codeEditorManager.initializeCodeEditor();
       this.codeEditorManager.toggleLinting(this.state.lintingEnabled);
@@ -247,7 +248,9 @@ class ScriptEditor {
           this._debouncedSave();
         }
       });
-      this.codeEditorManager.setImportCallback((importData) => this.handleScriptImport(importData));
+      this.codeEditorManager.setImportCallback((importData) =>
+        this.handleScriptImport(importData)
+      );
       this.codeEditorManager.setStatusCallback((message, type) => {
         if (message) {
           this.ui.showStatusMessage(message, type);
@@ -264,13 +267,13 @@ class ScriptEditor {
       this.ui.updateSidebarState();
       this.registerEventListeners();
 
-    // Listen for Ctrl+S / Cmd+S via KeyboardManager
-    if (this.ui && typeof this.ui.on === 'function') {
-      this.ui.on('saveRequested', async () => {
-        await this.saveScript();
-        this.ui.showStatusMessage('Script saved!', 'success', 2000);
-      });
-    }
+      // Listen for Ctrl+S / Cmd+S via KeyboardManager
+      if (this.ui && typeof this.ui.on === "function") {
+        this.ui.on("saveRequested", async () => {
+          await this.saveScript();
+          this.ui.showStatusMessage("Script saved!", "success", 2000);
+        });
+      }
       this.setupBackgroundConnection();
       this.codeEditorManager.updateEditorLintAndAutocomplete();
 
@@ -317,7 +320,7 @@ class ScriptEditor {
     try {
       const { code, ...metadata } = importData;
       const scriptData = { code };
-      
+
       // Map metadata to script data
       if (metadata.name) scriptData.name = metadata.name;
       if (metadata.version) scriptData.version = metadata.version;
@@ -327,22 +330,22 @@ class ScriptEditor {
       if (metadata.runAt) scriptData.runAt = metadata.runAt;
       if (metadata.license) scriptData.license = metadata.license;
       if (metadata.icon) scriptData.icon = metadata.icon;
-      
+
       // Handle matches and includes
       if (metadata.matches?.length) {
         scriptData.targetUrls = [...new Set(metadata.matches)];
       }
-      
+
       // Handle requires
       if (metadata.requires?.length) {
         scriptData.requires = metadata.requires;
       }
-      
+
       // Handle resources
       if (metadata.resources?.length) {
         scriptData.resources = metadata.resources;
       }
-      
+
       // Handle GM APIs from @grant directives
       if (metadata.gmApis) {
         // Map the GM API flags to the script data
@@ -352,19 +355,21 @@ class ScriptEditor {
           }
         });
       }
-      
+
       // Update the form with the imported data
       this.populateFormWithScript(scriptData);
-      
+
       // Set the code in the editor
       this.codeEditorManager.setValue(code);
-      
+
       // Show success message
-      this.ui.showStatusMessage('Script metadata imported successfully', 'success');
-      
+      this.ui.showStatusMessage(
+        "Script metadata imported successfully",
+        "success"
+      );
     } catch (error) {
-      console.error('Error handling script import:', error);
-      this.ui.showStatusMessage('Failed to import script metadata', 'error');
+      console.error("Error handling script import:", error);
+      this.ui.showStatusMessage("Failed to import script metadata", "error");
     }
   }
 
@@ -374,7 +379,7 @@ class ScriptEditor {
       const data = await chrome.storage.local.get(key);
       const importData = data[key];
       if (!importData) return;
-      
+
       const { code } = importData;
 
       // Parse metadata using shared utility for full support
@@ -390,8 +395,8 @@ class ScriptEditor {
       // Clean up storage
       await chrome.storage.local.remove(key);
     } catch (err) {
-      console.error('Error loading imported script:', err);
-      this.ui.showStatusMessage('Failed to load imported script', 'error');
+      console.error("Error loading imported script:", err);
+      this.ui.showStatusMessage("Failed to load imported script", "error");
     }
   }
 
@@ -406,38 +411,47 @@ class ScriptEditor {
   }
 
   toggleResourcesSection(show) {
-    const resourcesSection = document.getElementById('resourcesSection');
+    const resourcesSection = document.getElementById("resourcesSection");
     if (resourcesSection) {
       if (show) {
-        resourcesSection.classList.remove('hidden');
+        resourcesSection.classList.remove("hidden");
       } else {
         // Only hide if both APIs are disabled AND no resources exist
         const hasResources = this.elements.resourceList?.children.length > 0;
-        if (!this.elements.gmGetResourceText.checked && 
-            !this.elements.gmGetResourceURL.checked &&
-            !hasResources) {
-          resourcesSection.classList.add('hidden');
+        if (
+          !this.elements.gmGetResourceText.checked &&
+          !this.elements.gmGetResourceURL.checked &&
+          !hasResources
+        ) {
+          resourcesSection.classList.add("hidden");
         }
       }
     }
   }
 
   setupResourceApiListeners() {
-    const resourceCheckboxes = [this.elements.gmGetResourceText, this.elements.gmGetResourceURL];
-    
-    resourceCheckboxes.forEach(checkbox => {
+    const resourceCheckboxes = [
+      this.elements.gmGetResourceText,
+      this.elements.gmGetResourceURL,
+    ];
+
+    resourceCheckboxes.forEach((checkbox) => {
       if (checkbox) {
-        checkbox.addEventListener('change', () => {
-          const shouldShow = this.elements.gmGetResourceText.checked || this.elements.gmGetResourceURL.checked;
+        checkbox.addEventListener("change", () => {
+          const shouldShow =
+            this.elements.gmGetResourceText.checked ||
+            this.elements.gmGetResourceURL.checked;
           this.toggleResourcesSection(shouldShow);
-          
+
           // Clear resources if both APIs are disabled
-          if (!this.elements.gmGetResourceText.checked && 
-              !this.elements.gmGetResourceURL.checked &&
-              this.elements.resourceList) {
-            this.elements.resourceList.innerHTML = '';
+          if (
+            !this.elements.gmGetResourceText.checked &&
+            !this.elements.gmGetResourceURL.checked &&
+            this.elements.resourceList
+          ) {
+            this.elements.resourceList.innerHTML = "";
           }
-          
+
           this.markAsDirty();
         });
       }
@@ -446,16 +460,16 @@ class ScriptEditor {
 
   registerEventListeners() {
     // Listen for sidebar changes
-    this.ui.on('sidebarChanged', () => {
+    this.ui.on("sidebarChanged", () => {
       this.markAsUnsaved();
     });
-    
+
     // Directly add click listener to save button
-    this.elements.saveBtn?.addEventListener('click', (e) => {
+    this.elements.saveBtn?.addEventListener("click", (e) => {
       e.preventDefault();
       this.saveScript();
     });
-    
+
     // Setup UI callbacks
     const callbacks = {
       saveScript: () => this.saveScript(),
@@ -468,7 +482,8 @@ class ScriptEditor {
       markAsUnsaved: () => this.markAsUnsaved(),
       markAsDirty: () => this.markAsDirty(),
       debouncedSave: () => this._debouncedSave(),
-      updateEditorLintAndAutocomplete: () => this.codeEditorManager.updateEditorLintAndAutocomplete(),
+      updateEditorLintAndAutocomplete: () =>
+        this.codeEditorManager.updateEditorLintAndAutocomplete(),
       saveSettings: (settings) => {
         this.codeEditorManager.saveSettings(settings);
         this.codeEditorManager.applySettings(settings);
@@ -479,7 +494,7 @@ class ScriptEditor {
         this.codeEditorManager.applySettings(defaultSettings);
         return defaultSettings;
       },
-      toggleLinting: (enabled) => this.codeEditorManager.toggleLinting(enabled)
+      toggleLinting: (enabled) => this.codeEditorManager.toggleLinting(enabled),
     };
 
     // Initialize UI components with callbacks
@@ -491,7 +506,9 @@ class ScriptEditor {
     this.ui.setupResourceManagement(callbacks);
 
     // Format button
-    this.elements.formatBtn?.addEventListener("click", () => this.codeEditorManager.formatCode(true));
+    this.elements.formatBtn?.addEventListener("click", () =>
+      this.codeEditorManager.formatCode(true)
+    );
 
     // Lint toggle
     this.elements.lintBtn?.addEventListener("click", () => {
@@ -517,7 +534,7 @@ class ScriptEditor {
         "info"
       );
       this.ui.updateAutosaveButton(this.state.isAutosaveEnabled);
-      
+
       // If enabling autosave and there are unsaved changes, save immediately
       if (this.state.isAutosaveEnabled && this.state.hasUnsavedChanges) {
         this._debouncedSave(true);
@@ -526,11 +543,18 @@ class ScriptEditor {
 
     // Form field change listeners for autosave
     const formFields = [
-      'scriptName', 'scriptAuthor', 'scriptVersion', 'scriptDescription', 'scriptLicense', 'scriptIcon',
-      'runAt', 'waitForSelector', 'targetUrl'
+      "scriptName",
+      "scriptAuthor",
+      "scriptVersion",
+      "scriptDescription",
+      "scriptLicense",
+      "scriptIcon",
+      "runAt",
+      "waitForSelector",
+      "targetUrl",
     ];
-    
-    formFields.forEach(fieldName => {
+
+    formFields.forEach((fieldName) => {
       const element = this.elements[fieldName];
       if (element) {
         // Add both change and input events for better responsiveness
@@ -540,34 +564,37 @@ class ScriptEditor {
             this._debouncedSave();
           }
         };
-        element.addEventListener('change', handleChange);
-        element.addEventListener('input', handleChange);
+        element.addEventListener("change", handleChange);
+        element.addEventListener("input", handleChange);
       }
     });
 
     // Checkbox change listeners (GM API checkboxes)
-    Object.values(this.gmApiDefinitions).forEach(api => {
+    Object.values(this.gmApiDefinitions).forEach((api) => {
       const element = this.elements[api.el];
       if (element) {
-        element.addEventListener('change', () => {
+        element.addEventListener("change", () => {
           this.markAsDirty();
           if (this.state.isAutosaveEnabled) {
             this._debouncedSave();
           }
-          
+
           // Special handling for resource-related APIs
-          if (['gmGetResourceText', 'gmGetResourceURL'].includes(api.el)) {
+          if (["gmGetResourceText", "gmGetResourceURL"].includes(api.el)) {
             this.toggleResourcesSection(true);
           }
         });
       }
     });
-    
+
     // Setup resource API listeners
     this.setupResourceApiListeners();
-    
+
     // Show resources section if either resource API is checked
-    if (this.elements.gmGetResourceText?.checked || this.elements.gmGetResourceURL?.checked) {
+    if (
+      this.elements.gmGetResourceText?.checked ||
+      this.elements.gmGetResourceURL?.checked
+    ) {
       this.toggleResourcesSection(true);
     }
 
@@ -575,8 +602,10 @@ class ScriptEditor {
     if (this.elements.apiSearch) {
       this.elements.apiSearch.addEventListener("input", () => {
         const query = this.elements.apiSearch.value.toLowerCase();
-        const checkboxes = this.elements.sidebar.querySelectorAll(".api-list .form-group-checkbox");
-        checkboxes.forEach(cb => {
+        const checkboxes = this.elements.sidebar.querySelectorAll(
+          ".api-list .form-group-checkbox"
+        );
+        checkboxes.forEach((cb) => {
           const label = cb.querySelector("label");
           if (label) {
             const match = label.textContent.toLowerCase().includes(query);
@@ -648,10 +677,11 @@ class ScriptEditor {
     if (this.elements.gmAddStyle)
       this.elements.gmAddStyle.checked = !!script.gmAddStyle;
     if (this.elements.gmRegisterMenuCommand)
-      this.elements.gmRegisterMenuCommand.checked = !!script.gmRegisterMenuCommand;
+      this.elements.gmRegisterMenuCommand.checked =
+        !!script.gmRegisterMenuCommand;
     if (this.elements.gmXmlHttpRequest)
       this.elements.gmXmlHttpRequest.checked = !!script.gmXmlHttpRequest;
-      
+
     // Show resources section if either resource API is checked
     if (script.gmGetResourceText || script.gmGetResourceURL) {
       this.toggleResourcesSection(true);
@@ -718,8 +748,10 @@ class ScriptEditor {
       this.elements.gmGetResourceURL?.checked || false;
     scriptData.gmSetClipboard = this.elements.gmSetClipboard?.checked || false;
     scriptData.gmAddStyle = this.elements.gmAddStyle?.checked || false;
-    scriptData.gmRegisterMenuCommand = this.elements.gmRegisterMenuCommand?.checked || false;
-    scriptData.gmXmlHttpRequest = this.elements.gmXmlHttpRequest?.checked || false;
+    scriptData.gmRegisterMenuCommand =
+      this.elements.gmRegisterMenuCommand?.checked || false;
+    scriptData.gmXmlHttpRequest =
+      this.elements.gmXmlHttpRequest?.checked || false;
 
     // Parse resource items
     scriptData.resources = [];
@@ -755,12 +787,14 @@ class ScriptEditor {
       if (!this.validator.validateForm()) return null;
 
       const scriptData = this.gatherScriptData();
-      
+
       // Auto-generate name if empty
-      if (!scriptData.name || scriptData.name.trim() === '') {
-        scriptData.name = `Untitled Script ${new Date().toISOString().slice(0, 10)}`;
+      if (!scriptData.name || scriptData.name.trim() === "") {
+        scriptData.name = `Untitled Script ${new Date()
+          .toISOString()
+          .slice(0, 10)}`;
       }
-      
+
       const isNewScript = !this.state.scriptId;
 
       // Only if new changes or is a new script
@@ -896,14 +930,17 @@ class ScriptEditor {
       const metadata = buildTampermonkeyMetadata(scriptData);
       const content = `${metadata}\n\n${scriptData.code}`;
 
-      const fileNameSafe = (scriptData.name || 'script')
-        .replace(/[^a-z0-9_-]+/gi, '_')
-        .replace(/_{2,}/g, '_')
-        .replace(/^_|_$/g, '') || 'script';
+      const fileNameSafe =
+        (scriptData.name || "script")
+          .replace(/[^a-z0-9_-]+/gi, "_")
+          .replace(/_{2,}/g, "_")
+          .replace(/^_|_$/g, "") || "script";
 
-      const blob = new Blob([content], { type: 'text/javascript;charset=utf-8' });
+      const blob = new Blob([content], {
+        type: "text/javascript;charset=utf-8",
+      });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = `${fileNameSafe}.user.js`;
       document.body.appendChild(a);
@@ -911,10 +948,10 @@ class ScriptEditor {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      this.ui.showStatusMessage('Script exported', 'success');
+      this.ui.showStatusMessage("Script exported", "success");
     } catch (err) {
-      console.error('Export failed:', err);
-      this.ui.showStatusMessage('Export failed', 'error');
+      console.error("Export failed:", err);
+      this.ui.showStatusMessage("Export failed", "error");
     }
   }
 }
@@ -948,3 +985,24 @@ async function applyThemeFromSettings() {
     console.error("Error applying theme:", err);
   }
 }
+
+function setupHelpModalTabs() {
+  const tabButtons = document.querySelectorAll(".help-tab");
+  const tabContents = document.querySelectorAll(".help-tab-content");
+  if (!tabButtons.length || !tabContents.length) return;
+
+  tabButtons.forEach((btn) => {
+    btn.addEventListener("click", function () {
+      tabButtons.forEach((b) => b.classList.remove("active"));
+      tabContents.forEach((c) => c.classList.remove("active"));
+      btn.classList.add("active");
+      const tab = btn.getAttribute("data-tab");
+      const content = document.getElementById("help-tab-" + tab);
+      if (content) content.classList.add("active");
+    });
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setupHelpModalTabs();
+});

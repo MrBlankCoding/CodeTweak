@@ -125,7 +125,6 @@ html, body {
   background: var(--bg-hover);
   color: var(--text-primary);
   border-color: var(--border-secondary);
-  transform: translateY(-1px);
   box-shadow: var(--shadow-sm);
 }
 
@@ -227,4 +226,36 @@ html, body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-thumb-hover);
+}
+
+.help-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--border-primary, #222);
+}
+.help-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary, #888);
+  font-size: 1rem;
+  font-weight: 500;
+  padding: 8px 18px 8px 18px;
+  cursor: pointer;
+  transition: color 0.15s, border-bottom 0.15s;
+}
+.help-tab.active {
+  color: var(--text-primary, #fff);
+  border-bottom: 2px solid var(--primary, #4f8cff);
+}
+.help-tab:focus {
+  outline: none;
+  color: var(--primary, #4f8cff);
+}
+.help-tab-content {
+  display: none;
+}
+.help-tab-content.active {
+  display: block;
 }

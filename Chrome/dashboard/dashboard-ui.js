@@ -33,7 +33,15 @@ function updateWebsiteFilterOptions(scripts, websiteFilter) {
       }
     }
 
-    websiteFilter.innerHTML = '<option value="">All Websites</option>';
+    // Clear all options
+    while (websiteFilter.firstChild) {
+      websiteFilter.removeChild(websiteFilter.firstChild);
+    }
+    // Add "All Websites" option
+    const allOption = document.createElement("option");
+    allOption.value = "";
+    allOption.textContent = "All Websites";
+    websiteFilter.appendChild(allOption);
 
     Array.from(websites)
       .sort()
@@ -229,7 +237,11 @@ function createFaviconWrapper(hostname) {
   faviconImg.onerror = function () {
     console.warn(`Failed to load favicon for ${hostname}`);
     const fallbackText = hostname.replace(/\*\./g, "").charAt(0).toUpperCase();
-    this.parentElement.innerHTML = `<div class='favicon-fallback'>${fallbackText}</div>`;
+    const fallbackDiv = document.createElement("div");
+    fallbackDiv.className = "favicon-fallback";
+    fallbackDiv.textContent = fallbackText;
+    this.parentElement.innerHTML = ""; // Clear previous content
+    this.parentElement.appendChild(fallbackDiv);
   };
 
   faviconWrapper.appendChild(faviconImg);
@@ -253,7 +265,10 @@ function createFaviconCounter(extraHosts) {
     favicon.src = `https://${hostname}/favicon.ico`;
     favicon.alt = "";
     favicon.onerror = () => {
-      favicon.outerHTML = `<div class='favicon-fallback'>${hostname[0].toUpperCase()}</div>`;
+      const fallbackDiv = document.createElement("div");
+      fallbackDiv.className = "favicon-fallback";
+      fallbackDiv.textContent = (hostname[0] || "?").toUpperCase();
+      favicon.replaceWith(fallbackDiv);
     };
 
     const domain = document.createElement("span");
@@ -280,7 +295,7 @@ function createActionsCell(script) {
             </svg>`,
       title: "Edit Script",
       handler: () => editScript(script.id),
-    }
+    },
   ];
 
   // check for update button
@@ -382,7 +397,7 @@ function showNotification(message, type = "info") {
   notification.append(icon, content, closeBtn);
   notificationContainer.appendChild(notification);
 
-  // remove 
+  // remove
   setTimeout(() => {
     if (notification.parentElement) {
       notification.classList.add("notification-hide");

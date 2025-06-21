@@ -288,7 +288,7 @@
                                  <option value="subdomain">Any sub-domain</option>
                                  <option value="exact">Exact page</option>
                               </select>
-                              <button type="button" id="generatePatternBtn" class="pattern-btn">Generate</button>
+                              <button type="button" id="generatePatternBtn" class="add-btn">Generate</button>
                            </div>
                            <div class="generated-pattern-group hidden" id="generatedPatternGroup">
                               <input type="text" id="generatedPattern" class="form-input" readonly>
@@ -348,142 +348,224 @@
       
       <!-- Help Modal -->
       <div id="helpModal" class="modal">
-         <div class="modal-content help-modal">
-            <div class="modal-header">
-               <h2>Help & Keyboard Shortcuts</h2>
-               <button type="button" class="close-help-modal">&times;</button>
+        <div class="modal-content help-modal">
+          <div class="modal-header">
+            <h2>Help & Keyboard Shortcuts</h2>
+            <button type="button" class="close-help-modal">&times;</button>
+          </div>
+          <div class="modal-body">
+            <!-- Tab Navigation -->
+            <div class="help-tabs">
+              <button class="help-tab active" data-tab="shortcuts">Shortcuts</button>
+              <button class="help-tab" data-tab="wildcards">Wildcard Key</button>
+              <button class="help-tab" data-tab="gmapi">GM API</button>
             </div>
-            <div class="modal-body">
-               <div class="help-section">
-                  <h3>Keyboard Shortcuts</h3>
-                  <table class="shortcuts-table">
-                     <thead>
-                        <tr>
-                           <th>Action</th>
-                           <th>Shortcut</th>
-                        </tr>
-                     </thead>
-                     <tbody>
-                        <tr>
-                           <td>Save Script</td>
-                           <td><kbd>Ctrl</kbd> + <kbd>S</kbd></td>
-                        </tr>
-                        <tr>
-                           <td>Format Code</td>
-                           <td><kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>F</kbd></td>
-                        </tr>
-                        <tr>
-                           <td>Toggle Sidebar</td>
-                           <td><kbd>Ctrl</kbd> + <kbd>\</kbd></td>
-                        </tr>
-                        <tr>
-                           <td>Toggle Comment</td>
-                           <td><kbd>Ctrl</kbd> + <kbd>/</kbd></td>
-                        </tr>
-                     </tbody>
-                  </table>
-               </div>
-               
-               <div class="help-section">
-                  <h3>URL Matching with Wildcards</h3>
-                  <p>The URL matching system supports the following patterns:</p>
-                  <table class="wildcards-table">
-                     <thead>
-                        <tr>
-                           <th>Pattern</th>
-                           <th>Description</th>
-                           <th>Example</th>
-                        </tr>
-                     </thead>
-                     <tbody>
-                        <tr>
-                           <td><code>*</code></td>
-                           <td>Matches any characters except <code>/</code></td>
-                           <td><code>https://example.com/*</code> matches any page on example.com</td>
-                        </tr>
-                        <tr>
-                           <td><code>**</code></td>
-                           <td>Matches any characters including <code>/</code></td>
-                           <td><code>https://**/api/**</code> matches any API endpoint on any domain</td>
-                        </tr>
-                        <tr>
-                           <td><code>?</code></td>
-                           <td>Matches any single character</td>
-                           <td><code>file?.js</code> matches file1.js, file2.js, etc.</td>
-                        </tr>
-                     </tbody>
-                  </table>
-               </div>
+            <!-- Tab Content -->
+            <div class="help-tab-content active" id="help-tab-shortcuts">
+              <div class="help-section">
+                <h3>Keyboard Shortcuts</h3>
+                <table class="shortcuts-table">
+                  <thead>
+                    <tr>
+                      <th>Action</th>
+                      <th>Shortcut</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Save Script</td>
+                      <td><kbd>Ctrl</kbd> + <kbd>S</kbd></td>
+                    </tr>
+                    <tr>
+                      <td>Format Code</td>
+                      <td><kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>F</kbd></td>
+                    </tr>
+                    <tr>
+                      <td>Toggle Sidebar</td>
+                      <td><kbd>Ctrl</kbd> + <kbd>\</kbd></td>
+                    </tr>
+                    <tr>
+                      <td>Toggle Comment</td>
+                      <td><kbd>Ctrl</kbd> + <kbd>/</kbd></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
-         </div>
+            <div class="help-tab-content" id="help-tab-wildcards">
+              <div class="help-section">
+                <h3>URL Matching with Wildcards</h3>
+                <p>The URL matching system supports the following patterns:</p>
+                <table class="wildcards-table">
+                  <thead>
+                    <tr>
+                      <th>Pattern</th>
+                      <th>Description</th>
+                      <th>Example</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><code>*</code></td>
+                      <td>Matches any characters except <code>/</code></td>
+                      <td><code>https://example.com/*</code> matches any page on example.com</td>
+                    </tr>
+                    <tr>
+                      <td><code>**</code></td>
+                      <td>Matches any characters including <code>/</code></td>
+                      <td><code>https://**/api/**</code> matches any API endpoint on any domain</td>
+                    </tr>
+                    <tr>
+                      <td><code>?</code></td>
+                      <td>Matches any single character</td>
+                      <td><code>file?.js</code> matches file1.js, file2.js, etc.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="help-tab-content" id="help-tab-gmapi">
+              <div class="help-section">
+                <h3>GM API Documentation</h3>
+                <p>
+                  The GM API provides special functions for userscripts to interact with the browser and page.<br>
+                  <a href="https://wiki.greasespot.net/Greasemonkey_Manual:API" target="_blank" rel="noopener" style="color:#4ea1ff;text-decoration:underline;">
+                    View the full official GM API documentation
+                  </a>
+                </p>
+                <table class="gmapi-table">
+                  <thead>
+                    <tr>
+                      <th>API</th>
+                      <th>Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><code>GM_setValue</code></td>
+                      <td>Stores a value that persists across page loads.</td>
+                    </tr>
+                    <tr>
+                      <td><code>GM_getValue</code></td>
+                      <td>Retrieves a value stored with <code>GM_setValue</code>.</td>
+                    </tr>
+                    <tr>
+                      <td><code>GM_deleteValue</code></td>
+                      <td>Deletes a value stored with <code>GM_setValue</code>.</td>
+                    </tr>
+                    <tr>
+                      <td><code>GM_listValues</code></td>
+                      <td>Lists all keys stored with <code>GM_setValue</code>.</td>
+                    </tr>
+                    <tr>
+                      <td><code>GM_openInTab</code></td>
+                      <td>Opens a URL in a new browser tab.</td>
+                    </tr>
+                    <tr>
+                      <td><code>GM_notification</code></td>
+                      <td>Shows a desktop notification.</td>
+                    </tr>
+                    <tr>
+                      <td><code>GM_getResourceText</code></td>
+                      <td>Gets the content of a resource as text.</td>
+                    </tr>
+                    <tr>
+                      <td><code>GM_getResourceURL</code></td>
+                      <td>Gets the URL of a resource.</td>
+                    </tr>
+                    <tr>
+                      <td><code>GM_addStyle</code></td>
+                      <td>Injects CSS styles into the page.</td>
+                    </tr>
+                    <tr>
+                      <td><code>GM_registerMenuCommand</code></td>
+                      <td>Adds a custom command to the userscript menu.</td>
+                    </tr>
+                    <tr>
+                      <td><code>GM_setClipboard</code></td>
+                      <td>Copies data to the clipboard.</td>
+                    </tr>
+                    <tr>
+                      <td><code>GM_xmlHttpRequest</code></td>
+                      <td>Makes cross-origin HTTP requests.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
             
       <!-- Settings Modal -->
       <div id="settingsModal" class="modal">
          <div class="modal-content">
-            <div class="modal-header">
-               <h2>Editor Settings</h2>
-               <button type="button" class="close-btn" id="closeSettings">&times;</button>
-            </div>
-            <div class="modal-body">
+         <div class="modal-header">
+            <h2>Editor Settings</h2>
+            <button type="button" class="close-btn" id="closeSettings" aria-label="Close Modal">&times;</button>
+         </div>
+         <div class="modal-body">
+            <form id="settingsForm" class="settings-grid">
                <div class="setting-group">
-                  <h3>Editor Theme</h3>
-                  <select id="editorTheme" class="setting-select">
-                     <option value="default">Default</option>
-                     <option value="ayu-dark">Ayu Dark</option>
-                     <option value="ayu-mirage">Ayu Mirage</option>
-                     <option value="dracula">Dracula</option>
-                     <option value="material">Material</option>
-                     <option value="monokai">Monokai</option>
-                     <option value="solarized">Solarized</option>
-                  </select>
+               <label for="editorTheme"><h3>Editor Theme</h3></label>
+               <select id="editorTheme" class="setting-select">
+                  <option value="default">Default</option>
+                  <option value="ayu-dark">Ayu Dark</option>
+                  <option value="ayu-mirage">Ayu Mirage</option>
+                  <option value="dracula">Dracula</option>
+                  <option value="material">Material</option>
+                  <option value="monokai">Monokai</option>
+                  <option value="solarized">Solarized</option>
+               </select>
                </div>
-               <div class="setting-group">
-                  <h3>Font Size</h3>
-                  <input type="range" id="fontSize" min="10" max="24" value="14" class="setting-range">
-                  <span id="fontSizeValue">14px</span>
+      
+               <div class="setting-group-inline">
+               <label for="fontSize"><h3>Font Size</h3></label>
+               <input type="range" id="fontSize" min="10" max="24" value="14" class="setting-range">
+               <span id="fontSizeValue" class="range-label">14px</span>
                </div>
-               <div class="setting-group">
-                  <h3>Tab Size</h3>
-                  <input type="number" id="tabSize" min="1" max="8" value="2" class="setting-input">
+      
+               <div class="setting-group-inline">
+               <label for="tabSize"><h3>Tab Size</h3></label>
+               <input type="number" id="tabSize" min="1" max="8" value="2" class="setting-input">
                </div>
-               <div class="setting-group">
-                  <label class="setting-checkbox">
-                     <input type="checkbox" id="lineNumbers" checked>
-                     <span>Show Line Numbers</span>
-                  </label>
-               </div>
-               <div class="setting-group">
-                  <label class="setting-checkbox">
-                     <input type="checkbox" id="lineWrapping">
-                     <span>Line Wrapping</span>
-                  </label>
-               </div>
-               <div class="setting-group">
-                  <label class="setting-checkbox">
-                     <input type="checkbox" id="matchBrackets" checked>
-                     <span>Match Brackets</span>
-                  </label>
-               </div>
-               <div class="setting-group">
-                  <label class="setting-checkbox">
-                     <input type="checkbox" id="lintingEnabled">
-                     <span>Enable Linting</span>
-                  </label>
-               </div>
-               <div class="setting-group">
-                  <label class="setting-checkbox">
-                     <input type="checkbox" id="autosaveEnabled">
-                     <span>Enable Autosave</span>
-                  </label>
-               </div>
-            </div>
-            <div class="modal-footer">
-               <button type="button" id="saveSettings" class="btn btn-primary">Save Settings</button>
-               <button type="button" id="resetSettings" class="btn btn-secondary">Reset to Defaults</button>
-            </div>
+      
+               <fieldset class="setting-group prefs">
+               <legend><h3>Preferences</h3></legend>
+               <label class="setting-checkbox">
+                  <input type="checkbox" id="lineNumbers" checked>
+                  <span>Show Line Numbers</span>
+               </label>
+      
+               <label class="setting-checkbox">
+                  <input type="checkbox" id="lineWrapping">
+                  <span>Line Wrapping</span>
+               </label>
+      
+               <label class="setting-checkbox">
+                  <input type="checkbox" id="matchBrackets" checked>
+                  <span>Match Brackets</span>
+               </label>
+      
+               <label class="setting-checkbox">
+                  <input type="checkbox" id="lintingEnabled">
+                  <span>Enable Linting</span>
+               </label>
+      
+               <label class="setting-checkbox">
+                  <input type="checkbox" id="autosaveEnabled">
+                  <span>Enable Autosave</span>
+               </label>
+               </fieldset>
+            </form>
+         </div>
+         <div class="modal-footer">
+            <button type="submit" form="settingsForm" id="saveSettings" class="btn btn-primary">Save Settings</button>
+            <button type="button" id="resetSettings" class="btn btn-secondary">Reset to Defaults</button>
+         </div>
          </div>
       </div>
+
       <!-- Scripts -->
       <script src="codemirror/codemirror.js"></script>
       <script src="codemirror/javascript.js"></script>
