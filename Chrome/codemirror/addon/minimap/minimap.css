@@ -1,0 +1,97 @@
+/* CodeMirror Minimap Styles */
+
+/* Hide CodeMirror's native scrollbars when minimap is active */
+.CodeMirror.has-minimap .CodeMirror-vscrollbar,
+.CodeMirror.has-minimap .CodeMirror-hscrollbar,
+.CodeMirror.has-minimap .CodeMirror-scrollbar-filler {
+  display: none !important;
+}
+
+/* Hide the gutter scrollbar filler */
+.CodeMirror.has-minimap .CodeMirror-gutter-filler {
+  display: none !important;
+}
+
+/* Ensure the editor content doesn't show scrollbars */
+.CodeMirror.has-minimap .CodeMirror-scroll {
+  overflow: hidden !important;
+}
+
+/* Hide any remaining scrollbars on the wrapper */
+.CodeMirror.has-minimap {
+  overflow: hidden !important;
+}
+
+.CodeMirror.has-minimap .CodeMirror-sizer {
+  overflow: hidden !important;
+}
+
+/* Minimap container styles */
+.CodeMirror-minimap {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.1);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 10;
+  cursor: pointer;
+  user-select: none;
+  overflow: hidden !important;
+  backdrop-filter: blur(2px);
+}
+
+/* Hide scrollbars on minimap and all child elements */
+.CodeMirror-minimap,
+.CodeMirror-minimap * {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE/Edge */
+}
+
+.CodeMirror-minimap::-webkit-scrollbar,
+.CodeMirror-minimap *::-webkit-scrollbar {
+  display: none !important; /* Chrome/Safari */
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Minimap canvas */
+.CodeMirror-minimap canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Viewport indicator */
+.CodeMirror-minimap-viewport {
+  position: absolute;
+  left: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+/* Remove the minimap scrollbar elements since we don't need them */
+.CodeMirror-minimap-scrollbar,
+.CodeMirror-minimap-scrollbar-thumb {
+  display: none !important;
+}
+
+/* Dark theme adjustments */
+.CodeMirror.cm-s-ayu-dark .CodeMirror-minimap,
+.CodeMirror.cm-s-ayu-mirage .CodeMirror-minimap {
+  background: rgba(0, 0, 0, 0.3);
+  border-left-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Light theme adjustments */
+.CodeMirror.cm-s-default .CodeMirror-minimap {
+  background: rgba(255, 255, 255, 0.8);
+  border-left-color: rgba(0, 0, 0, 0.1);
+}
+
+.CodeMirror.cm-s-default .CodeMirror-minimap-viewport {
+  background: rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.2);
+}

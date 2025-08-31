@@ -18,7 +18,8 @@ export class CodeEditorManager {
       tabSize: 2,
       lineNumbers: true,
       lineWrapping: false,
-      matchBrackets: true
+      matchBrackets: true,
+      minimap: true
     };
     
     this.currentSettings = {...this.defaultSettings};
@@ -70,6 +71,16 @@ export class CodeEditorManager {
       ],
       scrollbarStyle: "simple",
       extraKeys: this.getEditorKeybindings(),
+      minimap: this.currentSettings?.minimap !== false ? {
+        width: 120,
+        fontSize: 2,
+        showViewport: true,
+        viewportColor: 'rgba(255, 255, 255, 0.1)',
+        viewportBorderColor: 'rgba(255, 255, 255, 0.3)',
+        backgroundColor: 'rgba(0, 0, 0, 0.1)',
+        textColor: 'rgba(255, 255, 255, 0.6)',
+        updateDelay: 100
+      } : false,
     };
 
     this.codeEditor = CodeMirror.fromTextArea(
@@ -109,13 +120,14 @@ export class CodeEditorManager {
     const lineCount = this.codeEditor.lineCount();
     if (lineCount <= this.LARGE_FILE_LINE_COUNT) return;
 
-    // Disable heavy features
+    // Disable heavy features including minimap for large files
     this.codeEditor.setOption("lint", false);
     this.codeEditor.setOption("lineWrapping", false);
     this.codeEditor.setOption("foldGutter", false);
     this.codeEditor.setOption("matchBrackets", false);
     this.codeEditor.setOption("showTrailingSpace", false);
     this.codeEditor.setOption("autoCloseBrackets", false);
+    this.codeEditor.setOption("minimap", false);
     this.codeEditor.setOption("viewportMargin", 20); // keep a small margin around viewport
 
     // Remove fold gutter from the gutter list if present
@@ -150,7 +162,23 @@ export class CodeEditorManager {
       Tab: (cm) => this.handleTabKey(cm),
       "Ctrl-/": (cm) => cm.toggleComment({ indent: true }),
       "Cmd-/": (cm) => cm.toggleComment({ indent: true }),
+      "Ctrl-M": (cm) => this.toggleMinimap(cm),
+      "Cmd-M": (cm) => this.toggleMinimap(cm),
     };
+  }
+
+  toggleMinimap(cm) {
+    const minimap = cm.getOption('minimap');
+    cm.setOption('minimap', minimap ? false : {
+      width: 120,
+      fontSize: 2,
+      showViewport: true,
+      viewportColor: 'rgba(255, 255, 255, 0.1)',
+      viewportBorderColor: 'rgba(255, 255, 255, 0.3)',
+      backgroundColor: 'rgba(0, 0, 0, 0.1)',
+      textColor: 'rgba(255, 255, 255, 0.6)',
+      updateDelay: 100
+    });
   }
 
   // Settings Management
@@ -192,6 +220,24 @@ export class CodeEditorManager {
         themeLink.href = `codemirror/theme/${theme}.css`;
       }
       this.codeEditor.setOption('theme', theme);
+      refreshEditor();
+    }
+
+    if (settings.minimap !== undefined) {
+      if (settings.minimap && !this.largeFileOptimized) {
+        this.codeEditor.setOption('minimap', {
+          width: 120,
+          fontSize: 2,
+          showViewport: true,
+          viewportColor: 'rgba(255, 255, 255, 0.1)',
+          viewportBorderColor: 'rgba(255, 255, 255, 0.3)',
+          backgroundColor: 'rgba(0, 0, 0, 0.1)',
+          textColor: 'rgba(255, 255, 255, 0.6)',
+          updateDelay: 100
+        });
+      } else {
+        this.codeEditor.setOption('minimap', false);
+      }
       refreshEditor();
     }
 
