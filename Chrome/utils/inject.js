@@ -805,6 +805,12 @@ class ScriptInjector {
   }
 
   async injectInWorld(tabId, config, world) {
+    // Prevent injection into chrome:// URLs
+    if (config.url && config.url.startsWith('chrome://')) {
+      console.log('CodeTweak: Skipping injection into chrome:// URL:', config.url);
+      return false;
+    }
+
     // Ensure core GM classes are available in the target execution world first
     await chrome.scripting.executeScript({
       target: { tabId },
