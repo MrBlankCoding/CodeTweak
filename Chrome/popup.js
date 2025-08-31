@@ -61,20 +61,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       return targets.some((pattern) => urlMatchesPattern(url, pattern));
     });
 
+    // Hide empty state by default
+    emptyState.style.display = "none";
 
     if (matchingScripts.length === 0) {
-      emptyState.style.display = "flex";
-      emptyState.innerHTML = scripts.length
-        ? `
-        <div class="empty-icon">
-          <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <circle cx="11" cy="11" r="8"/>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-        </div>
-        <p>No scripts match this page.<br>Create a new script or visit a different page.</p>
-      `
-        : `
+      // Only show empty state if there are no scripts at all
+      if (scripts.length === 0) {
+        emptyState.style.display = "flex";
+        emptyState.innerHTML = `
         <div class="empty-icon">
           <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <path d="M14 2H6a2 2 0 0 0-2 2v16c0 1.1.9 2 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
@@ -83,6 +77,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         </div>
         <p><br>Create your first script to get started.</p>
       `;
+      } else {
+        // Show minimal message when scripts exist but don't match current page
+        emptyState.style.display = "flex";
+        emptyState.innerHTML = `
+        <p>No scripts for this page.<br>Create a new script or visit a different page.</p>
+      `;
+      }
       return;
     }
 
