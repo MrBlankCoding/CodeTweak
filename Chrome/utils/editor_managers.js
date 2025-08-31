@@ -567,8 +567,15 @@ export class URLManager extends BaseUIComponent {
   }
 
   addUrlToList(url) {
-    // Note: We don't need to validate URL here since it's already validated in addCurrentUrl
-    // This prevents duplicate error messages
+    // Prevent duplicates
+    if (this.elements.urlList) {
+      const existing = Array.from(this.elements.urlList.querySelectorAll('.url-item'))
+        .some(item => item.dataset.url === url);
+      if (existing) {
+        return false;
+      }
+    }
+
     try {
       const urlItem = document.createElement('div');
       urlItem.className = 'url-item';
@@ -722,8 +729,9 @@ export class ResourceManager extends BaseUIComponent {
     });
 
     this.addEventListener(this.elements.resourceList, 'click', (e) => {
-      if (e.target.classList.contains('remove-resource-btn')) {
-        this.removeResource(e.target.closest('.resource-item'));
+      const btn = e.target.closest('.remove-resource-btn, .remove-resource');
+      if (btn) {
+        this.removeResource(btn.closest('.resource-item'));
       }
     });
 

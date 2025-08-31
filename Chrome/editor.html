@@ -66,32 +66,37 @@
                <div class="sidebar-icon-bar">
                   <button class="sidebar-icon-btn active" data-section="info" title="Script Information">
                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"></path>
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
                      </svg>
                   </button>
                   <button class="sidebar-icon-btn" data-section="execution" title="Execution Settings">
                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
                      </svg>
                   </button>
                   <button class="sidebar-icon-btn" data-section="api" title="GM API Access">
                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 2 L12 22 M2 12 L22 12"></path>
+                        <polyline points="16 18 22 12 16 6"></polyline>
+                        <polyline points="8 6 2 12 8 18"></polyline>
                      </svg>
                      <div class="api-count-badge" id="apiCountBadge">0</div>
                   </button>
                   <button class="sidebar-icon-btn" data-section="requires" title="Required Scripts">
-                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="12 5 12 19"></polyline>
-                        <polyline points="5 12 19 12"></polyline>
+                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                        <polyline points="2 12 12 17 22 12"></polyline>
+                        <polyline points="2 17 12 22 22 17"></polyline>
                      </svg>
                   </button>
                   <button class="sidebar-icon-btn" data-section="resources" title="Script Resources">
                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="7 10 12 15 17 10"></polyline>
-                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                        <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+                        <path d="M3 5v14c0 1.657 4.03 3 9 3s9-1.343 9-3V5"></path>
+                        <path d="M21 8c0 1.657-4.03 3-9 3S3 9.657 3 8"></path>
+                        <path d="M21 12c0 1.657-4.03 3-9 3s-9-1.343-9-3"></path>
                      </svg>
                   </button>
                </div>

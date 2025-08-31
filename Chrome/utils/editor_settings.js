@@ -388,9 +388,19 @@ export class CodeEditorManager {
   }
 
   //lint options
-  getLintOptions(enable) {
+  getLintOptions(enable, enabledApiNames = []) {
     // Skip linting entirely for large files to avoid freezes
     if (this.largeFileOptimized || !enable || typeof window.JSHINT === "undefined") return false;
+
+    // Build globals map including enabled GM_* APIs
+    const globals = {
+      chrome: false,
+      CodeMirror: false,
+      GM: false,
+    };
+    enabledApiNames.forEach((name) => {
+      globals[name] = false; // treat as read-only globals
+    });
 
     return {
       getAnnotations: (text) => {
@@ -411,11 +421,7 @@ export class CodeEditorManager {
             sub: true,
             shadow: false,
             strict: true,
-            globals: {
-              chrome: false,
-              CodeMirror: false,
-              GM: false,
-            },
+            globals,
           })
         ) {
           const jshintErrors = window.JSHINT.errors;
@@ -440,7 +446,7 @@ export class CodeEditorManager {
 
   toggleLinting(enabled) {
     this.state.lintingEnabled = enabled !== undefined ? enabled : !this.state.lintingEnabled;
-    const lintOptions = this.getLintOptions(this.state.lintingEnabled);
+    const lintOptions = this.getLintOptions(this.state.lintingEnabled, this.getEnabledGmApis());
     this.codeEditor.setOption("lint", lintOptions);
     
     // Force a re-lint when enabling

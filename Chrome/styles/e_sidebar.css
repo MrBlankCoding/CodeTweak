@@ -140,8 +140,13 @@
   display: flex;
   opacity: 1;
   transform: translateX(0);
-  width: 280px;
-  min-width: 280px;
+  width: calc(var(--sidebar-width, 328px) - 48px);
+  min-width: calc(var(--sidebar-width, 328px) - 48px);
+  /* Compact control density scoped to sidebar */
+  --form-element-height: 34px;
+  --form-element-padding: 6px 10px;
+  --button-height: 30px;
+  --button-padding: 6px 10px;
 }
 
 /* Hide content area when no panel is active */
@@ -167,14 +172,14 @@
 }
 
 .panel-header {
-  padding: var(--space-lg) var(--space-md) var(--space-md);
+  padding: var(--space-md) var(--space-sm) var(--space-sm);
   background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(99, 102, 241, 0.02) 100%);
   border-bottom: 1px solid var(--border-primary);
   border-left: 3px solid var(--primary);
 }
 
 .panel-title {
-  font-size: var(--text-base);
+  font-size: var(--text-sm);
   font-weight: var(--font-medium);
   color: var(--text-primary);
   margin: 0 0 var(--space-xs) 0;
@@ -190,7 +195,7 @@
 .panel-content {
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-md);
+  padding: var(--space-sm);
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
@@ -212,17 +217,52 @@
   background: var(--scrollbar-thumb-hover);
 }
 
+/* Execution panel-specific spacing improvements */
+#execution-panel .panel-content {
+  padding: var(--space-md);
+}
+
+#execution-panel .form-group {
+  margin-bottom: var(--space-md);
+}
+
+#execution-panel .url-input-group {
+  margin-bottom: var(--space-md);
+}
+
+#execution-panel .pattern-builder {
+  gap: var(--space-md);
+}
+
+#execution-panel .generated-pattern-group {
+  margin-top: var(--space-md);
+  gap: var(--space-md);
+}
+
+/* Script Information panel-specific spacing improvements */
+#info-panel .panel-content {
+  padding: var(--space-md);
+}
+
+#info-panel .form-group {
+  margin-bottom: var(--space-md);
+}
+
+#info-panel .form-row {
+  gap: var(--space-sm);
+}
+
 /* Form Layout Improvements */
 .form-grid {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-sm);
 }
 
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-sm);
+  gap: var(--space-xs);
 }
 
 .form-group {
@@ -292,7 +332,7 @@
 
 .form-textarea {
   resize: vertical;
-  min-height: 80px;
+  min-height: 64px;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
 }
@@ -301,7 +341,7 @@
 .api-categories {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-sm);
 }
 
 .api-category {
@@ -313,7 +353,7 @@
 
 .category-title {
   margin: 0;
-  padding: var(--space-md);
+  padding: var(--space-sm);
   background: var(--bg-tertiary);
   border-bottom: 1px solid var(--border-primary);
   font-size: var(--text-xs);
@@ -325,11 +365,11 @@
 
 .api-list {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-xs);
   padding: var(--space-sm);
-  max-height: 200px;
-  overflow-y: auto;
+  max-height: none;
+  overflow-y: visible;
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
@@ -355,7 +395,7 @@
   display: flex;
   align-items: center;
   margin: 0;
-  padding: var(--space-sm);
+  padding: var(--space-xs);
   cursor: pointer;
   border-radius: var(--radius-sm);
   transition: var(--transition-colors);
@@ -417,7 +457,7 @@
 .url-input-group,
 .resource-input-group {
   display: flex;
-  gap: var(--space-sm);
+  gap: var(--space-xs);
   margin-bottom: var(--space-sm);
   align-items: flex-end;
 }
@@ -428,10 +468,13 @@
 }
 
 .resource-input-group {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  gap: var(--space-sm);
-  align-items: end;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-xs);
+}
+
+.resource-input-group .add-btn {
+  width: 100%;
 }
 
 /* Enhanced Lists with Better Visual Hierarchy */
@@ -440,8 +483,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
-  max-height: 120px;
-  overflow-y: auto;
+  max-height: none;
+  overflow-y: visible;
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
@@ -472,7 +515,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-md);
+  padding: var(--space-sm);
   background: var(--bg-tertiary);
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-md);
@@ -513,6 +556,27 @@
 
 .remove-url-btn:hover,
 .remove-resource-btn:hover {
+  color: var(--error);
+  background: var(--error-light);
+}
+
+/* Generic remove button styling (used in lists) */
+.remove-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition-all);
+  padding: 0;
+  border-radius: var(--radius-sm);
+}
+
+.remove-btn:hover {
   color: var(--error);
   background: var(--error-light);
 }

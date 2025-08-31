@@ -659,6 +659,11 @@ class ScriptEditor {
     this.elements.scriptIcon.value = script.icon || "";
     this.codeEditorManager.setValue(script.code || "");
 
+    // Reset the URL list before adding to avoid duplicates when reloading/editing
+    if (this.elements.urlList) {
+      this.elements.urlList.innerHTML = "";
+    }
+    
     script.targetUrls?.forEach((url) => this.ui.addUrlToList(url));
 
     // Set the sidebar checkboxes -> Not clean but its okay
