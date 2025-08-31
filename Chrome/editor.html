@@ -16,7 +16,6 @@
       <link rel="stylesheet" href="codemirror/theme/default.css">
       <link rel="stylesheet" href="codemirror/addon/scroll/simplescrollbars.css">
       <link rel="stylesheet" href="codemirror/addon/lint/lint.css">
-      <script defer src="utils/i18n.js"></script>
    </head>
    <body>
       <div class="app-container">
@@ -70,242 +69,293 @@
          <div class="main-content">
             <!-- Sidebar -->
             <aside id="sidebar" class="sidebar">
+               <!-- Sidebar Header -->
+               <div class="sidebar-header">
+                  <div class="sidebar-title">Script Configuration</div>
+                  <div class="sidebar-subtitle">Configure your userscript settings</div>
+               </div>
+               
                <div class="sidebar-content">
-                  <!-- Info-->
-                  <div class="settings-section collapsible" data-section="info">
-                     <button class="section-header" type="button">
-                        <div class="section-icon">
-                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                              <circle cx="12" cy="12" r="3"></circle>
-                              <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"></path>
+                  <!-- Primary Configuration Group -->
+                  <div class="config-group primary-config">
+                     <!-- Script Information -->
+                     <div class="settings-section collapsible" data-section="info">
+                        <button class="section-header" type="button" aria-expanded="true" aria-controls="info-content">
+                           <div class="section-icon">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                 <circle cx="12" cy="12" r="3"></circle>
+                                 <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"></path>
+                              </svg>
+                           </div>
+                           <span class="section-title">Script Information</span>
+                           <svg class="section-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <polyline points="6 9 12 15 18 9"></polyline>
                            </svg>
-                        </div>
-                        <span class="section-title">Script Information</span>
-                        <svg class="section-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                           <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
-                     </button>
-                     <div class="section-content">
-                        <div class="form-group">
-                           <label for="scriptName" class="form-label">
-                           <span>Script Name</span>
-                           <span class="label-required">*</span>
-                           </label>
-                           <input type="text" id="scriptName" class="form-input" placeholder="My Awesome Script" required>
-                        </div>
-                        <div class="form-group">
-                           <label for="scriptAuthor" class="form-label">Author</label>
-                           <input type="text" id="scriptAuthor" class="form-input" placeholder="Your Name">
-                        </div>
-                        <div class="form-group">
-                           <label for="scriptVersion" class="form-label">Version</label>
-                           <input type="text" id="scriptVersion" class="form-input" placeholder="1.0.0" pattern="[0-9]+\.[0-9]+\.[0-9]+">
-                        </div>
-                        <div class="form-group">
-                           <label for="scriptDescription" class="form-label">Description</label>
-                           <textarea id="scriptDescription" class="form-textarea" placeholder="Describe what your script does..." rows="3"></textarea>
-                        </div>
-                        <div class="form-group">
-                           <label for="scriptLicense" class="form-label">License</label>
-                           <input type="text" id="scriptLicense" class="form-input" placeholder="e.g., MIT, GPL-3.0, CC-BY-4.0">
-                        </div>
-                        <div class="form-group">
-                           <label for="scriptIcon" class="form-label">Icon URL</label>
-                           <input type="url" id="scriptIcon" class="form-input" placeholder="https://example.com/icon.png">
-                        </div>
-                     </div>
-                  </div>
-                  <!-- GM API Access -->
-                  <div class="settings-section collapsible" data-section="api">
-                     <button class="section-header" type="button">
-                        <div class="section-icon">
-                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                              <path d="M12 2 L12 22 M2 12 L22 12"></path> 
-                           </svg>
-                        </div>
-                        <span class="section-title">GM API Access</span>
-                        <svg class="section-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                           <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
-                     </button>
-                     <div class="section-content">
-                        <div class="form-group">
-                           <input type="text" id="apiSearch" class="form-input api-search" placeholder="Search GM APIs...">
-                        </div>
-                        <div class="api-list">
-                           <div class="form-group-checkbox">
-                              <input type="checkbox" id="gmSetValue" class="form-checkbox">
-                              <label for="gmSetValue">GM_setValue</label>
-                           </div>
-                           <div class="form-group-checkbox">
-                              <input type="checkbox" id="gmGetValue" class="form-checkbox">
-                              <label for="gmGetValue">GM_getValue</label>
-                           </div>
-                           <div class="form-group-checkbox">
-                              <input type="checkbox" id="gmDeleteValue" class="form-checkbox">
-                              <label for="gmDeleteValue">GM_deleteValue</label>
-                           </div>
-                           <div class="form-group-checkbox">
-                              <input type="checkbox" id="gmListValues" class="form-checkbox">
-                              <label for="gmListValues">GM_listValues</label>
-                           </div>
-                           <div class="form-group-checkbox">
-                              <input type="checkbox" id="gmOpenInTab" class="form-checkbox">
-                              <label for="gmOpenInTab">GM_openInTab</label>
-                           </div>
-                           <div class="form-group-checkbox">
-                              <input type="checkbox" id="gmNotification" class="form-checkbox">
-                              <label for="gmNotification">GM_notification</label>
-                           </div>
-                           <div class="form-group-checkbox">
-                              <input type="checkbox" id="gmGetResourceText" class="form-checkbox">
-                              <label for="gmGetResourceText">GM_getResourceText</label>
-                           </div>
-                           <div class="form-group-checkbox">
-                              <input type="checkbox" id="gmGetResourceURL" class="form-checkbox">
-                              <label for="gmGetResourceURL">GM_getResourceURL</label>
-                           </div>
-                           <div class="form-group-checkbox">
-                              <input type="checkbox" id="gmAddStyle" class="form-checkbox">
-                              <label for="gmAddStyle">GM_addStyle</label>
-                           </div>
-                           <div class="form-group-checkbox">
-                              <input type="checkbox" id="gmRegisterMenuCommand" class="form-checkbox">
-                              <label for="gmRegisterMenuCommand">GM_registerMenuCommand</label>
-                           </div>
-                           <div class="form-group-checkbox">
-                              <input type="checkbox" id="gmSetClipboard" class="form-checkbox">
-                              <label for="gmSetClipboard">GM_setClipboard</label>
-                           </div>
-                           <div class="form-group-checkbox">
-                              <input type="checkbox" id="gmXmlHttpRequest" class="form-checkbox">
-                              <label for="gmXmlHttpRequest">GM_xmlHttpRequest</label>
+                        </button>
+                        <div class="section-content" id="info-content">
+                           <div class="form-grid">
+                              <div class="form-group">
+                                 <label for="scriptName" class="form-label">
+                                    <span>Script Name</span>
+                                    <span class="label-required">*</span>
+                                 </label>
+                                 <input type="text" id="scriptName" class="form-input" placeholder="My Awesome Script" required aria-describedby="scriptName-help">
+                                 <small id="scriptName-help" class="form-help">A unique name for your script</small>
+                              </div>
+                              
+                              <div class="form-row">
+                                 <div class="form-group">
+                                    <label for="scriptAuthor" class="form-label">Author</label>
+                                    <input type="text" id="scriptAuthor" class="form-input" placeholder="Your Name">
+                                 </div>
+                                 <div class="form-group">
+                                    <label for="scriptVersion" class="form-label">Version</label>
+                                    <input type="text" id="scriptVersion" class="form-input" placeholder="1.0.0" pattern="[0-9]+\.[0-9]+\.[0-9]+">
+                                 </div>
+                              </div>
+                              
+                              <div class="form-group">
+                                 <label for="scriptDescription" class="form-label">Description</label>
+                                 <textarea id="scriptDescription" class="form-textarea" placeholder="Describe what your script does..." rows="3"></textarea>
+                              </div>
+                              
+                              <div class="form-row">
+                                 <div class="form-group">
+                                    <label for="scriptLicense" class="form-label">License</label>
+                                    <input type="text" id="scriptLicense" class="form-input" placeholder="e.g., MIT, GPL-3.0">
+                                 </div>
+                                 <div class="form-group">
+                                    <label for="scriptIcon" class="form-label">Icon URL</label>
+                                    <input type="url" id="scriptIcon" class="form-input" placeholder="https://example.com/icon.png">
+                                 </div>
+                              </div>
                            </div>
                         </div>
                      </div>
-                  </div>
-                  <!-- Script Requires -->
-                  <div class="settings-section collapsible" data-section="requires" id="requiresSection">
-                     <button class="section-header" type="button">
-                        <div class="section-icon">
-                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                              <polyline points="12 5 12 19"></polyline>
-                              <polyline points="5 12 19 12"></polyline>
-                           </svg>
-                        </div>
-                        <span class="section-title">Required Scripts</span>
-                        <svg class="section-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                           <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
-                     </button>
-                     <div class="section-content">
-                        <div class="form-group">
-                           <label class="form-label">Add Require URL</label>
-                           <div class="resource-input-group">
-                              <input type="url" id="requireURL" class="form-input" placeholder="https://example.com/library.js">
-                              <button type="button" id="addRequireBtn" class="add-btn">
-                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                 </svg>
-                                 Add
-                              </button>
+
+                     <!-- Execution Settings -->
+                     <div class="settings-section collapsible" data-section="execution">
+                        <button class="section-header" type="button" aria-expanded="true" aria-controls="execution-content">
+                           <div class="section-icon">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                 <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                              </svg>
                            </div>
-                           <div id="requireList" class="resource-list"></div>
-                        </div>
-                     </div>
-                  </div>
-                  <!-- Script Resources -->
-                  <div class="settings-section collapsible hidden" data-section="resources" id="resourcesSection">
-                     <button class="section-header" type="button">
-                        <div class="section-icon">
-                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                              <polyline points="7 10 12 15 17 10"></polyline>
-                              <line x1="12" y1="15" x2="12" y2="3"></line>
+                           <span class="section-title">Execution Settings</span>
+                           <svg class="section-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <polyline points="6 9 12 15 18 9"></polyline>
                            </svg>
-                        </div>
-                        <span class="section-title">Script Resources</span>
-                        <svg class="section-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                           <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
-                     </button>
-                     <div class="section-content">
-                        <div class="form-group">
-                           <label class="form-label">Add Resource</label>
-                           <div class="resource-input-group">
-                              <input type="text" id="resourceName" class="form-input" placeholder="Resource Name">
-                              <input type="url" id="resourceURL" class="form-input" placeholder="https://example.com/resource.js">
-                              <button type="button" id="addResourceBtn" class="add-btn">
-                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                 </svg>
-                                 Add
-                              </button>
+                        </button>
+                        <div class="section-content" id="execution-content">
+                           <div class="form-group">
+                              <label for="targetUrl" class="form-label">
+                                 <span>Target URLs</span>
+                                 <span class="label-required">*</span>
+                              </label>
+                              <div class="url-input-group">
+                                 <input type="url" id="targetUrl" class="form-input" placeholder="https://example.com/*" required>
+                                 <button type="button" id="addUrlBtn" class="add-btn" title="Add URL pattern">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                       <line x1="12" y1="5" x2="12" y2="19"></line>
+                                       <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                    Add
+                                 </button>
+                              </div>
+                              <div id="urlList" class="url-list" role="list" aria-label="Target URL patterns"></div>
                            </div>
-                           <div id="resourceList" class="resource-list"></div>
-                        </div>
-                     </div>
-                  </div>
-                  <!-- Exec -->
-                  <div class="settings-section collapsible" data-section="execution">
-                     <button class="section-header" type="button">
-                        <div class="section-icon">
-                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                              <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                           </svg>
-                        </div>
-                        <span class="section-title">Execution Settings</span>
-                        <svg class="section-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                           <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
-                     </button>
-                     <div class="section-content">
-                        <div class="form-group">
-                           <label for="targetUrl" class="form-label">
-                           <span>Target URLs</span>
-                           <span class="label-required">*</span>
-                           </label>
-                           <div class="url-input-group">
-                              <input type="url" id="targetUrl" class="form-input" placeholder="https://example.com/*" required>
-                              <button type="button" id="addUrlBtn" class="add-btn">
-                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                 </svg>
-                                 Add
-                              </button>
+                           
+                           <div class="form-group">
+                              <label class="form-label">Pattern Builder</label>
+                              <div class="pattern-builder">
+                                 <input type="url" id="patternBaseUrl" class="form-input" placeholder="https://example.com">
+                                 <select id="patternScope" class="form-select">
+                                    <option value="domain" selected>Any path on domain</option>
+                                    <option value="subdomain">Any sub-domain</option>
+                                    <option value="exact">Exact page</option>
+                                 </select>
+                                 <button type="button" id="generatePatternBtn" class="add-btn">Generate</button>
+                              </div>
+                              <div class="generated-pattern-group hidden" id="generatedPatternGroup">
+                                 <input type="text" id="generatedPattern" class="form-input" readonly>
+                                 <button type="button" id="insertPatternBtn" class="add-btn">Insert</button>
+                              </div>
                            </div>
-                           <div id="urlList" class="url-list"></div>
-                        </div>
-                        <div class="form-group">
-                           <label class="form-label">Pattern Builder</label>
-                           <div class="pattern-builder">
-                              <input type="url" id="patternBaseUrl" class="form-input" placeholder="https://example.com">
-                              <select id="patternScope" class="form-select">
-                                 <option value="domain" selected>Any path on domain</option>
-                                 <option value="subdomain">Any sub-domain</option>
-                                 <option value="exact">Exact page</option>
+                           
+                           <div class="form-group">
+                              <label for="runAt" class="form-label">Run Timing</label>
+                              <select id="runAt" class="form-select enhanced-select">
+                                 <option value="document_start">Document Start</option>
+                                 <option value="document_end">Dom Loaded</option>
+                                 <option value="document_idle" selected>Page Loaded</option>
                               </select>
-                              <button type="button" id="generatePatternBtn" class="add-btn">Generate</button>
-                           </div>
-                           <div class="generated-pattern-group hidden" id="generatedPatternGroup">
-                              <input type="text" id="generatedPattern" class="form-input" readonly>
-                              <button type="button" id="insertPatternBtn" class="add-btn">Insert</button>
                            </div>
                         </div>
-                        <div class="form-group">
-                           <label for="runAt" class="form-label">Run Timing</label>
-                           <select id="runAt" class="form-select">
-                              <option value="document_start">ASAP</option>
-                              <option value="document_end">Dom loaded</option>
-                              <option value="document_idle" selected>Page loaded</option>
-                           </select>
+                     </div>
+                  </div>
+
+                  <!-- Secondary Configuration Group -->
+                  <div class="config-group secondary-config">
+                     <!-- GM API Access -->
+                     <div class="settings-section collapsible" data-section="api">
+                        <button class="section-header" type="button" aria-expanded="false" aria-controls="api-content">
+                           <div class="section-icon">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                 <path d="M12 2 L12 22 M2 12 L22 12"></path> 
+                              </svg>
+                           </div>
+                           <span class="section-title">GM API Access</span>
+                           <div class="api-count-badge" id="apiCountBadge">0</div>
+                           <svg class="section-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                              <polyline points="6 9 12 15 18 9"></polyline>
+                           </svg>
+                        </button>
+                        <div class="section-content" id="api-content">
+                           <div class="form-group">
+                              <input type="text" id="apiSearch" class="form-input api-search" placeholder="Search GM APIs..." aria-label="Search GM APIs">
+                           </div>
+                           
+                           <div class="api-categories">
+                              <div class="api-category">
+                                 <h4 class="category-title">Storage & Data</h4>
+                                 <div class="api-list" role="group" aria-labelledby="storage-apis">
+                                    <div class="form-group-checkbox">
+                                       <input type="checkbox" id="gmSetValue" class="form-checkbox">
+                                       <label for="gmSetValue">GM_setValue</label>
+                                    </div>
+                                    <div class="form-group-checkbox">
+                                       <input type="checkbox" id="gmGetValue" class="form-checkbox">
+                                       <label for="gmGetValue">GM_getValue</label>
+                                    </div>
+                                    <div class="form-group-checkbox">
+                                       <input type="checkbox" id="gmDeleteValue" class="form-checkbox">
+                                       <label for="gmDeleteValue">GM_deleteValue</label>
+                                    </div>
+                                    <div class="form-group-checkbox">
+                                       <input type="checkbox" id="gmListValues" class="form-checkbox">
+                                       <label for="gmListValues">GM_listValues</label>
+                                    </div>
+                                 </div>
+                              </div>
+                              
+                              <div class="api-category">
+                                 <h4 class="category-title">Browser & UI</h4>
+                                 <div class="api-list" role="group" aria-labelledby="browser-apis">
+                                    <div class="form-group-checkbox">
+                                       <input type="checkbox" id="gmOpenInTab" class="form-checkbox">
+                                       <label for="gmOpenInTab">GM_openInTab</label>
+                                    </div>
+                                    <div class="form-group-checkbox">
+                                       <input type="checkbox" id="gmNotification" class="form-checkbox">
+                                       <label for="gmNotification">GM_notification</label>
+                                    </div>
+                                    <div class="form-group-checkbox">
+                                       <input type="checkbox" id="gmAddStyle" class="form-checkbox">
+                                       <label for="gmAddStyle">GM_addStyle</label>
+                                    </div>
+                                    <div class="form-group-checkbox">
+                                       <input type="checkbox" id="gmRegisterMenuCommand" class="form-checkbox">
+                                       <label for="gmRegisterMenuCommand">GM_registerMenuCommand</label>
+                                    </div>
+                                 </div>
+                              </div>
+                              
+                              <div class="api-category">
+                                 <h4 class="category-title">Resources & Network</h4>
+                                 <div class="api-list" role="group" aria-labelledby="resource-apis">
+                                    <div class="form-group-checkbox">
+                                       <input type="checkbox" id="gmGetResourceText" class="form-checkbox">
+                                       <label for="gmGetResourceText">GM_getResourceText</label>
+                                    </div>
+                                    <div class="form-group-checkbox">
+                                       <input type="checkbox" id="gmGetResourceURL" class="form-checkbox">
+                                       <label for="gmGetResourceURL">GM_getResourceURL</label>
+                                    </div>
+                                    <div class="form-group-checkbox">
+                                       <input type="checkbox" id="gmXmlhttpRequest" class="form-checkbox">
+                                       <label for="gmXmlhttpRequest">GM_xmlhttpRequest</label>
+                                    </div>
+                                    <div class="form-group-checkbox">
+                                       <input type="checkbox" id="gmSetClipboard" class="form-checkbox">
+                                       <label for="gmSetClipboard">GM_setClipboard</label>
+                                    </div>
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+
+                     <!-- Dependencies Group -->
+                     <div class="dependencies-group">
+                        <!-- Script Requires -->
+                        <div class="settings-section collapsible" data-section="requires" id="requiresSection">
+                           <button class="section-header" type="button" aria-expanded="false" aria-controls="requires-content">
+                              <div class="section-icon">
+                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="12 5 12 19"></polyline>
+                                    <polyline points="5 12 19 12"></polyline>
+                                 </svg>
+                              </div>
+                              <span class="section-title">Required Scripts</span>
+                              <svg class="section-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                 <polyline points="6 9 12 15 18 9"></polyline>
+                              </svg>
+                           </button>
+                           <div class="section-content" id="requires-content">
+                              <div class="form-group">
+                                 <label class="form-label">Add Require URL</label>
+                                 <div class="resource-input-group">
+                                    <input type="url" id="requireURL" class="form-input" placeholder="https://example.com/library.js">
+                                    <button type="button" id="addRequireBtn" class="add-btn" title="Add required script">
+                                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                          <line x1="12" y1="5" x2="12" y2="19"></line>
+                                          <line x1="5" y1="12" x2="19" y2="12"></line>
+                                       </svg>
+                                       Add
+                                    </button>
+                                 </div>
+                                 <div id="requireList" class="resource-list" role="list" aria-label="Required scripts"></div>
+                              </div>
+                           </div>
+                        </div>
+
+                        <!-- Script Resources -->
+                        <div class="settings-section collapsible hidden" data-section="resources" id="resourcesSection">
+                           <button class="section-header" type="button" aria-expanded="false" aria-controls="resources-content">
+                              <div class="section-icon">
+                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                 </svg>
+                              </div>
+                              <span class="section-title">Script Resources</span>
+                              <svg class="section-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                 <polyline points="6 9 12 15 18 9"></polyline>
+                              </svg>
+                           </button>
+                           <div class="section-content" id="resources-content">
+                              <div class="form-group">
+                                 <label class="form-label">Add Resource</label>
+                                 <div class="resource-input-group">
+                                    <input type="text" id="resourceName" class="form-input" placeholder="Resource Name">
+                                    <input type="url" id="resourceURL" class="form-input" placeholder="https://example.com/resource.js">
+                                    <button type="button" id="addResourceBtn" class="add-btn" title="Add resource">
+                                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                          <line x1="12" y1="5" x2="12" y2="19"></line>
+                                          <line x1="5" y1="12" x2="19" y2="12"></line>
+                                       </svg>
+                                       Add
+                                    </button>
+                                 </div>
+                                 <div id="resourceList" class="resource-list" role="list" aria-label="Script resources"></div>
+                              </div>
+                           </div>
                         </div>
                      </div>
                   </div>
                </div>
+               
                <div class="sidebar-footer">
                   <button id="helpButton" class="help-button" title="Keyboard Shortcuts & Help">
                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -486,7 +536,7 @@
                       <td>Copies data to the clipboard.</td>
                     </tr>
                     <tr>
-                      <td><code>GM_xmlHttpRequest</code></td>
+                      <td><code>GM_xmlhttpRequest</code></td>
                       <td>Makes cross-origin HTTP requests.</td>
                     </tr>
                   </tbody>

@@ -3,7 +3,6 @@
   "name": "CodeTweak",
   "version": "1.0.0",
   "description": "Inject custom JavaScript code into specific websites based on user-defined settings",
-  "default_locale": "en",
   "permissions": [
     "storage",
     "tabs",

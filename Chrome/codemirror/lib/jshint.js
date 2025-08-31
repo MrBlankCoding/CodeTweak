@@ -27516,7 +27516,7 @@ if (typeof window === "undefined") window = {};
             Worker: false,
             XDomainRequest: false,
             XMLDocument: false,
-            XMLHttpRequest: false,
+            XMLhttpRequest: false,
             XMLSerializer: false,
             XPathEvaluator: false,
             XPathException: false,

@@ -18,8 +18,7 @@ function parseUserScriptMetadata(content) {
     GM_setClipboard: "gmSetClipboard",
     GM_addStyle: "gmAddStyle",
     GM_registerMenuCommand: "gmRegisterMenuCommand",
-    GM_xmlHttpRequest: "gmXmlHttpRequest",
-    GM_xmlhttpRequest: "gmXmlHttpRequest",
+    GM_xmlhttpRequest: "gmXmlhttpRequest",
     unsafeWindow: "unsafeWindow",
 
     // GM. style (modern)
@@ -34,7 +33,7 @@ function parseUserScriptMetadata(content) {
     "GM.setClipboard": "gmSetClipboard",
     "GM.addStyle": "gmAddStyle",
     "GM.registerMenuCommand": "gmRegisterMenuCommand",
-    "GM.xmlHttpRequest": "gmXmlHttpRequest",
+    "GM.xmlhttpRequest": "gmXmlhttpRequest",
   };
 
   const metaMatch = content.match(/==UserScript==([\s\S]*?)==\/UserScript==/);
@@ -125,7 +124,7 @@ const gmApiFlagToGrant = {
   gmSetClipboard: "GM_setClipboard",
   gmAddStyle: "GM_addStyle",
   gmRegisterMenuCommand: "GM_registerMenuCommand",
-  gmXmlHttpRequest: "GM_xmlHttpRequest",
+  gmXmlhttpRequest: "GM_xmlhttpRequest",
   unsafeWindow: "unsafeWindow",
 };
 

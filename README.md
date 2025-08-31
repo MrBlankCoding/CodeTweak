@@ -1,6 +1,11 @@
 # CodeTweak
 
-**CodeTweak** is a lightweight, user script manager and editor. Designed to be a modern version of tampermonkey and to support manifest v3 unlike violent monkey. 
+**CodeTweak** is a modern user script manager and JS editor designed as a modern alternative to Tampermonkey.
+
+---
+
+## Description
+CodeTweak is fully open source and provides support for manifest v3. The code editor offers features like linting, formatting, basic autocomplete, and syntax highlighting. CodeTweak supports all the safe GM APIs, and url matching. Users can also install scripts directly from Greasy Fork and manage them on the dashboard. The extension is also privacy focused and we do not track, collect or sell user data. All permissions are implemented for GM API support.
 
 ---
 
@@ -19,8 +24,8 @@
 - **Code editor ✓**
 - **Greasy Fork Integration ✓**
 - **Themeing ✓**
-- **FireFox support ✗**
+- **FireFox support ✓**
 - **Version control ✗**
 
 ## Contributing
-PLEASE I NEED HELP
+Anyone is welcome

@@ -197,14 +197,11 @@ class GMAPIRegistry {
   }
 
   registerNetworkAPIs(enabledApis) {
-    if (enabledApis.gmXmlHttpRequest) {
-      const xmlHttpRequest = (details = {}) =>
-        this.createXMLHttpRequest(details);
-      window.GM_xmlHttpRequest = xmlHttpRequest;
-      window.GM.xmlHttpRequest = xmlHttpRequest;
-      // Alias with lowercase 'h' for widespread script compatibility
-      window.GM_xmlhttpRequest = xmlHttpRequest;
-      window.GM.xmlhttpRequest = xmlHttpRequest;
+    if (enabledApis.gmXmlhttpRequest) {
+      const xmlhttpRequest = (details = {}) =>
+        this.createXMLhttpRequest(details);
+      window.GM_xmlhttpRequest = xmlhttpRequest;
+      window.GM.xmlhttpRequest = xmlhttpRequest;
     }
 
     if (enabledApis.gmSetClipboard) {
@@ -252,22 +249,22 @@ class GMAPIRegistry {
     );
   }
 
-  createXMLHttpRequest(details) {
+  createXMLhttpRequest(details) {
     if (typeof details !== "object") {
-      throw new Error("GM_xmlHttpRequest: details must be an object");
+      throw new Error("GM_xmlhttpRequest: details must be an object");
     }
 
     const { callbacks, cloneableDetails } =
       this.separateCallbacksFromDetails(details);
 
     return this.bridge
-      .call("xmlHttpRequest", { details: cloneableDetails })
+      .call("xmlhttpRequest", { details: cloneableDetails })
       .then((response) => {
         if (callbacks.onload) {
           try {
             callbacks.onload(response);
           } catch (error) {
-            console.error("GM_xmlHttpRequest onload error:", error);
+            console.error("GM_xmlhttpRequest onload error:", error);
           }
         }
         return response;
@@ -278,7 +275,7 @@ class GMAPIRegistry {
             callbacks.onerror(error);
           } catch (callbackError) {
             console.error(
-              "GM_xmlHttpRequest onerror callback failed:",
+              "GM_xmlhttpRequest onerror callback failed:",
               callbackError
             );
           }
@@ -438,7 +435,9 @@ class ExternalScriptLoader {
       script.onload = resolve;
       script.onerror = () =>
         reject(new Error(`Failed to load external script: ${url}`));
-      (document.head || document.documentElement).appendChild(script);
+      (document.head || document.documentElement || document.body).appendChild(
+        script
+      );
     });
   }
 }
@@ -622,6 +621,7 @@ async function executeUserScriptWithDependencies(
         } catch (_e) {
           console.error("Failed to create trusted script URL:", _e);
           console.warn("Falling back to raw URL.");
+          // ignore, fall back to raw URL
           trustedSrc = blobUrl;
         }
       }
@@ -761,7 +761,7 @@ class ScriptInjector {
       gmSetClipboard: Boolean(script.gmSetClipboard),
       gmAddStyle: Boolean(script.gmAddStyle),
       gmRegisterMenuCommand: Boolean(script.gmRegisterMenuCommand),
-      gmXmlHttpRequest: Boolean(script.gmXmlHttpRequest),
+      gmXmlhttpRequest: Boolean(script.gmXmlhttpRequest),
     };
 
     const resourceManager = ResourceManager.fromScript(script);

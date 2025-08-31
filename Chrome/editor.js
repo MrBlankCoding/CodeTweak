@@ -102,11 +102,11 @@ class ScriptEditor {
         name: "GM_registerMenuCommand",
         el: "gmRegisterMenuCommand",
       },
-      GM_xmlHttpRequest: {
+      GM_xmlhttpRequest: {
         signature:
-          "declare function GM_xmlHttpRequest(details: { method: string, url: string, data?: any, headers?: any, timeout?: number, responseType?: string, onload?: Function, onerror?: Function, onprogress?: Function }): void;",
-        name: "GM_xmlHttpRequest",
-        el: "gmXmlHttpRequest",
+          "declare function GM_xmlhttpRequest(details: { method: string, url: string, data?: any, headers?: any, timeout?: number, responseType?: string, onload?: Function, onerror?: Function, onprogress?: Function }): void;",
+        name: "GM_xmlhttpRequest",
+        el: "gmXmlhttpRequest",
       },
     };
 
@@ -129,7 +129,6 @@ class ScriptEditor {
     if (this.state.isAutosaveEnabled || force) {
       this.state.autosaveTimeout = setTimeout(async () => {
         if (this.state.hasUnsavedChanges && this.state.codeEditor) {
-          console.log("Autosaving due to debounced request...");
           try {
             await this.saveScript(true);
 
@@ -193,7 +192,7 @@ class ScriptEditor {
       "gmSetClipboard",
       "gmAddStyle",
       "gmRegisterMenuCommand",
-      "gmXmlHttpRequest",
+      "gmXmlhttpRequest",
       "resourceName",
       "resourceURL",
       "addResourceBtn",
@@ -649,8 +648,8 @@ class ScriptEditor {
       this.elements.gmAddStyle.checked = !!script.gmAddStyle;
     if (this.elements.gmRegisterMenuCommand)
       this.elements.gmRegisterMenuCommand.checked = !!script.gmRegisterMenuCommand;
-    if (this.elements.gmXmlHttpRequest)
-      this.elements.gmXmlHttpRequest.checked = !!script.gmXmlHttpRequest;
+    if (this.elements.gmXmlhttpRequest)
+      this.elements.gmXmlhttpRequest.checked = !!script.gmXmlhttpRequest;
       
     // Show resources section if either resource API is checked
     if (script.gmGetResourceText || script.gmGetResourceURL) {
@@ -719,7 +718,7 @@ class ScriptEditor {
     scriptData.gmSetClipboard = this.elements.gmSetClipboard?.checked || false;
     scriptData.gmAddStyle = this.elements.gmAddStyle?.checked || false;
     scriptData.gmRegisterMenuCommand = this.elements.gmRegisterMenuCommand?.checked || false;
-    scriptData.gmXmlHttpRequest = this.elements.gmXmlHttpRequest?.checked || false;
+    scriptData.gmXmlhttpRequest = this.elements.gmXmlhttpRequest?.checked || false;
 
     // Parse resource items
     scriptData.resources = [];

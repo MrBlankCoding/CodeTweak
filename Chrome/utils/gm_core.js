@@ -279,9 +279,43 @@
         const fn = (data, type) => this.bridge.call("setClipboard", { data, type });
         window.GM_setClipboard = window.GM.setClipboard = fn;
       }
-      if (e.gmXmlHttpRequest) {
-        const fn = (details = {}) => this.bridge.call("xmlHttpRequest", { details });
-        window.GM_xmlHttpRequest = window.GM.xmlHttpRequest = fn;
+      if (e.gmXmlhttpRequest) {
+        const fn = (details = {}) => {
+          // Separate callbacks from cloneable details
+          const callbacks = {};
+          const cloneableDetails = {};
+          
+          Object.entries(details).forEach(([key, value]) => {
+            if (typeof value === 'function') {
+              callbacks[key] = value;
+            } else {
+              cloneableDetails[key] = value;
+            }
+          });
+
+          return this.bridge.call("xmlhttpRequest", { details: cloneableDetails })
+            .then((response) => {
+              if (callbacks.onload) {
+                try {
+                  callbacks.onload(response);
+                } catch (error) {
+                  console.error("GM_xmlhttpRequest onload error:", error);
+                }
+              }
+              return response;
+            })
+            .catch((error) => {
+              if (callbacks.onerror) {
+                try {
+                  callbacks.onerror(error);
+                } catch (callbackError) {
+                  console.error("GM_xmlhttpRequest onerror callback failed:", callbackError);
+                }
+              }
+              throw error;
+            });
+        };
+        window.GM_xmlhttpRequest = window.GM.xmlhttpRequest = fn;
       }
     }
   }

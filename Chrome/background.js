@@ -182,11 +182,11 @@ const gmApiHandlers = {
   },
 
   // Cross-origin XHR via fetch
-  async xmlHttpRequest(message) {
+  async xmlhttpRequest(message) {
     const details = message.details || {};
 
     if (!details.url) {
-      throw new Error("GM_xmlHttpRequest: 'url' is required");
+      throw new Error("GM_xmlhttpRequest: 'url' is required");
     }
 
     const fetchInit = {
@@ -211,7 +211,7 @@ const gmApiHandlers = {
       details.timeout && details.timeout > 0
         ? new Promise((_, reject) => {
             timeoutId = setTimeout(() => {
-              reject(new Error("GM_xmlHttpRequest timed out"));
+              reject(new Error("GM_xmlhttpRequest timed out"));
             }, details.timeout);
           })
         : null;
