@@ -313,6 +313,31 @@ tbody tr:hover {
   background: var(--primary-light);
 }
 
+/* Action Buttons */
+.script-actions {
+  white-space: nowrap;
+}
+
+.script-actions .icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: var(--space-xs);
+  flex-shrink: 0;
+}
+
+.script-actions .icon-button:last-child {
+  margin-right: 0;
+}
+
+.action-icon {
+  width: var(--space-md);
+  height: var(--space-md);
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+}
+
 /* Toggle Switch */
 .toggle-switch {
   position: relative;

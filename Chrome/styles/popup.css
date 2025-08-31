@@ -161,7 +161,6 @@ button.primary:hover {
 /* Compact Script Items */
 .script-item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   padding: 8px 10px;
   border-radius: 4px;
@@ -169,6 +168,7 @@ button.primary:hover {
   position: relative;
   border: 1px solid var(--border-primary);
   transition: var(--transition-all);
+  gap: 8px;
 }
 
 .script-item:hover {
@@ -217,6 +217,16 @@ button.primary:hover {
   letter-spacing: 0.5px;
   text-transform: uppercase;
   font-family: var(--font-mono);
+}
+
+/* Script Icon Styling */
+.script-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  border-radius: 2px;
+  margin-right: 8px;
+  flex-shrink: 0;
 }
 
 /* Compact Toggle Switch */

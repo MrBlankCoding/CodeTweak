@@ -100,6 +100,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     item.className = "script-item";
     item.dataset.id = index;
 
+    // Icon
+    if (script.icon) {
+      const iconImg = document.createElement("img");
+      iconImg.src = script.icon;
+      iconImg.alt = "";
+      iconImg.className = "script-icon";
+      iconImg.onerror = () => iconImg.remove();
+      item.appendChild(iconImg);
+    }
+
     const toggleContainer = document.createElement("div");
     toggleContainer.className = "script-toggle";
 
@@ -122,18 +132,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     label.appendChild(slider);
     toggleContainer.appendChild(label);
 
+    item.appendChild(toggleContainer);
+
     const info = document.createElement("div");
     info.className = "script-info";
-
-    // Icon
-    if (script.icon) {
-      const iconImg = document.createElement("img");
-      iconImg.src = script.icon;
-      iconImg.alt = "";
-      iconImg.className = "script-icon";
-      iconImg.onerror = () => iconImg.remove();
-      item.appendChild(iconImg);
-    }
 
     const name = document.createElement("div");
     name.className = "script-name";
@@ -160,7 +162,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       chrome.tabs.create({ url: `editor.html?id=${script.id}` });
     });
 
-    item.appendChild(toggleContainer);
     item.appendChild(info);
 
     if (script.enabled === false) {
