@@ -81,7 +81,7 @@
         this.viewportIndicator.style.cssText = `
           position: absolute;
           left: 0;
-          right: ${this.options.scrollbarWidth}px;
+          right: 0;
           background: ${this.options.viewportColor};
           border: 1px solid ${this.options.viewportBorderColor};
           border-radius: 2px;

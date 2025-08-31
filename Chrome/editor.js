@@ -181,6 +181,7 @@ class ScriptEditor {
       "autosaveBtn",
       "autosaveBtnText",
       "codeEditor",
+      "minimap",
       "gmSetValue",
       "gmGetValue",
       "gmDeleteValue",

@@ -69,7 +69,7 @@ export class CodeEditorManager {
         "CodeMirror-foldgutter",
         "CodeMirror-lint-markers",
       ],
-      scrollbarStyle: "simple",
+      scrollbarStyle: "native",
       extraKeys: this.getEditorKeybindings(),
       minimap: this.currentSettings?.minimap !== false ? {
         width: 120,

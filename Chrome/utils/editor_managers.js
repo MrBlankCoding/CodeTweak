@@ -352,6 +352,7 @@ export class SettingsManager extends BaseUIComponent {
       lineNumbers: document.getElementById('lineNumbers'),
       lineWrapping: document.getElementById('lineWrapping'),
       matchBrackets: document.getElementById('matchBrackets'),
+      minimap: document.getElementById('minimap'),
       lintingEnabled: document.getElementById('lintingEnabled'),
       autosaveEnabled: document.getElementById('autosaveEnabled')
     };
@@ -395,7 +396,7 @@ export class SettingsManager extends BaseUIComponent {
     }
 
     // Boolean settings
-    ['lineNumbers', 'lineWrapping', 'matchBrackets'].forEach(setting => {
+    ['lineNumbers', 'lineWrapping', 'matchBrackets', 'minimap'].forEach(setting => {
       if (settingsInputs[setting]) {
         this.addEventListener(settingsInputs[setting], 'change', () => {
           this.emit('settingChanged', { 
@@ -480,6 +481,7 @@ export class SettingsManager extends BaseUIComponent {
       if (settingsInputs.lineNumbers) settingsInputs.lineNumbers.checked = !!settings.lineNumbers;
       if (settingsInputs.lineWrapping) settingsInputs.lineWrapping.checked = !!settings.lineWrapping;
       if (settingsInputs.matchBrackets) settingsInputs.matchBrackets.checked = !!settings.matchBrackets;
+      if (settingsInputs.minimap) settingsInputs.minimap.checked = !!settings.minimap;
       if (settingsInputs.lintingEnabled) {
         settingsInputs.lintingEnabled.checked = localStorage.getItem('lintingEnabled') === 'true';
       }
@@ -510,7 +512,8 @@ export class SettingsManager extends BaseUIComponent {
         tabSize: parseInt(settingsInputs.tabSize?.value, 10) || 2,
         lineNumbers: !!settingsInputs.lineNumbers?.checked,
         lineWrapping: !!settingsInputs.lineWrapping?.checked,
-        matchBrackets: !!settingsInputs.matchBrackets?.checked
+        matchBrackets: !!settingsInputs.matchBrackets?.checked,
+        minimap: !!settingsInputs.minimap?.checked
       };
 
       // Save to chrome.storage.local
@@ -558,6 +561,7 @@ export class SettingsManager extends BaseUIComponent {
     if (settingsInputs.lineNumbers) settingsInputs.lineNumbers.checked = defaults.lineNumbers;
     if (settingsInputs.lineWrapping) settingsInputs.lineWrapping.checked = defaults.lineWrapping;
     if (settingsInputs.matchBrackets) settingsInputs.matchBrackets.checked = defaults.matchBrackets;
+    if (settingsInputs.minimap) settingsInputs.minimap.checked = defaults.minimap;
     if (settingsInputs.lintingEnabled) settingsInputs.lintingEnabled.checked = true;
     if (settingsInputs.autosaveEnabled) settingsInputs.autosaveEnabled.checked = true;
 
@@ -575,7 +579,8 @@ export class SettingsManager extends BaseUIComponent {
       tabSize: 2,
       lineNumbers: true,
       lineWrapping: true,
-      matchBrackets: true
+      matchBrackets: true,
+      minimap: true
     };
   }
 }

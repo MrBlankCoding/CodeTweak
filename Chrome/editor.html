@@ -15,7 +15,6 @@
       <link rel="stylesheet" href="styles/e_header_footer.css">
       <link rel="stylesheet" href="styles/e_sidebar.css">
       <link rel="stylesheet" href="codemirror/theme/default.css">
-      <link rel="stylesheet" href="codemirror/addon/scroll/simplescrollbars.css">
       <link rel="stylesheet" href="codemirror/addon/lint/lint.css">
    </head>
    <body>
@@ -599,6 +598,11 @@
                </label>
       
                <label class="setting-checkbox">
+                  <input type="checkbox" id="minimap" checked>
+                  <span>Show Minimap</span>
+               </label>
+      
+               <label class="setting-checkbox">
                   <input type="checkbox" id="lintingEnabled">
                   <span>Enable Linting</span>
                </label>
@@ -630,7 +634,6 @@
       <script src="codemirror/addon/lint/lint.js"></script>
       <script src="codemirror/addon/lint/javascript-lint.js"></script>
       <script src="codemirror/addon/comment/comment.js"></script>
-      <script src="codemirror/addon/scroll/simplescrollbars.js"></script>
       <script src="codemirror/addon/edit/trailingspace.js"></script>
       <script src="codemirror/addon/edit/continuelist.js"></script>
       <script src="codemirror/lib/jshint.js"></script>
