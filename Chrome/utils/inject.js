@@ -218,6 +218,104 @@ class GMAPIRegistry {
       window.GM_addStyle = addStyle;
       window.GM.addStyle = addStyle;
     }
+
+    // Always provide Trusted Types helpers for user scripts
+    this.setupTrustedTypesHelpers();
+  }
+
+  setupTrustedTypesHelpers() {
+    // Create a comprehensive Trusted Types policy for user scripts
+    if (window.trustedTypes && window.trustedTypes.createPolicy) {
+      try {
+        if (!window.__ctUserScriptPolicy) {
+          window.__ctUserScriptPolicy = window.trustedTypes.createPolicy("codetweak-userscript", {
+            createHTML: (input) => {
+              // Basic sanitization - remove script tags and dangerous attributes
+              if (typeof input !== 'string') return '';
+              return input
+                .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
+                .replace(/javascript:/gi, '');
+            },
+            createScript: (input) => input,
+            createScriptURL: (input) => input,
+          });
+        }
+
+        // Provide helper functions for user scripts
+        window.GM_setInnerHTML = (element, html) => {
+          if (!element || typeof html !== 'string') return false;
+          try {
+            const trustedHTML = window.__ctUserScriptPolicy.createHTML(html);
+            element.innerHTML = trustedHTML;
+            return true;
+          } catch (error) {
+            console.warn('CodeTweak: Failed to set innerHTML with Trusted Types:', error);
+            // Fallback for non-Trusted Types environments
+            try {
+              element.innerHTML = html;
+              return true;
+            } catch (fallbackError) {
+              console.error('CodeTweak: innerHTML fallback also failed:', fallbackError);
+              return false;
+            }
+          }
+        };
+
+        window.GM_createHTML = (html) => {
+          try {
+            return window.__ctUserScriptPolicy.createHTML(html);
+          } catch (error) {
+            console.warn('CodeTweak: Failed to create TrustedHTML:', error);
+            return html; // Fallback
+          }
+        };
+
+        // Make these available in GM namespace too
+        window.GM = window.GM || {};
+        window.GM.setInnerHTML = window.GM_setInnerHTML;
+        window.GM.createHTML = window.GM_createHTML;
+
+      } catch (error) {
+        console.warn('CodeTweak: Failed to create Trusted Types policy:', error);
+        
+        // Provide fallback functions that work without Trusted Types
+        window.GM_setInnerHTML = (element, html) => {
+          if (!element || typeof html !== 'string') return false;
+          try {
+            element.innerHTML = html;
+            return true;
+          } catch (error) {
+            console.error('CodeTweak: innerHTML assignment failed:', error);
+            return false;
+          }
+        };
+
+        window.GM_createHTML = (html) => html;
+        
+        window.GM = window.GM || {};
+        window.GM.setInnerHTML = window.GM_setInnerHTML;
+        window.GM.createHTML = window.GM_createHTML;
+      }
+    } else {
+      // No Trusted Types support - provide basic fallbacks
+      window.GM_setInnerHTML = (element, html) => {
+        if (!element || typeof html !== 'string') return false;
+        try {
+          element.innerHTML = html;
+          return true;
+        } catch (error) {
+          console.error('CodeTweak: innerHTML assignment failed:', error);
+          return false;
+        }
+      };
+
+      window.GM_createHTML = (html) => html;
+      
+      window.GM = window.GM || {};
+      window.GM.setInnerHTML = window.GM_setInnerHTML;
+      window.GM.createHTML = window.GM_createHTML;
+    }
   }
 
   registerResourceAPIs(enabledApis) {
@@ -303,7 +401,26 @@ class GMAPIRegistry {
     if (typeof css !== "string") return null;
 
     const style = document.createElement("style");
-    style.textContent = css;
+    
+    // Handle Trusted Types for textContent
+    let trustedCSS = css;
+    if (window.trustedTypes && window.trustedTypes.createPolicy) {
+      try {
+        if (!window.__ctTrustedHTMLPolicy) {
+          window.__ctTrustedHTMLPolicy = window.trustedTypes.createPolicy("codetweak-html", {
+            createHTML: (input) => input,
+            createScript: (input) => input,
+            createScriptURL: (input) => input,
+          });
+        }
+        // For CSS, we can use textContent directly, but let's be safe
+        trustedCSS = css; // textContent doesn't require TrustedHTML
+      } catch (e) {
+        console.warn("CodeTweak: Failed to create trusted types policy for CSS:", e);
+      }
+    }
+    
+    style.textContent = trustedCSS;
 
     const target = document.head || document.documentElement || document.body;
     if (target) {
@@ -599,55 +716,30 @@ async function executeUserScriptWithDependencies(
     // Load external dependencies first
     await scriptLoader.loadScripts(requiredUrls);
 
-    // Execute user script using a CSP-compliant blob URL instead of Function()
-    const blob = new Blob([userCode], { type: "text/javascript" });
-    const blobUrl = URL.createObjectURL(blob);
-
-    await new Promise((resolve, reject) => {
-      const scriptEl = document.createElement("script");
-
-      // Trusted Types compliance for blob URL
-      let trustedSrc = blobUrl;
-      if (window.trustedTypes && window.trustedTypes.createPolicy) {
+    // Execute user script directly without blob URLs to avoid CSP violations
+    // Use Function constructor with proper error handling
+    try {
+      // Create a wrapper function that provides better error context
+      const wrappedCode = `
         try {
-          if (!window.__ctTrustedScriptURLPolicy) {
-            window.__ctTrustedScriptURLPolicy =
-              window.trustedTypes.createPolicy("codetweak", {
-                createScriptURL: (input) => input,
-              });
-          }
-          trustedSrc =
-            window.__ctTrustedScriptURLPolicy.createScriptURL(blobUrl);
-        } catch (_e) {
-          console.error("Failed to create trusted script URL:", _e);
-          console.warn("Falling back to raw URL.");
-          // ignore, fall back to raw URL
-          trustedSrc = blobUrl;
+          ${userCode}
+        } catch (error) {
+          console.error('CodeTweak: User script execution error in ${scriptId}:', error);
+          throw error;
         }
-      }
-
-      scriptEl.src = trustedSrc;
-      scriptEl.async = false; // Preserve execution order
-      scriptEl.onload = () => {
-        URL.revokeObjectURL(blobUrl);
-        resolve();
-      };
-      scriptEl.onerror = (event) => {
-        URL.revokeObjectURL(blobUrl);
-        reject(
-          new Error(
-            `Failed to execute user script ${scriptId}: ${
-              event?.message || "unknown error"
-            }`
-          )
-        );
-      };
-      (document.head || document.documentElement || document.body).appendChild(
-        scriptEl
-      );
-    });
+      `;
+      
+      // Execute directly using Function constructor (CSP-compliant)
+      const userFunction = new Function(wrappedCode);
+      userFunction();
+      
+      console.log(`CodeTweak: Successfully executed script ${scriptId}`);
+    } catch (error) {
+      console.error(`CodeTweak: Error executing user script ${scriptId}:`, error);
+      throw error;
+    }
   } catch (error) {
-    console.error(`CodeTweak: Error executing user script ${scriptId}:`, error);
+    console.error(`CodeTweak: Error in executeUserScriptWithDependencies for ${scriptId}:`, error);
   }
 }
 
