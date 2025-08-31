@@ -219,6 +219,12 @@ class GMAPIRegistry {
       window.GM.addStyle = addStyle;
     }
 
+    if (enabledApis.gmAddElement) {
+      const addElement = (parent, tag, attributes = {}) => this.addElementToDocument(parent, tag, attributes);
+      window.GM_addElement = addElement;
+      window.GM.addElement = addElement;
+    }
+
     // Always provide Trusted Types helpers for user scripts
     this.setupTrustedTypesHelpers();
   }
@@ -430,6 +436,32 @@ class GMAPIRegistry {
     return style;
   }
 
+  addElementToDocument(parent, tag, attributes = {}) {
+    if (!parent || typeof tag !== "string") {
+      console.warn("GM_addElement: parent must be a valid DOM node and tag must be a string");
+      return null;
+    }
+
+    try {
+      const element = document.createElement(tag);
+
+      // Set attributes if provided
+      if (attributes && typeof attributes === "object") {
+        Object.entries(attributes).forEach(([key, value]) => {
+          if (typeof key === "string" && value != null) {
+            element.setAttribute(key, String(value));
+          }
+        });
+      }
+
+      parent.appendChild(element);
+      return element;
+    } catch (error) {
+      console.error("GM_addElement: Failed to create or append element:", error);
+      return null;
+    }
+  }
+
   registerMenuCommand(caption, onClick, accessKey) {
     if (typeof caption !== "string" || typeof onClick !== "function") {
       console.warn(
@@ -595,6 +627,32 @@ function createMainWorldExecutor(
   valueManager.initializeCache(initialValues);
   apiRegistry.registerAll(enabledApis);
 
+  // Ensure native functions are bound to the correct receiver to prevent Illegal invocation
+  try {
+    window.setTimeout = window.setTimeout.bind(window);
+    window.clearTimeout = window.clearTimeout.bind(window);
+    window.setInterval = window.setInterval.bind(window);
+    window.clearInterval = window.clearInterval.bind(window);
+    if (typeof window.postMessage === 'function') {
+      window.postMessage = window.postMessage.bind(window);
+    }
+  } catch (e) {
+    console.warn('CodeTweak: Failed to bind timers/postMessage:', e);
+  }
+
+  // Debug: log enabled APIs for this execution
+  try {
+    const enabled = Object.entries(enabledApis)
+      .filter(([, v]) => !!v)
+      .map(([k]) => k)
+      .sort();
+    console.log(`CodeTweak: Enabled GM APIs for script ${scriptId} (MAIN):`, enabled);
+    // Also dump full object for completeness
+    console.debug('CodeTweak: enabledApis (MAIN) raw:', enabledApis);
+  } catch (e) {
+    console.warn('CodeTweak: Failed to log enabled APIs (MAIN):', e);
+  }
+
   // Expose GM_info (read-only)
   try {
     Object.defineProperty(window, "GM_info", {
@@ -680,6 +738,32 @@ function createIsolatedWorldExecutor(
   // Setup
   valueManager.initializeCache(initialValues);
   apiRegistry.registerAll(enabledApis);
+
+  // Ensure native functions are bound to the correct receiver to prevent Illegal invocation
+  try {
+    window.setTimeout = window.setTimeout.bind(window);
+    window.clearTimeout = window.clearTimeout.bind(window);
+    window.setInterval = window.setInterval.bind(window);
+    window.clearInterval = window.clearInterval.bind(window);
+    if (typeof window.postMessage === 'function') {
+      window.postMessage = window.postMessage.bind(window);
+    }
+  } catch (e) {
+    console.warn('CodeTweak: Failed to bind timers/postMessage (isolated):', e);
+  }
+
+  // Debug: log enabled APIs for this execution (ISOLATED)
+  try {
+    const enabled = Object.entries(enabledApis)
+      .filter(([, v]) => !!v)
+      .map(([k]) => k)
+      .sort();
+    console.log(`CodeTweak: Enabled GM APIs for script ${scriptId} (ISOLATED):`, enabled);
+    // Also dump full object for completeness
+    console.debug('CodeTweak: enabledApis (ISOLATED) raw:', enabledApis);
+  } catch (e) {
+    console.warn('CodeTweak: Failed to log enabled APIs (ISOLATED):', e);
+  }
 
   // Expose GM_info (read-only)
   try {
@@ -858,9 +942,22 @@ class ScriptInjector {
       gmGetResourceURL: Boolean(script.gmGetResourceURL),
       gmSetClipboard: Boolean(script.gmSetClipboard),
       gmAddStyle: Boolean(script.gmAddStyle),
+      gmAddElement: Boolean(script.gmAddElement),
       gmRegisterMenuCommand: Boolean(script.gmRegisterMenuCommand),
       gmXmlhttpRequest: Boolean(script.gmXmlhttpRequest),
     };
+
+    // Debug: log enabled APIs at config time (background/service context)
+    try {
+      const enabledList = Object.entries(enabledApis)
+        .filter(([, v]) => !!v)
+        .map(([k]) => k)
+        .sort();
+      console.log('CodeTweak: prepareScriptConfig enabled APIs for', scriptId, enabledList);
+      console.debug('CodeTweak: prepareScriptConfig enabledApis raw:', enabledApis);
+    } catch (e) {
+      console.warn('CodeTweak: Failed to log enabled APIs in prepareScriptConfig:', e);
+    }
 
     const resourceManager = ResourceManager.fromScript(script);
 

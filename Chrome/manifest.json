@@ -10,10 +10,7 @@
     "webNavigation",
     "declarativeNetRequest",
     "contextMenus",
-    "clipboardWrite",
-    "notifications",
-    "downloads",
-    "offscreen"
+    "notifications"
   ],
   "host_permissions": [
     "<all_urls>"

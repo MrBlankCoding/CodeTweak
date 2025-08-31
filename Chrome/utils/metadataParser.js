@@ -17,6 +17,7 @@ function parseUserScriptMetadata(content) {
     GM_getResourceURL: "gmGetResourceURL",
     GM_setClipboard: "gmSetClipboard",
     GM_addStyle: "gmAddStyle",
+    GM_addElement: "gmAddElement",
     GM_registerMenuCommand: "gmRegisterMenuCommand",
     GM_xmlhttpRequest: "gmXmlhttpRequest",
     unsafeWindow: "unsafeWindow",
@@ -32,6 +33,7 @@ function parseUserScriptMetadata(content) {
     "GM.getResourceURL": "gmGetResourceURL",
     "GM.setClipboard": "gmSetClipboard",
     "GM.addStyle": "gmAddStyle",
+    "GM.addElement": "gmAddElement",
     "GM.registerMenuCommand": "gmRegisterMenuCommand",
     "GM.xmlhttpRequest": "gmXmlhttpRequest",
   };
@@ -123,6 +125,7 @@ const gmApiFlagToGrant = {
   gmGetResourceURL: "GM_getResourceURL",
   gmSetClipboard: "GM_setClipboard",
   gmAddStyle: "GM_addStyle",
+  gmAddElement: "GM_addElement",
   gmRegisterMenuCommand: "GM_registerMenuCommand",
   gmXmlhttpRequest: "GM_xmlhttpRequest",
   unsafeWindow: "unsafeWindow",

@@ -271,6 +271,63 @@
         };
         window.GM_addStyle = window.GM.addStyle = fn;
       }
+      if (e.gmAddElement) {
+        const fn = (arg1, arg2, arg3 = {}) => {
+          try {
+            let parent;
+            let tag;
+            let attributes;
+
+            // Support both signatures:
+            // 1) GM_addElement(tag, attributes)
+            // 2) GM_addElement(parent, tag, attributes)
+            if (typeof arg1 === 'string') {
+              tag = arg1;
+              attributes = (arg2 && typeof arg2 === 'object') ? arg2 : {};
+              // Default parent by tag
+              const lower = tag.toLowerCase();
+              parent = (lower === 'style' || lower === 'script' || lower === 'link')
+                ? (document.head || document.documentElement || document.body)
+                : (document.body || document.documentElement || document.head);
+            } else {
+              parent = arg1;
+              tag = arg2;
+              attributes = (arg3 && typeof arg3 === 'object') ? arg3 : {};
+            }
+
+            if (!parent || typeof parent.appendChild !== 'function' || typeof tag !== 'string') {
+              console.warn('GM_addElement: parent must be a valid DOM node and tag must be a string');
+              return null;
+            }
+
+            const el = document.createElement(tag);
+
+            // Apply attributes and direct properties
+            Object.entries(attributes).forEach(([k, v]) => {
+              if (v == null) return;
+              try {
+                if (k === 'style' && typeof v === 'string') {
+                  el.style.cssText = v;
+                } else if (k in el) {
+                  el[k] = v;
+                } else {
+                  el.setAttribute(k, String(v));
+                }
+              } catch (_e) {
+                // Fallback to attribute if direct assignment fails
+                try { el.setAttribute(k, String(v)); } catch (_e2) {}
+              }
+            });
+
+            parent.appendChild(el);
+            return el;
+          } catch (err) {
+            console.error('GM_addElement: Failed to create or append element:', err);
+            return null;
+          }
+        };
+        window.GM_addElement = window.GM.addElement = fn;
+      }
     }
 
     // ---- NETWORK ----

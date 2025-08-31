@@ -96,6 +96,12 @@ class ScriptEditor {
         name: "GM_addStyle",
         el: "gmAddStyle",
       },
+      GM_addElement: {
+        signature:
+          "declare function GM_addElement(parent: Node, tag: string, attributes?: { [key: string]: string }): Node;",
+        name: "GM_addElement",
+        el: "gmAddElement",
+      },
       GM_registerMenuCommand: {
         signature:
           "declare function GM_registerMenuCommand(caption: string, onClick: () => any, accessKey?: string): string;",
@@ -190,6 +196,7 @@ class ScriptEditor {
       "gmGetResourceText",
       "gmGetResourceURL",
       "gmAddStyle",
+      "gmAddElement",
       "gmRegisterMenuCommand",
       "gmSetClipboard",
       "gmXmlhttpRequest",
@@ -675,6 +682,8 @@ class ScriptEditor {
       this.elements.gmSetClipboard.checked = !!script.gmSetClipboard;
     if (this.elements.gmAddStyle)
       this.elements.gmAddStyle.checked = !!script.gmAddStyle;
+    if (this.elements.gmAddElement)
+      this.elements.gmAddElement.checked = !!script.gmAddElement;
     if (this.elements.gmRegisterMenuCommand)
       this.elements.gmRegisterMenuCommand.checked = !!script.gmRegisterMenuCommand;
     if (this.elements.gmXmlhttpRequest)
@@ -746,6 +755,7 @@ class ScriptEditor {
       this.elements.gmGetResourceURL?.checked || false;
     scriptData.gmSetClipboard = this.elements.gmSetClipboard?.checked || false;
     scriptData.gmAddStyle = this.elements.gmAddStyle?.checked || false;
+    scriptData.gmAddElement = this.elements.gmAddElement?.checked || false;
     scriptData.gmRegisterMenuCommand = this.elements.gmRegisterMenuCommand?.checked || false;
     scriptData.gmXmlhttpRequest = this.elements.gmXmlhttpRequest?.checked || false;
 
@@ -912,6 +922,16 @@ class ScriptEditor {
       });
     } catch (error) {
       console.warn("Initial background connection failed:", error);
+    }
+  }
+
+  updateApiCount() {
+    const apiCheckboxes = Object.values(this.gmApiDefinitions).map(api => this.elements[api.el]);
+    const checkedCount = apiCheckboxes.filter(checkbox => checkbox && checkbox.checked).length;
+    
+    if (this.elements.apiCountBadge) {
+      this.elements.apiCountBadge.textContent = checkedCount;
+      this.elements.apiCountBadge.style.display = checkedCount > 0 ? 'inline' : 'none';
     }
   }
 
