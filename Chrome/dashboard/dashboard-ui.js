@@ -98,9 +98,6 @@ function createScriptRow(script) {
   authorCell.className = "script-author";
   row.appendChild(authorCell);
 
-  // Favicon cell
-  row.appendChild(createFaviconCell(script));
-
   // Icon cell
   row.appendChild(createIconCell(script));
 
