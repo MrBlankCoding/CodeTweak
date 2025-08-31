@@ -130,151 +130,54 @@ export class ModalManager extends BaseUIComponent {
   }
 }
 
+// For the sidebar
 export class SidebarManager extends BaseUIComponent {
   constructor(elements, eventBus, config) {
     super(elements, eventBus);
     this.config = config;
-    this.isVisible = true;
-    this.collapsedSections = {};
     this.setupEventListeners();
-    this.loadState();
   }
 
   setupEventListeners() {
-    this.addEventListener(this.elements.sidebarToggle, 'click', (e) => {
-      this.toggle(e);
+    // Listen for responsive breakpoint changes
+    this.addEventListener(window, 'resize', () => {
+      this.handleResize();
     });
 
+    // Handle document clicks for mobile responsiveness
     this.addEventListener(document, 'click', (e) => {
       this.handleDocumentClick(e);
     });
-
-    // Listen for keyboard shortcut events
-    this.on('sidebarToggleRequested', () => {
-      this.toggle();
-    });
-
-    this.initializeCollapsibleSections();
   }
 
-  async loadState() {
-    try {
-      const result = await chrome.storage.local.get(['isSidebarCollapsed', 'collapsedSections']);
-      this.isVisible = !result.isSidebarCollapsed;
-      this.collapsedSections = result.collapsedSections || {};
-      this.updateVisibility();
-    } catch (error) {
-      console.warn('Failed to load sidebar state:', error);
-    }
-  }
-
-  async saveState() {
-    try {
-      await chrome.storage.local.set({
-        isSidebarCollapsed: !this.isVisible,
-        collapsedSections: this.collapsedSections
-      });
-    } catch (error) {
-      console.warn('Failed to save sidebar state:', error);
-    }
-  }
-
-  toggle(e) {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
-    this.isVisible = !this.isVisible;
-    this.updateVisibility();
-    this.saveState();
-    this.emit('sidebarToggled', { isVisible: this.isVisible });
-  }
-
-  updateVisibility() {
-    const { sidebar } = this.elements;
-    
-    if (this.isVisible) {
-      sidebar.classList.remove('collapsed');
-      sidebar.style.width = '300px';
-    } else {
-      sidebar.classList.add('collapsed');
-      sidebar.style.width = '0';
-    }
-
-    setTimeout(() => {
-      this.emit('layoutChanged');
-    }, 300);
-  }
-
-  initializeCollapsibleSections() {
-    const sections = this.elements.sidebar.querySelectorAll('.collapsible');
-    
-    sections.forEach((section) => {
-      const sectionId = section.dataset.section;
-      
-      // Initialize collapsed state from storage or default to false
-      if (this.collapsedSections[sectionId] === undefined) {
-        this.collapsedSections[sectionId] = false;
-      }
-      
-      // Set initial state
-      if (this.collapsedSections[sectionId]) {
-        section.classList.add('collapsed');
-      } else {
-        section.classList.remove('collapsed');
-      }
-
-      // Add click handler to section headers
-      const header = section.querySelector('.section-header');
-      if (header) {
-        // Remove any existing click handlers to prevent duplicates
-        const newHeader = header.cloneNode(true);
-        header.parentNode.replaceChild(newHeader, header);
-        
-        this.addEventListener(newHeader, 'click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          this.toggleSection(section);
-        });
-      }
-    });
-  }
-
-  toggleSection(section) {
-    const sectionId = section.dataset.section;
-    if (!sectionId) return;
-    
-    // Toggle the collapsed state
-    const isCollapsing = !section.classList.contains('collapsed');
-    this.collapsedSections[sectionId] = isCollapsing;
-    
-    // Update the DOM
-    if (isCollapsing) {
-      section.classList.add('collapsed');
-    } else {
-      section.classList.remove('collapsed');
-    }
-    
-    // Save the state and notify any listeners
-    this.saveState();
-    this.emit('sectionToggled', { sectionId, isCollapsed: isCollapsing });
-    
-    // Trigger layout update after a short delay to allow for CSS transitions
+  handleResize() {
+    // Emit layout change for any components that need to adjust
     setTimeout(() => {
       this.emit('layoutChanged');
     }, 100);
   }
 
   handleDocumentClick(event) {
+    // For mobile: close expanded sidebar when clicking outside
     if (
       window.innerWidth <= this.config.SIDEBAR_BREAKPOINT &&
-      this.elements.sidebar.classList.contains('active') &&
-      !this.elements.sidebar.contains(event.target) &&
-      event.target !== this.elements.sidebarToggle
+      this.elements.sidebar.classList.contains('expanded') &&
+      !this.elements.sidebar.contains(event.target)
     ) {
-      this.isVisible = false;
-      this.updateVisibility();
+      // Remove expanded state and active panel
+      this.elements.sidebar.classList.remove('expanded');
+      const activeBtn = this.elements.sidebar.querySelector('.sidebar-icon-btn.active');
+      const activePanel = this.elements.sidebar.querySelector('.sidebar-panel.active');
+      
+      if (activeBtn) activeBtn.classList.remove('active');
+      if (activePanel) activePanel.classList.remove('active');
+      
+      // Hide content area
+      const contentArea = this.elements.sidebar.querySelector('.sidebar-content-area');
+      if (contentArea) {
+        contentArea.style.display = 'none';
+        contentArea.style.width = '0';
+      }
     }
   }
 }

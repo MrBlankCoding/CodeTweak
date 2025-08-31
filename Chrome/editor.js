@@ -170,7 +170,6 @@ class ScriptEditor {
       "scriptVersion",
       "scriptDescription",
       "saveBtn",
-      "sidebarToggle",
       "waitForSelector",
       "statusMessage",
       "formatBtn",
@@ -190,26 +189,29 @@ class ScriptEditor {
       "gmNotification",
       "gmGetResourceText",
       "gmGetResourceURL",
-      "gmSetClipboard",
       "gmAddStyle",
       "gmRegisterMenuCommand",
+      "gmSetClipboard",
       "gmXmlhttpRequest",
-      "resourceName",
-      "resourceURL",
-      "addResourceBtn",
-      "resourceList",
-      "urlList",
-      "addUrlBtn",
       "apiSearch",
-      "requireURL",
-      "addRequireBtn",
-      "requireList",
+      "apiCountBadge",
+      "addUrlBtn",
+      "urlList",
+      "targetUrl",
       "patternBaseUrl",
       "patternScope",
       "generatePatternBtn",
       "generatedPattern",
       "generatedPatternGroup",
       "insertPatternBtn",
+      "addResourceBtn",
+      "resourceName",
+      "resourceURL",
+      "resourceList",
+      "addRequireBtn",
+      "requireURL",
+      "requireList",
+      "helpButton"
     ];
 
     const elements = {};
@@ -219,9 +221,14 @@ class ScriptEditor {
 
     // Add any additional elements
     elements.sidebar = document.querySelector(".sidebar");
+    elements.sidebarIconBar = document.querySelector(".sidebar-icon-bar");
+    elements.sidebarContentArea = document.querySelector(".sidebar-content-area");
+    elements.sidebarIconBtns = document.querySelectorAll(".sidebar-icon-btn");
+    elements.sidebarPanels = document.querySelectorAll(".sidebar-panel");
     elements.sectionToggles = document.querySelectorAll(".section-toggle");
     elements.mainContent = document.querySelector(".main-content");
     elements.settingsModal = document.getElementById("settingsModal");
+    elements.requiresSection = document.getElementById("requiresSection");
     
     // StatusManager will be initialized after UIManager is created
     elements.status = null;
@@ -422,6 +429,20 @@ class ScriptEditor {
     }
   }
 
+  toggleRequiredScriptsSection() {
+    const requiresSection = this.elements.requiresSection;
+    if (!requiresSection) return;
+    
+    // Only show required scripts section if GM_getResourceURL is checked
+    const requiredScriptsVisible = this.elements.gmGetResourceURL?.checked || false;
+    
+    if (requiredScriptsVisible) {
+      requiresSection.classList.remove('hidden');
+    } else {
+      requiresSection.classList.add('hidden');
+    }
+  }
+
   setupResourceApiListeners() {
     const resourceCheckboxes = [this.elements.gmGetResourceText, this.elements.gmGetResourceURL];
     
@@ -437,11 +458,16 @@ class ScriptEditor {
               this.elements.resourceList) {
             this.elements.resourceList.innerHTML = '';
           }
-          
-          this.markAsDirty();
         });
       }
     });
+    
+    // Add specific listener for GM_getResourceURL to toggle required scripts section
+    if (this.elements.gmGetResourceURL) {
+      this.elements.gmGetResourceURL.addEventListener('change', () => {
+        this.toggleRequiredScriptsSection();
+      });
+    }
   }
 
   registerEventListeners() {
@@ -450,115 +476,75 @@ class ScriptEditor {
       this.markAsUnsaved();
     });
     
+    // Setup VSCode-like sidebar icon functionality
+    this.setupSidebarIconHandlers();
+    
     // Directly add click listener to save button
     this.elements.saveBtn?.addEventListener('click', (e) => {
       e.preventDefault();
       this.saveScript();
     });
     
-    // Setup UI callbacks
+    // Setup UI callbacks - UIManager initializes everything in constructor, no init() method needed
     const callbacks = {
       saveScript: () => this.saveScript(),
       formatCode: async () => {
         await this.codeEditorManager.formatCode(true, async () => {
           // Always save after formatting, regardless of autosave setting
-          await this.saveScript(true); // true for quiet mode to prevent duplicate messages
+          await this.saveScript(true);
         });
       },
-      markAsUnsaved: () => this.markAsUnsaved(),
-      markAsDirty: () => this.markAsDirty(),
-      debouncedSave: () => this._debouncedSave(),
-      updateEditorLintAndAutocomplete: () => this.codeEditorManager.updateEditorLintAndAutocomplete(),
+      exportScript: () => this.exportScript(),
+      loadSettings: () => this.codeEditorManager.loadSettings(),
       saveSettings: (settings) => {
         this.codeEditorManager.saveSettings(settings);
         this.codeEditorManager.applySettings(settings);
       },
-      loadSettings: () => this.codeEditorManager.loadSettings(),
-      resetToDefaultSettings: () => {
-        const defaultSettings = this.codeEditorManager.resetToDefaultSettings();
-        this.codeEditorManager.applySettings(defaultSettings);
-        return defaultSettings;
-      },
-      toggleLinting: (enabled) => this.codeEditorManager.toggleLinting(enabled)
+      markAsDirty: () => this.markAsDirty(),
+      markAsUnsaved: () => this.markAsUnsaved(),
+      debouncedSave: () => this._debouncedSave(),
+      saveScript: () => this.saveScript()
     };
 
-    // Initialize UI components with callbacks
-    this.ui.setupButtonEventListeners(callbacks);
-    this.ui.setupFormEventListeners(() => this.markAsUnsaved());
-    this.ui.setupUrlManagement({ markAsUnsaved: () => this.markAsUnsaved() });
+    // Setup additional UI components that need callbacks
     this.ui.setupSettingsModal(callbacks);
-    this.ui.setupGlobalEventListeners(callbacks);
+    this.ui.setupUrlManagement({ markAsUnsaved: () => this.markAsUnsaved() });
     this.ui.setupResourceManagement(callbacks);
 
-    // Format button
-    this.elements.formatBtn?.addEventListener("click", () => this.codeEditorManager.formatCode(true));
-
-    // Lint toggle
-    this.elements.lintBtn?.addEventListener("click", () => {
-      this.state.lintingEnabled = !this.state.lintingEnabled;
-      this.codeEditorManager.toggleLinting(this.state.lintingEnabled);
-      localStorage.setItem("lintingEnabled", this.state.lintingEnabled);
-      this.ui.showStatusMessage(
-        `Linting ${this.state.lintingEnabled ? "enabled" : "disabled"}`,
-        "info"
-      );
+    // Add both change and input events for better responsiveness
+    const handleChange = () => {
       this.markAsDirty();
       if (this.state.isAutosaveEnabled) {
         this._debouncedSave();
       }
-    });
+    };
 
-    // Autosave toggle
-    this.elements.autosaveBtn?.addEventListener("click", () => {
-      this.state.isAutosaveEnabled = !this.state.isAutosaveEnabled;
-      localStorage.setItem("autosaveEnabled", this.state.isAutosaveEnabled);
-      this.ui.showStatusMessage(
-        `Autosave ${this.state.isAutosaveEnabled ? "enabled" : "disabled"}`,
-        "info"
-      );
-      this.ui.updateAutosaveButton(this.state.isAutosaveEnabled);
-      
-      // If enabling autosave and there are unsaved changes, save immediately
-      if (this.state.isAutosaveEnabled && this.state.hasUnsavedChanges) {
-        this._debouncedSave(true);
-      }
-    });
-
-    // Form field change listeners for autosave
-    const formFields = [
-      'scriptName', 'scriptAuthor', 'scriptVersion', 'scriptDescription', 'scriptLicense', 'scriptIcon',
-      'runAt', 'waitForSelector', 'targetUrl'
+    // Form inputs that should trigger change detection
+    const formInputs = [
+      this.elements.scriptName,
+      this.elements.scriptAuthor,
+      this.elements.scriptLicense,
+      this.elements.scriptIcon,
+      this.elements.scriptVersion,
+      this.elements.scriptDescription,
+      this.elements.runAt,
+      this.elements.targetUrl
     ];
-    
-    formFields.forEach(fieldName => {
-      const element = this.elements[fieldName];
-      if (element) {
-        // Add both change and input events for better responsiveness
-        const handleChange = () => {
-          this.markAsDirty();
-          if (this.state.isAutosaveEnabled) {
-            this._debouncedSave();
-          }
-        };
-        element.addEventListener('change', handleChange);
-        element.addEventListener('input', handleChange);
+
+    formInputs.forEach(input => {
+      if (input) {
+        input.addEventListener('change', handleChange);
+        input.addEventListener('input', handleChange);
       }
     });
 
-    // Checkbox change listeners (GM API checkboxes)
+    // GM API checkboxes
     Object.values(this.gmApiDefinitions).forEach(api => {
       const element = this.elements[api.el];
       if (element) {
         element.addEventListener('change', () => {
-          this.markAsDirty();
-          if (this.state.isAutosaveEnabled) {
-            this._debouncedSave();
-          }
-          
-          // Special handling for resource-related APIs
-          if (['gmGetResourceText', 'gmGetResourceURL'].includes(api.el)) {
-            this.toggleResourcesSection(true);
-          }
+          handleChange();
+          this.updateApiCount();
         });
       }
     });
@@ -577,14 +563,56 @@ class ScriptEditor {
         const query = this.elements.apiSearch.value.toLowerCase();
         const checkboxes = this.elements.sidebar.querySelectorAll(".api-list .form-group-checkbox");
         checkboxes.forEach(cb => {
-          const label = cb.querySelector("label");
-          if (label) {
-            const match = label.textContent.toLowerCase().includes(query);
-            cb.style.display = match ? "flex" : "none";
-          }
+          const label = cb.querySelector("label").textContent.toLowerCase();
+          const shouldShow = label.includes(query);
+          cb.style.display = shouldShow ? "flex" : "none";
         });
       });
     }
+  }
+
+  setupSidebarIconHandlers() {
+    const sidebarIconBtns = this.elements.sidebarIconBtns;
+    if (!sidebarIconBtns) return;
+
+    // Initialize with sidebar completely collapsed
+    this.elements.sidebar.classList.remove('expanded', 'has-active-panel');
+    sidebarIconBtns.forEach(btn => btn.classList.remove('active'));
+    this.elements.sidebarPanels.forEach(panel => panel.classList.remove('active'));
+    this.elements.sidebarContentArea.style.display = 'none';
+    this.elements.sidebarContentArea.style.width = '0';
+
+    sidebarIconBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const section = btn.dataset.section;
+        const panel = document.getElementById(`${section}-panel`);
+        const isCurrentlyActive = btn.classList.contains('active');
+        
+        if (isCurrentlyActive) {
+          // Collapse sidebar completely
+          this.elements.sidebar.classList.remove('expanded', 'has-active-panel');
+          btn.classList.remove('active');
+          panel.classList.remove('active');
+          this.elements.sidebarContentArea.style.display = 'none';
+          this.elements.sidebarContentArea.style.width = '0';
+        } else {
+          // Show icon bar and expand sidebar
+          this.elements.sidebar.classList.add('has-active-panel', 'expanded');
+          
+          // Update active states
+          sidebarIconBtns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          
+          // Show correct panel
+          this.elements.sidebarPanels.forEach(p => p.classList.remove('active'));
+          panel.classList.add('active');
+          
+          // Show content area with smooth transition
+          this.elements.sidebarContentArea.style.display = 'flex';
+          this.elements.sidebarContentArea.style.width = '280px';
+        }
+      });
+    });
   }
 
   markAsUnsaved() {

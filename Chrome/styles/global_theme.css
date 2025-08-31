@@ -85,7 +85,6 @@
   --transition-all: all var(--transition-fast);
   
   --header-height: 60px;
-  --sidebar-width: 300px;
   
   --z-base: 0;
   --z-sticky: 20;
