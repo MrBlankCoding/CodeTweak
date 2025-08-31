@@ -352,7 +352,7 @@
                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                         </svg>
                      </button>
-                     <button type="button" class="toolbar-btn" id="formatBtn" title="Format code (Alt+Shift+F)">
+                     <button type="button" class="toolbar-btn" id="formatBtn" title="Format code (Alt+F)">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                            <path d="M4 7V4h16v3M9 20h6M12 4v16"></path>
                         </svg>
@@ -361,6 +361,7 @@
                   </div>
                   <div class="toolbar-info">
                      <span id="cursorInfo" class="cursor-info">Line 1, Column 1</span>
+                     <div class="perf-badge hidden" id="perfTierBadge" title="Performance optimizations active"></div>
                   </div>
                </div>
             </main>
@@ -389,28 +390,53 @@
                   <thead>
                     <tr>
                       <th>Action</th>
-                      <th>Shortcut</th>
+                      <th>Windows/Linux</th>
+                      <th>macOS</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
                       <td>Save Script</td>
                       <td><kbd>Ctrl</kbd> + <kbd>S</kbd></td>
+                      <td><kbd>Cmd</kbd> + <kbd>S</kbd></td>
                     </tr>
                     <tr>
                       <td>Format Code</td>
-                      <td><kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>F</kbd></td>
+                      <td><kbd>Alt</kbd> + <kbd>F</kbd></td>
+                      <td><kbd>Alt</kbd> + <kbd>F</kbd></td>
                     </tr>
                     <tr>
-                      <td>Toggle Sidebar</td>
-                      <td><kbd>Ctrl</kbd> + <kbd>\</kbd></td>
+                      <td>Autocomplete</td>
+                      <td><kbd>Ctrl</kbd> + <kbd>Space</kbd></td>
+                      <td><kbd>Ctrl</kbd> + <kbd>Space</kbd></td>
                     </tr>
                     <tr>
                       <td>Toggle Comment</td>
                       <td><kbd>Ctrl</kbd> + <kbd>/</kbd></td>
+                      <td><kbd>Cmd</kbd> + <kbd>/</kbd></td>
+                    </tr>
+                    <tr>
+                      <td>Toggle Minimap</td>
+                      <td><kbd>Ctrl</kbd> + <kbd>M</kbd></td>
+                      <td><kbd>Cmd</kbd> + <kbd>M</kbd></td>
+                    </tr>
+                    <tr>
+                      <td>Full Screen</td>
+                      <td colspan="2"><kbd>F11</kbd></td>
+                    </tr>
+                    <tr>
+                      <td>Exit Full Screen</td>
+                      <td colspan="2"><kbd>Esc</kbd></td>
+                    </tr>
+                    <tr>
+                      <td>Indent / Insert Spaces</td>
+                      <td colspan="2"><kbd>Tab</kbd> (selection indents; otherwise inserts spaces)</td>
                     </tr>
                   </tbody>
                 </table>
+                <p class="help-note" style="margin-top:8px;color:#9CA3AF;">
+                  Notes: Shortcuts reflect the current editor configuration. Formatting uses the built-in beautifier. The minimap can also be toggled from Settings.
+                </p>
               </div>
             </div>
             <div class="help-tab-content" id="help-tab-wildcards">

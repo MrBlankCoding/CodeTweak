@@ -20,13 +20,11 @@ export function urlMatchesPattern(url, pattern) {
     const urlHost = urlObj.hostname;
     const urlPath = urlObj.pathname;
 
-    // === SCHEME MATCHING (Support for wildcards like http*, https?) ===
     const schemeRegex = new RegExp(
       "^" + patternScheme.replace(/\*/g, ".*") + "$"
     );
     if (!schemeRegex.test(urlScheme)) return false;
 
-    // === HOST MATCHING ===
     if (patternHost === "*") {
       // Any host
     } else if (patternHost.startsWith("*.")) {
@@ -41,14 +39,12 @@ export function urlMatchesPattern(url, pattern) {
       if (urlHost !== patternHost) return false;
     }
 
-    // === PATH MATCHING ===
     if (["/", "/*"].includes(patternPath)) return true;
     if (patternPath.endsWith("/**")) {
       const base = patternPath.slice(0, -3);
       return urlPath === base || urlPath.startsWith(base);
     }
 
-    // Convert wildcard path to regex
     const segments = patternPath.split("/").filter(Boolean);
     const regexParts = ["^"];
 
@@ -64,7 +60,7 @@ export function urlMatchesPattern(url, pattern) {
       }
     }
 
-    regexParts.push("/?$"); // Optional trailing slash
+    regexParts.push("/?$");
     const pathRegex = new RegExp(regexParts.join(""));
     return pathRegex.test(urlPath);
   } catch (e) {
@@ -73,15 +69,6 @@ export function urlMatchesPattern(url, pattern) {
   }
 }
 
-/**
- * Generate a URL match pattern based on a base URL and desired scope.
- * @param {string} baseUrl - The base URL provided by the user (e.g. https://example.com).
- * @param {"exact"|"domain"|"subdomain"} scope - The scope of the pattern:
- *   exact      – only the exact page.
- *   domain     – any path on the same host.
- *   subdomain  – any sub-domain and any path.
- * @returns {string|null} A match pattern string suitable for storage or null if invalid.
- */
 export function generateUrlMatchPattern(baseUrl, scope = "domain") {
   try {
     if (!baseUrl) return null;
@@ -91,17 +78,15 @@ export function generateUrlMatchPattern(baseUrl, scope = "domain") {
     }
     const { protocol, hostname } = new URL(baseUrl);
 
-    // Normalise protocol (strip trailing :) and add wildcard support
     const scheme = protocol.replace(":", "");
 
     let hostPart = hostname;
     switch (scope) {
       case "exact":
-        return `${scheme}://${hostPart}`; // Caller should append path manually if needed
+        return `${scheme}://${hostPart}`; 
       case "domain":
         return `${scheme}://${hostPart}/*`;
       case "subdomain": {
-        // Derive eTLD+1 naive approach (last two labels) for simplicity
         const parts = hostPart.split(".");
         if (parts.length > 2) {
           hostPart = parts.slice(-2).join(".");

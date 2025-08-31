@@ -1,7 +1,6 @@
 /* global chrome */
 import { generateUrlMatchPattern } from "./urlMatchPattern.js";
 
-// Base for editor UI
 class BaseUIComponent {
   constructor(elements, eventBus) {
     this.elements = elements;
@@ -9,7 +8,6 @@ class BaseUIComponent {
     this.eventListeners = [];
   }
 
-  // Keep track of our event listeners for cleanup
   addEventListener(element, event, handler, options = {}) {
     if (element) {
       element.addEventListener(event, handler, options);
@@ -17,7 +15,6 @@ class BaseUIComponent {
     }
   }
 
-  // Remove all event listners
   destroy() {
     this.eventListeners.forEach(({ element, event, handler }) => {
       element.removeEventListener(event, handler);
@@ -34,7 +31,7 @@ class BaseUIComponent {
   }
 }
 
-// For the settings modal
+// For settings and help
 export class ModalManager extends BaseUIComponent {
   constructor(elements, eventBus) {
     super(elements, eventBus);
@@ -57,7 +54,10 @@ export class ModalManager extends BaseUIComponent {
     if (this.elements.helpButton) {
       this.addEventListener(this.elements.helpButton, 'click', (e) => {
         e.stopPropagation();
-        this.showModal('help');
+        // Close settings first so the help modal is clearly visible
+        this.hideModal('settings');
+        // Open help after the settings modal transition completes (matches hideModal timeout)
+        setTimeout(() => this.showModal('help'), 200);
       });
 
       // Close button inside help modal
@@ -70,7 +70,6 @@ export class ModalManager extends BaseUIComponent {
       }
     }
 
-    // Close modal on outside click or Escape key
     this.addEventListener(document, 'click', (e) => {
       if (e.target.classList.contains('modal') && e.target.classList.contains('show')) {
         const modalType = e.target.id.replace('Modal', '');
@@ -92,15 +91,10 @@ export class ModalManager extends BaseUIComponent {
   showModal(modalType) {
     const modal = document.getElementById(`${modalType}Modal`);
     if (modal) {
-      // Prevent body scroll when modal is open
       document.body.style.overflow = 'hidden';
       modal.classList.add('show');
       modal.style.display = 'flex';
-      
-      // Add a class to the body when any modal is open
       document.body.classList.add('modal-open');
-      
-      // Focus the first focusable element
       const focusable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
       if (focusable) focusable.focus();
       
@@ -111,7 +105,6 @@ export class ModalManager extends BaseUIComponent {
   hideModal(modalType) {
     const modal = document.getElementById(`${modalType}Modal`);
     if (modal && modal.classList.contains('show')) {
-      // Restore body scroll if no other modals are open
       const openModals = document.querySelectorAll('.modal.show');
       if (openModals.length <= 1) {
         document.body.style.overflow = '';
@@ -119,8 +112,6 @@ export class ModalManager extends BaseUIComponent {
       }
       
       modal.classList.remove('show');
-      
-      // Wait for the transition to complete before hiding
       setTimeout(() => {
         modal.style.display = 'none';
       }, 200);
@@ -139,46 +130,15 @@ export class SidebarManager extends BaseUIComponent {
   }
 
   setupEventListeners() {
-    // Listen for responsive breakpoint changes
     this.addEventListener(window, 'resize', () => {
       this.handleResize();
-    });
-
-    // Handle document clicks for mobile responsiveness
-    this.addEventListener(document, 'click', (e) => {
-      this.handleDocumentClick(e);
     });
   }
 
   handleResize() {
-    // Emit layout change for any components that need to adjust
     setTimeout(() => {
       this.emit('layoutChanged');
     }, 100);
-  }
-
-  handleDocumentClick(event) {
-    // For mobile: close expanded sidebar when clicking outside
-    if (
-      window.innerWidth <= this.config.SIDEBAR_BREAKPOINT &&
-      this.elements.sidebar.classList.contains('expanded') &&
-      !this.elements.sidebar.contains(event.target)
-    ) {
-      // Remove expanded state and active panel
-      this.elements.sidebar.classList.remove('expanded');
-      const activeBtn = this.elements.sidebar.querySelector('.sidebar-icon-btn.active');
-      const activePanel = this.elements.sidebar.querySelector('.sidebar-panel.active');
-      
-      if (activeBtn) activeBtn.classList.remove('active');
-      if (activePanel) activePanel.classList.remove('active');
-      
-      // Hide content area
-      const contentArea = this.elements.sidebar.querySelector('.sidebar-content-area');
-      if (contentArea) {
-        contentArea.style.display = 'none';
-        contentArea.style.width = '0';
-      }
-    }
   }
 }
 
@@ -344,7 +304,6 @@ export class SettingsManager extends BaseUIComponent {
       this.addEventListener(saveBtn, 'click', async (e) => {
         e.preventDefault();
         e.stopPropagation();
-        // Main save action
         await this.saveAllSettings();
       });
     }
@@ -374,17 +333,18 @@ export class SettingsManager extends BaseUIComponent {
       const settings = await this.loadSettings();
       const { settingsInputs } = this;
 
-      if (settingsInputs.theme) settingsInputs.theme.value = settings.theme || 'ayu-dark';
-      if (settingsInputs.fontSize) {
-        settingsInputs.fontSize.value = settings.fontSize || 14;
+      // Only reflect stored values; leave HTML defaults otherwise
+      if (settingsInputs.theme && settings.theme !== undefined) settingsInputs.theme.value = settings.theme;
+      if (settingsInputs.fontSize && settings.fontSize !== undefined) {
+        settingsInputs.fontSize.value = settings.fontSize;
         const fontSizeValue = document.getElementById('fontSizeValue');
-        if (fontSizeValue) fontSizeValue.textContent = (settings.fontSize || 14) + 'px';
+        if (fontSizeValue) fontSizeValue.textContent = settings.fontSize + 'px';
       }
-      if (settingsInputs.tabSize) settingsInputs.tabSize.value = settings.tabSize || 2;
-      if (settingsInputs.lineNumbers) settingsInputs.lineNumbers.checked = !!settings.lineNumbers;
-      if (settingsInputs.lineWrapping) settingsInputs.lineWrapping.checked = !!settings.lineWrapping;
-      if (settingsInputs.matchBrackets) settingsInputs.matchBrackets.checked = !!settings.matchBrackets;
-      if (settingsInputs.minimap) settingsInputs.minimap.checked = !!settings.minimap;
+      if (settingsInputs.tabSize && settings.tabSize !== undefined) settingsInputs.tabSize.value = settings.tabSize;
+      if (settingsInputs.lineNumbers && settings.lineNumbers !== undefined) settingsInputs.lineNumbers.checked = !!settings.lineNumbers;
+      if (settingsInputs.lineWrapping && settings.lineWrapping !== undefined) settingsInputs.lineWrapping.checked = !!settings.lineWrapping;
+      if (settingsInputs.matchBrackets && settings.matchBrackets !== undefined) settingsInputs.matchBrackets.checked = !!settings.matchBrackets;
+      if (settingsInputs.minimap && settings.minimap !== undefined) settingsInputs.minimap.checked = !!settings.minimap;
       if (settingsInputs.lintingEnabled) {
         settingsInputs.lintingEnabled.checked = localStorage.getItem('lintingEnabled') === 'true';
       }
@@ -399,10 +359,11 @@ export class SettingsManager extends BaseUIComponent {
   async loadSettings() {
     try {
       const result = await chrome.storage.local.get(['editorSettings']);
-      return result.editorSettings || this.getDefaultSettings();
+      // Defer defaults to CodeEditorManager; return stored values only
+      return result.editorSettings || {};
     } catch (error) {
       console.error('Failed to load settings from storage:', error);
-      return this.getDefaultSettings();
+      return {};
     }
   }
 
@@ -419,19 +380,12 @@ export class SettingsManager extends BaseUIComponent {
         minimap: !!settingsInputs.minimap?.checked
       };
 
-      // Save to chrome.storage.local
+      // save
       await chrome.storage.local.set({ editorSettings: newSettings });
-      
-      // Emit the event with the new settings
       this.emit('settingsSaved', newSettings);
-      
-      // Apply the settings to the editor
       this.emit('settingChanged', newSettings);
-      
-      // Show success message
       this.emit('showStatus', { message: 'Settings saved successfully', type: 'success' });
       
-      // Close the modal immediately
       const modal = document.getElementById('settingsModal');
       if (modal) {
         modal.classList.remove('show');
@@ -451,47 +405,42 @@ export class SettingsManager extends BaseUIComponent {
   }
 
   resetToDefaults() {
-    const defaults = this.getDefaultSettings();
     const { settingsInputs } = this;
 
-    if (settingsInputs.theme) settingsInputs.theme.value = defaults.theme;
+    // Align with CodeEditorManager defaults (single source of truth)
+    if (settingsInputs.theme) settingsInputs.theme.value = 'ayu-dark';
     if (settingsInputs.fontSize) {
-      settingsInputs.fontSize.value = defaults.fontSize;
+      settingsInputs.fontSize.value = 14;
       const fontSizeValue = document.getElementById('fontSizeValue');
-      if (fontSizeValue) fontSizeValue.textContent = defaults.fontSize + 'px';
+      if (fontSizeValue) fontSizeValue.textContent = '14px';
     }
-    if (settingsInputs.tabSize) settingsInputs.tabSize.value = defaults.tabSize;
-    if (settingsInputs.lineNumbers) settingsInputs.lineNumbers.checked = defaults.lineNumbers;
-    if (settingsInputs.lineWrapping) settingsInputs.lineWrapping.checked = defaults.lineWrapping;
-    if (settingsInputs.matchBrackets) settingsInputs.matchBrackets.checked = defaults.matchBrackets;
-    if (settingsInputs.minimap) settingsInputs.minimap.checked = defaults.minimap;
+    if (settingsInputs.tabSize) settingsInputs.tabSize.value = 2;
+    if (settingsInputs.lineNumbers) settingsInputs.lineNumbers.checked = true;
+    if (settingsInputs.lineWrapping) settingsInputs.lineWrapping.checked = false;
+    if (settingsInputs.matchBrackets) settingsInputs.matchBrackets.checked = true;
+    if (settingsInputs.minimap) settingsInputs.minimap.checked = true;
     if (settingsInputs.lintingEnabled) settingsInputs.lintingEnabled.checked = true;
     if (settingsInputs.autosaveEnabled) settingsInputs.autosaveEnabled.checked = true;
 
-    // Reset local storage
     localStorage.setItem('lintingEnabled', 'true');
     localStorage.setItem('autosaveEnabled', 'true');
 
-    this.emit('settingsReset', defaults);
-  }
-
-  getDefaultSettings() {
-    return {
+    this.emit('settingsReset', {
       theme: 'ayu-dark',
       fontSize: 14,
       tabSize: 2,
       lineNumbers: true,
-      lineWrapping: true,
+      lineWrapping: false,
       matchBrackets: true,
       minimap: true
-    };
+    });
   }
 }
 
 export class URLManager extends BaseUIComponent {
   constructor(elements, eventBus) {
     super(elements, eventBus);
-    this.statusManager = elements.statusManager || elements.status; // Try both possible locations
+    this.statusManager = elements.statusManager || elements.status; 
     this.setupEventListeners();
   }
 
@@ -567,7 +516,6 @@ export class URLManager extends BaseUIComponent {
   }
 
   addUrlToList(url) {
-    // Prevent duplicates
     if (this.elements.urlList) {
       const existing = Array.from(this.elements.urlList.querySelectorAll('.url-item'))
         .some(item => item.dataset.url === url);
@@ -624,7 +572,6 @@ export class URLManager extends BaseUIComponent {
 
   isValidUrl(url) {
     try {
-      // First check if URL has protocol
       if (!url.match(/^https?:\/\//i)) {
         if (this.statusManager) {
           this.statusManager.showError(
@@ -634,7 +581,6 @@ export class URLManager extends BaseUIComponent {
         return false;
       }
       
-      // Then validate the full URL
       new URL(url);
       return true;
     } catch {
@@ -865,77 +811,6 @@ export class FormManager extends BaseUIComponent {
   }
 }
 
-// Shortcuts -> Need to make a menu to display
-export class KeyboardManager extends BaseUIComponent {
-  constructor(elements, eventBus) {
-    super(elements, eventBus);
-    this.shortcuts = new Map();
-    this.setupEventListeners();
-    this.registerDefaultShortcuts();
-  }
-
-  setupEventListeners() {
-    this.addEventListener(document, 'keydown', (e) => {
-      this.handleKeyDown(e);
-    });
-  }
-
-  registerDefaultShortcuts() {
-    this.register('ctrl+s', () => this.emit('saveRequested'));
-    this.register('cmd+s', () => this.emit('saveRequested'));
-    this.register('ctrl+b', () => this.emit('sidebarToggleRequested'));
-    this.register('cmd+b', () => this.emit('sidebarToggleRequested'));
-    this.register('ctrl+\\', () => this.emit('sidebarToggleRequested'));
-    this.register('cmd+\\', () => this.emit('sidebarToggleRequested'));
-  }
-
-  register(combination, handler) {
-    this.shortcuts.set(combination.toLowerCase(), handler);
-  }
-
-  handleKeyDown(e) {
-    const combination = this.getCombination(e);
-    const handler = this.shortcuts.get(combination);
-    
-    if (handler) {
-      e.preventDefault();
-      handler(e);
-    }
-  }
-
-  getCombination(e) {
-    const parts = [];
-    
-    if (e.ctrlKey) parts.push('ctrl');
-    if (e.metaKey) parts.push('cmd');
-    if (e.altKey) parts.push('alt');
-    if (e.shiftKey) parts.push('shift');
-    
-    // Safely handle the key property
-    if (e.key) {
-      // Skip if it's a modifier key that we've already handled
-      const key = e.key.toLowerCase();
-      if (!['control', 'shift', 'alt', 'meta', 'command', 'cmd', 'ctrl'].includes(key)) {
-        parts.push(key);
-      } else if (parts.length === 0) {
-        // If only a modifier key is pressed, include it
-        parts.push(key);
-      }
-    } else if (e.keyCode) {
-      // Fallback for older browsers
-      const key = String.fromCharCode(e.keyCode).toLowerCase();
-      if (key && key.length === 1) {
-        parts.push(key);
-      }
-    }
-    
-    // If no valid key was found, return an empty string
-    if (parts.length === 0) return '';
-    
-    return parts.join('+');
-  }
-}
-
 //In charge of everything
 export class UIManager {
   constructor(elements, config) {
@@ -951,7 +826,6 @@ export class UIManager {
   }
 
   initializeComponents() {
-    // Initialize all UI components
     this.components.modal = new ModalManager({
       settingsBtn: this.elements.settingsBtn,
       closeSettings: this.elements.closeSettings,
@@ -965,9 +839,6 @@ export class UIManager {
     this.components.resource = new ResourceManager(this.elements, this.eventBus);
     this.components.require = new RequireManager(this.elements, this.eventBus);
     this.components.form = new FormManager(this.elements, this.eventBus);
-    this.components.keyboard = new KeyboardManager(this.elements, this.eventBus);
-
-    // Manually inject the status manager into the URL manager
     if (this.components.url && this.components.status) {
       this.components.url.statusManager = this.components.status;
     }
@@ -1030,11 +901,6 @@ export class UIManager {
     this.eventBus.emit(eventName, data);
   }
   
-  /**
-   * Add a resource to the resource list
-   * @param {string} name - The name of the resource
-   * @param {string} url - The URL of the resource
-   */
   addResourceToList(name, url) {
     if (this.components.resource && typeof this.components.resource.addResourceToList === 'function') {
       this.components.resource.addResourceToList(name, url);
@@ -1224,17 +1090,17 @@ export class FormValidator {
   }
 
   validateForm() {
-    const validations = [this.validateScriptName(), this.validateTargetUrls()];
+    const validations = [
+      // Name is optional (auto-generated on save if empty)
+      this.validateTargetUrls(),
+      this.validateVersion(),
+      this.validateRunAt(),
+      this.validateIconUrl(),
+      this.validateRequireUrls(),
+      this.validateResources()
+    ];
 
     return validations.every((validation) => validation.isValid);
-  }
-
-  validateScriptName() {
-    if (!this.elements.scriptName.value.trim()) {
-      this.showValidationError("Please enter a script name.");
-      return { isValid: false };
-    }
-    return { isValid: true };
   }
 
   validateTargetUrls() {
@@ -1246,6 +1112,96 @@ export class FormValidator {
     if (urlList.length === 0 && !currentUrl) {
       this.showValidationError("Please add at least one target URL.");
       return { isValid: false };
+    }
+    // Validate propper URL
+    if (currentUrl) {
+      try {
+        new URL(currentUrl);
+      } catch {
+        this.showValidationError("The target URL must be a valid http(s) URL.");
+        return { isValid: false };
+      }
+    }
+    return { isValid: true };
+  }
+
+  validateVersion() {
+    const versionEl = this.elements.scriptVersion;
+    const version = (versionEl?.value || "").trim();
+    if (!version) return { isValid: true };
+
+    // Accept X.Y or X.Y.Z (with numeric parts). Allow additional patch labels like -beta.1? Keep it simple: X.Y.Z
+    const semverLike = /^\d+\.\d+\.\d+$/;
+    if (!semverLike.test(version)) {
+      this.showValidationError("Version must be in the format X.Y.Z (e.g., 1.0.0).");
+      return { isValid: false };
+    }
+    return { isValid: true };
+  }
+
+  validateRunAt() {
+    const allowed = new Set(["document_start", "document_end", "document_idle"]);
+    const runAt = this.elements.runAt?.value;
+    if (runAt && !allowed.has(runAt)) {
+      this.showValidationError("Invalid 'Run at' value selected.");
+      return { isValid: false };
+    }
+    return { isValid: true };
+  }
+
+  validateIconUrl() {
+    const icon = this.elements.scriptIcon?.value?.trim();
+    if (!icon) return { isValid: true };
+    try {
+      const u = new URL(icon);
+      if (u.protocol !== "http:" && u.protocol !== "https:") {
+        this.showValidationError("Icon URL must start with http:// or https://");
+        return { isValid: false };
+      }
+      return { isValid: true };
+    } catch {
+      this.showValidationError("Icon URL is not a valid URL.");
+      return { isValid: false };
+    }
+  }
+
+  validateRequireUrls() {
+    const items = Array.from(document.querySelectorAll(".require-item"));
+    for (const item of items) {
+      const url = item.dataset.url?.trim();
+      if (!url) {
+        this.showValidationError("A required script entry is missing its URL.");
+        return { isValid: false };
+      }
+      try {
+        new URL(url);
+      } catch {
+        this.showValidationError("One of the required script URLs is invalid.");
+        return { isValid: false };
+      }
+    }
+    return { isValid: true };
+  }
+
+  validateResources() {
+    const items = Array.from(document.querySelectorAll(".resource-item"));
+    for (const item of items) {
+      const name = item.dataset.name?.trim();
+      const url = item.dataset.url?.trim();
+      if (!name) {
+        this.showValidationError("A resource is missing its name.");
+        return { isValid: false };
+      }
+      if (!url) {
+        this.showValidationError("A resource is missing its URL.");
+        return { isValid: false };
+      }
+      try {
+        new URL(url);
+      } catch {
+        this.showValidationError("One of the resource URLs is invalid.");
+        return { isValid: false };
+      }
     }
     return { isValid: true };
   }

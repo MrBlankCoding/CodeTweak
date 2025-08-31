@@ -2,7 +2,6 @@
 
 import { parseUserScriptMetadata } from './metadataParser.js';
 
-// Settings for the editor
 export class CodeEditorManager {
   constructor(elements, state, config, gmApiDefinitions) {
     this.elements = elements;
@@ -11,7 +10,7 @@ export class CodeEditorManager {
     this.gmApiDefinitions = gmApiDefinitions;
     this.codeEditor = null;
     
-    // Default settings
+    // Default 
     this.defaultSettings = {
       theme: 'ayu-dark',
       fontSize: 14,
@@ -24,11 +23,14 @@ export class CodeEditorManager {
     
     this.currentSettings = {...this.defaultSettings};
 
-    // Large file optimization settings
-    this.largeFileOptimized = false; // flag to ensure we only optimize once per large file
-    this.LARGE_FILE_LINE_COUNT = 5000; // threshold to consider a script "large"
+    this.largeFileOptimized = false;
+    this.LARGE_FILE_LINE_COUNT = 3000;
+    this.HUGE_FILE_LINE_COUNT = 10000;
+    this.LARGE_FILE_CHAR_COUNT = 200_000; // ~200 KB text
+    this.HUGE_FILE_CHAR_COUNT = 800_000;  // ~800 KB text
+    this.currentPerfTier = 'normal'; // 'normal' | 'large' | 'huge'
+    this._perfCheckTimer = null;
 
-    // Add storage change listener
     chrome.storage.onChanged.addListener((changes, namespace) => {
       if (namespace === 'local' && changes.editorSettings) {
         this.currentSettings = {...this.defaultSettings, ...changes.editorSettings.newValue};
@@ -42,7 +44,6 @@ export class CodeEditorManager {
       throw new Error("Code editor element not found");
     }
 
-    // Ensure settings are loaded first
     await this.loadSettings();
 
     const editorConfig = {
@@ -92,54 +93,143 @@ export class CodeEditorManager {
       if (
         change.text[0] &&
         /[\w.]/.test(change.text[0]) &&
-        !cm.state.completionActive
+        !cm.state.completionActive &&
+        this.currentPerfTier === 'normal'
       ) {
         CodeMirror.commands.autocomplete(cm, null, { completeSingle: false });
       }
     });
 
-    // Apply optimizations straight away (handles pre-loaded textarea content)
     this.applyLargeFileOptimizations();
 
     this.setupEditorEventHandlers();
-    this.updateEditorLintAndAutocomplete(); // call after editor setup
+    this.updateEditorLintAndAutocomplete(); 
 
-    // Update state reference first
     this.state.codeEditor = this.codeEditor;
 
-    // Apply all current settings to the editor
     this.applySettings(this.currentSettings);
 
     return this.codeEditor;
   }
 
-  // === Performance helpers ===
   applyLargeFileOptimizations() {
-    if (!this.codeEditor || this.largeFileOptimized) return;
+    if (!this.codeEditor) return;
 
     const lineCount = this.codeEditor.lineCount();
-    if (lineCount <= this.LARGE_FILE_LINE_COUNT) return;
+    const charCount = this.codeEditor.getValue().length;
 
-    // Disable heavy features including minimap for large files
-    this.codeEditor.setOption("lint", false);
-    this.codeEditor.setOption("lineWrapping", false);
-    this.codeEditor.setOption("foldGutter", false);
-    this.codeEditor.setOption("matchBrackets", false);
-    this.codeEditor.setOption("showTrailingSpace", false);
-    this.codeEditor.setOption("autoCloseBrackets", false);
-    this.codeEditor.setOption("minimap", false);
-    this.codeEditor.setOption("viewportMargin", 20); // keep a small margin around viewport
+    let nextTier = 'normal';
+    if (lineCount >= this.HUGE_FILE_LINE_COUNT || charCount >= this.HUGE_FILE_CHAR_COUNT) {
+      nextTier = 'huge';
+    } else if (lineCount >= this.LARGE_FILE_LINE_COUNT || charCount >= this.LARGE_FILE_CHAR_COUNT) {
+      nextTier = 'large';
+    }
 
-    // Remove fold gutter from the gutter list if present
-    const gutters = (this.codeEditor.getOption("gutters") || []).filter(
-      (g) => g !== "CodeMirror-foldgutter"
-    );
-    this.codeEditor.setOption("gutters", gutters);
+    if (nextTier !== this.currentPerfTier) {
+      this.applyPerformanceTier(nextTier);
+    }
+  }
 
-    this.largeFileOptimized = true;
-    console.warn(
-      `CodeMirror: Large file (${lineCount} lines) detected – heavy features disabled for performance.`
-    );
+  applyPerformanceTier(tier) {
+    if (!this.codeEditor) return;
+
+    const prev = this.currentPerfTier;
+    this.currentPerfTier = tier;
+    this.largeFileOptimized = tier !== 'normal'; // keep backward compatibility with other checks
+
+    const baseGutters = [
+      "CodeMirror-linenumbers",
+      "CodeMirror-foldgutter",
+      "CodeMirror-lint-markers",
+    ];
+
+    this.codeEditor.operation(() => {
+      if (tier === 'normal') {
+        const lintOptions = this.getLintOptions(this.state.lintingEnabled, this.getEnabledGmApis());
+        this.codeEditor.setOption('lint', lintOptions);
+        this.codeEditor.setOption('lineWrapping', this.currentSettings.lineWrapping);
+        this.codeEditor.setOption('foldGutter', true);
+        this.codeEditor.setOption('matchBrackets', true);
+        this.codeEditor.setOption('showTrailingSpace', true);
+        this.codeEditor.setOption('autoCloseBrackets', true);
+        this.codeEditor.setOption('pollInterval', 100);
+        this.codeEditor.setOption('gutters', baseGutters);
+        if (this.currentSettings.minimap) {
+          this.codeEditor.setOption('minimap', {
+            width: 120,
+            fontSize: 2,
+            showViewport: true,
+            viewportColor: 'rgba(255, 255, 255, 0.1)',
+            viewportBorderColor: 'rgba(255, 255, 255, 0.3)',
+            backgroundColor: 'rgba(0, 0, 0, 0.1)',
+            textColor: 'rgba(255, 255, 255, 0.6)',
+            updateDelay: 100
+          });
+        } else {
+          this.codeEditor.setOption('minimap', false);
+        }
+        this.codeEditor.setOption('lineNumbers', true);
+        this.codeEditor.setOption('viewportMargin', 10);
+        if (prev !== 'normal') {
+          console.info('CodeMirror: Restored full features (file size back to normal).');
+        }
+      } else if (tier === 'large') {
+        this.codeEditor.setOption('lint', false);
+        this.codeEditor.setOption('lineWrapping', false);
+        this.codeEditor.setOption('foldGutter', false);
+        this.codeEditor.setOption('matchBrackets', false);
+        this.codeEditor.setOption('showTrailingSpace', false);
+        this.codeEditor.setOption('autoCloseBrackets', false);
+        this.codeEditor.setOption('minimap', false);
+        this.codeEditor.setOption('pollInterval', 300);
+        this.codeEditor.setOption('gutters', ["CodeMirror-linenumbers"]);
+        this.codeEditor.setOption('lineNumbers', true);
+        this.codeEditor.setOption('viewportMargin', 20);
+        console.warn(`CodeMirror: Large file detected – applied performance tier 'large' (${this.codeEditor.lineCount()} lines).`);
+      } else if (tier === 'huge') {
+        this.codeEditor.setOption('lint', false);
+        this.codeEditor.setOption('lineWrapping', false);
+        this.codeEditor.setOption('foldGutter', false);
+        this.codeEditor.setOption('matchBrackets', false);
+        this.codeEditor.setOption('showTrailingSpace', false);
+        this.codeEditor.setOption('autoCloseBrackets', false);
+        this.codeEditor.setOption('minimap', false);
+        this.codeEditor.setOption('pollInterval', 1000);
+        this.codeEditor.setOption('gutters', []);
+        this.codeEditor.setOption('lineNumbers', false);
+        this.codeEditor.setOption('viewportMargin', 5);
+        console.error(`CodeMirror: Huge file detected – applied performance tier 'huge' (${this.codeEditor.lineCount()} lines).`);
+      }
+    });
+    this.updatePerfBadge(tier);
+  }
+
+  updatePerfBadge(tier) {
+    try {
+      const el = document.getElementById('perfTierBadge');
+      if (!el) return;
+      el.classList.remove('tier-large', 'tier-huge');
+      const lineCount = this.codeEditor?.lineCount?.() ?? 0;
+      const charCount = this.codeEditor?.getValue?.().length ?? 0;
+      const fmt = (n) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      if (tier === 'normal') {
+        el.classList.add('hidden');
+        el.textContent = '';
+        el.title = '';
+      } else if (tier === 'large') {
+        el.classList.remove('hidden');
+        el.classList.add('tier-large');
+        el.textContent = 'Optimized: lint/minimap off';
+        el.title = `Large file detected (lines: ${fmt(lineCount)}, chars: ${fmt(charCount)}). Disabled: linting, minimap, code folding, match brackets, trailing spaces, auto-close brackets. Polling slowed.`;
+      } else if (tier === 'huge') {
+        el.classList.remove('hidden');
+        el.classList.add('tier-huge');
+        el.textContent = 'Optimized: gutters/line# off';
+        el.title = `Huge file detected (lines: ${fmt(lineCount)}, chars: ${fmt(charCount)}). Disabled: linting, minimap, code folding, match brackets, trailing spaces, auto-close brackets, gutters & line numbers. Polling greatly reduced.`;
+      }
+    } catch {
+      // non-fatal UI update issue
+    }
   }
 
   //shortcuts
@@ -181,7 +271,6 @@ export class CodeEditorManager {
     });
   }
 
-  // Settings Management
   loadSettings() {
     return new Promise((resolve) => {
       chrome.storage.local.get(['editorSettings'], (result) => {
@@ -203,8 +292,6 @@ export class CodeEditorManager {
 
   applySettings(settings) {
     if (!this.codeEditor) return;
-
-    // Refresh editor after applying settings to ensure changes take effect
     const refreshEditor = () => {
       this.codeEditor.refresh();
       if (this.onStatusCallback) {
@@ -286,19 +373,16 @@ export class CodeEditorManager {
   }
 
   parseUserScriptHeader(content) {
-    // Delegate to the shared metadata parser
     return parseUserScriptMetadata(content);
   }
 
   async handlePaste(editor, event) {
-    // Only handle if we have a callback for handling imports
     if (!this.onImportCallback) return;
     
     try {
       const clipboardData = event.clipboardData || window.clipboardData;
       const pastedText = clipboardData.getData('text/plain');
       
-      // Check if the pasted content has a UserScript header
       if (pastedText.includes('==UserScript==') && pastedText.includes('==/UserScript==')) {
         const metadata = this.parseUserScriptHeader(pastedText);
         if (metadata) {
@@ -306,18 +390,15 @@ export class CodeEditorManager {
           
           const shouldImport = confirm('This looks like a UserScript. Would you like to import its metadata?');
           if (shouldImport) {
-            // Let the editor handle the import
             this.onImportCallback({
               code: pastedText,
               ...metadata
             });
-            // Don't insert the pasted content, let the callback handle it
             return;
           }
         }
       }
       
-      // Default paste behavior
       const doc = editor.getDoc();
       const cursor = doc.getCursor();
       doc.replaceRange(pastedText, cursor);
@@ -343,11 +424,12 @@ export class CodeEditorManager {
       }
     });
     
-    // Add paste event listener
     this.codeEditor.on('paste', (cm, event) => this.handlePaste(cm, event));
 
-    // Re-evaluate optimizations on each change (cheap: just track line count flag)
-    this.codeEditor.on('change', () => this.applyLargeFileOptimizations());
+    this.codeEditor.on('change', () => {
+      if (this._perfCheckTimer) clearTimeout(this._perfCheckTimer);
+      this._perfCheckTimer = setTimeout(() => this.applyLargeFileOptimizations(), 200);
+    });
   }
 
   // enabled APIS
@@ -390,7 +472,7 @@ export class CodeEditorManager {
   //lint options
   getLintOptions(enable, enabledApiNames = []) {
     // Skip linting entirely for large files to avoid freezes
-    if (this.largeFileOptimized || !enable || typeof window.JSHINT === "undefined") return false;
+    if (this.currentPerfTier !== 'normal' || !enable || typeof window.JSHINT === "undefined") return false;
 
     // Build globals map including enabled GM_* APIs
     const globals = {
@@ -474,7 +556,6 @@ export class CodeEditorManager {
         space_in_empty_paren: true,
       });
 
-      // Use CodeMirror's operation to make this an atomic operation
       this.codeEditor.operation(() => {
         const cursor = this.codeEditor.getCursor();
         this.codeEditor.setValue(formattedCode);
@@ -489,7 +570,6 @@ export class CodeEditorManager {
         );
       }
       
-      // Call the completion callback if provided and wait for it to complete
       if (typeof onFormatComplete === 'function') {
         await onFormatComplete();
       }
@@ -534,7 +614,6 @@ export class CodeEditorManager {
   setValue(code) {
     if (this.codeEditor) {
       this.codeEditor.setValue(code);
-      // Re-check if we need to optimize for large documents
       this.applyLargeFileOptimizations();
     }
   }

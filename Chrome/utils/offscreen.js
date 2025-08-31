@@ -1,3 +1,4 @@
+// Just for copy to clipboard
 chrome.runtime.onMessage.addListener(async (request) => {
   if (request.target !== 'offscreen') {
     return;
@@ -9,7 +10,7 @@ chrome.runtime.onMessage.addListener(async (request) => {
       document.body.appendChild(tempInput);
       tempInput.value = request.data;
       tempInput.focus();
-      tempInput.select(); // Select the text
+      tempInput.select(); 
       try {
         // try the new API
         await navigator.clipboard.writeText(request.data);
@@ -21,7 +22,7 @@ chrome.runtime.onMessage.addListener(async (request) => {
           success = document.execCommand('copy');
         } catch (execCommandError) {
           console.error('document.execCommand also failed:', execCommandError);
-          throw execCommandError; // Re-throw if execCommand itself errors
+          throw execCommandError;
         }
         if (!success) {
           throw new Error('Failed to copy using document.execCommand.');

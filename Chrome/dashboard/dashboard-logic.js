@@ -171,7 +171,6 @@ async function saveSettings(settingsElements) {
     showNotification("Settings saved successfully", "success");
     chrome.runtime.sendMessage({ action: "settingsUpdated" });
 
-    // Apply theme immediately
     applyTheme(settings.darkMode);
   } catch (error) {
     console.error("Error saving settings:", error);
@@ -265,7 +264,6 @@ async function refreshDashboard() {
   filterScripts(elements, state);
 }
 
-// Helper to toggle theme
 function applyTheme(isDark) {
   const body = document.body;
   if (isDark) {
@@ -275,7 +273,6 @@ function applyTheme(isDark) {
   }
 }
 
-// Export current script in Tampermonkey format (.user.js)
 function exportScript(script) {
   try {
     const code = script.code || "";
@@ -307,7 +304,6 @@ function exportScript(script) {
   }
 }
 
-// Attach functions to global so dashboard-ui can use them
 window.exportScript = exportScript;
 window.toggleScript = toggleScript;
 window.editScript = editScript;

@@ -510,7 +510,6 @@ class ScriptEditor {
       markAsDirty: () => this.markAsDirty(),
       markAsUnsaved: () => this.markAsUnsaved(),
       debouncedSave: () => this._debouncedSave(),
-      saveScript: () => this.saveScript()
     };
 
     // Setup additional UI components that need callbacks
@@ -989,9 +988,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-/**
- * Reads darkMode from storage and toggles body.light-theme.
- */
+
 async function applyThemeFromSettings() {
   try {
     const { settings = {} } = await chrome.storage.local.get("settings");

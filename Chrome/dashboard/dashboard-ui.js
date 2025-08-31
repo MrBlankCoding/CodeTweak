@@ -33,11 +33,10 @@ function updateWebsiteFilterOptions(scripts, websiteFilter) {
       }
     }
 
-    // Clear all options
     while (websiteFilter.firstChild) {
       websiteFilter.removeChild(websiteFilter.firstChild);
     }
-    // Add "All Websites" option
+
     const allOption = document.createElement("option");
     allOption.value = "";
     allOption.textContent = "All Websites";
@@ -68,7 +67,6 @@ function updateScriptsList(scripts, elements) {
     return;
   }
 
-  // show scripts
   if (elements.scriptsTable) elements.scriptsTable.style.display = "table";
   if (elements.emptyState) elements.emptyState.style.display = "none";
 
@@ -145,56 +143,6 @@ function createStatusToggleCell(script) {
   return statusCell;
 }
 
-function createFaviconCell(script) {
-  const faviconCell = document.createElement("td");
-  const faviconContainer = document.createElement("div");
-  faviconContainer.className = "favicon-container";
-
-  // mutli favs
-  const uniqueHosts = new Set();
-
-  // get fav for each
-  if (script.targetUrls && script.targetUrls.length > 0) {
-    script.targetUrls.forEach((url) => {
-      try {
-        let hostname;
-        if (url.includes("://")) {
-          hostname = new URL(url).hostname;
-        } else {
-          hostname = url.split("/")[0];
-        }
-
-        if (!uniqueHosts.has(hostname)) {
-          uniqueHosts.add(hostname);
-
-          if (faviconContainer.children.length < 3) {
-            const faviconWrapper = createFaviconWrapper(hostname);
-            faviconContainer.appendChild(faviconWrapper);
-          }
-        }
-      } catch (error) {
-        // skip invalid (e.g. "about:blank") URLs
-      }
-    });
-  }
-  if (uniqueHosts.size > 3) {
-    const extraHosts = Array.from(uniqueHosts).slice(3);
-    const counterElement = createFaviconCounter(extraHosts);
-    faviconContainer.appendChild(counterElement);
-  }
-
-  // FALLBACK!
-  if (faviconContainer.children.length === 0) {
-    const fallback = document.createElement("div");
-    fallback.className = "favicon-fallback";
-    fallback.textContent = (script.name[0] || "?").toUpperCase();
-    faviconContainer.appendChild(fallback);
-  }
-
-  faviconCell.appendChild(faviconContainer);
-  return faviconCell;
-}
-
 function createIconCell(script) {
   const iconCell = document.createElement("td");
   const container = document.createElement("div");
@@ -216,68 +164,6 @@ function createIconCell(script) {
 
   iconCell.appendChild(container);
   return iconCell;
-}
-
-function createFaviconWrapper(hostname) {
-  const faviconWrapper = document.createElement("div");
-  faviconWrapper.className = "favicon-wrapper";
-  faviconWrapper.title = hostname;
-
-  const faviconImg = document.createElement("img");
-  const faviconUrl = `https://s2.googleusercontent.com/s2/favicons?domain=${hostname}`;
-
-  console.log(`Fetching favicon for ${hostname}:`, faviconUrl);
-
-  faviconImg.src = faviconUrl;
-  faviconImg.alt = "";
-  faviconImg.className = "favicon";
-  faviconImg.onerror = function () {
-    console.warn(`Failed to load favicon for ${hostname}`);
-    const fallbackText = hostname.replace(/\*\./g, "").charAt(0).toUpperCase();
-    const fallbackDiv = document.createElement("div");
-    fallbackDiv.className = "favicon-fallback";
-    fallbackDiv.textContent = fallbackText;
-    this.parentElement.innerHTML = ""; // Clear previous content
-    this.parentElement.appendChild(fallbackDiv);
-  };
-
-  faviconWrapper.appendChild(faviconImg);
-  return faviconWrapper;
-}
-
-function createFaviconCounter(extraHosts) {
-  const counter = document.createElement("div");
-  counter.className = "favicon-counter";
-  counter.textContent = `+${extraHosts.length}`;
-  const dropdown = document.createElement("div");
-  dropdown.className = "favicon-dropdown";
-
-  const urlList = document.createElement("ul");
-  urlList.className = "favicon-url-list";
-
-  extraHosts.forEach((hostname) => {
-    const listItem = document.createElement("li");
-    listItem.className = "favicon-url-item";
-    const favicon = document.createElement("img");
-    favicon.src = `https://${hostname}/favicon.ico`;
-    favicon.alt = "";
-    favicon.onerror = () => {
-      const fallbackDiv = document.createElement("div");
-      fallbackDiv.className = "favicon-fallback";
-      fallbackDiv.textContent = (hostname[0] || "?").toUpperCase();
-      favicon.replaceWith(fallbackDiv);
-    };
-
-    const domain = document.createElement("span");
-    domain.textContent = hostname;
-
-    listItem.append(favicon, domain);
-    urlList.appendChild(listItem);
-  });
-
-  dropdown.appendChild(urlList);
-  counter.appendChild(dropdown);
-  return counter;
 }
 
 function createActionsCell(script) {
@@ -408,20 +294,16 @@ function escapeHtml(unsafe) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
+    .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
 
-// ----------------------------------------------
-// About Tab helpers
-// ----------------------------------------------
 function setupAboutNav(aboutContainer) {
   if (!aboutContainer) return;
 
   const navButtons = aboutContainer.querySelectorAll(".about-nav");
   const sections = aboutContainer.querySelectorAll(".about-section");
 
-  // ensure exporting section exists
   const contentEl = aboutContainer.querySelector(".about-content");
   if (contentEl && !contentEl.querySelector("#exporting")) {
     contentEl.insertAdjacentHTML(
@@ -447,7 +329,6 @@ function setupAboutNav(aboutContainer) {
   });
 }
 
-// Expose helpers for other modules
 window.updateWebsiteFilterOptions = updateWebsiteFilterOptions;
 window.updateScriptsList = updateScriptsList;
 window.showNotification = showNotification;

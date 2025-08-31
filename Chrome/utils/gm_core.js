@@ -1,12 +1,7 @@
 (function () {
-  // Prevent redefining if already injected
   if (typeof window.GMBridge !== "undefined") {
     return;
   }
-
-  // ==================================================
-  // CORE CLASSES & HELPERS
-  // ==================================================
 
   class GMBridge {
     constructor(scriptId, extensionId) {
@@ -81,7 +76,7 @@
         return this.cache.get(name);
       }
 
-      // Populate cache asynchronously for future calls
+      // Populate cache asynchronously
       this.bridge
         .call("getValue", { name, defaultValue })
         .then((value) => this.cache.set(name, value))
@@ -431,7 +426,6 @@
     }
   }
 
-  // Expose to window so executor functions can use them
   window.GMBridge = GMBridge;
   window.GMValueManager = GMValueManager;
   window.GMAPIRegistry = GMAPIRegistry;

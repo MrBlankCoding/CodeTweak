@@ -51,6 +51,8 @@
   border-top: 1px solid var(--border-primary);
   justify-content: flex-end;
   border-bottom: none;
+  gap: var(--space-md);
+  flex-wrap: wrap;
 }
 
 .modal-header h2 {
@@ -199,4 +201,34 @@
 .btn-secondary:hover {
   background: var(--bg-hover);
   border-color: var(--border-secondary);
+}
+
+/* Help button styling in Settings modal footer */
+.help-button {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  color: var(--text-secondary);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--button-radius);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.help-button:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-secondary);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.help-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.help-modal .modal-header {
+  justify-content: space-between;
 }

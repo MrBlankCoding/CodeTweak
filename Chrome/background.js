@@ -28,6 +28,7 @@ const state = new BackgroundState();
 const OFFSCREEN_DOCUMENT_PATH = "offscreen.html";
 
 // Utility functions
+// :)
 function safeSetBadge(tabId, text = "", color = "#007bff") {
   chrome.action.setBadgeText({ tabId, text }).catch((err) => {
     if (!isIgnorableTabError(err)) {
@@ -182,6 +183,7 @@ const gmApiHandlers = {
   },
 
   // Cross-origin XHR via fetch
+  // Stay CSP complient
   async xmlhttpRequest(message) {
     const details = message.details || {};
 
@@ -192,7 +194,6 @@ const gmApiHandlers = {
     const fetchInit = {
       method: details.method || "GET",
       headers: details.headers || {},
-      // Allow sending cookies for same-origin if desired
       credentials: details.synchronous ? "include" : "same-origin",
     };
 

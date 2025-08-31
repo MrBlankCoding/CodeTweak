@@ -1,10 +1,9 @@
-// Parse metadata from header //userscript
 function parseUserScriptMetadata(content) {
   const metadata = {
     gmApis: {},
   };
 
-  // Map grants to our API's - supporting both GM_ and GM. styles
+  // Map to our own API
   const grantToGmApi = {
     // GM_ style (traditional)
     GM_setValue: "gmSetValue",
@@ -98,7 +97,6 @@ function parseUserScriptMetadata(content) {
         metadata.icon = value.trim();
         break;
 
-      // copy anything else as is
       default:
         metadata[key] = value;
     }
@@ -112,8 +110,6 @@ function extractMetadataBlock(content) {
   return match ? match[0] : null;
 }
 
-// Map our internal gmApi flags back to Tampermonkey @grant names
-// Note: We default to GM_ style for compatibility, but could be made configurable
 const gmApiFlagToGrant = {
   gmSetValue: "GM_setValue",
   gmGetValue: "GM_getValue",
@@ -131,12 +127,6 @@ const gmApiFlagToGrant = {
   unsafeWindow: "unsafeWindow",
 };
 
-/**
- * Build a classic Tampermonkey metadata block given the script settings object produced by gatherScriptData().
- * @param {Object} script - Script settings including gmApi boolean flags, resources, requires, etc.
- * @param {boolean} useModernStyle - If true, uses GM. style grants instead of GM_ style
- * @returns {string} Complete metadata block including ==UserScript==/==/UserScript== lines.
- */
 function buildTampermonkeyMetadata(script, useModernStyle = false) {
   const lines = [];
   lines.push("// ==UserScript==");
@@ -156,15 +146,12 @@ function buildTampermonkeyMetadata(script, useModernStyle = false) {
   push("author", script.author || "Anonymous");
   push("icon", script.icon);
 
-  // Targets
   if (script.targetUrls && script.targetUrls.length) {
     script.targetUrls.forEach((pattern) => push("match", pattern));
   }
 
-  // Run-at
   if (script.runAt) {
     let runAt = script.runAt;
-    // convert document_start -> document-start etc.
     runAt = runAt.replace(/_/g, "-");
     push("run-at", runAt);
   }
@@ -185,7 +172,6 @@ function buildTampermonkeyMetadata(script, useModernStyle = false) {
   Object.keys(gmApiFlagToGrant).forEach((flag) => {
     if (script[flag]) {
       let grantName = gmApiFlagToGrant[flag];
-      // Convert to GM. style if requested and it's not unsafeWindow
       if (useModernStyle && grantName !== "unsafeWindow") {
         grantName = grantName.replace("GM_", "GM.");
       }
@@ -200,7 +186,6 @@ function buildTampermonkeyMetadata(script, useModernStyle = false) {
     grants.forEach((g) => push("grant", g));
   }
 
-  // License
   if (script.license) {
     push("license", script.license);
   }

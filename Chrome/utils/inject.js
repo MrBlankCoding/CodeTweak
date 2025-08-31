@@ -12,9 +12,7 @@ const EXECUTION_WORLDS = Object.freeze({
   ISOLATED: "ISOLATED",
 });
 
-// ==================================================
-// CORE CLASSES
-// ==================================================
+
 class GMBridge {
   constructor(scriptId, extensionId) {
     this.scriptId = scriptId;
@@ -640,19 +638,6 @@ function createMainWorldExecutor(
     console.warn('CodeTweak: Failed to bind timers/postMessage:', e);
   }
 
-  // Debug: log enabled APIs for this execution
-  try {
-    const enabled = Object.entries(enabledApis)
-      .filter(([, v]) => !!v)
-      .map(([k]) => k)
-      .sort();
-    console.log(`CodeTweak: Enabled GM APIs for script ${scriptId} (MAIN):`, enabled);
-    // Also dump full object for completeness
-    console.debug('CodeTweak: enabledApis (MAIN) raw:', enabledApis);
-  } catch (e) {
-    console.warn('CodeTweak: Failed to log enabled APIs (MAIN):', e);
-  }
-
   // Expose GM_info (read-only)
   try {
     Object.defineProperty(window, "GM_info", {
@@ -752,19 +737,6 @@ function createIsolatedWorldExecutor(
     console.warn('CodeTweak: Failed to bind timers/postMessage (isolated):', e);
   }
 
-  // Debug: log enabled APIs for this execution (ISOLATED)
-  try {
-    const enabled = Object.entries(enabledApis)
-      .filter(([, v]) => !!v)
-      .map(([k]) => k)
-      .sort();
-    console.log(`CodeTweak: Enabled GM APIs for script ${scriptId} (ISOLATED):`, enabled);
-    // Also dump full object for completeness
-    console.debug('CodeTweak: enabledApis (ISOLATED) raw:', enabledApis);
-  } catch (e) {
-    console.warn('CodeTweak: Failed to log enabled APIs (ISOLATED):', e);
-  }
-
   // Expose GM_info (read-only)
   try {
     Object.defineProperty(window, "GM_info", {
@@ -787,9 +759,7 @@ function createIsolatedWorldExecutor(
   );
 }
 
-/**
- * Executes user script with dependency loading
- */
+// Dependinces -> Lodash etc
 async function executeUserScriptWithDependencies(
   userCode,
   scriptId,
@@ -797,13 +767,9 @@ async function executeUserScriptWithDependencies(
   scriptLoader
 ) {
   try {
-    // Load external dependencies first
     await scriptLoader.loadScripts(requiredUrls);
-
-    // Execute user script directly without blob URLs to avoid CSP violations
-    // Use Function constructor with proper error handling
     try {
-      // Create a wrapper function that provides better error context
+      // Create a wrapper for error
       const wrappedCode = `
         try {
           ${userCode}
@@ -813,7 +779,7 @@ async function executeUserScriptWithDependencies(
         }
       `;
       
-      // Execute directly using Function constructor (CSP-compliant)
+      // New function
       const userFunction = new Function(wrappedCode);
       userFunction();
       
@@ -827,13 +793,7 @@ async function executeUserScriptWithDependencies(
   }
 }
 
-// ==================================================
-// INJECTION SYSTEM
-// ==================================================
-
-/**
- * Main script injection orchestrator
- */
+// !!!!! MAIN INJECT
 class ScriptInjector {
   constructor() {
     this.executedScripts = new Map();
@@ -889,9 +849,8 @@ class ScriptInjector {
   }
 
   async injectInWorld(tabId, config, world) {
-    // Prevent injection into chrome:// URLs
+    // Prevent chrome URLS
     if (config.url && config.url.startsWith('chrome://')) {
-      console.log('CodeTweak: Skipping injection into chrome:// URL:', config.url);
       return false;
     }
 
@@ -900,7 +859,7 @@ class ScriptInjector {
       target: { tabId },
       world,
       files: [
-        "utils/gm_core.js", // contains GMBridge, GMValueManager, GMAPIRegistry, etc.
+        "utils/gm_core.js",
       ],
     });
 
@@ -946,18 +905,6 @@ class ScriptInjector {
       gmRegisterMenuCommand: Boolean(script.gmRegisterMenuCommand),
       gmXmlhttpRequest: Boolean(script.gmXmlhttpRequest),
     };
-
-    // Debug: log enabled APIs at config time (background/service context)
-    try {
-      const enabledList = Object.entries(enabledApis)
-        .filter(([, v]) => !!v)
-        .map(([k]) => k)
-        .sort();
-      console.log('CodeTweak: prepareScriptConfig enabled APIs for', scriptId, enabledList);
-      console.debug('CodeTweak: prepareScriptConfig enabledApis raw:', enabledApis);
-    } catch (e) {
-      console.warn('CodeTweak: Failed to log enabled APIs in prepareScriptConfig:', e);
-    }
 
     const resourceManager = ResourceManager.fromScript(script);
 
@@ -1074,17 +1021,8 @@ class ScriptInjector {
   }
 }
 
-// ==================================================
-// PUBLIC API
-// ==================================================
-
-// Create singleton instance
 const scriptInjector = new ScriptInjector();
 
-// Legacy function compatibility
-export async function injectScriptDirectly(tabId, script, settings) {
-  return scriptInjector.injectScript(tabId, script, settings);
-}
 
 export async function injectScriptsForStage(
   details,

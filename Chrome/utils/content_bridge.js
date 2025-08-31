@@ -14,7 +14,7 @@ window.addEventListener('message', (event) => {
     return;
   }
 
-  const { messageId, action, payload: originalPayload } = event.data; // rename so its easier to work with
+  const { messageId, action, payload: originalPayload } = event.data;
 
   // create the payload for the background
   chrome.runtime.sendMessage({ 
