@@ -226,7 +226,7 @@
 <body>
     <div class="container">
         <nav class="nav-header">
-            <a href="index.html">
+            <a href="../../index.html">
                 <svg class="icon" viewBox="0 0 24 24">
                     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
                     <polyline points="9 22 9 12 15 12 15 22"/>
@@ -246,6 +246,59 @@
             </h1>
             <p>Learn to write powerful userscripts with practical examples, from basic DOM manipulation to advanced techniques using Greasemonkey APIs.</p>
         </header>
+        
+        <h2>Userscript Metadata</h2>
+        <p>
+            Userscripts often start with a metadata block that describes the script and how it should run. 
+            <strong>You don’t have to add this manually</strong>—CodeTweak can generate and maintain it for you based on the sidebar settings. 
+            If you do add or edit a metadata block in the code editor, CodeTweak will sync those values with the sidebar and keep them up to date.
+        </p>
+
+        <div class="feature-card">
+            <h3>What the Metadata Block Contains</h3>
+            <p>Common fields you’ll see and what they do:</p>
+            <ul>
+                <li><strong>@name</strong> — Display name of your script</li>
+                <li><strong>@namespace</strong> — Unique namespace to avoid conflicts (optional)</li>
+                <li><strong>@version</strong> — Script version (semantic versioning recommended)</li>
+                <li><strong>@description</strong> — Short description of what your script does</li>
+                <li><strong>@author</strong> — Your name or handle</li>
+                <li><strong>@match</strong>/<strong>@include</strong> — URL patterns where your script runs</li>
+                <li><strong>@run-at</strong> — When the script executes (e.g., document-start, document-idle)</li>
+                <li><strong>@grant</strong> — Permissions/APIs your script needs (e.g., GM_getValue, GM_setValue)</li>
+                <li><strong>@require</strong> — External scripts to load before your script (optional)</li>
+                <li><strong>@resource</strong> — Named assets your script can access (optional)</li>
+                <li><strong>@icon</strong> — Icon URL for your script (optional)</li>
+                <li><strong>@license</strong> — License identifier (optional)</li>
+            </ul>
+
+            <h4>Example</h4>
+            <pre><code class="language-javascript">// ==UserScript==
+// @name         Example Script
+// @namespace    https://codetweak.local
+// @version      1.0.0
+// @description  Demonstrates a typical metadata header
+// @author       You
+// @match        *://example.com/*
+// @run-at       document-idle
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @require      https://cdn.example.com/some-lib.min.js
+// @resource     logo https://example.com/logo.png
+// ==/UserScript==
+            </code></pre>
+
+            <div class="alert alert-info">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="16" x2="12" y2="12"/>
+                    <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <div>
+                    <strong>Good to know:</strong> You can omit the entire metadata block. The editor will generate it from your sidebar selections (name, URLs, run at, grants, requires, resources, etc.) and keep both the header and sidebar in sync.
+                </div>
+            </div>
+        </div>
 
         <h2>Quick Start</h2>
         <p>Open the editor by clicking "New Script" from the dashboard. The sidebar helps you configure your script settings while you write code in the main area.</p>
