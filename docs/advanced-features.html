@@ -257,33 +257,6 @@ function makeRequest(url, retries = 3) {
 </code></pre>
         </div>
 
-        <div class="feature-card">
-            <h3>Safe DOM Manipulation</h3>
-            <p>Use CodeTweak's Trusted Types helpers for safe HTML manipulation:</p>
-            
-            <pre><code class="language-javascript">// Instead of direct innerHTML assignment (may violate CSP)
-// element.innerHTML = '&lt;div&gt;Content&lt;/div&gt;';
-
-// Use CodeTweak's safe helpers
-GM_setInnerHTML(element, '&lt;div&gt;Content&lt;/div&gt;');
-
-// Or create trusted HTML
-const trustedHTML = GM_createHTML('&lt;div&gt;Content&lt;/div&gt;');
-element.innerHTML = trustedHTML;
-</code></pre>
-
-            <div class="alert alert-warning">
-                <svg class="icon" viewBox="0 0 24 24">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                <line x1="12" y1="9" x2="12" y2="13"/>
-                <line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
-                <div>
-                    <strong>CSP Compliance:</strong> Always use GM_setInnerHTML instead of direct innerHTML assignment on modern websites.
-                </div>
-            </div>
-        </div>
-
         <h2>Debugging & Development</h2>
 
         <div class="feature-card">
