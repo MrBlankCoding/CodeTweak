@@ -4,38 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Advanced Features - CodeTweak User Manual</title>
-    <!-- Prism.js for syntax highlighting -->
-    <link href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism.css" rel="stylesheet" />
+    <link rel="stylesheet" href="theme.css">
+    <!-- Prism.js light and dark themes -->
+    <link id="prismLight" href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism.css" rel="stylesheet" />
+    <link id="prismDark" href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism-tomorrow.css" rel="stylesheet" disabled />
     <style>
-        :root {
-            --primary-color: #4ea1ff;
-            --text-primary: #1f2937;
-            --text-secondary: #6b7280;
-            --background: #ffffff;
-            --surface: #f8fafc;
-            --border: #e5e7eb;
-            --code-bg: #f1f5f9;
-            --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-            line-height: 1.6;
-            color: var(--text-primary);
-            background: var(--background);
-        }
-
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
+        .container { padding: 2rem; }
 
         .nav-header {
             background: var(--surface);
@@ -541,6 +515,43 @@ observer.observe({entryTypes: ['measure']});
         </div>
     </div>
 
+    <script>
+    (function() {
+        const STORAGE_KEY = 'codetweak-docs-theme';
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+
+        function setPrismFor(theme) {
+            const light = document.getElementById('prismLight');
+            const dark = document.getElementById('prismDark');
+            if (!light || !dark) return;
+            if (theme === 'dark') {
+                light.disabled = true;
+                dark.disabled = false;
+            } else {
+                light.disabled = false;
+                dark.disabled = true;
+            }
+        }
+
+        function applyThemeFromStorageOrSystem() {
+            const explicit = localStorage.getItem(STORAGE_KEY);
+            if (explicit === 'dark' || explicit === 'light') {
+                document.documentElement.setAttribute('data-theme', explicit);
+                setPrismFor(explicit);
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+                setPrismFor(prefersDark.matches ? 'dark' : 'light');
+            }
+        }
+
+        applyThemeFromStorageOrSystem();
+        prefersDark.addEventListener('change', () => {
+            if (!localStorage.getItem(STORAGE_KEY)) {
+                applyThemeFromStorageOrSystem();
+            }
+        });
+    })();
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/prismjs@1/prism.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js"></script>
 </body>

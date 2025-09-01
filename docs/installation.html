@@ -4,37 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Installation Guide - CodeTweak User Manual</title>
-    <!-- Prism.js for syntax highlighting -->
-    <link href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism.css" rel="stylesheet" />
+    <link rel="stylesheet" href="theme.css">
+    <!-- Prism.js for syntax highlighting (light and dark themes) -->
+    <link id="prismLight" href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism.css" rel="stylesheet" />
+    <link id="prismDark" href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism-tomorrow.css" rel="stylesheet" disabled />
     <style>
-        :root {
-            --primary-color: #2563eb;
-            --text-primary: #1f2937;
-            --text-secondary: #6b7280;
-            --background: #ffffff;
-            --surface: #f9fafb;
-            --border: #e5e7eb;
-            --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-            --code-border: #cbd5e1;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-            line-height: 1.7;
-            color: var(--text-primary);
-            background: var(--background);
-        }
+        /* Page-specific styles below. Base variables and resets moved to docs/theme.css */
 
         .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 2rem 1rem;
+            max-width: 800px; /* Preserve original layout width */
         }
 
         .nav-header {
@@ -97,7 +75,7 @@
         }
 
         .method-card {
-            background: white;
+            background: var(--surface);
             border: 1px solid var(--border);
             border-radius: 8px;
             padding: 2rem;
@@ -211,7 +189,7 @@
         }
 
         .requirements {
-            background: white;
+            background: var(--surface);
             border: 1px solid var(--border);
             border-radius: 8px;
             padding: 1.5rem;
@@ -294,10 +272,6 @@
         }
 
         @media (max-width: 768px) {
-            .container {
-                padding: 1rem;
-            }
-
             h1 {
                 font-size: 2rem;
             }
@@ -494,7 +468,44 @@
         </div>
     </div>
 
+    <script>
+    (function() {
+        const STORAGE_KEY = 'codetweak-docs-theme';
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+
+        function setPrismFor(theme) {
+            const light = document.getElementById('prismLight');
+            const dark = document.getElementById('prismDark');
+            if (!light || !dark) return;
+            if (theme === 'dark') {
+                if (light) light.disabled = true;
+                if (dark) dark.disabled = false;
+            } else {
+                if (light) light.disabled = false;
+                if (dark) dark.disabled = true;
+            }
+        }
+
+        function applyThemeFromStorageOrSystem() {
+            const explicit = localStorage.getItem(STORAGE_KEY);
+            if (explicit === 'dark' || explicit === 'light') {
+                document.documentElement.setAttribute('data-theme', explicit);
+                setPrismFor(explicit);
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+                setPrismFor(prefersDark.matches ? 'dark' : 'light');
+            }
+        }
+
+        applyThemeFromStorageOrSystem();
+        prefersDark.addEventListener('change', () => {
+            if (!localStorage.getItem(STORAGE_KEY)) {
+                applyThemeFromStorageOrSystem();
+            }
+        });
+    })();
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/prismjs@1/prism.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>
-</body>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js"></script>
+    </body>
 </html>

@@ -1,0 +1,145 @@
+/* CodeTweak Docs Global Theme */
+:root {
+  /* Brand */
+  --primary-color: #2563eb; /* Blue-600 */
+  --secondary-color: #6b7280;
+
+  /* Text & Surfaces */
+  --text-primary: #1f2937; /* Gray-800 */
+  --text-secondary: #6b7280; /* Gray-500 */
+  --background: #ffffff;
+  --surface: #f9fafb; /* Gray-50 */
+  --border: #e5e7eb; /* Gray-200 */
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+
+  /* Code blocks */
+  --code-bg: #f1f5f9; /* Slate-100 */
+  --code-border: #cbd5e1; /* Slate-300 */
+
+  /* States */
+  --success: #16a34a; /* Green-600 */
+  --warning: #f59e0b; /* Amber-500 */
+  --error: #dc2626;   /* Red-600 */
+
+  /* Radius & Spacing */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 12px;
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 0.75rem;
+  --space-lg: 1rem;
+  --space-xl: 1.5rem;
+}
+
+/* Base reset */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Base typography */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  line-height: 1.7;
+  color: var(--text-primary);
+  background: var(--background);
+}
+
+/* Prefer system theme when no explicit selection */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --text-primary: #e5e7eb; /* Gray-200 */
+    --text-secondary: #9ca3af; /* Gray-400 */
+    --background: #0b1020; /* Near-black with blue hue */
+    --surface: #111827; /* Gray-900 */
+    --border: #1f2937; /* Gray-800 */
+    --shadow: none;
+    --code-bg: #0f172a; /* Slate-900 */
+    --code-border: #1e293b; /* Slate-800 */
+  }
+}
+
+/* Explicit dark mode via data attribute on <html> */
+html[data-theme="dark"] {
+  --text-primary: #e5e7eb; /* Gray-200 */
+  --text-secondary: #9ca3af; /* Gray-400 */
+  --background: #0b1020; /* Near-black with blue hue */
+  --surface: #111827; /* Gray-900 */
+  --border: #1f2937; /* Gray-800 */
+  --shadow: none;
+  --code-bg: #0f172a; /* Slate-900 */
+  --code-border: #1e293b; /* Slate-800 */
+}
+
+/* Layout helpers */
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+/* Links */
+a { color: var(--primary-color); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Buttons (generic) */
+.nav-buttons { display: flex; justify-content: space-between; gap: 1rem; }
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: var(--primary-color);
+  color: #fff;
+  border-radius: var(--radius-md);
+  transition: background-color 0.2s, transform 0.2s;
+}
+.nav-btn:hover { background: #1d4ed8; transform: translateY(-1px); }
+.nav-btn.secondary { background: var(--surface); color: var(--text-primary); border: 1px solid var(--border); }
+.nav-btn.secondary:hover { background: var(--border); }
+
+/* Cards */
+.card, .feature-card, .api-card, .method-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+}
+
+/* Code blocks */
+pre, code[class*="language-"] {
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-radius: var(--radius-md);
+}
+
+/* Alerts */
+.alert { padding: 1rem; border-radius: var(--radius-md); margin: 1rem 0; display: flex; align-items: flex-start; gap: 0.75rem; }
+.alert-info { background: #dbeafe; border: 1px solid #93c5fd; color: #1e40af; }
+.alert-success { background: #dcfce7; border: 1px solid #4ade80; color: #166534; }
+.alert-warning { background: #fef3c7; border: 1px solid #fbbf24; color: #92400e; }
+.alert-error { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; }
+
+/* Code blocks */
+pre {
+  padding: 1rem;
+  margin: 1rem 0;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.9rem;
+  overflow-x: auto;
+}
+
+/* Icons */
+.icon { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+/* Tables */
+.params-table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow); }
+.params-table th, .params-table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+.params-table th { background: var(--surface); font-weight: 600; color: var(--text-primary); }
+.param-name { font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; color: var(--primary-color); }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container { padding: 1rem; }
+  h1 { font-size: 2rem; }
+  .nav-buttons { flex-direction: column; }
+}
