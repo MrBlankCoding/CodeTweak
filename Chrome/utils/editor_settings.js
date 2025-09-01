@@ -1,4 +1,4 @@
-/* global chrome, CodeMirror, js_beautify */
+/* global CodeMirror, js_beautify */
 
 import { parseUserScriptMetadata } from './metadataParser.js';
 

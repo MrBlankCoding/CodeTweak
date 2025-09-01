@@ -95,12 +95,19 @@
   content: '';
   position: absolute;
   left: -4px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 2px;
-  height: 16px;
-  background: var(--primary);
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: white;
   border-radius: 0 2px 2px 0;
+}
+
+/* Sidebar divider */
+.sidebar-divider {
+  height: 1px;
+  background: var(--border-secondary);
+  margin: var(--space-xs) var(--space-sm);
+  opacity: 0.5;
 }
 
 /* API Count Badge on Icon */
@@ -355,8 +362,8 @@
   margin: 0;
   padding: var(--space-sm);
   background: var(--bg-tertiary);
-  border-bottom: 1px solid var(--border-primary);
-  font-size: var(--text-xs);
+  border-bottom: 1px solid var(--border-secondary);
+  transition: all var(--transition-fast);
   font-weight: var(--font-medium);
   color: var(--text-secondary);
   text-transform: uppercase;

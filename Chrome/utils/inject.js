@@ -1,5 +1,3 @@
-/* global chrome */
-
 // Constants
 const INJECTION_TYPES = Object.freeze({
   DOCUMENT_START: "document_start",
@@ -849,11 +847,6 @@ class ScriptInjector {
   }
 
   async injectInWorld(tabId, config, world) {
-    // Prevent chrome URLS
-    if (config.url && config.url.startsWith('chrome://')) {
-      return false;
-    }
-
     // Ensure core GM classes are available in the target execution world first
     await chrome.scripting.executeScript({
       target: { tabId },

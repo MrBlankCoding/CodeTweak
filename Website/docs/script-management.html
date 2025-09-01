@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Script Management - CodeTweak User Manual</title>
+    <!-- Prism.js for syntax highlighting -->
+    <link href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism.css" rel="stylesheet" />
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --background: #ffffff;
+            --surface: #f9fafb;
+            --border: #e5e7eb;
+            --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            line-height: 1.7;
+            color: var(--text-primary);
+            background: var(--background);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        .nav-header {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .nav-header a {
+            color: var(--primary-color);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-header a:hover {
+            text-decoration: underline;
+        }
+
+        .icon {
+            width: 20px;
+            height: 20px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+        }
+
+        h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.025em;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 3rem 0 1.5rem 0;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.75rem;
+        }
+
+        h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 2rem 0 1rem 0;
+        }
+
+        p {
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+        }
+
+        .feature-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .feature-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-header h3 {
+            margin: 0;
+            color: var(--primary-color);
+        }
+
+        .steps {
+            list-style: none;
+            counter-reset: step-counter;
+        }
+
+        .steps li {
+            counter-increment: step-counter;
+            margin-bottom: 1rem;
+            padding-left: 3rem;
+            position: relative;
+        }
+
+        .steps li::before {
+            content: counter(step-counter);
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: var(--primary-color);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .code-block {
+            background: var(--code-bg);
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .alert-info {
+            background: #dbeafe;
+            border: 1px solid #93c5fd;
+            color: #1e40af;
+        }
+
+        .alert-success {
+            background: #dcfce7;
+            border: 1px solid #4ade80;
+            color: #166534;
+        }
+
+        .alert-warning {
+            background: #fef3c7;
+            border: 1px solid #fbbf24;
+            color: #92400e;
+        }
+
+        .method-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .method-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.25rem;
+            box-shadow: var(--shadow);
+        }
+
+        .method-card h4 {
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: background-color 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: #3b82f6;
+        }
+
+        .nav-btn.secondary {
+            background: var(--surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .nav-btn.secondary:hover {
+            background: var(--border);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .nav-header {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .nav-buttons {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .method-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="nav-header">
+            <a href="index.html">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+                Back to Documentation Home
+            </a>
+            <span>Script Management Guide</span>
+        </nav>
+
+        <header>
+            <h1>
+                <svg class="icon" viewBox="0 0 24 24" style="width: 40px; height: 40px;">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+                Script Management
+            </h1>
+            <p>Learn to create, import, export, and manage userscripts including seamless Greasy Fork integration.</p>
+        </header>
+
+        <h2>Creating Scripts</h2>
+
+        <div class="feature-card">
+            <div class="feature-header">
+                <h3>From Scratch</h3>
+            </div>
+            <p>Create a completely new userscript using CodeTweak's built-in editor:</p>
+            
+            <ol class="steps">
+                <li>Click "New Script" from the dashboard or popup</li>
+                <li>Fill in script information (name, author, description)</li>
+                <li>Configure target URLs and execution settings</li>
+                <li>Select required GM APIs</li>
+                <li>Write your JavaScript code</li>
+                <li>Save the script (Ctrl+S)</li>
+            </ol>
+
+            <div class="alert alert-success">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                <div>
+                    <strong>Auto-Generation:</strong> CodeTweak automatically generates userscript headers based on your sidebar configuration.
+                </div>
+            </div>
+        </div>
+
+        <h2>Importing Scripts</h2>
+
+        <div class="method-grid">
+            <div class="method-card">
+                <h4>🌐 Greasy Fork Integration</h4>
+                <p>One-click installation from the world's largest userscript repository.</p>
+                <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                    <li>Built-in search functionality</li>
+                    <li>Automatic updates</li>
+                    <li>Script ratings and reviews</li>
+                </ul>
+            </div>
+
+            <div class="method-card">
+                <h4>📁 Drag & Drop</h4>
+                <p>Simply drag .js files onto the dashboard to import them instantly.</p>
+                <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                    <li>Supports .js and .user.js files</li>
+                    <li>Automatic metadata parsing</li>
+                    <li>Bulk import support</li>
+                </ul>
+            </div>
+
+            <div class="method-card">
+                <h4>📋 Copy & Paste</h4>
+                <p>Paste userscript code directly into the editor.</p>
+                <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                    <li>Automatic header detection</li>
+                    <li>Syntax validation</li>
+                    <li>Format preservation</li>
+                </ul>
+            </div>
+
+            <div class="method-card">
+                <h4>📦 JSON Import</h4>
+                <p>Import previously exported script collections.</p>
+                <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                    <li>Bulk script restoration</li>
+                    <li>Settings preservation</li>
+                    <li>Backup compatibility</li>
+                </ul>
+            </div>
+        </div>
+
+        <h2>Greasy Fork Integration</h2>
+
+        <div class="feature-card">
+            <div class="feature-header">
+                <h3>Installing from Greasy Fork</h3>
+            </div>
+            <p>CodeTweak provides seamless integration with Greasy Fork for discovering and installing userscripts:</p>
+            
+            <ol class="steps">
+                <li><strong>Open Greasy Fork Browser:</strong> Click "Browse Scripts" from the dashboard</li>
+                <li><strong>Search for Scripts:</strong> Use the search box to find scripts by name or functionality</li>
+                <li><strong>Review Script Details:</strong> View descriptions, ratings, and compatibility information</li>
+                <li><strong>Install Script:</strong> Click "Install" to add the script to your collection</li>
+                <li><strong>Configure if Needed:</strong> Adjust settings or URL patterns as required</li>
+            </ol>
+
+            <div class="alert alert-info">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="16" x2="12" y2="12"/>
+                    <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <div>
+                    <strong>Direct Installation:</strong> You can also install scripts directly from Greasy Fork by visiting script pages while CodeTweak is installed.
+                </div>
+            </div>
+        </div>
+
+        <div class="feature-card">
+            <h3>Script Updates</h3>
+            <p>Keep your Greasy Fork scripts up-to-date:</p>
+            
+            <ul style="margin-left: 2rem;">
+                <li><strong>Automatic Checking:</strong> CodeTweak periodically checks for script updates</li>
+                <li><strong>Manual Updates:</strong> Click the "Update" button next to any script in the dashboard</li>
+                <li><strong>Version Tracking:</strong> View current and available versions</li>
+                <li><strong>Update Notifications:</strong> Get notified when updates are available</li>
+            </ul>
+        </div>
+
+        <h2>Organizing Scripts</h2>
+
+        <div class="feature-card">
+            <h3>Naming Conventions</h3>
+            <p>Follow these best practices for script organization:</p>
+            
+<pre><code class="language-javascript">// Good naming examples:
+"YouTube - Ad Blocker"
+"GitHub - Dark Theme"
+"Reddit - Enhanced Navigation"
+
+// Avoid generic names:
+"Script1"
+"My Script"
+"Test"
+
+// Include functionality and target site
+"[Site] - [Function]"</code></pre>
+
+            <div class="alert alert-success">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                <div>
+                    <strong>Pro Tip:</strong> Use consistent naming patterns to make scripts easier to find and manage as your collection grows.
+                </div>
+            </div>
+        </div>
+
+        <h2>Exporting & Backup</h2>
+
+        <div class="feature-card">
+            <h3>Individual Script Export</h3>
+            <p>Export single scripts for sharing or backup:</p>
+            
+            <ol class="steps">
+                <li>Locate the script in your dashboard</li>
+                <li>Click the "Export" button in the Actions column</li>
+                <li>The script downloads as a .js file</li>
+                <li>Share or store the file as needed</li>
+            </ol>
+        </div>
+
+        <div class="feature-card">
+            <h3>Bulk Export</h3>
+            <p>Export all scripts at once for complete backup:</p>
+            
+            <ol class="steps">
+                <li>Go to the "Settings" tab in the dashboard</li>
+                <li>Click "Export All Scripts"</li>
+                <li>A JSON file containing all scripts downloads</li>
+                <li>Store this file safely as your complete backup</li>
+            </ol>
+
+            <div class="alert alert-warning">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+                <div>
+                    <strong>Backup Regularly:</strong> Export your scripts periodically to prevent data loss from browser issues or reinstallation.
+                </div>
+            </div>
+        </div>
+
+        <div class="feature-card">
+            <h3>Version Control</h3>
+            <p>While CodeTweak doesn't have built-in version control, you can manage versions manually:</p>
+            
+            <ul style="margin-left: 2rem;">
+                <li><strong>Version Numbers:</strong> Update the version field for each change</li>
+                <li><strong>Export Snapshots:</strong> Export scripts before major changes</li>
+                <li><strong>Descriptive Names:</strong> Use version suffixes for experimental versions</li>
+                <li><strong>External Tools:</strong> Use Git or other VCS for complex projects</li>
+            </ul>
+
+<pre><code class="language-javascript">// Version management examples:
+"My Script v1.0"     // Stable version
+"My Script v1.1-dev" // Development version
+"My Script v2.0-beta" // Beta testing version</code></pre>
+        </div>
+
+        <h2>Troubleshooting</h2>
+
+        <div class="feature-card">
+            <h3>Common Issues</h3>
+            
+            <h4>Script Not Running</h4>
+            <ul style="margin-left: 2rem; margin-bottom: 1rem;">
+                <li>Check if the script is enabled in the dashboard</li>
+                <li>Verify URL patterns match the current page</li>
+                <li>Ensure required GM APIs are selected</li>
+                <li>Check browser console for JavaScript errors</li>
+            </ul>
+
+            <h4>Import Failures</h4>
+            <ul style="margin-left: 2rem; margin-bottom: 1rem;">
+                <li>Verify the file is a valid JavaScript file</li>
+                <li>Check for syntax errors in the code</li>
+                <li>Ensure userscript headers are properly formatted</li>
+                <li>Try importing smaller files individually</li>
+            </ul>
+
+            <h4>Performance Issues</h4>
+            <ul style="margin-left: 2rem;">
+                <li>Disable unused scripts to reduce overhead</li>
+                <li>Optimize script execution timing</li>
+                <li>Remove unnecessary GM API selections</li>
+                <li>Check for infinite loops or heavy computations</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h3>Getting Help</h3>
+            <p>Resources for additional support:</p>
+            
+            <ul style="margin-left: 2rem;">
+                <li><strong>GitHub Issues:</strong> Report bugs or request features</li>
+                <li><strong>Greasy Fork Forums:</strong> Community support for userscript development</li>
+                <li><strong>Browser Console:</strong> Check for error messages and debugging info</li>
+                <li><strong>Documentation:</strong> Review this manual and API reference</li>
+            </ul>
+        </div>
+
+        <h2>Best Practices</h2>
+
+        <div class="alert alert-success">
+            <svg class="icon" viewBox="0 0 24 24">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            <div>
+                <strong>Management Tips:</strong>
+                <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                    <li>Keep your script collection organized with clear names</li>
+                    <li>Regularly update scripts from Greasy Fork</li>
+                    <li>Export backups before making major changes</li>
+                    <li>Test scripts thoroughly before enabling permanently</li>
+                    <li>Document your custom scripts with clear comments</li>
+                    <li>Remove unused scripts to improve performance</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="nav-buttons">
+            <a href="gm-apis.html" class="nav-btn secondary">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <polyline points="15 18 9 12 15 6"/>
+                </svg>
+                GM APIs Reference
+            </a>
+            <a href="advanced-features.html" class="nav-btn">
+                Advanced Features
+                <svg class="icon" viewBox="0 0 24 24">
+                    <polyline points="9 18 15 12 9 6"/>
+                </svg>
+            </a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js"></script>
+</body>
+</html>

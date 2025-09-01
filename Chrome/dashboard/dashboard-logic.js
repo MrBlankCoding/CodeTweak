@@ -94,11 +94,6 @@ async function deleteScript(scriptId) {
     document.dispatchEvent(new CustomEvent("scriptsChanged"));
     chrome.runtime.sendMessage({ action: "scriptsUpdated" });
 
-    showNotification(
-      `Deleted script: ${scriptToDelete?.name || "Unknown"}`,
-      "success"
-    );
-
     const elements = {
       scriptsTable: document.getElementById("scriptsTable"),
       scriptsList: document.getElementById("scriptsList"),

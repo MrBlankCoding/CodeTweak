@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Writing Userscripts - CodeTweak User Manual</title>
+    <!-- Prism.js for syntax highlighting -->
+    <link href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism.css" rel="stylesheet" />
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --background: #ffffff;
+            --surface: #f9fafb;
+            --border: #e5e7eb;
+            --code-bg: #f3f4f6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            line-height: 1.7;
+            color: var(--text-primary);
+            background: var(--background);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        .nav-header {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 3rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .nav-header a {
+            color: var(--primary-color);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 500;
+        }
+
+        .nav-header a:hover {
+            text-decoration: underline;
+        }
+
+        .icon {
+            width: 18px;
+            height: 18px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+        }
+
+        h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.025em;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 3rem 0 1.5rem 0;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.75rem;
+        }
+
+        h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 2rem 0 1rem 0;
+        }
+
+        h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 1.5rem 0 0.5rem 0;
+        }
+
+        p {
+            margin-bottom: 1.25rem;
+            color: var(--text-secondary);
+        }
+
+        .feature-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1.25rem;
+            margin: 1.5rem 0;
+            font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            overflow-x: auto;
+            color: var(--text-primary);
+        }
+
+        .alert {
+            padding: 1rem 1.25rem;
+            border-radius: 6px;
+            margin: 1.5rem 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            border-left: 4px solid;
+        }
+
+        .alert-info {
+            background: #f0f9ff;
+            border-left-color: #0ea5e9;
+            color: #0c4a6e;
+        }
+
+        .alert-success {
+            background: #f0fdf4;
+            border-left-color: #22c55e;
+            color: #166534;
+        }
+
+        a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 4rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.25rem;
+            background: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: #1d4ed8;
+            transform: translateY(-1px);
+        }
+
+        .nav-btn.secondary {
+            background: white;
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .nav-btn.secondary:hover {
+            background: var(--surface);
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 1.875rem;
+            }
+
+            h2 {
+                font-size: 1.25rem;
+            }
+
+            .nav-header {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .nav-buttons {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .feature-card {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="nav-header">
+            <a href="index.html">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+                Back to Documentation Home
+            </a>
+            <span>Writing Userscripts Guide</span>
+        </nav>
+
+        <header>
+            <h1>
+                <svg class="icon" viewBox="0 0 24 24" style="width: 40px; height: 40px;">
+                    <polyline points="16 18 22 12 16 6"/>
+                    <polyline points="8 6 2 12 8 18"/>
+                </svg>
+                Writing Userscripts
+            </h1>
+            <p>Learn to write powerful userscripts with practical examples, from basic DOM manipulation to advanced techniques using Greasemonkey APIs.</p>
+        </header>
+
+        <h2>Quick Start</h2>
+        <p>Open the editor by clicking "New Script" from the dashboard. The sidebar helps you configure your script settings while you write code in the main area.</p>
+
+        <h2>Writing Your First Script</h2>
+
+        <div class="feature-card">
+            <h3>Hello World Example</h3>
+            <p>Let's create a simple script that adds a greeting message to any webpage:</p>
+
+            <pre><code class="language-javascript">// ==UserScript==
+// @name         Hello World
+// @description  Adds a greeting to any webpage
+// @author       You
+// @version      1.0
+// @match        *://*/*
+// ==/UserScript==
+
+(function() {
+    'use strict';
+    
+    // Create a greeting element
+    const greeting = document.createElement('div');
+    greeting.textContent = 'Hello from CodeTweak!';
+    greeting.style.cssText = `
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background: #4ea1ff;
+        color: white;
+        padding: 10px 15px;
+        border-radius: 5px;
+        z-index: 10000;
+        font-family: Arial, sans-serif;
+    `;
+    
+    // Add to page
+    document.body.appendChild(greeting);
+    
+    // Remove after 3 seconds
+    setTimeout(() => greeting.remove(), 3000);
+})();</code></pre>
+
+            <div class="alert alert-info">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="16" x2="12" y2="12"/>
+                    <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <div>
+                    <strong>Try it:</strong> Copy this code into the editor, save it, and visit any website to see the greeting appear.
+                </div>
+            </div>
+        </div>
+
+        <div class="feature-card">
+            <h3>DOM Manipulation Basics</h3>
+            <p>Most userscripts modify webpage content. Here are essential techniques:</p>
+
+            <h4>Finding Elements</h4>
+            <pre><code class="language-javascript">// Find elements by different selectors
+const button = document.querySelector('.submit-btn');
+const allLinks = document.querySelectorAll('a');
+const byId = document.getElementById('main-content');
+const byClass = document.getElementsByClassName('article');
+
+// Check if element exists before using
+if (button) {
+    button.click();
+}</code></pre>
+
+            <h4>Modifying Content</h4>
+            <pre><code class="language-javascript">// Change text content
+document.querySelector('h1').textContent = 'New Title';
+
+// Change HTML content
+document.querySelector('.content').innerHTML = '<p>New content</p>';
+
+// Modify attributes
+const img = document.querySelector('img');
+img.src = 'new-image.jpg';
+img.alt = 'New description';
+
+// Add/remove CSS classes
+element.classList.add('highlight');
+element.classList.remove('hidden');
+element.classList.toggle('active');</code></pre>
+
+            <h4>Creating New Elements</h4>
+            <pre><code class="language-javascript">// Create and configure element
+const newDiv = document.createElement('div');
+newDiv.className = 'my-custom-element';
+newDiv.textContent = 'Dynamic content';
+
+// Style the element
+newDiv.style.cssText = `
+    background: #f0f0f0;
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 3px;
+`;
+
+// Add to page
+document.body.appendChild(newDiv);</code></pre>
+        </div>
+
+        <div class="feature-card">
+            <h3>Practical Example: YouTube Enhancer</h3>
+            <p>Here's a real-world script that adds a download button to YouTube videos:</p>
+
+            <pre><code class="language-javascript">// ==UserScript==
+// @name         YouTube Download Helper
+// @description  Adds download button to YouTube videos
+// @author       You
+// @version      1.0
+// @match        https://www.youtube.com/watch*
+// ==/UserScript==
+
+(function() {
+    'use strict';
+    
+    function addDownloadButton() {
+        // Find the video controls area
+        const controls = document.querySelector('.ytp-right-controls');
+        if (!controls || document.querySelector('.download-btn')) return;
+        
+        // Create download button
+        const downloadBtn = document.createElement('button');
+        downloadBtn.className = 'download-btn ytp-button';
+        downloadBtn.innerHTML = '⬇️';
+        downloadBtn.title = 'Download Video';
+        
+        // Style to match YouTube's buttons
+        downloadBtn.style.cssText = `
+            background: none;
+            border: none;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 8px;
+        `;
+        
+        // Add click handler
+        downloadBtn.addEventListener('click', () => {
+            const videoUrl = window.location.href;
+            const videoId = new URL(videoUrl).searchParams.get('v');
+            alert(`Video ID: ${videoId}\nUse a download service with this ID.`);
+        });
+        
+        // Insert before settings button
+        controls.insertBefore(downloadBtn, controls.firstChild);
+    }
+    
+    // Run when page loads and on navigation
+    addDownloadButton();
+    
+    // YouTube is a SPA, so watch for URL changes
+    let currentUrl = location.href;
+    new MutationObserver(() => {
+        if (location.href !== currentUrl) {
+            currentUrl = location.href;
+            setTimeout(addDownloadButton, 1000);
+        }
+    }).observe(document, { subtree: true, childList: true });
+})();</code></pre>
+        </div>
+
+        <h2>Advanced Scripting</h2>
+
+        <div class="feature-card">
+            <h3>Using GM APIs for Persistent Storage</h3>
+            <p>Store data across page visits using Greasemonkey storage APIs:</p>
+
+            <pre><code class="language-javascript">// ==UserScript==
+// @name         Visit Counter
+// @description  Counts how many times you visit a site
+// @author       You
+// @version      1.0
+// @match        https://example.com/*
+// @grant        GM_getValue
+// @grant        GM_setValue
+// ==/UserScript==
+
+(function() {
+    'use strict';
+    
+    async function updateVisitCounter() {
+        // Get current count (default to 0)
+        const currentCount = await GM_getValue('visitCount', 0);
+        const newCount = currentCount + 1;
+        
+        // Save new count
+        await GM_setValue('visitCount', newCount);
+        
+        // Display counter
+        const counter = document.createElement('div');
+        counter.textContent = `Visits: ${newCount}`;
+        counter.style.cssText = `
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: #333;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 3px;
+            z-index: 10000;
+        `;
+        document.body.appendChild(counter);
+    }
+    
+    updateVisitCounter();
+})();</code></pre>
+        </div>
+
+        <div class="feature-card">
+            <h3>Making HTTP Requests</h3>
+            <p>Fetch data from external APIs using GM_xmlhttpRequest:</p>
+
+            <pre><code class="language-javascript">// ==UserScript==
+// @name         Weather Widget
+// @description  Shows weather on any page
+// @author       You
+// @version      1.0
+// @match        *://*/*
+// @grant        GM_xmlhttpRequest
+// ==/UserScript==
+
+(function() {
+    'use strict';
+    
+    function createWeatherWidget() {
+        const widget = document.createElement('div');
+        widget.id = 'weather-widget';
+        widget.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 10000;
+            font-family: Arial, sans-serif;
+            min-width: 200px;
+        `;
+        widget.innerHTML = 'Loading weather...';
+        document.body.appendChild(widget);
+        
+        // Fetch weather data (replace with real API)
+        GM_xmlhttpRequest({
+            method: 'GET',
+            url: 'https://api.openweathermap.org/data/2.5/weather?q=London&appid=YOUR_API_KEY',
+            onload: function(response) {
+                try {
+                    const data = JSON.parse(response.responseText);
+                    const temp = Math.round(data.main.temp - 273.15); // Convert K to C
+                    const desc = data.weather[0].description;
+                    
+                    widget.innerHTML = `
+                        <div><strong>${data.name}</strong></div>
+                        <div>${temp}°C</div>
+                        <div>${desc}</div>
+                    `;
+                } catch (e) {
+                    widget.innerHTML = 'Weather unavailable';
+                }
+            },
+            onerror: function() {
+                widget.innerHTML = 'Weather error';
+            }
+        });
+    }
+    
+    // Add widget when page loads
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', createWeatherWidget);
+    } else {
+        createWeatherWidget();
+    }
+})();</code></pre>
+        </div>
+
+        <div class="feature-card">
+            <h3>Advanced DOM Techniques</h3>
+            <p>Handle dynamic content and complex page modifications:</p>
+
+            <h4>Waiting for Elements</h4>
+            <pre><code class="language-javascript">// Wait for element to appear (useful for dynamic sites)
+function waitForElement(selector, timeout = 5000) {
+    return new Promise((resolve, reject) => {
+        const element = document.querySelector(selector);
+        if (element) {
+            resolve(element);
+            return;
+        }
+        
+        const observer = new MutationObserver(() => {
+            const element = document.querySelector(selector);
+            if (element) {
+                observer.disconnect();
+                resolve(element);
+            }
+        });
+        
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+        
+        setTimeout(() => {
+            observer.disconnect();
+            reject(new Error(`Element ${selector} not found within ${timeout}ms`));
+        }, timeout);
+    });
+}
+
+// Usage
+waitForElement('.dynamic-content').then(element => {
+    element.style.background = 'yellow';
+}).catch(console.error);</code></pre>
+
+            <h4>Event Delegation</h4>
+            <pre><code class="language-javascript">// Handle clicks on dynamically added elements
+document.addEventListener('click', function(e) {
+    // Check if clicked element matches our target
+    if (e.target.matches('.special-button')) {
+        e.preventDefault();
+        console.log('Special button clicked!');
+        
+        // Modify the clicked element
+        e.target.textContent = 'Clicked!';
+        e.target.style.background = 'green';
+    }
+});</code></pre>
+
+            <h4>CSS Injection</h4>
+            <pre><code class="language-javascript">// Add custom styles to the page
+function addCustomCSS(css) {
+    const style = document.createElement('style');
+    style.textContent = css;
+    document.head.appendChild(style);
+}
+
+// Usage
+addCustomCSS(`
+    .annoying-popup {
+        display: none !important;
+    }
+    .content {
+        max-width: 800px !important;
+        margin: 0 auto !important;
+    }
+`);</code></pre>
+        </div>
+
+        <div class="feature-card">
+            <h3>Real-World Example: Reddit Enhancer</h3>
+            <p>A comprehensive script that demonstrates multiple advanced techniques:</p>
+
+            <pre><code class="language-javascript">// ==UserScript==
+// @name         Reddit Enhancer
+// @description  Improves Reddit browsing experience
+// @author       You
+// @version      1.0
+// @match        https://www.reddit.com/*
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @grant        GM_addStyle
+// ==/UserScript==
+
+(function() {
+    'use strict';
+    
+    // Configuration
+    const config = {
+        hideAds: true,
+        darkMode: false,
+        autoExpand: true
+    };
+    
+    // Load saved settings
+    async function loadSettings() {
+        config.hideAds = await GM_getValue('hideAds', true);
+        config.darkMode = await GM_getValue('darkMode', false);
+        config.autoExpand = await GM_getValue('autoExpand', true);
+    }
+    
+    // Apply enhancements
+    function enhance() {
+        if (config.hideAds) {
+            hideAdvertisements();
+        }
+        
+        if (config.darkMode) {
+            enableDarkMode();
+        }
+        
+        if (config.autoExpand) {
+            autoExpandPosts();
+        }
+        
+        addSettingsButton();
+    }
+    
+    function hideAdvertisements() {
+        const adSelectors = [
+            '[data-testid="ad-post-container"]',
+            '.promotedlink',
+            '.sponsored-post'
+        ];
+        
+        adSelectors.forEach(selector => {
+            document.querySelectorAll(selector).forEach(ad => {
+                ad.style.display = 'none';
+            });
+        });
+    }
+    
+    function enableDarkMode() {
+        GM_addStyle(`
+            body, .Post, .Comment {
+                background: #1a1a1b !important;
+                color: #d7dadc !important;
+            }
+            .Post, .Comment {
+                border-color: #343536 !important;
+            }
+        `);
+    }
+    
+    function autoExpandPosts() {
+        document.querySelectorAll('[data-click-id="text"]').forEach(post => {
+            if (post.textContent.includes('...')) {
+                post.click();
+            }
+        });
+    }
+    
+    function addSettingsButton() {
+        const button = document.createElement('button');
+        button.textContent = 'Enhancer Settings';
+        button.style.cssText = `
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 10000;
+            background: #ff4500;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        `;
+        
+        button.addEventListener('click', showSettings);
+        document.body.appendChild(button);
+    }
+    
+    function showSettings() {
+        const settings = prompt('Settings (format: hideAds,darkMode,autoExpand)', 
+            `${config.hideAds},${config.darkMode},${config.autoExpand}`);
+        
+        if (settings) {
+            const [hideAds, darkMode, autoExpand] = settings.split(',').map(s => s.trim() === 'true');
+            
+            GM_setValue('hideAds', hideAds);
+            GM_setValue('darkMode', darkMode);
+            GM_setValue('autoExpand', autoExpand);
+            
+            location.reload();
+        }
+    }
+    
+    // Initialize
+    loadSettings().then(() => {
+        enhance();
+        
+        // Re-run on navigation (Reddit is SPA)
+        const observer = new MutationObserver(() => {
+            setTimeout(enhance, 1000);
+        });
+        
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    });
+})();</code></pre>
+        </div>
+
+        <div class="feature-card">
+            <h3>Performance & Best Practices</h3>
+            <p>Write efficient, maintainable userscripts:</p>
+
+            <h4>Efficient Element Selection</h4>
+            <pre><code class="language-javascript">// ❌ Slow - searches entire document repeatedly
+setInterval(() => {
+    document.querySelectorAll('.item').forEach(item => {
+        // process item
+    });
+}, 1000);
+
+// ✅ Fast - cache selectors and use event delegation
+const container = document.querySelector('.items-container');
+if (container) {
+    container.addEventListener('click', (e) => {
+        if (e.target.matches('.item')) {
+            // process clicked item
+        }
+    });
+}</code></pre>
+
+            <h4>Memory Management</h4>
+            <pre><code class="language-javascript">// ✅ Clean up observers and intervals
+let observer;
+let intervalId;
+
+function cleanup() {
+    if (observer) {
+        observer.disconnect();
+        observer = null;
+    }
+    if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+    }
+}
+
+// Clean up when page unloads
+window.addEventListener('beforeunload', cleanup);</code></pre>
+
+            <h4>Error Handling</h4>
+            <pre><code class="language-javascript">// Wrap risky operations in try-catch
+function safeOperation() {
+    try {
+        const element = document.querySelector('.might-not-exist');
+        if (!element) {
+            console.warn('Element not found, skipping operation');
+            return;
+        }
+        
+        // Perform operation
+        element.textContent = 'Modified!';
+    } catch (error) {
+        console.error('Operation failed:', error);
+    }
+}</code></pre>
+
+            <div class="alert alert-success">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                <div>
+                    <strong>Pro Tip:</strong> Use the browser's Developer Tools (F12) to inspect elements and test your selectors before writing your script.
+                </div>
+            </div>
+        </div>
+
+        <div class="nav-buttons">
+            <a href="installation.html" class="nav-btn secondary">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <polyline points="15 18 9 12 15 6"/>
+                </svg>
+                Installation & Setup
+            </a>
+            <a href="gm-apis.html" class="nav-btn">
+                GM APIs Reference
+                <svg class="icon" viewBox="0 0 24 24">
+                    <polyline points="9 18 15 12 9 6"/>
+                </svg>
+            </a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js"></script>
+</body>
+</html>

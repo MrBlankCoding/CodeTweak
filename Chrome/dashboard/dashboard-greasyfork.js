@@ -1,4 +1,5 @@
 import { parseUserScriptMetadata } from "../utils/metadataParser.js";
+import { showNotification } from "./dashboard-ui.js";
 function setupGreasyfork(elements) {
   if (!elements.button) return;
 
@@ -43,7 +44,7 @@ async function searchGreasyfork(elements) {
   try {
     const encodedQuery = encodeURIComponent(query);
     const response = await fetch(
-      `https://api.greasyfork.org/en/scripts.json?q=${encodedQuery}`
+      `https://greasyfork.org/en/scripts/list.json?q=${encodedQuery}`
     );
 
     if (!response.ok) {

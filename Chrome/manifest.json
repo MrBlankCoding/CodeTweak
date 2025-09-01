@@ -8,12 +8,14 @@
     "tabs",
     "scripting",
     "webNavigation",
-    "declarativeNetRequest",
     "contextMenus",
-    "notifications"
+    "notifications",
+    "offscreen",
+    "clipboardWrite"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "http://*/*",
+    "https://*/*"
   ],
   "background": {
     "service_worker": "background.js",
@@ -34,13 +36,13 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": ["http://*/*", "https://*/*"],
       "js": ["./utils/elementSelector.js"],
       "css": ["./styles/elementSelector.css"],
       "run_at": "document_start"
     },
     {
-      "matches": ["<all_urls>"],
+      "matches": ["http://*/*", "https://*/*"],
       "js": ["./utils/content_bridge.js"],
       "run_at": "document_start",
       "world": "ISOLATED"
@@ -54,7 +56,7 @@
   "web_accessible_resources": [
     {
       "resources": ["injected-scripts/*"],
-      "matches": ["<all_urls>"]
+      "matches": ["http://*/*", "https://*/*"]
     }
   ]
 }

@@ -1,4 +1,3 @@
-/* global chrome */
 import { generateUrlMatchPattern } from "./urlMatchPattern.js";
 
 class BaseUIComponent {

@@ -1,4 +1,3 @@
-/* global chrome */
 
 import {
   UIManager,
@@ -30,6 +29,9 @@ class ScriptEditor {
       lintingEnabled: localStorage.getItem("lintingEnabled") === "true",
       isAutosaveEnabled: localStorage.getItem("autosaveEnabled") === "true",
       autosaveTimeout: null,
+      headerSyncTimeout: null,
+      sidebarSyncTimeout: null,
+      isUpdatingFromSidebar: false,
       hasUserInteraction: false,
       codeEditor: null,
     };
@@ -125,34 +127,156 @@ class ScriptEditor {
     );
   }
 
-  _debouncedSave(force = false) {
-    // Clear existing timeout
+  _debouncedSave() {
     if (this.state.autosaveTimeout) {
       clearTimeout(this.state.autosaveTimeout);
-      this.state.autosaveTimeout = null;
     }
 
-    if (this.state.isAutosaveEnabled || force) {
-      this.state.autosaveTimeout = setTimeout(async () => {
-        if (this.state.hasUnsavedChanges && this.state.codeEditor) {
+    this.state.autosaveTimeout = setTimeout(async () => {
+      if (this.state.hasUnsavedChanges) {
+        if (this.state.isEditMode) {
           try {
             await this.saveScript(true);
-
-            if (!force) {
-              setTimeout(() => {
-                if (!this.state.hasUnsavedChanges) {
-                  this.ui.clearStatusMessage();
-                }
-              }, 2000);
-            }
           } catch (error) {
-            console.error("Error during autosave:", error);
-            if (!force) {
+            console.error("Autosave failed:", error);
+            if (this.ui && this.ui.showStatusMessage) {
               this.ui.showStatusMessage("Autosave failed", "error");
             }
           }
         }
-      }, this.config.AUTOSAVE_DELAY);
+      }
+    }, this.config.AUTOSAVE_DELAY);
+  }
+
+  _debouncedHeaderSync() {
+    if (this.state.headerSyncTimeout) {
+      clearTimeout(this.state.headerSyncTimeout);
+    }
+
+    this.state.headerSyncTimeout = setTimeout(() => {
+      // Skip if we're currently updating from sidebar to prevent loops
+      if (!this.state.isUpdatingFromSidebar) {
+        this.syncHeaderToSidebar();
+      }
+    }, 500); // 500ms debounce
+  }
+
+  _debouncedSidebarSync() {
+    if (this.state.sidebarSyncTimeout) {
+      clearTimeout(this.state.sidebarSyncTimeout);
+    }
+
+    this.state.sidebarSyncTimeout = setTimeout(() => {
+      this.syncSidebarToHeader();
+    }, 500); // 500ms debounce
+  }
+
+  syncHeaderToSidebar() {
+    try {
+      const currentCode = this.codeEditorManager.getValue();
+      const headerMatch = currentCode.match(/\/\/ ==UserScript==[\s\S]*?\/\/ ==\/UserScript==/);
+      
+      if (!headerMatch) return; // No header found
+      
+      const metadata = parseUserScriptMetadata(headerMatch[0]);
+      
+      // Overwrite sidebar fields with header metadata
+      if (metadata.name) this.elements.scriptName.value = metadata.name;
+      if (metadata.author) this.elements.scriptAuthor.value = metadata.author;
+      if (metadata.version) this.elements.scriptVersion.value = metadata.version;
+      if (metadata.description) this.elements.scriptDescription.value = metadata.description;
+      if (metadata.license) this.elements.scriptLicense.value = metadata.license;
+      if (metadata.icon) this.elements.scriptIcon.value = metadata.icon;
+      if (metadata.runAt) this.elements.runAt.value = metadata.runAt.replace(/-/g, '_');
+      
+      // Update target URLs (replace list with header values)
+      if (this.elements.urlList) {
+        this.elements.urlList.innerHTML = '';
+      }
+      if (Array.isArray(metadata.matches) && metadata.matches.length > 0) {
+        metadata.matches.forEach(match => {
+          this.ui.addUrlToList(match);
+        });
+      }
+      
+      // Reset and update GM API checkboxes to reflect @grant
+      if (this.gmApiDefinitions) {
+        Object.values(this.gmApiDefinitions).forEach(def => {
+          const el = this.elements[def.el];
+          if (el) el.checked = false;
+        });
+      }
+      if (metadata.gmApis) {
+        Object.keys(metadata.gmApis).forEach(apiFlag => {
+          const element = this.elements[apiFlag];
+          if (element) {
+            element.checked = !!metadata.gmApis[apiFlag];
+          }
+        });
+      }
+      this.updateApiCount();
+      // Update dependent sections visibility after grants change
+      this.toggleResourcesSection(
+        this.elements.gmGetResourceText?.checked || this.elements.gmGetResourceURL?.checked
+      );
+      this.toggleRequiredScriptsSection();
+      
+      // Update resources (replace list with header values)
+      if (this.elements.resourceList) {
+        this.elements.resourceList.innerHTML = '';
+      }
+      if (Array.isArray(metadata.resources) && metadata.resources.length > 0) {
+        metadata.resources.forEach(resource => {
+          this.ui.addResourceToList(resource.name, resource.url);
+        });
+      }
+
+      // Update required scripts from @require (replace list)
+      if (this.elements.requireList) {
+        this.elements.requireList.innerHTML = '';
+      }
+      if (Array.isArray(metadata.requires) && metadata.requires.length > 0) {
+        metadata.requires.forEach(url => this.ui.addRequireToList(url));
+      }
+
+    } catch {
+      // Silently fail - don't spam console during normal editing
+    }
+  }
+
+  syncSidebarToHeader() {
+    try {
+      const currentCode = this.codeEditorManager.getValue();
+      const headerMatch = currentCode.match(/\/\/ ==UserScript==[\s\S]*?\/\/ ==\/UserScript==/);
+      
+      // Generate new header from current sidebar data
+      const scriptData = this.gatherScriptData();
+      const newMetadata = buildTampermonkeyMetadata(scriptData);
+      
+      let newCode;
+      if (headerMatch) {
+        // Replace existing header
+        newCode = currentCode.replace(headerMatch[0], newMetadata);
+      } else {
+        // Insert header at the beginning
+        newCode = newMetadata + '\n\n' + currentCode;
+      }
+      
+      // Only update if the code actually changed to avoid infinite loops
+      if (newCode !== currentCode) {
+        // Set flag to prevent header sync during this update
+        this.state.isUpdatingFromSidebar = true;
+        
+        this.codeEditorManager.setValue(newCode);
+        
+        // Reset flag after a short delay to allow future header syncing
+        setTimeout(() => {
+          this.state.isUpdatingFromSidebar = false;
+        }, 100);
+      }
+      
+    } catch {
+      // Silently fail - don't spam console during normal editing
     }
   }
 
@@ -218,7 +342,8 @@ class ScriptEditor {
       "addRequireBtn",
       "requireURL",
       "requireList",
-      "helpButton"
+      "helpButton",
+      "generateHeaderBtn"
     ];
 
     const elements = {};
@@ -260,6 +385,8 @@ class ScriptEditor {
         if (this.state.isAutosaveEnabled) {
           this._debouncedSave();
         }
+        // Check for header changes and update sidebar
+        this._debouncedHeaderSync();
       });
       this.codeEditorManager.setImportCallback((importData) => this.handleScriptImport(importData));
       this.codeEditorManager.setStatusCallback((message, type) => {
@@ -491,6 +618,12 @@ class ScriptEditor {
       e.preventDefault();
       this.saveScript();
     });
+
+    // Add click listener to generate header button
+    this.elements.generateHeaderBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.generateTampermonkeyHeader();
+    });
     
     // Setup UI callbacks - UIManager initializes everything in constructor, no init() method needed
     const callbacks = {
@@ -514,8 +647,19 @@ class ScriptEditor {
 
     // Setup additional UI components that need callbacks
     this.ui.setupSettingsModal(callbacks);
-    this.ui.setupUrlManagement({ markAsUnsaved: () => this.markAsUnsaved() });
-    this.ui.setupResourceManagement(callbacks);
+    this.ui.setupUrlManagement({ 
+      markAsUnsaved: () => {
+        this.markAsUnsaved();
+        this._debouncedSidebarSync();
+      }
+    });
+    this.ui.setupResourceManagement({
+      ...callbacks,
+      markAsUnsaved: () => {
+        this.markAsUnsaved();
+        this._debouncedSidebarSync();
+      }
+    });
 
     // Add both change and input events for better responsiveness
     const handleChange = () => {
@@ -523,6 +667,8 @@ class ScriptEditor {
       if (this.state.isAutosaveEnabled) {
         this._debouncedSave();
       }
+      // Sync sidebar changes to header
+      this._debouncedSidebarSync();
     };
 
     // Form inputs that should trigger change detection
@@ -586,12 +732,17 @@ class ScriptEditor {
     sidebarIconBtns.forEach(btn => btn.classList.remove('active'));
     this.elements.sidebarPanels.forEach(panel => panel.classList.remove('active'));
     this.elements.sidebarContentArea.style.display = 'none';
-    this.elements.sidebarContentArea.style.width = '0';
 
     sidebarIconBtns.forEach(btn => {
       btn.addEventListener('click', () => {
-        const section = btn.dataset.section;
+        const section = btn.getAttribute('data-section');
+        
+        // Skip if this is the generate header button (no data-section)
+        if (!section) return;
+        
         const panel = document.getElementById(`${section}-panel`);
+        if (!panel) return;
+        
         const isCurrentlyActive = btn.classList.contains('active');
         
         if (isCurrentlyActive) {
@@ -967,6 +1118,43 @@ class ScriptEditor {
     } catch (err) {
       console.error('Export failed:', err);
       this.ui.showStatusMessage('Export failed', 'error');
+    }
+  }
+
+  /**
+   * Generate Tampermonkey-style header and insert at top of code editor
+   */
+  generateTampermonkeyHeader() {
+    try {
+      const scriptData = this.gatherScriptData();
+      const metadata = buildTampermonkeyMetadata(scriptData);
+      
+      // Get current code content
+      const currentCode = this.codeEditorManager.getValue();
+      
+      // Check if there's already a userscript header
+      const existingHeaderMatch = currentCode.match(/\/\/ ==UserScript==[\s\S]*?\/\/ ==\/UserScript==/);
+      
+      let newCode;
+      if (existingHeaderMatch) {
+        // Replace existing header
+        newCode = currentCode.replace(existingHeaderMatch[0], metadata);
+        this.ui.showStatusMessage('Metadata updated', 'success');
+      } else {
+        // Insert header at the beginning
+        newCode = metadata + '\n\n' + currentCode;
+        this.ui.showStatusMessage('Metadata generated', 'success');
+      }
+      
+      // Set the new code content
+      this.codeEditorManager.setValue(newCode);
+      
+      // Mark as dirty to indicate changes
+      this.markAsDirty();
+      
+    } catch (err) {
+      console.error('Generate header failed:', err);
+      this.ui.showStatusMessage('Failed to generate header', 'error');
     }
   }
 }

@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GM APIs Reference - CodeTweak User Manual</title>
+    <!-- Prism.js for syntax highlighting -->
+    <link href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism.css" rel="stylesheet" />
+    <style>
+        :root {
+            --primary-color: #4ea1ff;
+            --secondary-color: #6b7280;
+            --background: #ffffff;
+            --surface: #f8fafc;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --border: #e5e7eb;
+            --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            --code-bg: #f1f5f9;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            line-height: 1.6;
+            color: var(--text-primary);
+            background: var(--background);
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .nav-header {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .nav-header a {
+            color: var(--primary-color);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-header a:hover {
+            text-decoration: underline;
+        }
+
+        .icon {
+            width: 20px;
+            height: 20px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        h2 {
+            font-size: 1.75rem;
+            color: var(--text-primary);
+            margin: 2rem 0 1rem 0;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 0.5rem;
+        }
+
+        h4 {
+            margin: 1rem 0 0.5rem 0;
+        }
+
+        p {
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+        }
+
+        ul {
+            margin-top: 0.5rem;
+            margin-left: 1.5rem;
+        }
+
+        .api-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow);
+        }
+
+        .api-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .api-name {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 1.25rem;
+            color: var(--primary-color);
+            background: var(--code-bg);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .api-category {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .syntax {
+            background: #1f2937;
+            color: #f9fafb;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+        }
+
+        .syntax .keyword {
+            color: #60a5fa;
+        }
+
+        .syntax .string {
+            color: #34d399;
+        }
+
+        pre {
+            background: var(--code-bg);
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .alert-info {
+            background: #dbeafe;
+            border: 1px solid #93c5fd;
+            color: #1e40af;
+        }
+
+        .alert-success {
+            background: #dcfce7;
+            border: 1px solid #4ade80;
+            color: #166534;
+        }
+
+        .alert-warning {
+            background: #fef3c7;
+            border: 1px solid #fbbf24;
+            color: #92400e;
+        }
+
+        .params-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            margin: 1rem 0;
+        }
+
+        .params-table th,
+        .params-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .params-table th {
+            background: var(--surface);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .param-name {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            color: var(--primary-color);
+        }
+
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: background-color 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: #3b82f6;
+        }
+
+        .nav-btn.secondary {
+            background: var(--surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .nav-btn.secondary:hover {
+            background: var(--border);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .nav-header {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .nav-buttons {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="nav-header">
+            <a href="index.html">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+                Back to Documentation Home
+            </a>
+            <span>GM APIs Reference</span>
+        </nav>
+
+        <header>
+            <h1>
+                <svg class="icon" viewBox="0 0 24 24" style="width: 40px; height: 40px;">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="2" y1="12" x2="6" y2="12"/>
+                    <line x1="18" y1="12" x2="22" y2="12"/>
+                    <line x1="12" y1="6" x2="12" y2="2"/>
+                    <line x1="12" y1="18" x2="12" y2="22"/>
+                </svg>
+                GM APIs Reference
+            </h1>
+            <p>Complete reference for all Greasemonkey APIs supported by CodeTweak with practical examples and best practices.</p>
+        </header>
+
+        <div class="alert alert-info">
+            <svg class="icon" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="16" x2="12" y2="12"/>
+                <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            <div>
+                <strong>Remember:</strong> You must enable each GM API in the script editor's "GM API Access" section before using it in your code.
+            </div>
+        </div>
+
+        <h2>Storage & Data APIs</h2>
+
+        <div class="api-card">
+            <div class="api-header">
+                <div class="api-name">GM_setValue</div>
+                <div class="api-category">Storage</div>
+            </div>
+            <p>Stores a value that persists across page loads and browser sessions.</p>
+            
+            <div class="syntax">
+<span class="keyword">GM_setValue</span>(<span class="string">'key'</span>, value)
+            </div>
+
+            <table class="params-table">
+                <thead>
+                    <tr>
+                        <th>Parameter</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="param-name">key</span></td>
+                        <td>string</td>
+                        <td>Unique identifier for the stored value</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">value</span></td>
+                        <td>any</td>
+                        <td>Value to store (string, number, boolean, object)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4>Example Usage:</h4>
+            <pre><code class="language-javascript">// Store different types of data
+GM_setValue('username', 'john_doe');
+GM_setValue('score', 1250);
+GM_setValue('settings', {theme: 'dark', notifications: true});
+GM_setValue('lastVisit', new Date().toISOString());</code></pre>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <div class="api-name">GM_getValue</div>
+                <div class="api-category">Storage</div>
+            </div>
+            <p>Retrieves a previously stored value, with optional default fallback.</p>
+            
+            <div class="syntax">
+<span class="keyword">GM_getValue</span>(<span class="string">'key'</span>, defaultValue)
+            </div>
+
+            <table class="params-table">
+                <thead>
+                    <tr>
+                        <th>Parameter</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="param-name">key</span></td>
+                        <td>string</td>
+                        <td>Key of the value to retrieve</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">defaultValue</span></td>
+                        <td>any</td>
+                        <td>Value returned if key doesn't exist</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4>Example Usage:</h4>
+            <pre><code class="language-javascript">// Get stored values with defaults
+const username = GM_getValue('username', 'anonymous');
+const score = GM_getValue('score', 0);
+const settings = GM_getValue('settings', {theme: 'light'});
+
+// Use the retrieved values
+console.log(`Welcome back, ${username}! Your score: ${score}`);</code></pre>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <div class="api-name">GM_deleteValue</div>
+                <div class="api-category">Storage</div>
+            </div>
+            <p>Removes a stored value permanently.</p>
+            
+            <div class="syntax">
+<span class="keyword">GM_deleteValue</span>(<span class="string">'key'</span>)
+            </div>
+
+            <h4>Example Usage:</h4>
+            <pre><code class="language-javascript">// Clear user data
+GM_deleteValue('username');
+GM_deleteValue('score');
+
+// Clear all data on reset
+function resetUserData() {
+    GM_deleteValue('settings');
+    GM_deleteValue('resetRequested');
+}</code></pre>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <div class="api-name">GM_listValues</div>
+                <div class="api-category">Storage</div>
+            </div>
+            <p>Returns an array of all stored keys for this script.</p>
+            
+            <div class="syntax">
+<span class="keyword">GM_listValues</span>()
+            </div>
+
+            <h4>Example Usage:</h4>
+            <pre><code class="language-javascript">// List all stored keys
+const keys = GM_listValues();
+console.log('Stored keys:', keys);
+
+// Export all data
+const exportData = {};
+keys.forEach(key => {
+    exportData[key] = GM_getValue(key);
+});
+console.log('Export data:', exportData);</code></pre>
+        </div>
+
+        <h2>Browser & UI APIs</h2>
+
+        <div class="api-card">
+            <div class="api-header">
+                <div class="api-name">GM_openInTab</div>
+                <div class="api-category">Browser</div>
+            </div>
+            <p>Opens a URL in a new browser tab with optional configuration.</p>
+            
+            <div class="syntax">
+<span class="keyword">GM_openInTab</span>(url, options)
+            </div>
+
+            <table class="params-table">
+                <thead>
+                    <tr>
+                        <th>Parameter</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="param-name">url</span></td>
+                        <td>string</td>
+                        <td>URL to open</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">options</span></td>
+                        <td>object</td>
+                        <td>Configuration object (optional)</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">options.active</span></td>
+                        <td>boolean</td>
+                        <td>Whether to focus the new tab</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4>Example Usage:</h4>
+            <pre><code class="language-javascript">// Open in background tab
+GM_openInTab('https://example.com', {active: false});
+
+// Open in focused tab
+GM_openInTab('https://github.com', {active: true});
+
+// Simple usage
+GM_openInTab('https://google.com');</code></pre>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <div class="api-name">GM_notification</div>
+                <div class="api-category">UI</div>
+            </div>
+            <p>Displays a desktop notification to the user.</p>
+            
+            <div class="syntax">
+<span class="keyword">GM_notification</span>(options)
+            </div>
+
+            <table class="params-table">
+                <thead>
+                    <tr>
+                        <th>Parameter</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="param-name">options.text</span></td>
+                        <td>string</td>
+                        <td>Notification message</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">options.title</span></td>
+                        <td>string</td>
+                        <td>Notification title (optional)</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">options.image</span></td>
+                        <td>string</td>
+                        <td>Icon URL (optional)</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">options.onclick</span></td>
+                        <td>function</td>
+                        <td>Click handler (optional)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4>Example Usage:</h4>
+            <pre><code class="language-javascript">// Simple notification
+GM_notification({
+    text: 'Script executed successfully!',
+    title: 'CodeTweak'
+});
+
+// Advanced notification with callback
+GM_notification({
+    text: 'New message received',
+    title: 'Chat App',
+    image: 'https://example.com/icon.png',
+    onclick: function() {
+        window.focus();
+        console.log('Notification clicked');
+    }
+});</code></pre>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <div class="api-name">GM_addStyle</div>
+                <div class="api-category">UI</div>
+            </div>
+            <p>Injects CSS styles into the current page.</p>
+            
+            <div class="syntax">
+<span class="keyword">GM_addStyle</span>(css)
+            </div>
+
+            <h4>Example Usage:</h4>
+            <pre><code class="language-javascript">// Add custom styles
+GM_addStyle(`
+    .my-custom-class {
+        background: #f0f0f0;
+        padding: 10px;
+        border-radius: 5px;
+    }
+    .highlight {
+        background: yellow;
+        font-weight: bold;
+    }
+`);
+
+// Apply styles to existing elements
+document.querySelectorAll('.important').forEach(el => {
+    el.classList.add('highlight');
+});</code></pre>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <div class="api-name">GM_addElement</div>
+                <div class="api-category">UI</div>
+            </div>
+            <p>Creates and appends a new DOM element with specified attributes.</p>
+            
+            <div class="syntax">
+<span class="keyword">GM_addElement</span>(parent, tag, attributes)
+            </div>
+
+            <table class="params-table">
+                <thead>
+                    <tr>
+                        <th>Parameter</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="param-name">parent</span></td>
+                        <td>Element</td>
+                        <td>Parent element to append to</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">tag</span></td>
+                        <td>string</td>
+                        <td>HTML tag name</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">attributes</span></td>
+                        <td>object</td>
+                        <td>Element attributes (optional)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4>Example Usage:</h4>
+            <pre><code class="language-javascript">// Add a button to the page
+const button = GM_addElement(document.body, 'button', {
+    textContent: 'Click Me!',
+    onclick: () => alert('Button clicked!')
+});
+
+// Add a styled container
+const container = GM_addElement(document.body, 'div', {
+    id: 'my-container',
+    style: 'position: fixed; top: 10px; right: 10px; z-index: 9999;'
+});</code></pre>
+        </div>
+
+        <h2>Network & Resources APIs</h2>
+
+        <div class="api-card">
+            <div class="api-header">
+                <div class="api-name">GM_xmlhttpRequest</div>
+                <div class="api-category">Network</div>
+            </div>
+            <p>Makes cross-origin HTTP requests that bypass CORS restrictions.</p>
+            
+            <div class="syntax">
+<span class="keyword">GM_xmlhttpRequest</span>(options)
+            </div>
+
+            <table class="params-table">
+                <thead>
+                    <tr>
+                        <th>Parameter</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="param-name">options.method</span></td>
+                        <td>string</td>
+                        <td>HTTP method (GET, POST, etc.)</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">options.url</span></td>
+                        <td>string</td>
+                        <td>Request URL</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">options.headers</span></td>
+                        <td>object</td>
+                        <td>Request headers (optional)</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">options.data</span></td>
+                        <td>string</td>
+                        <td>Request body (optional)</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">options.onload</span></td>
+                        <td>function</td>
+                        <td>Success callback</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">options.onerror</span></td>
+                        <td>function</td>
+                        <td>Error callback</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4>Example Usage:</h4>
+            <pre><code class="language-javascript">// GET request
+GM_xmlhttpRequest({
+    method: 'GET',
+    url: 'https://api.example.com/data',
+    headers: {
+        'User-Agent': 'CodeTweak Script',
+        'Accept': 'application/json'
+    },
+    onload: function(response) {
+        console.log('Status:', response.status);
+        console.log('Response:', response.responseText);
+    }
+});
+
+// POST request with data
+GM_xmlhttpRequest({
+    method: 'POST',
+    url: 'https://api.example.com/submit',
+    headers: {
+        'Content-Type': 'application/json'
+    },
+    data: JSON.stringify({message: 'Hello World'}),
+    onload: function(response) {
+        console.log('Response:', response.responseText);
+    }
+});</code></pre>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <div class="api-name">GM_getResourceText</div>
+                <div class="api-category">Resources</div>
+            </div>
+            <p>Retrieves the content of a bundled resource as text.</p>
+            
+            <div class="syntax">
+<span class="keyword">GM_getResourceText</span>(<span class="string">'resourceName'</span>)
+            </div>
+
+            <div class="alert alert-info">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="16" x2="12" y2="12"/>
+                    <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <div>
+                    <strong>Setup Required:</strong> Resources must be defined in the editor's "Script Resources" section before use.
+                </div>
+            </div>
+
+            <h4>Example Usage:</h4>
+            <pre><code class="language-javascript">// Get CSS resource and inject it
+const customCSS = GM_getResourceText('myStyles');
+GM_addStyle(customCSS);
+
+// Get JSON config file
+const configText = GM_getResourceText('config');
+const config = JSON.parse(configText);
+console.log('Config loaded:', config);</code></pre>
+        </div>
+
+        <div class="api-card">
+            <div class="api-header">
+                <div class="api-name">GM_setClipboard</div>
+                <div class="api-category">System</div>
+            </div>
+            <p>Copies text to the system clipboard.</p>
+            
+            <div class="syntax">
+<span class="keyword">GM_setClipboard</span>(text, type)
+            </div>
+
+            <table class="params-table">
+                <thead>
+                    <tr>
+                        <th>Parameter</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="param-name">text</span></td>
+                        <td>string</td>
+                        <td>Text to copy to clipboard</td>
+                    </tr>
+                    <tr>
+                        <td><span class="param-name">type</span></td>
+                        <td>string</td>
+                        <td>MIME type (optional, defaults to 'text/plain')</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4>Example Usage:</h4>
+            <pre><code class="language-javascript">// Copy simple text
+GM_setClipboard('Hello, World!');
+
+// Copy formatted data
+const data = {name: 'John', age: 30};
+GM_setClipboard(JSON.stringify(data, null, 2));
+
+// Copy with specific MIME type
+GM_setClipboard('<h1>Hello</h1>', 'text/html');</code></pre>
+        </div>
+        <div class="alert alert-warning">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            <div>
+                <strong>Security Notes:</strong>
+                <ul>
+                    <li>Validate data from GM_getValue before use</li>
+                    <li>Be cautious with GM_xmlhttpRequest to untrusted URLs</li>
+                    <li>Sanitize content before using GM_addStyle or GM_addElement</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="nav-buttons">
+            <a href="editor.html" class="nav-btn secondary">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <polyline points="15 18 9 12 15 6"/>
+                </svg>
+                Script Editor
+            </a>
+            <a href="script-management.html" class="nav-btn">
+                Script Management
+                <svg class="icon" viewBox="0 0 24 24">
+                    <polyline points="9 18 15 12 9 6"/>
+                </svg>
+            </a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js"></script>
+</body>
+</html>
