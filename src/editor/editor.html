@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap">
+      <link rel="stylesheet" href="/assets/styles/editor.css">
+      <link rel="stylesheet" href="/assets/styles/e_settings_modal.css">
+      <link rel="stylesheet" href="/assets/styles/e_header_footer.css">
+      <link rel="stylesheet" href="/assets/styles/e_sidebar.css">
+      <script src="/vendor/feather.min.js"></script>
+   </head>
+   <body>
+      <div class="app-container">
+         <!-- Header -->
+         <header class="header">
+            <div class="header-left">
+               <div class="logo">
+                  <a href="../dashboard/dashboard.html" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 8px;">
+                     <span class="home-icon">
+                        <i data-feather="home"></i>
+                     </span>
+                     <div>
+                        <span>CodeTweak</span>
+                        <span>Editor</span>
+                     </div>
+                  </a>
+               </div>
+            </div>
+            <div class="header-center">
+            </div>
+            <div class="header-right">
+               <div class="header-actions">
+                  <div class="status-info">
+                     <div class="status-badge" id="scriptStatusBadge">
+                        <div class="status-dot"></div>
+                        <span>Unsaved Changes</span>
+                     </div>
+                  </div>
+                  <button type="button" id="saveBtn" class="save-btn">
+                     <i data-feather="save"></i>
+                     Save Script
+                  </button>
+               </div>
+            </div>
+         </header>
+         <!-- Main -->
+         <div class="main-content">
+            <!-- Sidebar -->
+            <aside id="sidebar" class="sidebar">
+               <!-- Icon Bar -->
+               <div class="sidebar-icon-bar">
+                  <button class="sidebar-icon-btn active" data-section="info" title="Script Information">
+                     <i data-feather="info"></i>
+                  </button>
+                  <button class="sidebar-icon-btn" data-section="execution" title="Execution Settings">
+                     <i data-feather="clock"></i>
+                  </button>
+                  <button class="sidebar-icon-btn" data-section="api" title="GM API Access">
+                     <i data-feather="code"></i>
+                     <div class="api-count-badge" id="apiCountBadge">0</div>
+                  </button>
+                  <button class="sidebar-icon-btn" data-section="requires" title="Required Scripts">
+                     <i data-feather="package"></i>
+                  </button>
+                  <button class="sidebar-icon-btn" data-section="resources" title="Script Resources">
+                     <i data-feather="database"></i>
+                  </button>
+                  <div class="sidebar-divider"></div>
+                  <button class="sidebar-icon-btn" id="generateHeaderBtn" title="Generate Metadata header">
+                     <i data-feather="file-plus"></i>
+                  </button>
+               </div>
+
+               <!-- Content Area -->
+               <div class="sidebar-content-area">
+                  <!-- Script Information Panel -->
+                  <div class="sidebar-panel active" id="info-panel">
+                     <div class="panel-header">
+                        <h3 class="panel-title">Script Information</h3>
+                        <p class="panel-subtitle">Configure your userscript details</p>
+                     </div>
+                     <div class="panel-content">
+                        <div class="form-grid">
+                           <div class="form-group">
+                              <label for="scriptName" class="form-label">
+                                 <span>Script Name</span>
+                                 <span class="label-required">*</span>
+                              </label>
+                              <input type="text" id="scriptName" class="form-input" placeholder="My Awesome Script" required aria-describedby="scriptName-help">
+                              <small id="scriptName-help" class="form-help">A unique name for your script</small>
+                           </div>
+                           
+                           <div class="form-row">
+                              <div class="form-group">
+                                 <label for="scriptAuthor" class="form-label">Author</label>
+                                 <input type="text" id="scriptAuthor" class="form-input" placeholder="Your Name">
+                              </div>
+                              <div class="form-group">
+                                 <label for="scriptVersion" class="form-label">Version</label>
+                                 <input type="text" id="scriptVersion" class="form-input" placeholder="1.0.0" pattern="[0-9]+\.[0-9]+\.[0-9]+">
+                              </div>
+                           </div>
+                           
+                           <div class="form-group">
+                              <label for="scriptDescription" class="form-label">Description</label>
+                              <textarea id="scriptDescription" class="form-textarea" placeholder="Describe what your script does..." rows="3"></textarea>
+                           </div>
+                           
+                           <div class="form-row">
+                              <div class="form-group">
+                                 <label for="scriptLicense" class="form-label">License</label>
+                                 <input type="text" id="scriptLicense" class="form-input" placeholder="e.g., MIT, GPL-3.0">
+                              </div>
+                              <div class="form-group">
+                                 <label for="scriptIcon" class="form-label">Icon URL</label>
+                                 <input type="url" id="scriptIcon" class="form-input" placeholder="https://example.com/icon.png">
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+
+                  <!-- Execution Settings Panel -->
+                  <div class="sidebar-panel" id="execution-panel">
+                     <div class="panel-header">
+                        <h3 class="panel-title">Execution Settings</h3>
+                        <p class="panel-subtitle">Configure when and where your script runs</p>
+                     </div>
+                     <div class="panel-content">
+                        <div class="form-group">
+                           <label for="targetUrl" class="form-label">
+                              <span>Target URLs</span>
+                              <span class="label-required">*</span>
+                           </label>
+                           <div class="url-input-group">
+                              <input type="url" id="targetUrl" class="form-input" placeholder="https://example.com/*" required>
+                              <button type="button" id="addUrlBtn" class="add-btn" title="Add URL pattern">
+                                 <i data-feather="plus"></i>
+                                 Add
+                              </button>
+                           </div>
+                           <div id="urlList" class="url-list" role="list" aria-label="Target URL patterns"></div>
+                        </div>
+                        
+                        <div class="form-group">
+                           <label class="form-label">Pattern Builder</label>
+                           <div class="pattern-builder">
+                              <input type="url" id="patternBaseUrl" class="form-input" placeholder="https://example.com">
+                              <select id="patternScope" class="form-select">
+                                 <option value="domain" selected>Any path on domain</option>
+                                 <option value="subdomain">Any sub-domain</option>
+                                 <option value="exact">Exact page</option>
+                              </select>
+                              <button type="button" id="generatePatternBtn" class="add-btn">Generate</button>
+                           </div>
+                           <div class="generated-pattern-group hidden" id="generatedPatternGroup">
+                              <input type="text" id="generatedPattern" class="form-input" readonly>
+                              <button type="button" id="insertPatternBtn" class="add-btn">Insert</button>
+                           </div>
+                        </div>
+                        
+                        <div class="form-group">
+                           <label for="runAt" class="form-label">Run Timing</label>
+                           <select id="runAt" class="form-select enhanced-select">
+                              <option value="document_start">Document Start</option>
+                              <option value="document_end">Dom Loaded</option>
+                              <option value="document_idle" selected>Page Loaded</option>
+                           </select>
+                        </div>
+                     </div>
+                  </div>
+
+                  <!-- GM API Access Panel -->
+                  <div class="sidebar-panel" id="api-panel">
+                     <div class="panel-header">
+                        <h3 class="panel-title">GM API Access</h3>
+                        <p class="panel-subtitle">Select the Greasemonkey APIs your script needs</p>
+                     </div>
+                     <div class="panel-content">
+                        <div class="form-group">
+                           <input type="text" id="apiSearch" class="form-input api-search" placeholder="Search GM APIs..." aria-label="Search GM APIs">
+                        </div>
+                        
+                        <div class="api-categories">
+                           <div class="api-category">
+                              <h4 class="category-title">Storage & Data</h4>
+                              <div class="api-list" role="group" aria-labelledby="storage-apis">
+                                 <div class="form-group-checkbox">
+                                    <input type="checkbox" id="gmSetValue" class="form-checkbox">
+                                    <label for="gmSetValue">GM_setValue</label>
+                                 </div>
+                                 <div class="form-group-checkbox">
+                                    <input type="checkbox" id="gmGetValue" class="form-checkbox">
+                                    <label for="gmGetValue">GM_getValue</label>
+                                 </div>
+                                 <div class="form-group-checkbox">
+                                    <input type="checkbox" id="gmDeleteValue" class="form-checkbox">
+                                    <label for="gmDeleteValue">GM_deleteValue</label>
+                                 </div>
+                                 <div class="form-group-checkbox">
+                                    <input type="checkbox" id="gmListValues" class="form-checkbox">
+                                    <label for="gmListValues">GM_listValues</label>
+                                 </div>
+                              </div>
+                           </div>
+                           
+                           <div class="api-category">
+                              <h4 class="category-title">Browser & UI</h4>
+                              <div class="api-list" role="group" aria-labelledby="browser-apis">
+                                 <div class="form-group-checkbox">
+                                    <input type="checkbox" id="gmOpenInTab" class="form-checkbox">
+                                    <label for="gmOpenInTab">GM_openInTab</label>
+                                 </div>
+                                 <div class="form-group-checkbox">
+                                    <input type="checkbox" id="gmNotification" class="form-checkbox">
+                                    <label for="gmNotification">GM_notification</label>
+                                 </div>
+                                 <div class="form-group-checkbox">
+                                    <input type="checkbox" id="gmAddStyle" class="form-checkbox">
+                                    <label for="gmAddStyle">GM_addStyle</label>
+                                 </div>
+                                 <div class="form-group-checkbox">
+                                    <input type="checkbox" id="gmAddElement" class="form-checkbox">
+                                    <label for="gmAddElement">GM_addElement</label>
+                                 </div>
+                                 <div class="form-group-checkbox">
+                                    <input type="checkbox" id="gmRegisterMenuCommand" class="form-checkbox">
+                                    <label for="gmRegisterMenuCommand">GM_registerMenuCommand</label>
+                                 </div>
+                              </div>
+                           </div>
+                           
+                           <div class="api-category">
+                              <h4 class="category-title">Resources & Network</h4>
+                              <div class="api-list" role="group" aria-labelledby="resource-apis">
+                                 <div class="form-group-checkbox">
+                                    <input type="checkbox" id="gmGetResourceText" class="form-checkbox">
+                                    <label for="gmGetResourceText">GM_getResourceText</label>
+                                 </div>
+                                 <div class="form-group-checkbox">
+                                    <input type="checkbox" id="gmGetResourceURL" class="form-checkbox">
+                                    <label for="gmGetResourceURL">GM_getResourceURL</label>
+                                 </div>
+                                 <div class="form-group-checkbox">
+                                    <input type="checkbox" id="gmXmlhttpRequest" class="form-checkbox">
+                                    <label for="gmXmlhttpRequest">GM_xmlhttpRequest</label>
+                                 </div>
+                                 <div class="form-group-checkbox">
+                                    <input type="checkbox" id="gmSetClipboard" class="form-checkbox">
+                                    <label for="gmSetClipboard">GM_setClipboard</label>
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+
+                  <!-- Required Scripts Panel -->
+                  <div class="sidebar-panel" id="requires-panel">
+                     <div class="panel-header">
+                        <h3 class="panel-title">Required Scripts</h3>
+                        <p class="panel-subtitle">External scripts your userscript depends on</p>
+                     </div>
+                     <div class="panel-content">
+                        <div class="form-group">
+                           <label class="form-label">Add Require URL</label>
+                           <div class="resource-input-group">
+                              <input type="url" id="requireURL" class="form-input" placeholder="https://example.com/library.js">
+                              <button type="button" id="addRequireBtn" class="add-btn" title="Add required script">
+                                 <i data-feather="plus"></i>
+                                 Add
+                              </button>
+                           </div>
+                           <div id="requireList" class="resource-list" role="list" aria-label="Required scripts"></div>
+                        </div>
+                     </div>
+                  </div>
+
+                  <!-- Script Resources Panel -->
+                  <div class="sidebar-panel" id="resources-panel">
+                     <div class="panel-header">
+                        <h3 class="panel-title">Script Resources</h3>
+                        <p class="panel-subtitle">Resources that can be accessed via GM_getResource APIs</p>
+                     </div>
+                     <div class="panel-content">
+                        <div class="form-group">
+                           <label class="form-label">Add Resource</label>
+                           <div class="resource-input-group">
+                              <input type="text" id="resourceName" class="form-input" placeholder="Resource Name">
+                              <input type="url" id="resourceURL" class="form-input" placeholder="https://example.com/resource.js">
+                              <button type="button" id="addResourceBtn" class="add-btn" title="Add resource">
+                                 <i data-feather="plus"></i>
+                                 Add
+                              </button>
+                           </div>
+                           <div id="resourceList" class="resource-list" role="list" aria-label="Script resources"></div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </aside>
+            <!-- Editor-->
+            <main class="editor-area">
+               <div id="statusMessage" class="status-message"></div>
+               <div class="editor-container">
+                  <textarea id="codeEditor" class="code-editor"></textarea>
+               </div>
+               <div class="editor-toolbar">
+                  <div class="toolbar-group">
+                     <button type="button" class="toolbar-btn" id="settingsBtn" title="Editor settings">
+                        <i data-feather="settings"></i>
+                     </button>
+                     <button type="button" class="toolbar-btn" id="formatBtn" title="Format code (Alt+F)">
+                        <i data-feather="align-left"></i>
+                        Format
+                     </button>
+                  </div>
+                  <div class="toolbar-info">
+                     <span id="cursorInfo" class="cursor-info">Line 1, Column 1</span>
+                     <div class="perf-badge hidden" id="perfTierBadge" title="Performance optimizations active"></div>
+                  </div>
+               </div>
+            </main>
+         </div>
+      </div>
+      
+      <!-- Help Modal -->
+      <div id="helpModal" class="modal">
+        <div class="modal-content help-modal">
+          <div class="modal-header">
+            <h2>Help & Keyboard Shortcuts</h2>
+            <button type="button" class="close-help-modal">&times;</button>
+          </div>
+          <div class="modal-body">
+            <!-- Tab Navigation -->
+            <div class="help-tabs">
+              <button class="help-tab active" data-tab="shortcuts">Shortcuts</button>
+              <button class="help-tab" data-tab="wildcards">Wildcard Key</button>
+              <button class="help-tab" data-tab="gmapi">GM API</button>
+            </div>
+            <!-- Tab Content -->
+            <div class="help-tab-content active" id="help-tab-shortcuts">
+              <div class="help-section">
+                <h3>Keyboard Shortcuts</h3>
+                <table class="shortcuts-table">
+                  <thead>
+                    <tr>
+                      <th>Action</th>
+                      <th>Windows/Linux</th>
+                      <th>macOS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Save Script</td>
+                      <td><kbd>Ctrl</kbd> + <kbd>S</kbd></td>
+                      <td><kbd>Cmd</kbd> + <kbd>S</kbd></td>
+                    </tr>
+                    <tr>
+                      <td>Format Code</td>
+                      <td><kbd>Alt</kbd> + <kbd>F</kbd></td>
+                      <td><kbd>Alt</kbd> + <kbd>F</kbd></td>
+                    </tr>
+                    <tr>
+                      <td>Autocomplete</td>
+                      <td><kbd>Ctrl</kbd> + <kbd>Space</kbd></td>
+                      <td><kbd>Ctrl</kbd> + <kbd>Space</kbd></td>
+                    </tr>
+                    <tr>
+                      <td>Toggle Comment</td>
+                      <td><kbd>Ctrl</kbd> + <kbd>/</kbd></td>
+                      <td><kbd>Cmd</kbd> + <kbd>/</kbd></td>
+                    </tr>
+                    <tr>
+                      <td>Toggle Minimap</td>
+                      <td><kbd>Ctrl</kbd> + <kbd>M</kbd></td>
+                      <td><kbd>Cmd</kbd> + <kbd>M</kbd></td>
+                    </tr>
+                    <tr>
+                      <td>Full Screen</td>
+                      <td colspan="2"><kbd>F11</kbd></td>
+                    </tr>
+                    <tr>
+                      <td>Exit Full Screen</td>
+                      <td colspan="2"><kbd>Esc</kbd></td>
+                    </tr>
+                    <tr>
+                      <td>Indent / Insert Spaces</td>
+                      <td colspan="2"><kbd>Tab</kbd> (selection indents; otherwise inserts spaces)</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p class="help-note" style="margin-top:8px;color:#9CA3AF;">
+                  Notes: Shortcuts reflect the current editor configuration. Formatting uses the built-in beautifier. The minimap can also be toggled from Settings.
+                </p>
+              </div>
+            </div>
+            <div class="help-tab-content" id="help-tab-wildcards">
+              <div class="help-section">
+                <h3>URL Matching with Wildcards</h3>
+                <p>The URL matching system supports the following patterns:</p>
+                <table class="wildcards-table">
+                  <thead>
+                    <tr>
+                      <th>Pattern</th>
+                      <th>Description</th>
+                      <th>Example</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><code>*</code></td>
+                      <td>Matches any characters except <code>/</code></td>
+                      <td><code>https://example.com/*</code> matches any page on example.com</td>
+                    </tr>
+                    <tr>
+                      <td><code>**</code></td>
+                      <td>Matches any characters including <code>/</code></td>
+                      <td><code>https://**/api/**</code> matches any API endpoint on any domain</td>
+                    </tr>
+                    <tr>
+                      <td><code>?</code></td>
+                      <td>Matches any single character</td>
+                      <td><code>file?.js</code> matches file1.js, file2.js, etc.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="help-tab-content" id="help-tab-gmapi">
+              <div class="help-section">
+                <h3>GM API Documentation</h3>
+                <p>
+                  The GM API provides special functions for userscripts to interact with the browser and page.<br>
+                  <a href="https://wiki.greasespot.net/Greasemonkey_Manual:API" target="_blank" rel="noopener" style="color:#4ea1ff;text-decoration:underline;">
+                    View the full official GM API documentation
+                  </a>
+                </p>
+                <table class="gmapi-table">
+                  <thead>
+                    <tr>
+                      <th>API</th>
+                      <th>Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><code>GM_setValue</code></td>
+                      <td>Stores a value that persists across page loads.</td>
+                    </tr>
+                    <tr>
+                      <td><code>GM_getValue</code></td>
+                      <td>Retrieves a value stored with <code>GM_setValue</code>.</td>
+                    </tr>
+                    <tr>
+                      <td><code>GM_deleteValue</code></td>
+                      <td>Deletes a value stored with <code>GM_setValue</code>.</td>
+                    </tr>
+                    <tr>
+                      <td><code>GM_listValues</code></td>
+                      <td>Lists all keys stored with <code>GM_setValue</code>.</td>
+                    </tr>
+                    <tr>
+                      <td><code>GM_openInTab</code></td>
+                      <td>Opens a URL in a new browser tab.</td>
+                    </tr>
+                    <tr>
+                      <td><code>GM_notification</code></td>
+                      <td>Shows a desktop notification.</td>
+                    </tr>
+                    <tr>
+                      <td><code>GM_getResourceText</code></td>
+                      <td>Gets the content of a resource as text.</td>
+                    </tr>
+                    <tr>
+                      <td><code>GM_getResourceURL</code></td>
+                      <td>Gets the URL of a resource.</td>
+                    </tr>
+                    <tr>
+                      <td><code>GM_addStyle</code></td>
+                      <td>Injects CSS styles into the page.</td>
+                    </tr>
+                    <tr>
+                      <td><code>GM_registerMenuCommand</code></td>
+                      <td>Adds a custom command to the userscript menu.</td>
+                    </tr>
+                    <tr>
+                      <td><code>GM_setClipboard</code></td>
+                      <td>Copies data to the clipboard.</td>
+                    </tr>
+                    <tr>
+                      <td><code>GM_xmlhttpRequest</code></td>
+                      <td>Makes cross-origin HTTP requests.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Modal -->
+      <div id="settingsModal" class="modal">
+         <div class="modal-content">
+         <div class="modal-header">
+            <h2>Editor Settings</h2>
+            <button type="button" class="close-btn" id="closeSettings" aria-label="Close Modal">&times;</button>
+         </div>
+         <div class="modal-body">
+            <form id="settingsForm" class="settings-grid">
+               <div class="setting-group">
+               <label for="editorTheme"><h3>Editor Theme</h3></label>
+               <select id="editorTheme" class="setting-select">
+                  <option value="default">Default</option>
+                  <option value="ayu-dark">Ayu Dark</option>
+                  <option value="ayu-mirage">Ayu Mirage</option>
+                  <option value="dracula">Dracula</option>
+                  <option value="material">Material</option>
+                  <option value="monokai">Monokai</option>
+                  <option value="solarized">Solarized</option>
+               </select>
+               </div>
+      
+               <div class="setting-group-inline">
+               <label for="fontSize"><h3>Font Size</h3></label>
+               <input type="range" id="fontSize" min="10" max="24" value="14" class="setting-range">
+               <span id="fontSizeValue" class="range-label">14px</span>
+               </div>
+      
+               <div class="setting-group-inline">
+               <label for="tabSize"><h3>Tab Size</h3></label>
+               <input type="number" id="tabSize" min="1" max="8" value="2" class="setting-input">
+               </div>
+      
+               <fieldset class="setting-group prefs">
+               <legend><h3>Preferences</h3></legend>
+               <label class="setting-checkbox">
+                  <input type="checkbox" id="lineNumbers" checked>
+                  <span>Show Line Numbers</span>
+               </label>
+      
+               <label class="setting-checkbox">
+                  <input type="checkbox" id="lineWrapping">
+                  <span>Line Wrapping</span>
+               </label>
+      
+               <label class="setting-checkbox">
+                  <input type="checkbox" id="matchBrackets" checked>
+                  <span>Match Brackets</span>
+               </label>
+      
+               <label class="setting-checkbox">
+                  <input type="checkbox" id="minimap" checked>
+                  <span>Show Minimap</span>
+               </label>
+      
+               <label class="setting-checkbox">
+                  <input type="checkbox" id="lintingEnabled">
+                  <span>Enable Linting</span>
+               </label>
+      
+               <label class="setting-checkbox">
+                  <input type="checkbox" id="autosaveEnabled">
+                  <span>Enable Autosave</span>
+               </label>
+               </fieldset>
+            </form>
+         </div>
+         <div class="modal-footer">
+            <button type="submit" form="settingsForm" id="saveSettings" class="btn btn-primary">Save Settings</button>
+            <button type="button" id="resetSettings" class="btn btn-secondary">Reset to Defaults</button>
+            <button type="button" id="helpButton" class="help-button" title="Keyboard Shortcuts & Help">
+                     <i data-feather="help-circle"></i>
+                     <span>Help & Shortcuts</span>
+                  </button>
+         </div>
+         </div>
+      </div>
+
+      <script type="module" src="/editor_managers.js"></script>
+      <script type="module" src="/editor_settings.js"></script>
+      <script type="module" src="/editor.js"></script>
+      <script>
+         feather.replace()
+      </script>
+   </body>
+</html>

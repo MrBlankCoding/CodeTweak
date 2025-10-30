@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "devDependencies": {
     "@eslint/js": "^9.28.0",
     "esbuild": "^0.20.2",
@@ -6,6 +7,39 @@
     "globals": "^16.2.0"
   },
   "scripts": {
-    "build:firefox-bg": "esbuild firefox/background.js --bundle --outfile=firefox/background.bundle.js --format=iife --platform=browser --sourcemap"
+    "build": "node build.js"
+  },
+  "dependencies": {
+    "@codemirror/basic-setup": "^0.20.0",
+    "@codemirror/lang-javascript": "^6.2.4",
+    "@codemirror/state": "^6.5.2",
+    "@codemirror/theme-one-dark": "^6.1.3",
+    "@codemirror/view": "^6.38.6",
+    "@ddietr/codemirror-themes": "^1.5.2",
+    "@fsegurai/codemirror-theme-abcdef": "^6.2.2",
+    "@fsegurai/codemirror-theme-abyss": "^6.2.2",
+    "@fsegurai/codemirror-theme-andromeda": "^6.2.2",
+    "@fsegurai/codemirror-theme-cobalt2": "^6.0.2",
+    "@fsegurai/codemirror-theme-forest": "^6.2.2",
+    "@fsegurai/codemirror-theme-github-dark": "^6.2.2",
+    "@fsegurai/codemirror-theme-github-light": "^6.2.2",
+    "@fsegurai/codemirror-theme-material-dark": "^6.2.2",
+    "@fsegurai/codemirror-theme-nord": "^6.2.2",
+    "@fsegurai/codemirror-theme-palenight": "^6.2.2",
+    "@fsegurai/codemirror-theme-solarized-dark": "^6.2.2",
+    "@fsegurai/codemirror-theme-solarized-light": "^6.2.2",
+    "@fsegurai/codemirror-theme-volcano": "^6.2.2",
+    "@fsegurai/codemirror-theme-vscode-dark": "^6.2.2",
+    "@fsegurai/codemirror-theme-vscode-light": "^6.2.2",
+    "@uiw/codemirror-theme-dracula": "^4.25.2",
+    "@uiw/codemirror-theme-material": "^4.25.2",
+    "@uiw/codemirror-theme-monokai": "^4.25.2",
+    "@uiw/codemirror-theme-solarized": "^4.25.2",
+    "cm6-theme-basic-light": "^0.2.0",
+    "cm6-theme-solarized-dark": "^0.2.0",
+    "codemirror-theme-vars": "^0.1.2",
+    "feather-icons": "^4.29.2",
+    "js-beautify": "^1.15.4",
+    "jshint": "^2.13.6"
   }
 }

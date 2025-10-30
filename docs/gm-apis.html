@@ -8,6 +8,7 @@
     <!-- Prism.js light and dark themes -->
     <link id="prismLight" href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism.css" rel="stylesheet" />
     <link id="prismDark" href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism-tomorrow.css" rel="stylesheet" disabled />
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
     <style>
 
         .nav-header {
@@ -252,10 +253,7 @@
     <div class="container">
         <nav class="nav-header">
             <a href="index.html">
-                <svg class="icon" viewBox="0 0 24 24">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                    <polyline points="9 22 9 12 15 12 15 22"/>
-                </svg>
+                <i data-feather="home" class="icon"></i>
                 Back to Documentation Home
             </a>
             <span>GM APIs Reference</span>
@@ -263,24 +261,14 @@
 
         <header>
             <h1>
-                <svg class="icon" viewBox="0 0 24 24" style="width: 40px; height: 40px;">
-                    <circle cx="12" cy="12" r="10"/>
-                    <line x1="2" y1="12" x2="6" y2="12"/>
-                    <line x1="18" y1="12" x2="22" y2="12"/>
-                    <line x1="12" y1="6" x2="12" y2="2"/>
-                    <line x1="12" y1="18" x2="12" y2="22"/>
-                </svg>
+                <i data-feather="compass" class="icon" style="width: 40px; height: 40px;"></i>
                 GM APIs Reference
             </h1>
             <p>Complete reference for all Greasemonkey APIs supported by CodeTweak with practical examples and best practices.</p>
         </header>
 
         <div class="alert alert-info">
-            <svg class="icon" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="16" x2="12" y2="12"/>
-                <line x1="12" y1="8" x2="12.01" y2="8"/>
-            </svg>
+            <i data-feather="info" class="icon"></i>
             <div>
                 <strong>Remember:</strong> You must enable each GM API in the script editor's "GM API Access" section before using it in your code.
             </div>
@@ -711,11 +699,7 @@ GM_xmlhttpRequest({
             </div>
 
             <div class="alert alert-info">
-                <svg class="icon" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="10"/>
-                    <line x1="12" y1="16" x2="12" y2="12"/>
-                    <line x1="12" y1="8" x2="12.01" y2="8"/>
-                </svg>
+                <i data-feather="info" class="icon"></i>
                 <div>
                     <strong>Setup Required:</strong> Resources must be defined in the editor's "Script Resources" section before use.
                 </div>
