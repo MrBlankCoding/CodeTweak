@@ -44,10 +44,10 @@ html, body {
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  height: 100%;
 }
 
-.CodeMirror {
+/* CodeMirror 6 */
+.cm-editor {
   flex: 1;
   height: 100%;
   font-family: var(--font-mono);
@@ -58,31 +58,44 @@ html, body {
   width: 100%;
   margin: 0;
   padding: 0;
+  outline: none;
 }
 
-.CodeMirror-gutters {
+.cm-editor.cm-focused {
+  outline: none;
+}
+
+.cm-scroller {
+  flex: 1;
+  height: 100%;
+  overflow: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.cm-scroller::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.cm-content {
+  padding: var(--space-md) 0;
+  min-height: 100%;
+}
+
+.cm-gutters {
   background: var(--bg-secondary);
   border-right: 1px solid var(--border-primary);
 }
 
-.CodeMirror-linenumber {
+.cm-lineNumbers .cm-gutterElement {
   color: var(--text-muted);
   padding: 0 var(--space-sm);
   font-size: var(--text-sm);
 }
 
-.CodeMirror-scroll {
-  padding: var(--space-md) 0;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
-}
 
-/* Hide scrollbar for Chrome, Safari and Opera */
-.CodeMirror-scroll::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
-}
 
 /* ===== EDITOR AREA ===== */
 .editor-area {
@@ -95,8 +108,6 @@ html, body {
   background: var(--bg-primary);
   position: relative;
   overflow: hidden;
-  height: 100%;
-  width: 100%;
 }
 
 .editor-toolbar {

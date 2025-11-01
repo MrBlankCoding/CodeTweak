@@ -1,41 +1,30 @@
+import { GM_API_DEFINITIONS } from './gmApiDefinitions.js';
+
+// Build mapping from Tampermonkey @grant names to element IDs
+function buildGrantToApiMapping() {
+  const grantToGmApi = {};
+  
+  Object.values(GM_API_DEFINITIONS).forEach(api => {
+    // Traditional GM_ style
+    grantToGmApi[api.tmName] = api.el;
+    
+    // Modern GM. style (except unsafeWindow)
+    if (api.tmName !== 'unsafeWindow') {
+      const modernName = api.tmName.replace('GM_', 'GM.');
+      grantToGmApi[modernName] = api.el;
+    }
+  });
+  
+  return grantToGmApi;
+}
+
 function parseUserScriptMetadata(content) {
   const metadata = {
     gmApis: {},
   };
 
-  // Map to our own API
-  const grantToGmApi = {
-    // GM_ style (traditional)
-    GM_setValue: "gmSetValue",
-    GM_getValue: "gmGetValue",
-    GM_deleteValue: "gmDeleteValue",
-    GM_listValues: "gmListValues",
-    GM_openInTab: "gmOpenInTab",
-    GM_notification: "gmNotification",
-    GM_getResourceText: "gmGetResourceText",
-    GM_getResourceURL: "gmGetResourceURL",
-    GM_setClipboard: "gmSetClipboard",
-    GM_addStyle: "gmAddStyle",
-    GM_addElement: "gmAddElement",
-    GM_registerMenuCommand: "gmRegisterMenuCommand",
-    GM_xmlhttpRequest: "gmXmlhttpRequest",
-    unsafeWindow: "unsafeWindow",
-
-    // GM. style (modern)
-    "GM.setValue": "gmSetValue",
-    "GM.getValue": "gmGetValue",
-    "GM.deleteValue": "gmDeleteValue",
-    "GM.listValues": "gmListValues",
-    "GM.openInTab": "gmOpenInTab",
-    "GM.notification": "gmNotification",
-    "GM.getResourceText": "gmGetResourceText",
-    "GM.getResourceURL": "gmGetResourceURL",
-    "GM.setClipboard": "gmSetClipboard",
-    "GM.addStyle": "gmAddStyle",
-    "GM.addElement": "gmAddElement",
-    "GM.registerMenuCommand": "gmRegisterMenuCommand",
-    "GM.xmlhttpRequest": "gmXmlhttpRequest",
-  };
+  // Map @grant names to our element IDs
+  const grantToGmApi = buildGrantToApiMapping();
 
   const metaMatch = content.match(/==UserScript==([\s\S]*?)==\/UserScript==/);
   if (!metaMatch) return metadata;
@@ -110,22 +99,18 @@ function extractMetadataBlock(content) {
   return match ? match[0] : null;
 }
 
-const gmApiFlagToGrant = {
-  gmSetValue: "GM_setValue",
-  gmGetValue: "GM_getValue",
-  gmDeleteValue: "GM_deleteValue",
-  gmListValues: "GM_listValues",
-  gmOpenInTab: "GM_openInTab",
-  gmNotification: "GM_notification",
-  gmGetResourceText: "GM_getResourceText",
-  gmGetResourceURL: "GM_getResourceURL",
-  gmSetClipboard: "GM_setClipboard",
-  gmAddStyle: "GM_addStyle",
-  gmAddElement: "GM_addElement",
-  gmRegisterMenuCommand: "GM_registerMenuCommand",
-  gmXmlhttpRequest: "GM_xmlhttpRequest",
-  unsafeWindow: "unsafeWindow",
-};
+// Build reverse mapping from element IDs to Tampermonkey @grant names
+function buildApiToGrantMapping() {
+  const apiToGrant = {};
+  
+  Object.values(GM_API_DEFINITIONS).forEach(api => {
+    apiToGrant[api.el] = api.tmName;
+  });
+  
+  return apiToGrant;
+}
+
+const gmApiFlagToGrant = buildApiToGrantMapping();
 
 function buildTampermonkeyMetadata(script, useModernStyle = false) {
   const lines = [];

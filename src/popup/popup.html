@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CodeTweak</title>
     <link rel="stylesheet" href="/assets/styles/popup.css" />
-    <script src="/vendor/feather.min.js"></script>
+    <script type="module" src="popup.js"></script>
   </head>
   <body>
     <header>
@@ -17,13 +17,11 @@
           <span class="btn-icon">
             <i data-feather="grid"></i>
           </span>
-          <span>Dashboard</span>
         </button>
         <button id="createScript" class="primary">
           <span class="btn-icon">
             <i data-feather="plus"></i>
           </span>
-          <span>Create</span>
         </button>
       </div>
     </header>
@@ -48,8 +46,5 @@
       <div>v1.0.0</div>
       <div><a href="https://github.com/MrBlankCoding/CodeTweak/issues/new" id="reportIssue">Report Issue</a></div>
     </footer>
-
-    <script type="module" src="popup.js"></script>
-    <script src="feather.js" defer></script>
   </body>
 </html>

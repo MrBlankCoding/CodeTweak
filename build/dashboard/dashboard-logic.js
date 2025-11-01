@@ -2,10 +2,16 @@ import {
   buildTampermonkeyMetadata,
   extractMetadataBlock,
 } from "../utils/metadataParser.js";
+import {
+  updateWebsiteFilterOptions,
+  updateScriptsList,
+  showNotification,
+} from "./dashboard-ui.js";
 
 async function loadScripts(elements, state) {
   try {
     const { scripts = [] } = await chrome.storage.local.get("scripts");
+    state.allScripts = scripts;
 
     updateWebsiteFilterOptions(
       state.allScripts,
@@ -70,7 +76,7 @@ async function toggleScript(scriptId, enabled) {
 }
 
 function editScript(scriptId) {
-  window.location.href = `editor.html?id=${scriptId}`;
+  window.location.href = chrome.runtime.getURL(`editor/editor.html?id=${scriptId}`);
 }
 
 async function deleteScript(scriptId) {
@@ -80,7 +86,6 @@ async function deleteScript(scriptId) {
 
   try {
     const { scripts = [] } = await chrome.storage.local.get("scripts");
-    const scriptToDelete = scripts.find((s) => s.id === scriptId);
     const updatedScripts = scripts.filter((s) => s.id !== scriptId);
 
     await chrome.storage.local.set({ scripts: updatedScripts });
@@ -292,9 +297,9 @@ function exportScript(script) {
   }
 }
 
+window.editScript = editScript;
 window.exportScript = exportScript;
 window.toggleScript = toggleScript;
-window.editScript = editScript;
 window.deleteScript = deleteScript;
 window.checkForUpdates = checkForUpdates;
 window.refreshDashboard = refreshDashboard;

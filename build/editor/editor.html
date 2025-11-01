@@ -3,12 +3,12 @@
    <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600&display=swap">
       <link rel="stylesheet" href="/assets/styles/editor.css">
       <link rel="stylesheet" href="/assets/styles/e_settings_modal.css">
       <link rel="stylesheet" href="/assets/styles/e_header_footer.css">
       <link rel="stylesheet" href="/assets/styles/e_sidebar.css">
-      <script src="/vendor/feather.min.js"></script>
+      <script src="/assets/scripts/jshint.js"></script>
+      <script type="module" src="editor.js"></script>
    </head>
    <body>
       <div class="app-container">
@@ -249,6 +249,16 @@
                                  <div class="form-group-checkbox">
                                     <input type="checkbox" id="gmSetClipboard" class="form-checkbox">
                                     <label for="gmSetClipboard">GM_setClipboard</label>
+                                 </div>
+                              </div>
+                           </div>
+                           
+                           <div class="api-category">
+                              <h4 class="category-title">Advanced</h4>
+                              <div class="api-list" role="group" aria-labelledby="advanced-apis">
+                                 <div class="form-group-checkbox">
+                                    <input type="checkbox" id="unsafeWindow" class="form-checkbox">
+                                    <label for="unsafeWindow">unsafeWindow</label>
                                  </div>
                               </div>
                            </div>
@@ -510,19 +520,6 @@
          </div>
          <div class="modal-body">
             <form id="settingsForm" class="settings-grid">
-               <div class="setting-group">
-               <label for="editorTheme"><h3>Editor Theme</h3></label>
-               <select id="editorTheme" class="setting-select">
-                  <option value="default">Default</option>
-                  <option value="ayu-dark">Ayu Dark</option>
-                  <option value="ayu-mirage">Ayu Mirage</option>
-                  <option value="dracula">Dracula</option>
-                  <option value="material">Material</option>
-                  <option value="monokai">Monokai</option>
-                  <option value="solarized">Solarized</option>
-               </select>
-               </div>
-      
                <div class="setting-group-inline">
                <label for="fontSize"><h3>Font Size</h3></label>
                <input type="range" id="fontSize" min="10" max="24" value="14" class="setting-range">
@@ -578,12 +575,5 @@
          </div>
          </div>
       </div>
-
-      <script type="module" src="/editor_managers.js"></script>
-      <script type="module" src="/editor_settings.js"></script>
-      <script type="module" src="/editor.js"></script>
-      <script>
-         feather.replace()
-      </script>
    </body>
 </html>

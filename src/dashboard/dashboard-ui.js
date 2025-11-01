@@ -1,3 +1,8 @@
+import feather from 'feather-icons';
+
+// Global functions available from dashboard-logic.js via window object
+/* global toggleScript, editScript, checkForUpdates, deleteScript */
+
 function setupTabs(tabsContainer, tabContents) {
   if (!tabsContainer) return;
 
@@ -76,6 +81,9 @@ function updateScriptsList(scripts, elements) {
   });
 
   elements.scriptsList.appendChild(fragment);
+  feather.replace();
+
+
 }
 
 function createScriptRow(script) {

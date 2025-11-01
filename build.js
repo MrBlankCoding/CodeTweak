@@ -13,16 +13,17 @@ mkdirSync(outdir, { recursive: true });
 // Copy public files
 cpSync('src/assets', join(outdir, 'assets'), { recursive: true });
 cpSync('src/dashboard', join(outdir, 'dashboard'), { recursive: true });
-cpSync('src/dashboard/feather.js', join(outdir, 'dashboard/feather.js'));
+
 cpSync('src/editor', join(outdir, 'editor'), { recursive: true });
 cpSync('src/offscreen', join(outdir, 'offscreen'), { recursive: true });
 cpSync('src/popup', join(outdir, 'popup'), { recursive: true });
-cpSync('src/popup/feather.js', join(outdir, 'popup/feather.js'));
+
 cpSync('src/manifest.json', join(outdir, 'manifest.json'));
 
 // Copy feather-icons
 mkdirSync(join(outdir, 'vendor'));
-cpSync('node_modules/feather-icons/dist/feather.min.js', join(outdir, 'vendor/feather.min.js'));
+
+
 
 cpSync('src/utils', join(outdir, 'utils'), { recursive: true });
 
@@ -31,13 +32,10 @@ build({
   entryPoints: [
     'src/background/background.js',
     'src/utils/content_bridge.js',
-    'src/utils/editor_managers.js',
-    'src/utils/editor_settings.js',
     'src/utils/elementSelector.js',
     'src/utils/gm_core.js',
     'src/utils/greasyfork_interceptor.js',
     'src/utils/inject.js',
-    'src/utils/metadataParser.js',
     'src/utils/urlMatchPattern.js',
     'src/popup/popup.js',
     'src/editor/editor.js',
@@ -47,5 +45,5 @@ build({
   outdir: outdir,
   logLevel: 'info',
   platform: 'browser',
-  external: ['codemirror', 'jshint', 'js-beautify', '@codemirror/*', '@fsegurai/*', 'cm6-theme-basic-light', 'cm6-theme-solarized-dark', 'codemirror-theme-vars', '@uiw/*'],
+  external: [],
 }).catch(() => process.exit(1));

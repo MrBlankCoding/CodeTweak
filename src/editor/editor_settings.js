@@ -3,19 +3,13 @@ import { EditorView, keymap, lineNumbers, gutter } from "@codemirror/view";
 import { basicSetup } from "codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
-import { parseUserScriptMetadata } from './metadataParser.js';
-import { oneDark } from "@codemirror/theme-one-dark";
-import { solarizedDark } from "@fsegurai/codemirror-theme-solarized-dark";
-import { solarizedLight } from "@fsegurai/codemirror-theme-solarized-light";
-import { dracula } from "@fsegurai/codemirror-theme-dracula";
-import { materialDark } from "@fsegurai/codemirror-theme-material-dark";
-import { monokai } from "@fsegurai/codemirror-theme-monokai";
-import { autocompletion } from "@codemirror/autocomplete";
-import { foldGutter } from "@codemirror/language";
+import { parseUserScriptMetadata } from '../utils/metadataParser.js';
+import { autocompletion, closeBrackets } from "@codemirror/autocomplete";
+import { bracketMatching, foldGutter } from "@codemirror/language";
 import { linter, lintGutter } from "@codemirror/lint";
-import { matchBrackets } from "@codemirror/matchbrackets";
-import { JSHINT } from 'jshint';
 import { js_beautify } from 'js-beautify';
+import { showMinimap } from '@replit/codemirror-minimap';
+import { oneDark } from '@codemirror/theme-one-dark';
 
 export class CodeEditorManager {
   constructor(elements, state, config, gmApiDefinitions) {
@@ -26,7 +20,6 @@ export class CodeEditorManager {
     this.codeEditor = null;
     
     this.defaultSettings = {
-      theme: 'oneDark',
       fontSize: 14,
       tabSize: 2,
       lineNumbers: true,
@@ -36,8 +29,12 @@ export class CodeEditorManager {
     };
     
     this.currentSettings = {...this.defaultSettings};
-    this.theme = new Compartment();
     this.lint = new Compartment();
+    this.tabSize = new Compartment();
+    this.lineNumbers = new Compartment();
+    this.lineWrapping = new Compartment();
+    this.matchBrackets = new Compartment();
+    this.minimap = new Compartment();
 
     this.largeFileOptimized = false;
     this.LARGE_FILE_LINE_COUNT = 3000;
@@ -66,17 +63,29 @@ export class CodeEditorManager {
       doc: this.elements.codeEditor.value,
       extensions: [
         basicSetup,
+        oneDark,
         javascript(),
         this.getEditorKeybindings(),
-        lineNumbers(),
-        gutter({class: "cm-gutters"}),
-        this.theme.of(oneDark),
         this.lint.of(linter(this.getLintOptions(true, this.getEnabledGmApis()))),
         autocompletion(),
-        foldGutter(),
+        closeBrackets(),
         lintGutter(),
-        matchBrackets(),
-        EditorView.lineWrapping,
+        
+        // Settings compartments
+        this.tabSize.of(EditorState.tabSize.of(this.currentSettings.tabSize)),
+        this.lineNumbers.of(this.currentSettings.lineNumbers ? [lineNumbers(), foldGutter(), gutter({class: "cm-gutters"})] : []),
+        this.lineWrapping.of(this.currentSettings.lineWrapping ? EditorView.lineWrapping : []),
+        this.matchBrackets.of(this.currentSettings.matchBrackets ? bracketMatching() : []),
+        this.minimap.of(this.currentSettings.minimap ? showMinimap.compute(['doc'], () => {
+          return {
+            create: () => {
+              const dom = document.createElement('div');
+              return { dom };
+            },
+            displayText: 'blocks',
+            showOverlay: 'always'
+          };
+        }) : []),
         EditorView.updateListener.of((update) => {
             if (update.docChanged) {
                 this.onChangeCallback?.();
@@ -190,7 +199,7 @@ export class CodeEditorManager {
     ]);
   }
 
-  toggleMinimap(cm) {
+  toggleMinimap() {
     // Minimap functionality is not available out-of-the-box in CodeMirror 6.
     // It would require a custom extension.
   }
@@ -217,19 +226,43 @@ export class CodeEditorManager {
   applySettings(settings) {
     if (!this.codeEditor) return;
 
-    const themeMap = {
-        oneDark: oneDark,
-        solarizedDark: solarizedDark,
-        solarizedLight: solarizedLight,
-        dracula: dracula,
-        materialDark: materialDark,
-        monokai: monokai,
-    };
+    const effects = [];
 
-    if (settings.theme && themeMap[settings.theme]) {
-        this.codeEditor.dispatch({
-            effects: this.theme.reconfigure(themeMap[settings.theme])
-        });
+    if (settings.fontSize) {
+        this.codeEditor.dom.style.fontSize = `${settings.fontSize}px`;
+    }
+
+    if (settings.tabSize) {
+        effects.push(this.tabSize.reconfigure(EditorState.tabSize.of(settings.tabSize)));
+    }
+
+    if (settings.lineNumbers !== undefined) {
+        effects.push(this.lineNumbers.reconfigure(settings.lineNumbers ? [lineNumbers(), foldGutter(), gutter({class: "cm-gutters"})] : []));
+    }
+    
+    if (settings.lineWrapping !== undefined) {
+        effects.push(this.lineWrapping.reconfigure(settings.lineWrapping ? EditorView.lineWrapping : []));
+    }
+
+    if (settings.matchBrackets !== undefined) {
+        effects.push(this.matchBrackets.reconfigure(settings.matchBrackets ? bracketMatching() : []));
+    }
+
+    if (settings.minimap !== undefined) {
+        effects.push(this.minimap.reconfigure(settings.minimap ? showMinimap.compute(['doc'], () => {
+          return {
+            create: () => {
+              const dom = document.createElement('div');
+              return { dom };
+            },
+            displayText: 'blocks',
+            showOverlay: 'always'
+          };
+        }) : []));
+    }
+
+    if (effects.length > 0) {
+        this.codeEditor.dispatch({ effects });
     }
   }
 
@@ -282,14 +315,26 @@ export class CodeEditorManager {
   updateEditorLintAndAutocomplete() {
     if (!this.codeEditor) return;
 
-    const enabledApiNames = this.getEnabledGmApis();
-    const lintOptions = this.getLintOptions(
-      this.state.lintingEnabled,
-      enabledApiNames
-    );
-    this.codeEditor.dispatch({
-        effects: this.lint.reconfigure(linter(lintOptions))
-    });
+    try {
+      const enabledApiNames = this.getEnabledGmApis();
+      const lintOptions = this.getLintOptions(
+        this.state.lintingEnabled,
+        enabledApiNames
+      );
+      this.codeEditor.dispatch({
+          effects: this.lint.reconfigure(linter(lintOptions))
+      });
+    } catch (error) {
+      console.warn('Failed to update linting configuration:', error);
+      // Try to disable linting as fallback
+      try {
+        this.codeEditor.dispatch({
+            effects: this.lint.reconfigure(linter(() => []))
+        });
+      } catch (fallbackError) {
+        console.error('Failed to apply fallback linting:', fallbackError);
+      }
+    }
   }
 
   getLintOptions(enable, enabledApiNames = []) {
@@ -305,6 +350,9 @@ export class CodeEditorManager {
     });
 
     return (view) => {
+        // JSHINT is loaded globally via script tag in editor.html
+        /* global JSHINT */
+        if (typeof JSHINT === 'undefined') return [];
         JSHINT(view.state.doc.toString(), {
             esversion: 11,
             asi: true,
@@ -323,8 +371,8 @@ export class CodeEditorManager {
         });
 
         return JSHINT.errors.map(err => ({
-            from: view.state.doc.line(err.line).from + err.character - 1,
-            to: view.state.doc.line(err.line).from + err.character,
+            from: this.codeEditor.state.doc.line(err.line).from + err.character - 1,
+            to: this.codeEditor.state.doc.line(err.line).from + err.character,
             message: err.reason,
             severity: err.code?.startsWith("E") ? "error" : "warning",
         }));

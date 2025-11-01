@@ -1,4 +1,5 @@
 /* global showNotification */
+import feather from 'feather-icons';
 import { setupGreasyfork } from "./dashboard-greasyfork.js";
 import {
   loadScripts,
@@ -70,11 +71,11 @@ function initDashboard() {
 
 function setupEventListeners(elements, state) {
   elements.createScriptBtn?.addEventListener("click", () => {
-    window.location.href = "/editor.html";
+    window.location.href = chrome.runtime.getURL("editor/editor.html");
   });
 
   elements.emptyStateCreateBtn?.addEventListener("click", () => {
-    window.location.href = "/editor.html";
+    window.location.href = chrome.runtime.getURL("editor/editor.html");
   });
 
   elements.saveSettingsBtn?.addEventListener("click", () =>
@@ -220,4 +221,7 @@ function debounce(func, delay) {
   };
 }
 
-document.addEventListener("DOMContentLoaded", initDashboard);
+document.addEventListener("DOMContentLoaded", () => {
+  initDashboard();
+  feather.replace();
+});

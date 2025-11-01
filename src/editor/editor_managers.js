@@ -1,5 +1,5 @@
 /* global feather */
-import { generateUrlMatchPattern } from "./urlMatchPattern.js";
+import { generateUrlMatchPattern } from "../utils/urlMatchPattern.js";
 
 class BaseUIComponent {
   constructor(elements, eventBus) {
@@ -209,7 +209,6 @@ export class SettingsManager extends BaseUIComponent {
 
   getSettingsInputs() {
     return {
-      theme: document.getElementById('editorTheme'),
       fontSize: document.getElementById('fontSize'),
       tabSize: document.getElementById('tabSize'),
       lineNumbers: document.getElementById('lineNumbers'),
@@ -239,13 +238,6 @@ export class SettingsManager extends BaseUIComponent {
           fontSizeValue.textContent = value + 'px';
         }
         this.emit('settingChanged', { fontSize: value });
-      });
-    }
-
-    // Theme
-    if (settingsInputs.theme) {
-      this.addEventListener(settingsInputs.theme, 'change', () => {
-        this.emit('settingChanged', { theme: settingsInputs.theme.value });
       });
     }
 
@@ -334,7 +326,6 @@ export class SettingsManager extends BaseUIComponent {
       const { settingsInputs } = this;
 
       // Only reflect stored values; leave HTML defaults otherwise
-      if (settingsInputs.theme && settings.theme !== undefined) settingsInputs.theme.value = settings.theme;
       if (settingsInputs.fontSize && settings.fontSize !== undefined) {
         settingsInputs.fontSize.value = settings.fontSize;
         const fontSizeValue = document.getElementById('fontSizeValue');
@@ -371,7 +362,6 @@ export class SettingsManager extends BaseUIComponent {
     try {
       const { settingsInputs } = this;
       const newSettings = {
-        theme: settingsInputs.theme?.value || 'ayu-dark',
         fontSize: parseInt(settingsInputs.fontSize?.value, 10) || 14,
         tabSize: parseInt(settingsInputs.tabSize?.value, 10) || 2,
         lineNumbers: !!settingsInputs.lineNumbers?.checked,
@@ -408,7 +398,6 @@ export class SettingsManager extends BaseUIComponent {
     const { settingsInputs } = this;
 
     // Align with CodeEditorManager defaults (single source of truth)
-    if (settingsInputs.theme) settingsInputs.theme.value = 'ayu-dark';
     if (settingsInputs.fontSize) {
       settingsInputs.fontSize.value = 14;
       const fontSizeValue = document.getElementById('fontSizeValue');
@@ -426,7 +415,6 @@ export class SettingsManager extends BaseUIComponent {
     localStorage.setItem('autosaveEnabled', 'true');
 
     this.emit('settingsReset', {
-      theme: 'ayu-dark',
       fontSize: 14,
       tabSize: 2,
       lineNumbers: true,

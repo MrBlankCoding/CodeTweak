@@ -98,6 +98,7 @@
       this.registerNetworkAPIs(enabledApis);
       this.registerUtilityAPIs(enabledApis);
       this.registerResourceAPIs(enabledApis);
+      this.registerUnsafeWindow(enabledApis);
     }
     initializeGMNamespace() {
       if (typeof window.GM === "undefined") {
@@ -255,6 +256,19 @@
         window.GM = window.GM || {};
         window.GM.setInnerHTML = window.GM_setInnerHTML;
         window.GM.createHTML = window.GM_createHTML;
+      }
+    }
+    registerUnsafeWindow(enabledApis) {
+      if (enabledApis.unsafeWindow) {
+        try {
+          Object.defineProperty(window, "unsafeWindow", {
+            value: window,
+            writable: false,
+            configurable: false
+          });
+        } catch (e) {
+          window.unsafeWindow = window;
+        }
       }
     }
     registerResourceAPIs(enabledApis) {
@@ -687,7 +701,8 @@
         gmAddStyle: Boolean(script.gmAddStyle),
         gmAddElement: Boolean(script.gmAddElement),
         gmRegisterMenuCommand: Boolean(script.gmRegisterMenuCommand),
-        gmXmlhttpRequest: Boolean(script.gmXmlhttpRequest)
+        gmXmlhttpRequest: Boolean(script.gmXmlhttpRequest),
+        unsafeWindow: Boolean(script.unsafeWindow)
       };
       const resourceManager = ResourceManager.fromScript(script);
       return {

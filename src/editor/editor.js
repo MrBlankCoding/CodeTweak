@@ -1,11 +1,12 @@
-
+import feather from 'feather-icons';
 import {
   UIManager,
   StorageManager,
   FormValidator
-} from "../utils/editor_managers.js";
-import { CodeEditorManager } from "../utils/editor_settings.js";
+} from "./editor_managers.js";
+import { CodeEditorManager } from "./editor_settings.js";
 import { buildTampermonkeyMetadata, parseUserScriptMetadata } from "../utils/metadataParser.js";
+import { GM_API_DEFINITIONS, getApiElementIds } from "../utils/gmApiDefinitions.js";
 
 class ScriptEditor {
   constructor() {
@@ -40,83 +41,8 @@ class ScriptEditor {
     this.ui = new UIManager(this.elements, this.state, this.config);
     this.storage = new StorageManager();
     this.validator = new FormValidator(this.elements);
-    this.gmApiDefinitions = {
-      GM_setValue: {
-        signature:
-          "declare function GM_setValue(name: string, value: any): Promise<void>;",
-        name: "GM_setValue",
-        el: "gmSetValue",
-      },
-      GM_getValue: {
-        signature:
-          "declare function GM_getValue(name: string, defaultValue?: any): Promise<any>;",
-        name: "GM_getValue",
-        el: "gmGetValue",
-      },
-      GM_deleteValue: {
-        signature:
-          "declare function GM_deleteValue(name: string): Promise<void>;",
-        name: "GM_deleteValue",
-        el: "gmDeleteValue",
-      },
-      GM_listValues: {
-        signature: "declare function GM_listValues(): Promise<string[]>;",
-        name: "GM_listValues",
-        el: "gmListValues",
-      },
-      GM_openInTab: {
-        signature:
-          "declare function GM_openInTab(url: string, options?: { active?: boolean, insert?: boolean, setParent?: boolean } | boolean): void;",
-        name: "GM_openInTab",
-        el: "gmOpenInTab",
-      },
-      GM_notification: {
-        signature:
-          "declare function GM_notification(details: { text?: string, title?: string, image?: string, highlight?: boolean, silent?: boolean, timeout?: number, ondone?: Function, onclick?: Function } | string, ondone?: Function): void;",
-        name: "GM_notification",
-        el: "gmNotification",
-      },
-      GM_getResourceText: {
-        signature: "declare function GM_getResourceText(name: string): string;",
-        name: "GM_getResourceText",
-        el: "gmGetResourceText",
-      },
-      GM_getResourceURL: {
-        signature: "declare function GM_getResourceURL(name: string): string;",
-        name: "GM_getResourceURL",
-        el: "gmGetResourceURL",
-      },
-      GM_setClipboard: {
-        signature:
-          "declare function GM_setClipboard(data: string, type?: string): Promise<void>;",
-        name: "GM_setClipboard",
-        el: "gmSetClipboard",
-      },
-      GM_addStyle: {
-        signature:
-          "declare function GM_addStyle(css: string): void;",
-        name: "GM_addStyle",
-        el: "gmAddStyle",
-      },
-      GM_addElement: {
-        signature:
-          "declare function GM_addElement(parent: Node, tag: string, attributes?: { [key: string]: string }): Node;",
-        name: "GM_addElement",
-        el: "gmAddElement",
-      },
-      GM_registerMenuCommand: {
-        signature:
-          "declare function GM_registerMenuCommand(caption: string, onClick: () => any, accessKey?: string): string;",
-        name: "GM_registerMenuCommand",
-        el: "gmRegisterMenuCommand",
-      },
-      GM_xmlhttpRequest: {
-        signature:
-          "declare function GM_xmlhttpRequest(details: { method: string, url: string, data?: any, headers?: any, timeout?: number, responseType?: string, onload?: Function, onerror?: Function, onprogress?: Function }): void;",
-        name: "GM_xmlhttpRequest",
-        el: "gmXmlhttpRequest",
-      },
-    };
+    // Use centralized API definitions
+    this.gmApiDefinitions = GM_API_DEFINITIONS;
 
     // Init code mirror
     this.codeEditorManager = new CodeEditorManager(
@@ -311,19 +237,7 @@ class ScriptEditor {
       "autosaveBtnText",
       "codeEditor",
       "minimap",
-      "gmSetValue",
-      "gmGetValue",
-      "gmDeleteValue",
-      "gmListValues",
-      "gmOpenInTab",
-      "gmNotification",
-      "gmGetResourceText",
-      "gmGetResourceURL",
-      "gmAddStyle",
-      "gmAddElement",
-      "gmRegisterMenuCommand",
-      "gmSetClipboard",
-      "gmXmlhttpRequest",
+      ...getApiElementIds(), // All GM API checkboxes
       "apiSearch",
       "apiCountBadge",
       "addUrlBtn",
@@ -609,6 +523,10 @@ class ScriptEditor {
     this.ui.on('sidebarChanged', () => {
       this.markAsUnsaved();
     });
+
+    this.ui.on('settingChanged', (settings) => {
+      this.codeEditorManager.applySettings(settings);
+    });
     
     // Setup VSCode-like sidebar icon functionality
     this.setupSidebarIconHandlers();
@@ -843,6 +761,8 @@ class ScriptEditor {
       this.elements.gmRegisterMenuCommand.checked = !!script.gmRegisterMenuCommand;
     if (this.elements.gmXmlhttpRequest)
       this.elements.gmXmlhttpRequest.checked = !!script.gmXmlhttpRequest;
+    if (this.elements.unsafeWindow)
+      this.elements.unsafeWindow.checked = !!script.unsafeWindow;
       
     // Show resources section if either resource API is checked
     if (script.gmGetResourceText || script.gmGetResourceURL) {
@@ -913,6 +833,7 @@ class ScriptEditor {
     scriptData.gmAddElement = this.elements.gmAddElement?.checked || false;
     scriptData.gmRegisterMenuCommand = this.elements.gmRegisterMenuCommand?.checked || false;
     scriptData.gmXmlhttpRequest = this.elements.gmXmlhttpRequest?.checked || false;
+    scriptData.unsafeWindow = this.elements.unsafeWindow?.checked || false;
 
     // Parse resource items
     scriptData.resources = [];
@@ -1048,7 +969,7 @@ class ScriptEditor {
     if (!this.state.isEditMode) {
       this.state.isEditMode = true;
       this.state.scriptId = savedScript.id;
-      window.history.replaceState({}, "", `editor.html?id=${savedScript.id}`);
+      window.history.replaceState({}, "", `../editor/editor.html?id=${savedScript.id}`);
     }
   }
 
@@ -1206,4 +1127,6 @@ function setupHelpModalTabs() {
 
 document.addEventListener('DOMContentLoaded', () => {
   setupHelpModalTabs();
+  // Initialize Feather icons
+  feather.replace();
 });

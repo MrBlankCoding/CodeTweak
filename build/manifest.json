@@ -11,7 +11,8 @@
     "contextMenus",
     "notifications",
     "offscreen",
-    "clipboardWrite"
+    "clipboardWrite",
+    "downloads"
   ],
   "host_permissions": [
     "http://*/*",
@@ -37,7 +38,7 @@
   "content_scripts": [
     {
       "matches": ["http://*/*", "https://*/*"],
-      "js": ["vendor/feather.min.js", "utils/elementSelector.js"],
+      "js": ["utils/elementSelector.js"],
       "css": ["assets/styles/elementSelector.css"],
       "run_at": "document_start"
     },

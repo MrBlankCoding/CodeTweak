@@ -163,6 +163,7 @@
       this.registerNetworkAPIs(enabledApis);
       this.registerUtilityAPIs(enabledApis);
       this.registerResourceAPIs(enabledApis);
+      this.registerUnsafeWindow(enabledApis);
     }
     initializeGMNamespace() {
       if (typeof window.GM === "undefined") {
@@ -320,6 +321,19 @@
         window.GM = window.GM || {};
         window.GM.setInnerHTML = window.GM_setInnerHTML;
         window.GM.createHTML = window.GM_createHTML;
+      }
+    }
+    registerUnsafeWindow(enabledApis) {
+      if (enabledApis.unsafeWindow) {
+        try {
+          Object.defineProperty(window, "unsafeWindow", {
+            value: window,
+            writable: false,
+            configurable: false
+          });
+        } catch (e) {
+          window.unsafeWindow = window;
+        }
       }
     }
     registerResourceAPIs(enabledApis) {
@@ -752,7 +766,8 @@
         gmAddStyle: Boolean(script.gmAddStyle),
         gmAddElement: Boolean(script.gmAddElement),
         gmRegisterMenuCommand: Boolean(script.gmRegisterMenuCommand),
-        gmXmlhttpRequest: Boolean(script.gmXmlhttpRequest)
+        gmXmlhttpRequest: Boolean(script.gmXmlhttpRequest),
+        unsafeWindow: Boolean(script.unsafeWindow)
       };
       const resourceManager = ResourceManager.fromScript(script);
       return {
@@ -873,7 +888,7 @@
     }
   };
   var state = new BackgroundState();
-  var OFFSCREEN_DOCUMENT_PATH = "offscreen.html";
+  var OFFSCREEN_DOCUMENT_PATH = "offscreen/offscreen.html";
   function safeSetBadge(tabId, text = "", color = "#007bff") {
     chrome.action.setBadgeText({ tabId, text }).catch((err) => {
       if (!isIgnorableTabError(err)) {
@@ -980,13 +995,18 @@
     },
     async notification(message) {
       const options = {
-        type: message.details.image ? "image" : "basic",
-        iconUrl: chrome.runtime.getURL("icons/icon128.png"),
+        type: "basic",
+        // Start with basic type
+        iconUrl: chrome.runtime.getURL("assets/icons/icon128.png"),
         title: message.details.title || "Notification",
         message: message.details.text || ""
       };
       if (message.details.image) {
-        options.imageUrl = message.details.image;
+        const imageUrl = message.details.image;
+        if (imageUrl.startsWith("data:") || imageUrl.startsWith("chrome-extension://")) {
+          options.type = "image";
+          options.imageUrl = imageUrl;
+        }
       }
       const notificationId = `gm_notification_${Date.now()}`;
       await chrome.notifications.create(notificationId, options);
@@ -1143,12 +1163,12 @@
         await chrome.storage.local.set({ scripts });
         chrome.runtime.sendMessage({ action: "scriptsUpdated" });
         chrome.tabs.create({
-          url: `${chrome.runtime.getURL("editor.html")}?id=${existing.id}`
+          url: `${chrome.runtime.getURL("editor/editor.html")}?id=${existing.id}`
         });
       } else {
         const params = new URLSearchParams({ targetUrl: url, template });
         chrome.tabs.create({
-          url: `${chrome.runtime.getURL("editor.html")}?${params}`
+          url: `${chrome.runtime.getURL("editor/editor.html")}?${params}`
         });
       }
     } catch (error) {
@@ -1165,7 +1185,7 @@
       const key = `tempImport_${tempId}`;
       await chrome.storage.local.set({ [key]: { code, sourceUrl: url } });
       chrome.tabs.create({
-        url: `${chrome.runtime.getURL("editor.html")}?importId=${tempId}`
+        url: `${chrome.runtime.getURL("editor/editor.html")}?importId=${tempId}`
       });
     } catch (err) {
       console.error("GreasyFork install fetch error:", err);

@@ -1,9 +1,10 @@
-/* global feather */
+import feather from 'feather-icons';
 import { urlMatchesPattern } from "../utils/urlMatchPattern.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
   // Apply theme first
   await applyThemeFromSettings();
+  feather.replace();
 
   const scriptList = document.getElementById("scriptList");
   const emptyState = document.getElementById("emptyState");
@@ -26,7 +27,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   createScriptBtn.addEventListener("click", () => {
     chrome.tabs.create({
       url: chrome.runtime.getURL(
-        `editor/editor.html?targetUrl=${encodeURIComponent(currentTabUrl)}`
+        `editor/editor.html`
       ),
     });
   });
@@ -158,7 +159,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     info.appendChild(name);
     info.appendChild(target);
     info.addEventListener("click", () => {
-      chrome.tabs.create({ url: `editor.html?id=${script.id}` });
+      chrome.tabs.create({ url: chrome.runtime.getURL(`editor/editor.html?id=${script.id}`) });
     });
 
     item.appendChild(info);

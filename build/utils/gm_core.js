@@ -149,6 +149,7 @@
         this._registerResources(enabled);
         this._registerUtilities(enabled);
         this._registerNetwork(enabled);
+        this._registerAdvanced(enabled);
       }
       _ensureGMNamespace() {
         if (typeof window.GM === "undefined")
@@ -313,6 +314,20 @@
             });
           };
           window.GM_xmlhttpRequest = window.GM.xmlhttpRequest = fn;
+        }
+      }
+      // ---- ADVANCED ----
+      _registerAdvanced(e) {
+        if (e.unsafeWindow) {
+          try {
+            Object.defineProperty(window, "unsafeWindow", {
+              value: window,
+              writable: false,
+              configurable: false
+            });
+          } catch (err) {
+            window.unsafeWindow = window;
+          }
         }
       }
     }

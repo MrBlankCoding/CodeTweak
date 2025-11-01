@@ -1,5 +1,5 @@
-# Created by https://www.toptal.com/developers/gitignore/api/node
-# Edit at https://www.toptal.com/developers/gitignore?templates=node
+### custom ###
+*.build
 
 ### Node ###
 # Logs
@@ -135,10 +135,3 @@ dist
 ### Node Patch ###
 # Serverless Webpack directories
 .webpack/
-
-# Optional stylelint cache
-
-# SvelteKit build / generate output
-.svelte-kit
-
-# End of https://www.toptal.com/developers/gitignore/api/node

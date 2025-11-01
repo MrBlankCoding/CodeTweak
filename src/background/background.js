@@ -25,7 +25,7 @@ class BackgroundState {
 }
 
 const state = new BackgroundState();
-const OFFSCREEN_DOCUMENT_PATH = "offscreen.html";
+const OFFSCREEN_DOCUMENT_PATH = "offscreen/offscreen.html";
 
 // Utility functions
 // :)
@@ -163,14 +163,21 @@ const gmApiHandlers = {
 
   async notification(message) {
     const options = {
-      type: message.details.image ? "image" : "basic",
-      iconUrl: chrome.runtime.getURL("icons/icon128.png"),
+      type: "basic", // Start with basic type
+      iconUrl: chrome.runtime.getURL("assets/icons/icon128.png"),
       title: message.details.title || "Notification",
       message: message.details.text || "",
     };
 
+    // Only try to add image if it's a data URL or extension resource
     if (message.details.image) {
-      options.imageUrl = message.details.image;
+      const imageUrl = message.details.image;
+      // Only use image type for data URLs or chrome-extension:// URLs
+      if (imageUrl.startsWith('data:') || imageUrl.startsWith('chrome-extension://')) {
+        options.type = "image";
+        options.imageUrl = imageUrl;
+      }
+      // For external URLs, just use basic notification (Chrome can't load external images)
     }
 
     const notificationId = `gm_notification_${Date.now()}`;
@@ -380,12 +387,12 @@ async function handleScriptCreation(url, template) {
       await chrome.storage.local.set({ scripts });
       chrome.runtime.sendMessage({ action: "scriptsUpdated" });
       chrome.tabs.create({
-        url: `${chrome.runtime.getURL("editor.html")}?id=${existing.id}`,
+        url: `${chrome.runtime.getURL("editor/editor.html")}?id=${existing.id}`,
       });
     } else {
       const params = new URLSearchParams({ targetUrl: url, template });
       chrome.tabs.create({
-        url: `${chrome.runtime.getURL("editor.html")}?${params}`,
+        url: `${chrome.runtime.getURL("editor/editor.html")}?${params}`,
       });
     }
   } catch (error) {
@@ -404,7 +411,7 @@ async function handleGreasyForkInstall(url) {
     await chrome.storage.local.set({ [key]: { code, sourceUrl: url } });
 
     chrome.tabs.create({
-      url: `${chrome.runtime.getURL("editor.html")}?importId=${tempId}`,
+      url: `${chrome.runtime.getURL("editor/editor.html")}?importId=${tempId}`,
     });
   } catch (err) {
     console.error("GreasyFork install fetch error:", err);
