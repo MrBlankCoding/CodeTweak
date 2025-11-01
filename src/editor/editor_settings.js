@@ -399,7 +399,6 @@ export class CodeEditorManager {
     'use strict';
     
     // Your code here...
-    console.log('CodeTweak: Custom script is running!');
   
   })();`;
 

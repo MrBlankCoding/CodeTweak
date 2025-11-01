@@ -1,5 +1,6 @@
 ### custom ###
 *.build
+build/
 
 ### Node ###
 # Logs

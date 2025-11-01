@@ -1,4 +1,4 @@
-/* global feather */
+import feather from 'feather-icons';
 import { generateUrlMatchPattern } from "../utils/urlMatchPattern.js";
 
 class BaseUIComponent {
@@ -28,6 +28,12 @@ class BaseUIComponent {
 
   on(eventName, handler) {
     this.eventBus.on(eventName, handler);
+  }
+
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 }
 
@@ -530,7 +536,7 @@ export class URLManager extends BaseUIComponent {
         return true;
       }
     } catch (e) {
-      console.error('Error adding URL to list:', e);
+      // Silently fail - feather icons might not be ready yet
     }
     return false;
   }
@@ -557,12 +563,11 @@ export class URLManager extends BaseUIComponent {
   }
 
   isValidUrl(url) {
+    const errorMessage = 'Please enter a valid URL in this format: https://example.com (include http:// or https://';
     try {
       if (!url.match(/^https?:\/\//i)) {
         if (this.statusManager) {
-          this.statusManager.showError(
-            'Please enter a valid URL in this format: https://example.com (include http:// or https://)'
-          );
+          this.statusManager.showError(errorMessage);
         }
         return false;
       }
@@ -571,18 +576,10 @@ export class URLManager extends BaseUIComponent {
       return true;
     } catch {
       if (this.statusManager) {
-        this.statusManager.showError(
-          'Please enter a valid URL in this format: https://example.com (include http:// or https://)'
-        );
+        this.statusManager.showError(errorMessage);
       }
       return false;
     }
-  }
-
-  escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
   }
 }
 
@@ -640,12 +637,6 @@ export class RequireManager extends BaseUIComponent {
 
   getRequires() {
     return Array.from(this.elements.requireList.querySelectorAll('.require-item')).map(i => i.dataset.url);
-  }
-
-  escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
   }
 }
 
@@ -728,12 +719,6 @@ export class ResourceManager extends BaseUIComponent {
         name: item.dataset.name,
         url: item.dataset.url
       }));
-  }
-
-  escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
   }
 }
 
