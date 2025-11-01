@@ -3,11 +3,10 @@ import { EditorView, keymap, lineNumbers, gutter } from "@codemirror/view";
 import { basicSetup } from "codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
-import { parseUserScriptMetadata } from './metadataParser.js';
+import { parseUserScriptMetadata } from '../utils/metadataParser.js';
 import { autocompletion, closeBrackets } from "@codemirror/autocomplete";
 import { bracketMatching, foldGutter } from "@codemirror/language";
 import { linter, lintGutter } from "@codemirror/lint";
-import { js_beautify } from 'js-beautify';
 import { showMinimap } from '@replit/codemirror-minimap';
 import { oneDark } from '@codemirror/theme-one-dark';
 
@@ -183,7 +182,6 @@ export class CodeEditorManager {
         indentWithTab,
         { key: "Ctrl-s", run: () => { this.onSaveCallback?.(); return true; } },
         { key: "Cmd-s", run: () => { this.onSaveCallback?.(); return true; } },
-        { key: "Alt-f", run: () => { this.formatCode(true); return true; } },
         { key: "F11", run: (view) => { 
             if (view.dom.requestFullscreen) {
                 view.dom.requestFullscreen();
@@ -386,40 +384,6 @@ export class CodeEditorManager {
     return this.state.lintingEnabled;
   }
 
-  async formatCode(showMessage = true, onFormatComplete) {
-    try {
-      if (!this.codeEditor) {
-        throw new Error("Code editor not initialized");
-      }
-
-      const unformattedCode = this.getValue();
-      const formattedCode = js_beautify(unformattedCode, {
-        indent_size: 2,
-        space_in_empty_paren: true,
-      });
-
-      this.setValue(formattedCode);
-
-      if (showMessage && this.onStatusCallback) {
-        this.onStatusCallback("Code formatted", "success");
-        setTimeout(
-          () => this.onStatusCallback(null),
-          this.config.STATUS_TIMEOUT
-        );
-      }
-      
-      if (typeof onFormatComplete === 'function') {
-        await onFormatComplete();
-      }
-    } catch (error) {
-      console.error("Error formatting code:", error);
-      if (showMessage && this.onStatusCallback) {
-        this.onStatusCallback("Could not format code", "error");
-      }
-      return false;
-    }
-  }
-
   insertTemplateCode(template) {
     const wrappedCode = `(function() {
     'use strict';
@@ -428,7 +392,6 @@ export class CodeEditorManager {
   
   })();`;
     this.setValue(wrappedCode);
-    this.formatCode(false);
   }
 
   insertDefaultTemplate() {
@@ -441,7 +404,6 @@ export class CodeEditorManager {
   })();`;
 
     this.setValue(defaultCode);
-    this.formatCode(false);
   }
 
   getValue() {

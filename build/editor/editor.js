@@ -2655,4248 +2655,6 @@
     }
   });
 
-  // node_modules/js-beautify/js/src/core/output.js
-  var require_output = __commonJS({
-    "node_modules/js-beautify/js/src/core/output.js"(exports, module) {
-      "use strict";
-      function OutputLine(parent) {
-        this.__parent = parent;
-        this.__character_count = 0;
-        this.__indent_count = -1;
-        this.__alignment_count = 0;
-        this.__wrap_point_index = 0;
-        this.__wrap_point_character_count = 0;
-        this.__wrap_point_indent_count = -1;
-        this.__wrap_point_alignment_count = 0;
-        this.__items = [];
-      }
-      OutputLine.prototype.clone_empty = function() {
-        var line = new OutputLine(this.__parent);
-        line.set_indent(this.__indent_count, this.__alignment_count);
-        return line;
-      };
-      OutputLine.prototype.item = function(index) {
-        if (index < 0) {
-          return this.__items[this.__items.length + index];
-        } else {
-          return this.__items[index];
-        }
-      };
-      OutputLine.prototype.has_match = function(pattern) {
-        for (var lastCheckedOutput = this.__items.length - 1; lastCheckedOutput >= 0; lastCheckedOutput--) {
-          if (this.__items[lastCheckedOutput].match(pattern)) {
-            return true;
-          }
-        }
-        return false;
-      };
-      OutputLine.prototype.set_indent = function(indent, alignment) {
-        if (this.is_empty()) {
-          this.__indent_count = indent || 0;
-          this.__alignment_count = alignment || 0;
-          this.__character_count = this.__parent.get_indent_size(this.__indent_count, this.__alignment_count);
-        }
-      };
-      OutputLine.prototype._set_wrap_point = function() {
-        if (this.__parent.wrap_line_length) {
-          this.__wrap_point_index = this.__items.length;
-          this.__wrap_point_character_count = this.__character_count;
-          this.__wrap_point_indent_count = this.__parent.next_line.__indent_count;
-          this.__wrap_point_alignment_count = this.__parent.next_line.__alignment_count;
-        }
-      };
-      OutputLine.prototype._should_wrap = function() {
-        return this.__wrap_point_index && this.__character_count > this.__parent.wrap_line_length && this.__wrap_point_character_count > this.__parent.next_line.__character_count;
-      };
-      OutputLine.prototype._allow_wrap = function() {
-        if (this._should_wrap()) {
-          this.__parent.add_new_line();
-          var next = this.__parent.current_line;
-          next.set_indent(this.__wrap_point_indent_count, this.__wrap_point_alignment_count);
-          next.__items = this.__items.slice(this.__wrap_point_index);
-          this.__items = this.__items.slice(0, this.__wrap_point_index);
-          next.__character_count += this.__character_count - this.__wrap_point_character_count;
-          this.__character_count = this.__wrap_point_character_count;
-          if (next.__items[0] === " ") {
-            next.__items.splice(0, 1);
-            next.__character_count -= 1;
-          }
-          return true;
-        }
-        return false;
-      };
-      OutputLine.prototype.is_empty = function() {
-        return this.__items.length === 0;
-      };
-      OutputLine.prototype.last = function() {
-        if (!this.is_empty()) {
-          return this.__items[this.__items.length - 1];
-        } else {
-          return null;
-        }
-      };
-      OutputLine.prototype.push = function(item) {
-        this.__items.push(item);
-        var last_newline_index = item.lastIndexOf("\n");
-        if (last_newline_index !== -1) {
-          this.__character_count = item.length - last_newline_index;
-        } else {
-          this.__character_count += item.length;
-        }
-      };
-      OutputLine.prototype.pop = function() {
-        var item = null;
-        if (!this.is_empty()) {
-          item = this.__items.pop();
-          this.__character_count -= item.length;
-        }
-        return item;
-      };
-      OutputLine.prototype._remove_indent = function() {
-        if (this.__indent_count > 0) {
-          this.__indent_count -= 1;
-          this.__character_count -= this.__parent.indent_size;
-        }
-      };
-      OutputLine.prototype._remove_wrap_indent = function() {
-        if (this.__wrap_point_indent_count > 0) {
-          this.__wrap_point_indent_count -= 1;
-        }
-      };
-      OutputLine.prototype.trim = function() {
-        while (this.last() === " ") {
-          this.__items.pop();
-          this.__character_count -= 1;
-        }
-      };
-      OutputLine.prototype.toString = function() {
-        var result = "";
-        if (this.is_empty()) {
-          if (this.__parent.indent_empty_lines) {
-            result = this.__parent.get_indent_string(this.__indent_count);
-          }
-        } else {
-          result = this.__parent.get_indent_string(this.__indent_count, this.__alignment_count);
-          result += this.__items.join("");
-        }
-        return result;
-      };
-      function IndentStringCache(options, baseIndentString) {
-        this.__cache = [""];
-        this.__indent_size = options.indent_size;
-        this.__indent_string = options.indent_char;
-        if (!options.indent_with_tabs) {
-          this.__indent_string = new Array(options.indent_size + 1).join(options.indent_char);
-        }
-        baseIndentString = baseIndentString || "";
-        if (options.indent_level > 0) {
-          baseIndentString = new Array(options.indent_level + 1).join(this.__indent_string);
-        }
-        this.__base_string = baseIndentString;
-        this.__base_string_length = baseIndentString.length;
-      }
-      IndentStringCache.prototype.get_indent_size = function(indent, column) {
-        var result = this.__base_string_length;
-        column = column || 0;
-        if (indent < 0) {
-          result = 0;
-        }
-        result += indent * this.__indent_size;
-        result += column;
-        return result;
-      };
-      IndentStringCache.prototype.get_indent_string = function(indent_level, column) {
-        var result = this.__base_string;
-        column = column || 0;
-        if (indent_level < 0) {
-          indent_level = 0;
-          result = "";
-        }
-        column += indent_level * this.__indent_size;
-        this.__ensure_cache(column);
-        result += this.__cache[column];
-        return result;
-      };
-      IndentStringCache.prototype.__ensure_cache = function(column) {
-        while (column >= this.__cache.length) {
-          this.__add_column();
-        }
-      };
-      IndentStringCache.prototype.__add_column = function() {
-        var column = this.__cache.length;
-        var indent = 0;
-        var result = "";
-        if (this.__indent_size && column >= this.__indent_size) {
-          indent = Math.floor(column / this.__indent_size);
-          column -= indent * this.__indent_size;
-          result = new Array(indent + 1).join(this.__indent_string);
-        }
-        if (column) {
-          result += new Array(column + 1).join(" ");
-        }
-        this.__cache.push(result);
-      };
-      function Output(options, baseIndentString) {
-        this.__indent_cache = new IndentStringCache(options, baseIndentString);
-        this.raw = false;
-        this._end_with_newline = options.end_with_newline;
-        this.indent_size = options.indent_size;
-        this.wrap_line_length = options.wrap_line_length;
-        this.indent_empty_lines = options.indent_empty_lines;
-        this.__lines = [];
-        this.previous_line = null;
-        this.current_line = null;
-        this.next_line = new OutputLine(this);
-        this.space_before_token = false;
-        this.non_breaking_space = false;
-        this.previous_token_wrapped = false;
-        this.__add_outputline();
-      }
-      Output.prototype.__add_outputline = function() {
-        this.previous_line = this.current_line;
-        this.current_line = this.next_line.clone_empty();
-        this.__lines.push(this.current_line);
-      };
-      Output.prototype.get_line_number = function() {
-        return this.__lines.length;
-      };
-      Output.prototype.get_indent_string = function(indent, column) {
-        return this.__indent_cache.get_indent_string(indent, column);
-      };
-      Output.prototype.get_indent_size = function(indent, column) {
-        return this.__indent_cache.get_indent_size(indent, column);
-      };
-      Output.prototype.is_empty = function() {
-        return !this.previous_line && this.current_line.is_empty();
-      };
-      Output.prototype.add_new_line = function(force_newline) {
-        if (this.is_empty() || !force_newline && this.just_added_newline()) {
-          return false;
-        }
-        if (!this.raw) {
-          this.__add_outputline();
-        }
-        return true;
-      };
-      Output.prototype.get_code = function(eol) {
-        this.trim(true);
-        var last_item = this.current_line.pop();
-        if (last_item) {
-          if (last_item[last_item.length - 1] === "\n") {
-            last_item = last_item.replace(/\n+$/g, "");
-          }
-          this.current_line.push(last_item);
-        }
-        if (this._end_with_newline) {
-          this.__add_outputline();
-        }
-        var sweet_code = this.__lines.join("\n");
-        if (eol !== "\n") {
-          sweet_code = sweet_code.replace(/[\n]/g, eol);
-        }
-        return sweet_code;
-      };
-      Output.prototype.set_wrap_point = function() {
-        this.current_line._set_wrap_point();
-      };
-      Output.prototype.set_indent = function(indent, alignment) {
-        indent = indent || 0;
-        alignment = alignment || 0;
-        this.next_line.set_indent(indent, alignment);
-        if (this.__lines.length > 1) {
-          this.current_line.set_indent(indent, alignment);
-          return true;
-        }
-        this.current_line.set_indent();
-        return false;
-      };
-      Output.prototype.add_raw_token = function(token) {
-        for (var x = 0; x < token.newlines; x++) {
-          this.__add_outputline();
-        }
-        this.current_line.set_indent(-1);
-        this.current_line.push(token.whitespace_before);
-        this.current_line.push(token.text);
-        this.space_before_token = false;
-        this.non_breaking_space = false;
-        this.previous_token_wrapped = false;
-      };
-      Output.prototype.add_token = function(printable_token) {
-        this.__add_space_before_token();
-        this.current_line.push(printable_token);
-        this.space_before_token = false;
-        this.non_breaking_space = false;
-        this.previous_token_wrapped = this.current_line._allow_wrap();
-      };
-      Output.prototype.__add_space_before_token = function() {
-        if (this.space_before_token && !this.just_added_newline()) {
-          if (!this.non_breaking_space) {
-            this.set_wrap_point();
-          }
-          this.current_line.push(" ");
-        }
-      };
-      Output.prototype.remove_indent = function(index) {
-        var output_length = this.__lines.length;
-        while (index < output_length) {
-          this.__lines[index]._remove_indent();
-          index++;
-        }
-        this.current_line._remove_wrap_indent();
-      };
-      Output.prototype.trim = function(eat_newlines) {
-        eat_newlines = eat_newlines === void 0 ? false : eat_newlines;
-        this.current_line.trim();
-        while (eat_newlines && this.__lines.length > 1 && this.current_line.is_empty()) {
-          this.__lines.pop();
-          this.current_line = this.__lines[this.__lines.length - 1];
-          this.current_line.trim();
-        }
-        this.previous_line = this.__lines.length > 1 ? this.__lines[this.__lines.length - 2] : null;
-      };
-      Output.prototype.just_added_newline = function() {
-        return this.current_line.is_empty();
-      };
-      Output.prototype.just_added_blankline = function() {
-        return this.is_empty() || this.current_line.is_empty() && this.previous_line.is_empty();
-      };
-      Output.prototype.ensure_empty_line_above = function(starts_with, ends_with) {
-        var index = this.__lines.length - 2;
-        while (index >= 0) {
-          var potentialEmptyLine = this.__lines[index];
-          if (potentialEmptyLine.is_empty()) {
-            break;
-          } else if (potentialEmptyLine.item(0).indexOf(starts_with) !== 0 && potentialEmptyLine.item(-1) !== ends_with) {
-            this.__lines.splice(index + 1, 0, new OutputLine(this));
-            this.previous_line = this.__lines[this.__lines.length - 2];
-            break;
-          }
-          index--;
-        }
-      };
-      module.exports.Output = Output;
-    }
-  });
-
-  // node_modules/js-beautify/js/src/core/token.js
-  var require_token = __commonJS({
-    "node_modules/js-beautify/js/src/core/token.js"(exports, module) {
-      "use strict";
-      function Token(type, text2, newlines, whitespace_before) {
-        this.type = type;
-        this.text = text2;
-        this.comments_before = null;
-        this.newlines = newlines || 0;
-        this.whitespace_before = whitespace_before || "";
-        this.parent = null;
-        this.next = null;
-        this.previous = null;
-        this.opened = null;
-        this.closed = null;
-        this.directives = null;
-      }
-      module.exports.Token = Token;
-    }
-  });
-
-  // node_modules/js-beautify/js/src/javascript/acorn.js
-  var require_acorn = __commonJS({
-    "node_modules/js-beautify/js/src/javascript/acorn.js"(exports) {
-      "use strict";
-      var baseASCIIidentifierStartChars = "\\x23\\x24\\x40\\x41-\\x5a\\x5f\\x61-\\x7a";
-      var baseASCIIidentifierChars = "\\x24\\x30-\\x39\\x41-\\x5a\\x5f\\x61-\\x7a";
-      var nonASCIIidentifierStartChars = "\\xaa\\xb5\\xba\\xc0-\\xd6\\xd8-\\xf6\\xf8-\\u02c1\\u02c6-\\u02d1\\u02e0-\\u02e4\\u02ec\\u02ee\\u0370-\\u0374\\u0376\\u0377\\u037a-\\u037d\\u0386\\u0388-\\u038a\\u038c\\u038e-\\u03a1\\u03a3-\\u03f5\\u03f7-\\u0481\\u048a-\\u0527\\u0531-\\u0556\\u0559\\u0561-\\u0587\\u05d0-\\u05ea\\u05f0-\\u05f2\\u0620-\\u064a\\u066e\\u066f\\u0671-\\u06d3\\u06d5\\u06e5\\u06e6\\u06ee\\u06ef\\u06fa-\\u06fc\\u06ff\\u0710\\u0712-\\u072f\\u074d-\\u07a5\\u07b1\\u07ca-\\u07ea\\u07f4\\u07f5\\u07fa\\u0800-\\u0815\\u081a\\u0824\\u0828\\u0840-\\u0858\\u08a0\\u08a2-\\u08ac\\u0904-\\u0939\\u093d\\u0950\\u0958-\\u0961\\u0971-\\u0977\\u0979-\\u097f\\u0985-\\u098c\\u098f\\u0990\\u0993-\\u09a8\\u09aa-\\u09b0\\u09b2\\u09b6-\\u09b9\\u09bd\\u09ce\\u09dc\\u09dd\\u09df-\\u09e1\\u09f0\\u09f1\\u0a05-\\u0a0a\\u0a0f\\u0a10\\u0a13-\\u0a28\\u0a2a-\\u0a30\\u0a32\\u0a33\\u0a35\\u0a36\\u0a38\\u0a39\\u0a59-\\u0a5c\\u0a5e\\u0a72-\\u0a74\\u0a85-\\u0a8d\\u0a8f-\\u0a91\\u0a93-\\u0aa8\\u0aaa-\\u0ab0\\u0ab2\\u0ab3\\u0ab5-\\u0ab9\\u0abd\\u0ad0\\u0ae0\\u0ae1\\u0b05-\\u0b0c\\u0b0f\\u0b10\\u0b13-\\u0b28\\u0b2a-\\u0b30\\u0b32\\u0b33\\u0b35-\\u0b39\\u0b3d\\u0b5c\\u0b5d\\u0b5f-\\u0b61\\u0b71\\u0b83\\u0b85-\\u0b8a\\u0b8e-\\u0b90\\u0b92-\\u0b95\\u0b99\\u0b9a\\u0b9c\\u0b9e\\u0b9f\\u0ba3\\u0ba4\\u0ba8-\\u0baa\\u0bae-\\u0bb9\\u0bd0\\u0c05-\\u0c0c\\u0c0e-\\u0c10\\u0c12-\\u0c28\\u0c2a-\\u0c33\\u0c35-\\u0c39\\u0c3d\\u0c58\\u0c59\\u0c60\\u0c61\\u0c85-\\u0c8c\\u0c8e-\\u0c90\\u0c92-\\u0ca8\\u0caa-\\u0cb3\\u0cb5-\\u0cb9\\u0cbd\\u0cde\\u0ce0\\u0ce1\\u0cf1\\u0cf2\\u0d05-\\u0d0c\\u0d0e-\\u0d10\\u0d12-\\u0d3a\\u0d3d\\u0d4e\\u0d60\\u0d61\\u0d7a-\\u0d7f\\u0d85-\\u0d96\\u0d9a-\\u0db1\\u0db3-\\u0dbb\\u0dbd\\u0dc0-\\u0dc6\\u0e01-\\u0e30\\u0e32\\u0e33\\u0e40-\\u0e46\\u0e81\\u0e82\\u0e84\\u0e87\\u0e88\\u0e8a\\u0e8d\\u0e94-\\u0e97\\u0e99-\\u0e9f\\u0ea1-\\u0ea3\\u0ea5\\u0ea7\\u0eaa\\u0eab\\u0ead-\\u0eb0\\u0eb2\\u0eb3\\u0ebd\\u0ec0-\\u0ec4\\u0ec6\\u0edc-\\u0edf\\u0f00\\u0f40-\\u0f47\\u0f49-\\u0f6c\\u0f88-\\u0f8c\\u1000-\\u102a\\u103f\\u1050-\\u1055\\u105a-\\u105d\\u1061\\u1065\\u1066\\u106e-\\u1070\\u1075-\\u1081\\u108e\\u10a0-\\u10c5\\u10c7\\u10cd\\u10d0-\\u10fa\\u10fc-\\u1248\\u124a-\\u124d\\u1250-\\u1256\\u1258\\u125a-\\u125d\\u1260-\\u1288\\u128a-\\u128d\\u1290-\\u12b0\\u12b2-\\u12b5\\u12b8-\\u12be\\u12c0\\u12c2-\\u12c5\\u12c8-\\u12d6\\u12d8-\\u1310\\u1312-\\u1315\\u1318-\\u135a\\u1380-\\u138f\\u13a0-\\u13f4\\u1401-\\u166c\\u166f-\\u167f\\u1681-\\u169a\\u16a0-\\u16ea\\u16ee-\\u16f0\\u1700-\\u170c\\u170e-\\u1711\\u1720-\\u1731\\u1740-\\u1751\\u1760-\\u176c\\u176e-\\u1770\\u1780-\\u17b3\\u17d7\\u17dc\\u1820-\\u1877\\u1880-\\u18a8\\u18aa\\u18b0-\\u18f5\\u1900-\\u191c\\u1950-\\u196d\\u1970-\\u1974\\u1980-\\u19ab\\u19c1-\\u19c7\\u1a00-\\u1a16\\u1a20-\\u1a54\\u1aa7\\u1b05-\\u1b33\\u1b45-\\u1b4b\\u1b83-\\u1ba0\\u1bae\\u1baf\\u1bba-\\u1be5\\u1c00-\\u1c23\\u1c4d-\\u1c4f\\u1c5a-\\u1c7d\\u1ce9-\\u1cec\\u1cee-\\u1cf1\\u1cf5\\u1cf6\\u1d00-\\u1dbf\\u1e00-\\u1f15\\u1f18-\\u1f1d\\u1f20-\\u1f45\\u1f48-\\u1f4d\\u1f50-\\u1f57\\u1f59\\u1f5b\\u1f5d\\u1f5f-\\u1f7d\\u1f80-\\u1fb4\\u1fb6-\\u1fbc\\u1fbe\\u1fc2-\\u1fc4\\u1fc6-\\u1fcc\\u1fd0-\\u1fd3\\u1fd6-\\u1fdb\\u1fe0-\\u1fec\\u1ff2-\\u1ff4\\u1ff6-\\u1ffc\\u2071\\u207f\\u2090-\\u209c\\u2102\\u2107\\u210a-\\u2113\\u2115\\u2119-\\u211d\\u2124\\u2126\\u2128\\u212a-\\u212d\\u212f-\\u2139\\u213c-\\u213f\\u2145-\\u2149\\u214e\\u2160-\\u2188\\u2c00-\\u2c2e\\u2c30-\\u2c5e\\u2c60-\\u2ce4\\u2ceb-\\u2cee\\u2cf2\\u2cf3\\u2d00-\\u2d25\\u2d27\\u2d2d\\u2d30-\\u2d67\\u2d6f\\u2d80-\\u2d96\\u2da0-\\u2da6\\u2da8-\\u2dae\\u2db0-\\u2db6\\u2db8-\\u2dbe\\u2dc0-\\u2dc6\\u2dc8-\\u2dce\\u2dd0-\\u2dd6\\u2dd8-\\u2dde\\u2e2f\\u3005-\\u3007\\u3021-\\u3029\\u3031-\\u3035\\u3038-\\u303c\\u3041-\\u3096\\u309d-\\u309f\\u30a1-\\u30fa\\u30fc-\\u30ff\\u3105-\\u312d\\u3131-\\u318e\\u31a0-\\u31ba\\u31f0-\\u31ff\\u3400-\\u4db5\\u4e00-\\u9fcc\\ua000-\\ua48c\\ua4d0-\\ua4fd\\ua500-\\ua60c\\ua610-\\ua61f\\ua62a\\ua62b\\ua640-\\ua66e\\ua67f-\\ua697\\ua6a0-\\ua6ef\\ua717-\\ua71f\\ua722-\\ua788\\ua78b-\\ua78e\\ua790-\\ua793\\ua7a0-\\ua7aa\\ua7f8-\\ua801\\ua803-\\ua805\\ua807-\\ua80a\\ua80c-\\ua822\\ua840-\\ua873\\ua882-\\ua8b3\\ua8f2-\\ua8f7\\ua8fb\\ua90a-\\ua925\\ua930-\\ua946\\ua960-\\ua97c\\ua984-\\ua9b2\\ua9cf\\uaa00-\\uaa28\\uaa40-\\uaa42\\uaa44-\\uaa4b\\uaa60-\\uaa76\\uaa7a\\uaa80-\\uaaaf\\uaab1\\uaab5\\uaab6\\uaab9-\\uaabd\\uaac0\\uaac2\\uaadb-\\uaadd\\uaae0-\\uaaea\\uaaf2-\\uaaf4\\uab01-\\uab06\\uab09-\\uab0e\\uab11-\\uab16\\uab20-\\uab26\\uab28-\\uab2e\\uabc0-\\uabe2\\uac00-\\ud7a3\\ud7b0-\\ud7c6\\ud7cb-\\ud7fb\\uf900-\\ufa6d\\ufa70-\\ufad9\\ufb00-\\ufb06\\ufb13-\\ufb17\\ufb1d\\ufb1f-\\ufb28\\ufb2a-\\ufb36\\ufb38-\\ufb3c\\ufb3e\\ufb40\\ufb41\\ufb43\\ufb44\\ufb46-\\ufbb1\\ufbd3-\\ufd3d\\ufd50-\\ufd8f\\ufd92-\\ufdc7\\ufdf0-\\ufdfb\\ufe70-\\ufe74\\ufe76-\\ufefc\\uff21-\\uff3a\\uff41-\\uff5a\\uff66-\\uffbe\\uffc2-\\uffc7\\uffca-\\uffcf\\uffd2-\\uffd7\\uffda-\\uffdc";
-      var nonASCIIidentifierChars = "\\u0300-\\u036f\\u0483-\\u0487\\u0591-\\u05bd\\u05bf\\u05c1\\u05c2\\u05c4\\u05c5\\u05c7\\u0610-\\u061a\\u0620-\\u0649\\u0672-\\u06d3\\u06e7-\\u06e8\\u06fb-\\u06fc\\u0730-\\u074a\\u0800-\\u0814\\u081b-\\u0823\\u0825-\\u0827\\u0829-\\u082d\\u0840-\\u0857\\u08e4-\\u08fe\\u0900-\\u0903\\u093a-\\u093c\\u093e-\\u094f\\u0951-\\u0957\\u0962-\\u0963\\u0966-\\u096f\\u0981-\\u0983\\u09bc\\u09be-\\u09c4\\u09c7\\u09c8\\u09d7\\u09df-\\u09e0\\u0a01-\\u0a03\\u0a3c\\u0a3e-\\u0a42\\u0a47\\u0a48\\u0a4b-\\u0a4d\\u0a51\\u0a66-\\u0a71\\u0a75\\u0a81-\\u0a83\\u0abc\\u0abe-\\u0ac5\\u0ac7-\\u0ac9\\u0acb-\\u0acd\\u0ae2-\\u0ae3\\u0ae6-\\u0aef\\u0b01-\\u0b03\\u0b3c\\u0b3e-\\u0b44\\u0b47\\u0b48\\u0b4b-\\u0b4d\\u0b56\\u0b57\\u0b5f-\\u0b60\\u0b66-\\u0b6f\\u0b82\\u0bbe-\\u0bc2\\u0bc6-\\u0bc8\\u0bca-\\u0bcd\\u0bd7\\u0be6-\\u0bef\\u0c01-\\u0c03\\u0c46-\\u0c48\\u0c4a-\\u0c4d\\u0c55\\u0c56\\u0c62-\\u0c63\\u0c66-\\u0c6f\\u0c82\\u0c83\\u0cbc\\u0cbe-\\u0cc4\\u0cc6-\\u0cc8\\u0cca-\\u0ccd\\u0cd5\\u0cd6\\u0ce2-\\u0ce3\\u0ce6-\\u0cef\\u0d02\\u0d03\\u0d46-\\u0d48\\u0d57\\u0d62-\\u0d63\\u0d66-\\u0d6f\\u0d82\\u0d83\\u0dca\\u0dcf-\\u0dd4\\u0dd6\\u0dd8-\\u0ddf\\u0df2\\u0df3\\u0e34-\\u0e3a\\u0e40-\\u0e45\\u0e50-\\u0e59\\u0eb4-\\u0eb9\\u0ec8-\\u0ecd\\u0ed0-\\u0ed9\\u0f18\\u0f19\\u0f20-\\u0f29\\u0f35\\u0f37\\u0f39\\u0f41-\\u0f47\\u0f71-\\u0f84\\u0f86-\\u0f87\\u0f8d-\\u0f97\\u0f99-\\u0fbc\\u0fc6\\u1000-\\u1029\\u1040-\\u1049\\u1067-\\u106d\\u1071-\\u1074\\u1082-\\u108d\\u108f-\\u109d\\u135d-\\u135f\\u170e-\\u1710\\u1720-\\u1730\\u1740-\\u1750\\u1772\\u1773\\u1780-\\u17b2\\u17dd\\u17e0-\\u17e9\\u180b-\\u180d\\u1810-\\u1819\\u1920-\\u192b\\u1930-\\u193b\\u1951-\\u196d\\u19b0-\\u19c0\\u19c8-\\u19c9\\u19d0-\\u19d9\\u1a00-\\u1a15\\u1a20-\\u1a53\\u1a60-\\u1a7c\\u1a7f-\\u1a89\\u1a90-\\u1a99\\u1b46-\\u1b4b\\u1b50-\\u1b59\\u1b6b-\\u1b73\\u1bb0-\\u1bb9\\u1be6-\\u1bf3\\u1c00-\\u1c22\\u1c40-\\u1c49\\u1c5b-\\u1c7d\\u1cd0-\\u1cd2\\u1d00-\\u1dbe\\u1e01-\\u1f15\\u200c\\u200d\\u203f\\u2040\\u2054\\u20d0-\\u20dc\\u20e1\\u20e5-\\u20f0\\u2d81-\\u2d96\\u2de0-\\u2dff\\u3021-\\u3028\\u3099\\u309a\\ua640-\\ua66d\\ua674-\\ua67d\\ua69f\\ua6f0-\\ua6f1\\ua7f8-\\ua800\\ua806\\ua80b\\ua823-\\ua827\\ua880-\\ua881\\ua8b4-\\ua8c4\\ua8d0-\\ua8d9\\ua8f3-\\ua8f7\\ua900-\\ua909\\ua926-\\ua92d\\ua930-\\ua945\\ua980-\\ua983\\ua9b3-\\ua9c0\\uaa00-\\uaa27\\uaa40-\\uaa41\\uaa4c-\\uaa4d\\uaa50-\\uaa59\\uaa7b\\uaae0-\\uaae9\\uaaf2-\\uaaf3\\uabc0-\\uabe1\\uabec\\uabed\\uabf0-\\uabf9\\ufb20-\\ufb28\\ufe00-\\ufe0f\\ufe20-\\ufe26\\ufe33\\ufe34\\ufe4d-\\ufe4f\\uff10-\\uff19\\uff3f";
-      var unicodeEscapeOrCodePoint = "\\\\u[0-9a-fA-F]{4}|\\\\u\\{[0-9a-fA-F]+\\}";
-      var identifierStart = "(?:" + unicodeEscapeOrCodePoint + "|[" + baseASCIIidentifierStartChars + nonASCIIidentifierStartChars + "])";
-      var identifierChars = "(?:" + unicodeEscapeOrCodePoint + "|[" + baseASCIIidentifierChars + nonASCIIidentifierStartChars + nonASCIIidentifierChars + "])*";
-      exports.identifier = new RegExp(identifierStart + identifierChars, "g");
-      exports.identifierStart = new RegExp(identifierStart);
-      exports.identifierMatch = new RegExp("(?:" + unicodeEscapeOrCodePoint + "|[" + baseASCIIidentifierChars + nonASCIIidentifierStartChars + nonASCIIidentifierChars + "])+");
-      exports.newline = /[\n\r\u2028\u2029]/;
-      exports.lineBreak = new RegExp("\r\n|" + exports.newline.source);
-      exports.allLineBreaks = new RegExp(exports.lineBreak.source, "g");
-    }
-  });
-
-  // node_modules/js-beautify/js/src/core/options.js
-  var require_options = __commonJS({
-    "node_modules/js-beautify/js/src/core/options.js"(exports, module) {
-      "use strict";
-      function Options(options, merge_child_field) {
-        this.raw_options = _mergeOpts(options, merge_child_field);
-        this.disabled = this._get_boolean("disabled");
-        this.eol = this._get_characters("eol", "auto");
-        this.end_with_newline = this._get_boolean("end_with_newline");
-        this.indent_size = this._get_number("indent_size", 4);
-        this.indent_char = this._get_characters("indent_char", " ");
-        this.indent_level = this._get_number("indent_level");
-        this.preserve_newlines = this._get_boolean("preserve_newlines", true);
-        this.max_preserve_newlines = this._get_number("max_preserve_newlines", 32786);
-        if (!this.preserve_newlines) {
-          this.max_preserve_newlines = 0;
-        }
-        this.indent_with_tabs = this._get_boolean("indent_with_tabs", this.indent_char === "	");
-        if (this.indent_with_tabs) {
-          this.indent_char = "	";
-          if (this.indent_size === 1) {
-            this.indent_size = 4;
-          }
-        }
-        this.wrap_line_length = this._get_number("wrap_line_length", this._get_number("max_char"));
-        this.indent_empty_lines = this._get_boolean("indent_empty_lines");
-        this.templating = this._get_selection_list("templating", ["auto", "none", "angular", "django", "erb", "handlebars", "php", "smarty"], ["auto"]);
-      }
-      Options.prototype._get_array = function(name2, default_value) {
-        var option_value = this.raw_options[name2];
-        var result = default_value || [];
-        if (typeof option_value === "object") {
-          if (option_value !== null && typeof option_value.concat === "function") {
-            result = option_value.concat();
-          }
-        } else if (typeof option_value === "string") {
-          result = option_value.split(/[^a-zA-Z0-9_\/\-]+/);
-        }
-        return result;
-      };
-      Options.prototype._get_boolean = function(name2, default_value) {
-        var option_value = this.raw_options[name2];
-        var result = option_value === void 0 ? !!default_value : !!option_value;
-        return result;
-      };
-      Options.prototype._get_characters = function(name2, default_value) {
-        var option_value = this.raw_options[name2];
-        var result = default_value || "";
-        if (typeof option_value === "string") {
-          result = option_value.replace(/\\r/, "\r").replace(/\\n/, "\n").replace(/\\t/, "	");
-        }
-        return result;
-      };
-      Options.prototype._get_number = function(name2, default_value) {
-        var option_value = this.raw_options[name2];
-        default_value = parseInt(default_value, 10);
-        if (isNaN(default_value)) {
-          default_value = 0;
-        }
-        var result = parseInt(option_value, 10);
-        if (isNaN(result)) {
-          result = default_value;
-        }
-        return result;
-      };
-      Options.prototype._get_selection = function(name2, selection_list, default_value) {
-        var result = this._get_selection_list(name2, selection_list, default_value);
-        if (result.length !== 1) {
-          throw new Error(
-            "Invalid Option Value: The option '" + name2 + "' can only be one of the following values:\n" + selection_list + "\nYou passed in: '" + this.raw_options[name2] + "'"
-          );
-        }
-        return result[0];
-      };
-      Options.prototype._get_selection_list = function(name2, selection_list, default_value) {
-        if (!selection_list || selection_list.length === 0) {
-          throw new Error("Selection list cannot be empty.");
-        }
-        default_value = default_value || [selection_list[0]];
-        if (!this._is_valid_selection(default_value, selection_list)) {
-          throw new Error("Invalid Default Value!");
-        }
-        var result = this._get_array(name2, default_value);
-        if (!this._is_valid_selection(result, selection_list)) {
-          throw new Error(
-            "Invalid Option Value: The option '" + name2 + "' can contain only the following values:\n" + selection_list + "\nYou passed in: '" + this.raw_options[name2] + "'"
-          );
-        }
-        return result;
-      };
-      Options.prototype._is_valid_selection = function(result, selection_list) {
-        return result.length && selection_list.length && !result.some(function(item) {
-          return selection_list.indexOf(item) === -1;
-        });
-      };
-      function _mergeOpts(allOptions, childFieldName) {
-        var finalOpts = {};
-        allOptions = _normalizeOpts(allOptions);
-        var name2;
-        for (name2 in allOptions) {
-          if (name2 !== childFieldName) {
-            finalOpts[name2] = allOptions[name2];
-          }
-        }
-        if (childFieldName && allOptions[childFieldName]) {
-          for (name2 in allOptions[childFieldName]) {
-            finalOpts[name2] = allOptions[childFieldName][name2];
-          }
-        }
-        return finalOpts;
-      }
-      function _normalizeOpts(options) {
-        var convertedOpts = {};
-        var key;
-        for (key in options) {
-          var newKey = key.replace(/-/g, "_");
-          convertedOpts[newKey] = options[key];
-        }
-        return convertedOpts;
-      }
-      module.exports.Options = Options;
-      module.exports.normalizeOpts = _normalizeOpts;
-      module.exports.mergeOpts = _mergeOpts;
-    }
-  });
-
-  // node_modules/js-beautify/js/src/javascript/options.js
-  var require_options2 = __commonJS({
-    "node_modules/js-beautify/js/src/javascript/options.js"(exports, module) {
-      "use strict";
-      var BaseOptions = require_options().Options;
-      var validPositionValues = ["before-newline", "after-newline", "preserve-newline"];
-      function Options(options) {
-        BaseOptions.call(this, options, "js");
-        var raw_brace_style = this.raw_options.brace_style || null;
-        if (raw_brace_style === "expand-strict") {
-          this.raw_options.brace_style = "expand";
-        } else if (raw_brace_style === "collapse-preserve-inline") {
-          this.raw_options.brace_style = "collapse,preserve-inline";
-        } else if (this.raw_options.braces_on_own_line !== void 0) {
-          this.raw_options.brace_style = this.raw_options.braces_on_own_line ? "expand" : "collapse";
-        }
-        var brace_style_split = this._get_selection_list("brace_style", ["collapse", "expand", "end-expand", "none", "preserve-inline"]);
-        this.brace_preserve_inline = false;
-        this.brace_style = "collapse";
-        for (var bs = 0; bs < brace_style_split.length; bs++) {
-          if (brace_style_split[bs] === "preserve-inline") {
-            this.brace_preserve_inline = true;
-          } else {
-            this.brace_style = brace_style_split[bs];
-          }
-        }
-        this.unindent_chained_methods = this._get_boolean("unindent_chained_methods");
-        this.break_chained_methods = this._get_boolean("break_chained_methods");
-        this.space_in_paren = this._get_boolean("space_in_paren");
-        this.space_in_empty_paren = this._get_boolean("space_in_empty_paren");
-        this.jslint_happy = this._get_boolean("jslint_happy");
-        this.space_after_anon_function = this._get_boolean("space_after_anon_function");
-        this.space_after_named_function = this._get_boolean("space_after_named_function");
-        this.keep_array_indentation = this._get_boolean("keep_array_indentation");
-        this.space_before_conditional = this._get_boolean("space_before_conditional", true);
-        this.unescape_strings = this._get_boolean("unescape_strings");
-        this.e4x = this._get_boolean("e4x");
-        this.comma_first = this._get_boolean("comma_first");
-        this.operator_position = this._get_selection("operator_position", validPositionValues);
-        this.test_output_raw = this._get_boolean("test_output_raw");
-        if (this.jslint_happy) {
-          this.space_after_anon_function = true;
-        }
-      }
-      Options.prototype = new BaseOptions();
-      module.exports.Options = Options;
-    }
-  });
-
-  // node_modules/js-beautify/js/src/core/inputscanner.js
-  var require_inputscanner = __commonJS({
-    "node_modules/js-beautify/js/src/core/inputscanner.js"(exports, module) {
-      "use strict";
-      var regexp_has_sticky = RegExp.prototype.hasOwnProperty("sticky");
-      function InputScanner(input_string) {
-        this.__input = input_string || "";
-        this.__input_length = this.__input.length;
-        this.__position = 0;
-      }
-      InputScanner.prototype.restart = function() {
-        this.__position = 0;
-      };
-      InputScanner.prototype.back = function() {
-        if (this.__position > 0) {
-          this.__position -= 1;
-        }
-      };
-      InputScanner.prototype.hasNext = function() {
-        return this.__position < this.__input_length;
-      };
-      InputScanner.prototype.next = function() {
-        var val = null;
-        if (this.hasNext()) {
-          val = this.__input.charAt(this.__position);
-          this.__position += 1;
-        }
-        return val;
-      };
-      InputScanner.prototype.peek = function(index) {
-        var val = null;
-        index = index || 0;
-        index += this.__position;
-        if (index >= 0 && index < this.__input_length) {
-          val = this.__input.charAt(index);
-        }
-        return val;
-      };
-      InputScanner.prototype.__match = function(pattern, index) {
-        pattern.lastIndex = index;
-        var pattern_match = pattern.exec(this.__input);
-        if (pattern_match && !(regexp_has_sticky && pattern.sticky)) {
-          if (pattern_match.index !== index) {
-            pattern_match = null;
-          }
-        }
-        return pattern_match;
-      };
-      InputScanner.prototype.test = function(pattern, index) {
-        index = index || 0;
-        index += this.__position;
-        if (index >= 0 && index < this.__input_length) {
-          return !!this.__match(pattern, index);
-        } else {
-          return false;
-        }
-      };
-      InputScanner.prototype.testChar = function(pattern, index) {
-        var val = this.peek(index);
-        pattern.lastIndex = 0;
-        return val !== null && pattern.test(val);
-      };
-      InputScanner.prototype.match = function(pattern) {
-        var pattern_match = this.__match(pattern, this.__position);
-        if (pattern_match) {
-          this.__position += pattern_match[0].length;
-        } else {
-          pattern_match = null;
-        }
-        return pattern_match;
-      };
-      InputScanner.prototype.read = function(starting_pattern, until_pattern, until_after) {
-        var val = "";
-        var match;
-        if (starting_pattern) {
-          match = this.match(starting_pattern);
-          if (match) {
-            val += match[0];
-          }
-        }
-        if (until_pattern && (match || !starting_pattern)) {
-          val += this.readUntil(until_pattern, until_after);
-        }
-        return val;
-      };
-      InputScanner.prototype.readUntil = function(pattern, until_after) {
-        var val = "";
-        var match_index = this.__position;
-        pattern.lastIndex = this.__position;
-        var pattern_match = pattern.exec(this.__input);
-        if (pattern_match) {
-          match_index = pattern_match.index;
-          if (until_after) {
-            match_index += pattern_match[0].length;
-          }
-        } else {
-          match_index = this.__input_length;
-        }
-        val = this.__input.substring(this.__position, match_index);
-        this.__position = match_index;
-        return val;
-      };
-      InputScanner.prototype.readUntilAfter = function(pattern) {
-        return this.readUntil(pattern, true);
-      };
-      InputScanner.prototype.get_regexp = function(pattern, match_from) {
-        var result = null;
-        var flags = "g";
-        if (match_from && regexp_has_sticky) {
-          flags = "y";
-        }
-        if (typeof pattern === "string" && pattern !== "") {
-          result = new RegExp(pattern, flags);
-        } else if (pattern) {
-          result = new RegExp(pattern.source, flags);
-        }
-        return result;
-      };
-      InputScanner.prototype.get_literal_regexp = function(literal_string) {
-        return RegExp(literal_string.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"));
-      };
-      InputScanner.prototype.peekUntilAfter = function(pattern) {
-        var start = this.__position;
-        var val = this.readUntilAfter(pattern);
-        this.__position = start;
-        return val;
-      };
-      InputScanner.prototype.lookBack = function(testVal) {
-        var start = this.__position - 1;
-        return start >= testVal.length && this.__input.substring(start - testVal.length, start).toLowerCase() === testVal;
-      };
-      module.exports.InputScanner = InputScanner;
-    }
-  });
-
-  // node_modules/js-beautify/js/src/core/tokenstream.js
-  var require_tokenstream = __commonJS({
-    "node_modules/js-beautify/js/src/core/tokenstream.js"(exports, module) {
-      "use strict";
-      function TokenStream(parent_token) {
-        this.__tokens = [];
-        this.__tokens_length = this.__tokens.length;
-        this.__position = 0;
-        this.__parent_token = parent_token;
-      }
-      TokenStream.prototype.restart = function() {
-        this.__position = 0;
-      };
-      TokenStream.prototype.isEmpty = function() {
-        return this.__tokens_length === 0;
-      };
-      TokenStream.prototype.hasNext = function() {
-        return this.__position < this.__tokens_length;
-      };
-      TokenStream.prototype.next = function() {
-        var val = null;
-        if (this.hasNext()) {
-          val = this.__tokens[this.__position];
-          this.__position += 1;
-        }
-        return val;
-      };
-      TokenStream.prototype.peek = function(index) {
-        var val = null;
-        index = index || 0;
-        index += this.__position;
-        if (index >= 0 && index < this.__tokens_length) {
-          val = this.__tokens[index];
-        }
-        return val;
-      };
-      TokenStream.prototype.add = function(token) {
-        if (this.__parent_token) {
-          token.parent = this.__parent_token;
-        }
-        this.__tokens.push(token);
-        this.__tokens_length += 1;
-      };
-      module.exports.TokenStream = TokenStream;
-    }
-  });
-
-  // node_modules/js-beautify/js/src/core/pattern.js
-  var require_pattern = __commonJS({
-    "node_modules/js-beautify/js/src/core/pattern.js"(exports, module) {
-      "use strict";
-      function Pattern(input_scanner, parent) {
-        this._input = input_scanner;
-        this._starting_pattern = null;
-        this._match_pattern = null;
-        this._until_pattern = null;
-        this._until_after = false;
-        if (parent) {
-          this._starting_pattern = this._input.get_regexp(parent._starting_pattern, true);
-          this._match_pattern = this._input.get_regexp(parent._match_pattern, true);
-          this._until_pattern = this._input.get_regexp(parent._until_pattern);
-          this._until_after = parent._until_after;
-        }
-      }
-      Pattern.prototype.read = function() {
-        var result = this._input.read(this._starting_pattern);
-        if (!this._starting_pattern || result) {
-          result += this._input.read(this._match_pattern, this._until_pattern, this._until_after);
-        }
-        return result;
-      };
-      Pattern.prototype.read_match = function() {
-        return this._input.match(this._match_pattern);
-      };
-      Pattern.prototype.until_after = function(pattern) {
-        var result = this._create();
-        result._until_after = true;
-        result._until_pattern = this._input.get_regexp(pattern);
-        result._update();
-        return result;
-      };
-      Pattern.prototype.until = function(pattern) {
-        var result = this._create();
-        result._until_after = false;
-        result._until_pattern = this._input.get_regexp(pattern);
-        result._update();
-        return result;
-      };
-      Pattern.prototype.starting_with = function(pattern) {
-        var result = this._create();
-        result._starting_pattern = this._input.get_regexp(pattern, true);
-        result._update();
-        return result;
-      };
-      Pattern.prototype.matching = function(pattern) {
-        var result = this._create();
-        result._match_pattern = this._input.get_regexp(pattern, true);
-        result._update();
-        return result;
-      };
-      Pattern.prototype._create = function() {
-        return new Pattern(this._input, this);
-      };
-      Pattern.prototype._update = function() {
-      };
-      module.exports.Pattern = Pattern;
-    }
-  });
-
-  // node_modules/js-beautify/js/src/core/whitespacepattern.js
-  var require_whitespacepattern = __commonJS({
-    "node_modules/js-beautify/js/src/core/whitespacepattern.js"(exports, module) {
-      "use strict";
-      var Pattern = require_pattern().Pattern;
-      function WhitespacePattern(input_scanner, parent) {
-        Pattern.call(this, input_scanner, parent);
-        if (parent) {
-          this._line_regexp = this._input.get_regexp(parent._line_regexp);
-        } else {
-          this.__set_whitespace_patterns("", "");
-        }
-        this.newline_count = 0;
-        this.whitespace_before_token = "";
-      }
-      WhitespacePattern.prototype = new Pattern();
-      WhitespacePattern.prototype.__set_whitespace_patterns = function(whitespace_chars, newline_chars) {
-        whitespace_chars += "\\t ";
-        newline_chars += "\\n\\r";
-        this._match_pattern = this._input.get_regexp(
-          "[" + whitespace_chars + newline_chars + "]+",
-          true
-        );
-        this._newline_regexp = this._input.get_regexp(
-          "\\r\\n|[" + newline_chars + "]"
-        );
-      };
-      WhitespacePattern.prototype.read = function() {
-        this.newline_count = 0;
-        this.whitespace_before_token = "";
-        var resulting_string = this._input.read(this._match_pattern);
-        if (resulting_string === " ") {
-          this.whitespace_before_token = " ";
-        } else if (resulting_string) {
-          var matches = this.__split(this._newline_regexp, resulting_string);
-          this.newline_count = matches.length - 1;
-          this.whitespace_before_token = matches[this.newline_count];
-        }
-        return resulting_string;
-      };
-      WhitespacePattern.prototype.matching = function(whitespace_chars, newline_chars) {
-        var result = this._create();
-        result.__set_whitespace_patterns(whitespace_chars, newline_chars);
-        result._update();
-        return result;
-      };
-      WhitespacePattern.prototype._create = function() {
-        return new WhitespacePattern(this._input, this);
-      };
-      WhitespacePattern.prototype.__split = function(regexp, input_string) {
-        regexp.lastIndex = 0;
-        var start_index = 0;
-        var result = [];
-        var next_match = regexp.exec(input_string);
-        while (next_match) {
-          result.push(input_string.substring(start_index, next_match.index));
-          start_index = next_match.index + next_match[0].length;
-          next_match = regexp.exec(input_string);
-        }
-        if (start_index < input_string.length) {
-          result.push(input_string.substring(start_index, input_string.length));
-        } else {
-          result.push("");
-        }
-        return result;
-      };
-      module.exports.WhitespacePattern = WhitespacePattern;
-    }
-  });
-
-  // node_modules/js-beautify/js/src/core/tokenizer.js
-  var require_tokenizer = __commonJS({
-    "node_modules/js-beautify/js/src/core/tokenizer.js"(exports, module) {
-      "use strict";
-      var InputScanner = require_inputscanner().InputScanner;
-      var Token = require_token().Token;
-      var TokenStream = require_tokenstream().TokenStream;
-      var WhitespacePattern = require_whitespacepattern().WhitespacePattern;
-      var TOKEN = {
-        START: "TK_START",
-        RAW: "TK_RAW",
-        EOF: "TK_EOF"
-      };
-      var Tokenizer = function(input_string, options) {
-        this._input = new InputScanner(input_string);
-        this._options = options || {};
-        this.__tokens = null;
-        this._patterns = {};
-        this._patterns.whitespace = new WhitespacePattern(this._input);
-      };
-      Tokenizer.prototype.tokenize = function() {
-        this._input.restart();
-        this.__tokens = new TokenStream();
-        this._reset();
-        var current;
-        var previous = new Token(TOKEN.START, "");
-        var open_token = null;
-        var open_stack = [];
-        var comments = new TokenStream();
-        while (previous.type !== TOKEN.EOF) {
-          current = this._get_next_token(previous, open_token);
-          while (this._is_comment(current)) {
-            comments.add(current);
-            current = this._get_next_token(previous, open_token);
-          }
-          if (!comments.isEmpty()) {
-            current.comments_before = comments;
-            comments = new TokenStream();
-          }
-          current.parent = open_token;
-          if (this._is_opening(current)) {
-            open_stack.push(open_token);
-            open_token = current;
-          } else if (open_token && this._is_closing(current, open_token)) {
-            current.opened = open_token;
-            open_token.closed = current;
-            open_token = open_stack.pop();
-            current.parent = open_token;
-          }
-          current.previous = previous;
-          previous.next = current;
-          this.__tokens.add(current);
-          previous = current;
-        }
-        return this.__tokens;
-      };
-      Tokenizer.prototype._is_first_token = function() {
-        return this.__tokens.isEmpty();
-      };
-      Tokenizer.prototype._reset = function() {
-      };
-      Tokenizer.prototype._get_next_token = function(previous_token, open_token) {
-        this._readWhitespace();
-        var resulting_string = this._input.read(/.+/g);
-        if (resulting_string) {
-          return this._create_token(TOKEN.RAW, resulting_string);
-        } else {
-          return this._create_token(TOKEN.EOF, "");
-        }
-      };
-      Tokenizer.prototype._is_comment = function(current_token) {
-        return false;
-      };
-      Tokenizer.prototype._is_opening = function(current_token) {
-        return false;
-      };
-      Tokenizer.prototype._is_closing = function(current_token, open_token) {
-        return false;
-      };
-      Tokenizer.prototype._create_token = function(type, text2) {
-        var token = new Token(
-          type,
-          text2,
-          this._patterns.whitespace.newline_count,
-          this._patterns.whitespace.whitespace_before_token
-        );
-        return token;
-      };
-      Tokenizer.prototype._readWhitespace = function() {
-        return this._patterns.whitespace.read();
-      };
-      module.exports.Tokenizer = Tokenizer;
-      module.exports.TOKEN = TOKEN;
-    }
-  });
-
-  // node_modules/js-beautify/js/src/core/directives.js
-  var require_directives = __commonJS({
-    "node_modules/js-beautify/js/src/core/directives.js"(exports, module) {
-      "use strict";
-      function Directives(start_block_pattern, end_block_pattern) {
-        start_block_pattern = typeof start_block_pattern === "string" ? start_block_pattern : start_block_pattern.source;
-        end_block_pattern = typeof end_block_pattern === "string" ? end_block_pattern : end_block_pattern.source;
-        this.__directives_block_pattern = new RegExp(start_block_pattern + / beautify( \w+[:]\w+)+ /.source + end_block_pattern, "g");
-        this.__directive_pattern = / (\w+)[:](\w+)/g;
-        this.__directives_end_ignore_pattern = new RegExp(start_block_pattern + /\sbeautify\signore:end\s/.source + end_block_pattern, "g");
-      }
-      Directives.prototype.get_directives = function(text2) {
-        if (!text2.match(this.__directives_block_pattern)) {
-          return null;
-        }
-        var directives = {};
-        this.__directive_pattern.lastIndex = 0;
-        var directive_match = this.__directive_pattern.exec(text2);
-        while (directive_match) {
-          directives[directive_match[1]] = directive_match[2];
-          directive_match = this.__directive_pattern.exec(text2);
-        }
-        return directives;
-      };
-      Directives.prototype.readIgnored = function(input) {
-        return input.readUntilAfter(this.__directives_end_ignore_pattern);
-      };
-      module.exports.Directives = Directives;
-    }
-  });
-
-  // node_modules/js-beautify/js/src/core/templatablepattern.js
-  var require_templatablepattern = __commonJS({
-    "node_modules/js-beautify/js/src/core/templatablepattern.js"(exports, module) {
-      "use strict";
-      var Pattern = require_pattern().Pattern;
-      var template_names = {
-        django: false,
-        erb: false,
-        handlebars: false,
-        php: false,
-        smarty: false,
-        angular: false
-      };
-      function TemplatablePattern(input_scanner, parent) {
-        Pattern.call(this, input_scanner, parent);
-        this.__template_pattern = null;
-        this._disabled = Object.assign({}, template_names);
-        this._excluded = Object.assign({}, template_names);
-        if (parent) {
-          this.__template_pattern = this._input.get_regexp(parent.__template_pattern);
-          this._excluded = Object.assign(this._excluded, parent._excluded);
-          this._disabled = Object.assign(this._disabled, parent._disabled);
-        }
-        var pattern = new Pattern(input_scanner);
-        this.__patterns = {
-          handlebars_comment: pattern.starting_with(/{{!--/).until_after(/--}}/),
-          handlebars_unescaped: pattern.starting_with(/{{{/).until_after(/}}}/),
-          handlebars: pattern.starting_with(/{{/).until_after(/}}/),
-          php: pattern.starting_with(/<\?(?:[= ]|php)/).until_after(/\?>/),
-          erb: pattern.starting_with(/<%[^%]/).until_after(/[^%]%>/),
-          // django coflicts with handlebars a bit.
-          django: pattern.starting_with(/{%/).until_after(/%}/),
-          django_value: pattern.starting_with(/{{/).until_after(/}}/),
-          django_comment: pattern.starting_with(/{#/).until_after(/#}/),
-          smarty: pattern.starting_with(/{(?=[^}{\s\n])/).until_after(/[^\s\n]}/),
-          smarty_comment: pattern.starting_with(/{\*/).until_after(/\*}/),
-          smarty_literal: pattern.starting_with(/{literal}/).until_after(/{\/literal}/)
-        };
-      }
-      TemplatablePattern.prototype = new Pattern();
-      TemplatablePattern.prototype._create = function() {
-        return new TemplatablePattern(this._input, this);
-      };
-      TemplatablePattern.prototype._update = function() {
-        this.__set_templated_pattern();
-      };
-      TemplatablePattern.prototype.disable = function(language2) {
-        var result = this._create();
-        result._disabled[language2] = true;
-        result._update();
-        return result;
-      };
-      TemplatablePattern.prototype.read_options = function(options) {
-        var result = this._create();
-        for (var language2 in template_names) {
-          result._disabled[language2] = options.templating.indexOf(language2) === -1;
-        }
-        result._update();
-        return result;
-      };
-      TemplatablePattern.prototype.exclude = function(language2) {
-        var result = this._create();
-        result._excluded[language2] = true;
-        result._update();
-        return result;
-      };
-      TemplatablePattern.prototype.read = function() {
-        var result = "";
-        if (this._match_pattern) {
-          result = this._input.read(this._starting_pattern);
-        } else {
-          result = this._input.read(this._starting_pattern, this.__template_pattern);
-        }
-        var next = this._read_template();
-        while (next) {
-          if (this._match_pattern) {
-            next += this._input.read(this._match_pattern);
-          } else {
-            next += this._input.readUntil(this.__template_pattern);
-          }
-          result += next;
-          next = this._read_template();
-        }
-        if (this._until_after) {
-          result += this._input.readUntilAfter(this._until_pattern);
-        }
-        return result;
-      };
-      TemplatablePattern.prototype.__set_templated_pattern = function() {
-        var items = [];
-        if (!this._disabled.php) {
-          items.push(this.__patterns.php._starting_pattern.source);
-        }
-        if (!this._disabled.handlebars) {
-          items.push(this.__patterns.handlebars._starting_pattern.source);
-        }
-        if (!this._disabled.angular) {
-          items.push(this.__patterns.handlebars._starting_pattern.source);
-        }
-        if (!this._disabled.erb) {
-          items.push(this.__patterns.erb._starting_pattern.source);
-        }
-        if (!this._disabled.django) {
-          items.push(this.__patterns.django._starting_pattern.source);
-          items.push(this.__patterns.django_value._starting_pattern.source);
-          items.push(this.__patterns.django_comment._starting_pattern.source);
-        }
-        if (!this._disabled.smarty) {
-          items.push(this.__patterns.smarty._starting_pattern.source);
-        }
-        if (this._until_pattern) {
-          items.push(this._until_pattern.source);
-        }
-        this.__template_pattern = this._input.get_regexp("(?:" + items.join("|") + ")");
-      };
-      TemplatablePattern.prototype._read_template = function() {
-        var resulting_string = "";
-        var c = this._input.peek();
-        if (c === "<") {
-          var peek1 = this._input.peek(1);
-          if (!this._disabled.php && !this._excluded.php && peek1 === "?") {
-            resulting_string = resulting_string || this.__patterns.php.read();
-          }
-          if (!this._disabled.erb && !this._excluded.erb && peek1 === "%") {
-            resulting_string = resulting_string || this.__patterns.erb.read();
-          }
-        } else if (c === "{") {
-          if (!this._disabled.handlebars && !this._excluded.handlebars) {
-            resulting_string = resulting_string || this.__patterns.handlebars_comment.read();
-            resulting_string = resulting_string || this.__patterns.handlebars_unescaped.read();
-            resulting_string = resulting_string || this.__patterns.handlebars.read();
-          }
-          if (!this._disabled.django) {
-            if (!this._excluded.django && !this._excluded.handlebars) {
-              resulting_string = resulting_string || this.__patterns.django_value.read();
-            }
-            if (!this._excluded.django) {
-              resulting_string = resulting_string || this.__patterns.django_comment.read();
-              resulting_string = resulting_string || this.__patterns.django.read();
-            }
-          }
-          if (!this._disabled.smarty) {
-            if (this._disabled.django && this._disabled.handlebars) {
-              resulting_string = resulting_string || this.__patterns.smarty_comment.read();
-              resulting_string = resulting_string || this.__patterns.smarty_literal.read();
-              resulting_string = resulting_string || this.__patterns.smarty.read();
-            }
-          }
-        }
-        return resulting_string;
-      };
-      module.exports.TemplatablePattern = TemplatablePattern;
-    }
-  });
-
-  // node_modules/js-beautify/js/src/javascript/tokenizer.js
-  var require_tokenizer2 = __commonJS({
-    "node_modules/js-beautify/js/src/javascript/tokenizer.js"(exports, module) {
-      "use strict";
-      var InputScanner = require_inputscanner().InputScanner;
-      var BaseTokenizer = require_tokenizer().Tokenizer;
-      var BASETOKEN = require_tokenizer().TOKEN;
-      var Directives = require_directives().Directives;
-      var acorn = require_acorn();
-      var Pattern = require_pattern().Pattern;
-      var TemplatablePattern = require_templatablepattern().TemplatablePattern;
-      function in_array(what, arr) {
-        return arr.indexOf(what) !== -1;
-      }
-      var TOKEN = {
-        START_EXPR: "TK_START_EXPR",
-        END_EXPR: "TK_END_EXPR",
-        START_BLOCK: "TK_START_BLOCK",
-        END_BLOCK: "TK_END_BLOCK",
-        WORD: "TK_WORD",
-        RESERVED: "TK_RESERVED",
-        SEMICOLON: "TK_SEMICOLON",
-        STRING: "TK_STRING",
-        EQUALS: "TK_EQUALS",
-        OPERATOR: "TK_OPERATOR",
-        COMMA: "TK_COMMA",
-        BLOCK_COMMENT: "TK_BLOCK_COMMENT",
-        COMMENT: "TK_COMMENT",
-        DOT: "TK_DOT",
-        UNKNOWN: "TK_UNKNOWN",
-        START: BASETOKEN.START,
-        RAW: BASETOKEN.RAW,
-        EOF: BASETOKEN.EOF
-      };
-      var directives_core = new Directives(/\/\*/, /\*\//);
-      var number_pattern = /0[xX][0123456789abcdefABCDEF_]*n?|0[oO][01234567_]*n?|0[bB][01_]*n?|\d[\d_]*n|(?:\.\d[\d_]*|\d[\d_]*\.?[\d_]*)(?:[eE][+-]?[\d_]+)?/;
-      var digit = /[0-9]/;
-      var dot_pattern = /[^\d\.]/;
-      var positionable_operators = ">>> === !== &&= ??= ||= << && >= ** != == <= >> || ?? |> < / - + > : & % ? ^ | *".split(" ");
-      var punct = ">>>= ... >>= <<= === >>> !== **= &&= ??= ||= => ^= :: /= << <= == && -= >= >> != -- += ** || ?? ++ %= &= *= |= |> = ! ? > < : / ^ - + * & % ~ |";
-      punct = punct.replace(/[-[\]{}()*+?.,\\^$|#]/g, "\\$&");
-      punct = "\\?\\.(?!\\d) " + punct;
-      punct = punct.replace(/ /g, "|");
-      var punct_pattern = new RegExp(punct);
-      var line_starters = "continue,try,throw,return,var,let,const,if,switch,case,default,for,while,break,function,import,export".split(",");
-      var reserved_words = line_starters.concat(["do", "in", "of", "else", "get", "set", "new", "catch", "finally", "typeof", "yield", "async", "await", "from", "as", "class", "extends"]);
-      var reserved_word_pattern = new RegExp("^(?:" + reserved_words.join("|") + ")$");
-      var in_html_comment;
-      var Tokenizer = function(input_string, options) {
-        BaseTokenizer.call(this, input_string, options);
-        this._patterns.whitespace = this._patterns.whitespace.matching(
-          /\u00A0\u1680\u180e\u2000-\u200a\u202f\u205f\u3000\ufeff/.source,
-          /\u2028\u2029/.source
-        );
-        var pattern_reader = new Pattern(this._input);
-        var templatable = new TemplatablePattern(this._input).read_options(this._options);
-        this.__patterns = {
-          template: templatable,
-          identifier: templatable.starting_with(acorn.identifier).matching(acorn.identifierMatch),
-          number: pattern_reader.matching(number_pattern),
-          punct: pattern_reader.matching(punct_pattern),
-          // comment ends just before nearest linefeed or end of file
-          comment: pattern_reader.starting_with(/\/\//).until(/[\n\r\u2028\u2029]/),
-          //  /* ... */ comment ends with nearest */ or end of file
-          block_comment: pattern_reader.starting_with(/\/\*/).until_after(/\*\//),
-          html_comment_start: pattern_reader.matching(/<!--/),
-          html_comment_end: pattern_reader.matching(/-->/),
-          include: pattern_reader.starting_with(/#include/).until_after(acorn.lineBreak),
-          shebang: pattern_reader.starting_with(/#!/).until_after(acorn.lineBreak),
-          xml: pattern_reader.matching(/[\s\S]*?<(\/?)([-a-zA-Z:0-9_.]+|{[^}]+?}|!\[CDATA\[[^\]]*?\]\]|)(\s*{[^}]+?}|\s+[-a-zA-Z:0-9_.]+|\s+[-a-zA-Z:0-9_.]+\s*=\s*('[^']*'|"[^"]*"|{([^{}]|{[^}]+?})+?}))*\s*(\/?)\s*>/),
-          single_quote: templatable.until(/['\\\n\r\u2028\u2029]/),
-          double_quote: templatable.until(/["\\\n\r\u2028\u2029]/),
-          template_text: templatable.until(/[`\\$]/),
-          template_expression: templatable.until(/[`}\\]/)
-        };
-      };
-      Tokenizer.prototype = new BaseTokenizer();
-      Tokenizer.prototype._is_comment = function(current_token) {
-        return current_token.type === TOKEN.COMMENT || current_token.type === TOKEN.BLOCK_COMMENT || current_token.type === TOKEN.UNKNOWN;
-      };
-      Tokenizer.prototype._is_opening = function(current_token) {
-        return current_token.type === TOKEN.START_BLOCK || current_token.type === TOKEN.START_EXPR;
-      };
-      Tokenizer.prototype._is_closing = function(current_token, open_token) {
-        return (current_token.type === TOKEN.END_BLOCK || current_token.type === TOKEN.END_EXPR) && (open_token && (current_token.text === "]" && open_token.text === "[" || current_token.text === ")" && open_token.text === "(" || current_token.text === "}" && open_token.text === "{"));
-      };
-      Tokenizer.prototype._reset = function() {
-        in_html_comment = false;
-      };
-      Tokenizer.prototype._get_next_token = function(previous_token, open_token) {
-        var token = null;
-        this._readWhitespace();
-        var c = this._input.peek();
-        if (c === null) {
-          return this._create_token(TOKEN.EOF, "");
-        }
-        token = token || this._read_non_javascript(c);
-        token = token || this._read_string(c);
-        token = token || this._read_pair(c, this._input.peek(1));
-        token = token || this._read_word(previous_token);
-        token = token || this._read_singles(c);
-        token = token || this._read_comment(c);
-        token = token || this._read_regexp(c, previous_token);
-        token = token || this._read_xml(c, previous_token);
-        token = token || this._read_punctuation();
-        token = token || this._create_token(TOKEN.UNKNOWN, this._input.next());
-        return token;
-      };
-      Tokenizer.prototype._read_word = function(previous_token) {
-        var resulting_string;
-        resulting_string = this.__patterns.identifier.read();
-        if (resulting_string !== "") {
-          resulting_string = resulting_string.replace(acorn.allLineBreaks, "\n");
-          if (!(previous_token.type === TOKEN.DOT || previous_token.type === TOKEN.RESERVED && (previous_token.text === "set" || previous_token.text === "get")) && reserved_word_pattern.test(resulting_string)) {
-            if ((resulting_string === "in" || resulting_string === "of") && (previous_token.type === TOKEN.WORD || previous_token.type === TOKEN.STRING)) {
-              return this._create_token(TOKEN.OPERATOR, resulting_string);
-            }
-            return this._create_token(TOKEN.RESERVED, resulting_string);
-          }
-          return this._create_token(TOKEN.WORD, resulting_string);
-        }
-        resulting_string = this.__patterns.number.read();
-        if (resulting_string !== "") {
-          return this._create_token(TOKEN.WORD, resulting_string);
-        }
-      };
-      Tokenizer.prototype._read_singles = function(c) {
-        var token = null;
-        if (c === "(" || c === "[") {
-          token = this._create_token(TOKEN.START_EXPR, c);
-        } else if (c === ")" || c === "]") {
-          token = this._create_token(TOKEN.END_EXPR, c);
-        } else if (c === "{") {
-          token = this._create_token(TOKEN.START_BLOCK, c);
-        } else if (c === "}") {
-          token = this._create_token(TOKEN.END_BLOCK, c);
-        } else if (c === ";") {
-          token = this._create_token(TOKEN.SEMICOLON, c);
-        } else if (c === "." && dot_pattern.test(this._input.peek(1))) {
-          token = this._create_token(TOKEN.DOT, c);
-        } else if (c === ",") {
-          token = this._create_token(TOKEN.COMMA, c);
-        }
-        if (token) {
-          this._input.next();
-        }
-        return token;
-      };
-      Tokenizer.prototype._read_pair = function(c, d) {
-        var token = null;
-        if (c === "#" && d === "{") {
-          token = this._create_token(TOKEN.START_BLOCK, c + d);
-        }
-        if (token) {
-          this._input.next();
-          this._input.next();
-        }
-        return token;
-      };
-      Tokenizer.prototype._read_punctuation = function() {
-        var resulting_string = this.__patterns.punct.read();
-        if (resulting_string !== "") {
-          if (resulting_string === "=") {
-            return this._create_token(TOKEN.EQUALS, resulting_string);
-          } else if (resulting_string === "?.") {
-            return this._create_token(TOKEN.DOT, resulting_string);
-          } else {
-            return this._create_token(TOKEN.OPERATOR, resulting_string);
-          }
-        }
-      };
-      Tokenizer.prototype._read_non_javascript = function(c) {
-        var resulting_string = "";
-        if (c === "#") {
-          if (this._is_first_token()) {
-            resulting_string = this.__patterns.shebang.read();
-            if (resulting_string) {
-              return this._create_token(TOKEN.UNKNOWN, resulting_string.trim() + "\n");
-            }
-          }
-          resulting_string = this.__patterns.include.read();
-          if (resulting_string) {
-            return this._create_token(TOKEN.UNKNOWN, resulting_string.trim() + "\n");
-          }
-          c = this._input.next();
-          var sharp = "#";
-          if (this._input.hasNext() && this._input.testChar(digit)) {
-            do {
-              c = this._input.next();
-              sharp += c;
-            } while (this._input.hasNext() && c !== "#" && c !== "=");
-            if (c === "#") {
-            } else if (this._input.peek() === "[" && this._input.peek(1) === "]") {
-              sharp += "[]";
-              this._input.next();
-              this._input.next();
-            } else if (this._input.peek() === "{" && this._input.peek(1) === "}") {
-              sharp += "{}";
-              this._input.next();
-              this._input.next();
-            }
-            return this._create_token(TOKEN.WORD, sharp);
-          }
-          this._input.back();
-        } else if (c === "<" && this._is_first_token()) {
-          resulting_string = this.__patterns.html_comment_start.read();
-          if (resulting_string) {
-            while (this._input.hasNext() && !this._input.testChar(acorn.newline)) {
-              resulting_string += this._input.next();
-            }
-            in_html_comment = true;
-            return this._create_token(TOKEN.COMMENT, resulting_string);
-          }
-        } else if (in_html_comment && c === "-") {
-          resulting_string = this.__patterns.html_comment_end.read();
-          if (resulting_string) {
-            in_html_comment = false;
-            return this._create_token(TOKEN.COMMENT, resulting_string);
-          }
-        }
-        return null;
-      };
-      Tokenizer.prototype._read_comment = function(c) {
-        var token = null;
-        if (c === "/") {
-          var comment2 = "";
-          if (this._input.peek(1) === "*") {
-            comment2 = this.__patterns.block_comment.read();
-            var directives = directives_core.get_directives(comment2);
-            if (directives && directives.ignore === "start") {
-              comment2 += directives_core.readIgnored(this._input);
-            }
-            comment2 = comment2.replace(acorn.allLineBreaks, "\n");
-            token = this._create_token(TOKEN.BLOCK_COMMENT, comment2);
-            token.directives = directives;
-          } else if (this._input.peek(1) === "/") {
-            comment2 = this.__patterns.comment.read();
-            token = this._create_token(TOKEN.COMMENT, comment2);
-          }
-        }
-        return token;
-      };
-      Tokenizer.prototype._read_string = function(c) {
-        if (c === "`" || c === "'" || c === '"') {
-          var resulting_string = this._input.next();
-          this.has_char_escapes = false;
-          if (c === "`") {
-            resulting_string += this._read_string_recursive("`", true, "${");
-          } else {
-            resulting_string += this._read_string_recursive(c);
-          }
-          if (this.has_char_escapes && this._options.unescape_strings) {
-            resulting_string = unescape_string(resulting_string);
-          }
-          if (this._input.peek() === c) {
-            resulting_string += this._input.next();
-          }
-          resulting_string = resulting_string.replace(acorn.allLineBreaks, "\n");
-          return this._create_token(TOKEN.STRING, resulting_string);
-        }
-        return null;
-      };
-      Tokenizer.prototype._allow_regexp_or_xml = function(previous_token) {
-        return previous_token.type === TOKEN.RESERVED && in_array(previous_token.text, ["return", "case", "throw", "else", "do", "typeof", "yield"]) || previous_token.type === TOKEN.END_EXPR && previous_token.text === ")" && previous_token.opened.previous.type === TOKEN.RESERVED && in_array(previous_token.opened.previous.text, ["if", "while", "for"]) || in_array(previous_token.type, [
-          TOKEN.COMMENT,
-          TOKEN.START_EXPR,
-          TOKEN.START_BLOCK,
-          TOKEN.START,
-          TOKEN.END_BLOCK,
-          TOKEN.OPERATOR,
-          TOKEN.EQUALS,
-          TOKEN.EOF,
-          TOKEN.SEMICOLON,
-          TOKEN.COMMA
-        ]);
-      };
-      Tokenizer.prototype._read_regexp = function(c, previous_token) {
-        if (c === "/" && this._allow_regexp_or_xml(previous_token)) {
-          var resulting_string = this._input.next();
-          var esc = false;
-          var in_char_class = false;
-          while (this._input.hasNext() && ((esc || in_char_class || this._input.peek() !== c) && !this._input.testChar(acorn.newline))) {
-            resulting_string += this._input.peek();
-            if (!esc) {
-              esc = this._input.peek() === "\\";
-              if (this._input.peek() === "[") {
-                in_char_class = true;
-              } else if (this._input.peek() === "]") {
-                in_char_class = false;
-              }
-            } else {
-              esc = false;
-            }
-            this._input.next();
-          }
-          if (this._input.peek() === c) {
-            resulting_string += this._input.next();
-            resulting_string += this._input.read(acorn.identifier);
-          }
-          return this._create_token(TOKEN.STRING, resulting_string);
-        }
-        return null;
-      };
-      Tokenizer.prototype._read_xml = function(c, previous_token) {
-        if (this._options.e4x && c === "<" && this._allow_regexp_or_xml(previous_token)) {
-          var xmlStr = "";
-          var match = this.__patterns.xml.read_match();
-          if (match) {
-            var rootTag = match[2].replace(/^{\s+/, "{").replace(/\s+}$/, "}");
-            var isCurlyRoot = rootTag.indexOf("{") === 0;
-            var depth = 0;
-            while (match) {
-              var isEndTag = !!match[1];
-              var tagName = match[2];
-              var isSingletonTag = !!match[match.length - 1] || tagName.slice(0, 8) === "![CDATA[";
-              if (!isSingletonTag && (tagName === rootTag || isCurlyRoot && tagName.replace(/^{\s+/, "{").replace(/\s+}$/, "}"))) {
-                if (isEndTag) {
-                  --depth;
-                } else {
-                  ++depth;
-                }
-              }
-              xmlStr += match[0];
-              if (depth <= 0) {
-                break;
-              }
-              match = this.__patterns.xml.read_match();
-            }
-            if (!match) {
-              xmlStr += this._input.match(/[\s\S]*/g)[0];
-            }
-            xmlStr = xmlStr.replace(acorn.allLineBreaks, "\n");
-            return this._create_token(TOKEN.STRING, xmlStr);
-          }
-        }
-        return null;
-      };
-      function unescape_string(s) {
-        var out = "", escaped = 0;
-        var input_scan = new InputScanner(s);
-        var matched = null;
-        while (input_scan.hasNext()) {
-          matched = input_scan.match(/([\s]|[^\\]|\\\\)+/g);
-          if (matched) {
-            out += matched[0];
-          }
-          if (input_scan.peek() === "\\") {
-            input_scan.next();
-            if (input_scan.peek() === "x") {
-              matched = input_scan.match(/x([0-9A-Fa-f]{2})/g);
-            } else if (input_scan.peek() === "u") {
-              matched = input_scan.match(/u([0-9A-Fa-f]{4})/g);
-              if (!matched) {
-                matched = input_scan.match(/u\{([0-9A-Fa-f]+)\}/g);
-              }
-            } else {
-              out += "\\";
-              if (input_scan.hasNext()) {
-                out += input_scan.next();
-              }
-              continue;
-            }
-            if (!matched) {
-              return s;
-            }
-            escaped = parseInt(matched[1], 16);
-            if (escaped > 126 && escaped <= 255 && matched[0].indexOf("x") === 0) {
-              return s;
-            } else if (escaped >= 0 && escaped < 32) {
-              out += "\\" + matched[0];
-            } else if (escaped > 1114111) {
-              out += "\\" + matched[0];
-            } else if (escaped === 34 || escaped === 39 || escaped === 92) {
-              out += "\\" + String.fromCharCode(escaped);
-            } else {
-              out += String.fromCharCode(escaped);
-            }
-          }
-        }
-        return out;
-      }
-      Tokenizer.prototype._read_string_recursive = function(delimiter, allow_unescaped_newlines, start_sub) {
-        var current_char;
-        var pattern;
-        if (delimiter === "'") {
-          pattern = this.__patterns.single_quote;
-        } else if (delimiter === '"') {
-          pattern = this.__patterns.double_quote;
-        } else if (delimiter === "`") {
-          pattern = this.__patterns.template_text;
-        } else if (delimiter === "}") {
-          pattern = this.__patterns.template_expression;
-        }
-        var resulting_string = pattern.read();
-        var next = "";
-        while (this._input.hasNext()) {
-          next = this._input.next();
-          if (next === delimiter || !allow_unescaped_newlines && acorn.newline.test(next)) {
-            this._input.back();
-            break;
-          } else if (next === "\\" && this._input.hasNext()) {
-            current_char = this._input.peek();
-            if (current_char === "x" || current_char === "u") {
-              this.has_char_escapes = true;
-            } else if (current_char === "\r" && this._input.peek(1) === "\n") {
-              this._input.next();
-            }
-            next += this._input.next();
-          } else if (start_sub) {
-            if (start_sub === "${" && next === "$" && this._input.peek() === "{") {
-              next += this._input.next();
-            }
-            if (start_sub === next) {
-              if (delimiter === "`") {
-                next += this._read_string_recursive("}", allow_unescaped_newlines, "`");
-              } else {
-                next += this._read_string_recursive("`", allow_unescaped_newlines, "${");
-              }
-              if (this._input.hasNext()) {
-                next += this._input.next();
-              }
-            }
-          }
-          next += pattern.read();
-          resulting_string += next;
-        }
-        return resulting_string;
-      };
-      module.exports.Tokenizer = Tokenizer;
-      module.exports.TOKEN = TOKEN;
-      module.exports.positionable_operators = positionable_operators.slice();
-      module.exports.line_starters = line_starters.slice();
-    }
-  });
-
-  // node_modules/js-beautify/js/src/javascript/beautifier.js
-  var require_beautifier = __commonJS({
-    "node_modules/js-beautify/js/src/javascript/beautifier.js"(exports, module) {
-      "use strict";
-      var Output = require_output().Output;
-      var Token = require_token().Token;
-      var acorn = require_acorn();
-      var Options = require_options2().Options;
-      var Tokenizer = require_tokenizer2().Tokenizer;
-      var line_starters = require_tokenizer2().line_starters;
-      var positionable_operators = require_tokenizer2().positionable_operators;
-      var TOKEN = require_tokenizer2().TOKEN;
-      function in_array(what, arr) {
-        return arr.indexOf(what) !== -1;
-      }
-      function ltrim(s) {
-        return s.replace(/^\s+/g, "");
-      }
-      function generateMapFromStrings(list) {
-        var result = {};
-        for (var x = 0; x < list.length; x++) {
-          result[list[x].replace(/-/g, "_")] = list[x];
-        }
-        return result;
-      }
-      function reserved_word(token, word) {
-        return token && token.type === TOKEN.RESERVED && token.text === word;
-      }
-      function reserved_array(token, words) {
-        return token && token.type === TOKEN.RESERVED && in_array(token.text, words);
-      }
-      var special_words = ["case", "return", "do", "if", "throw", "else", "await", "break", "continue", "async"];
-      var validPositionValues = ["before-newline", "after-newline", "preserve-newline"];
-      var OPERATOR_POSITION = generateMapFromStrings(validPositionValues);
-      var OPERATOR_POSITION_BEFORE_OR_PRESERVE = [OPERATOR_POSITION.before_newline, OPERATOR_POSITION.preserve_newline];
-      var MODE = {
-        BlockStatement: "BlockStatement",
-        // 'BLOCK'
-        Statement: "Statement",
-        // 'STATEMENT'
-        ObjectLiteral: "ObjectLiteral",
-        // 'OBJECT',
-        ArrayLiteral: "ArrayLiteral",
-        //'[EXPRESSION]',
-        ForInitializer: "ForInitializer",
-        //'(FOR-EXPRESSION)',
-        Conditional: "Conditional",
-        //'(COND-EXPRESSION)',
-        Expression: "Expression"
-        //'(EXPRESSION)'
-      };
-      function remove_redundant_indentation(output, frame) {
-        if (frame.multiline_frame || frame.mode === MODE.ForInitializer || frame.mode === MODE.Conditional) {
-          return;
-        }
-        output.remove_indent(frame.start_line_index);
-      }
-      function split_linebreaks(s) {
-        s = s.replace(acorn.allLineBreaks, "\n");
-        var out = [], idx = s.indexOf("\n");
-        while (idx !== -1) {
-          out.push(s.substring(0, idx));
-          s = s.substring(idx + 1);
-          idx = s.indexOf("\n");
-        }
-        if (s.length) {
-          out.push(s);
-        }
-        return out;
-      }
-      function is_array(mode) {
-        return mode === MODE.ArrayLiteral;
-      }
-      function is_expression(mode) {
-        return in_array(mode, [MODE.Expression, MODE.ForInitializer, MODE.Conditional]);
-      }
-      function all_lines_start_with(lines, c) {
-        for (var i = 0; i < lines.length; i++) {
-          var line = lines[i].trim();
-          if (line.charAt(0) !== c) {
-            return false;
-          }
-        }
-        return true;
-      }
-      function each_line_matches_indent(lines, indent) {
-        var i = 0, len = lines.length, line;
-        for (; i < len; i++) {
-          line = lines[i];
-          if (line && line.indexOf(indent) !== 0) {
-            return false;
-          }
-        }
-        return true;
-      }
-      function Beautifier(source_text, options) {
-        options = options || {};
-        this._source_text = source_text || "";
-        this._output = null;
-        this._tokens = null;
-        this._last_last_text = null;
-        this._flags = null;
-        this._previous_flags = null;
-        this._flag_store = null;
-        this._options = new Options(options);
-      }
-      Beautifier.prototype.create_flags = function(flags_base, mode) {
-        var next_indent_level = 0;
-        if (flags_base) {
-          next_indent_level = flags_base.indentation_level;
-          if (!this._output.just_added_newline() && flags_base.line_indent_level > next_indent_level) {
-            next_indent_level = flags_base.line_indent_level;
-          }
-        }
-        var next_flags = {
-          mode,
-          parent: flags_base,
-          last_token: flags_base ? flags_base.last_token : new Token(TOKEN.START_BLOCK, ""),
-          // last token text
-          last_word: flags_base ? flags_base.last_word : "",
-          // last TOKEN.WORD passed
-          declaration_statement: false,
-          declaration_assignment: false,
-          multiline_frame: false,
-          inline_frame: false,
-          if_block: false,
-          else_block: false,
-          class_start_block: false,
-          // class A { INSIDE HERE } or class B extends C { INSIDE HERE }
-          do_block: false,
-          do_while: false,
-          import_block: false,
-          in_case_statement: false,
-          // switch(..){ INSIDE HERE }
-          in_case: false,
-          // we're on the exact line with "case 0:"
-          case_body: false,
-          // the indented case-action block
-          case_block: false,
-          // the indented case-action block is wrapped with {}
-          indentation_level: next_indent_level,
-          alignment: 0,
-          line_indent_level: flags_base ? flags_base.line_indent_level : next_indent_level,
-          start_line_index: this._output.get_line_number(),
-          ternary_depth: 0
-        };
-        return next_flags;
-      };
-      Beautifier.prototype._reset = function(source_text) {
-        var baseIndentString = source_text.match(/^[\t ]*/)[0];
-        this._last_last_text = "";
-        this._output = new Output(this._options, baseIndentString);
-        this._output.raw = this._options.test_output_raw;
-        this._flag_store = [];
-        this.set_mode(MODE.BlockStatement);
-        var tokenizer = new Tokenizer(source_text, this._options);
-        this._tokens = tokenizer.tokenize();
-        return source_text;
-      };
-      Beautifier.prototype.beautify = function() {
-        if (this._options.disabled) {
-          return this._source_text;
-        }
-        var sweet_code;
-        var source_text = this._reset(this._source_text);
-        var eol = this._options.eol;
-        if (this._options.eol === "auto") {
-          eol = "\n";
-          if (source_text && acorn.lineBreak.test(source_text || "")) {
-            eol = source_text.match(acorn.lineBreak)[0];
-          }
-        }
-        var current_token = this._tokens.next();
-        while (current_token) {
-          this.handle_token(current_token);
-          this._last_last_text = this._flags.last_token.text;
-          this._flags.last_token = current_token;
-          current_token = this._tokens.next();
-        }
-        sweet_code = this._output.get_code(eol);
-        return sweet_code;
-      };
-      Beautifier.prototype.handle_token = function(current_token, preserve_statement_flags) {
-        if (current_token.type === TOKEN.START_EXPR) {
-          this.handle_start_expr(current_token);
-        } else if (current_token.type === TOKEN.END_EXPR) {
-          this.handle_end_expr(current_token);
-        } else if (current_token.type === TOKEN.START_BLOCK) {
-          this.handle_start_block(current_token);
-        } else if (current_token.type === TOKEN.END_BLOCK) {
-          this.handle_end_block(current_token);
-        } else if (current_token.type === TOKEN.WORD) {
-          this.handle_word(current_token);
-        } else if (current_token.type === TOKEN.RESERVED) {
-          this.handle_word(current_token);
-        } else if (current_token.type === TOKEN.SEMICOLON) {
-          this.handle_semicolon(current_token);
-        } else if (current_token.type === TOKEN.STRING) {
-          this.handle_string(current_token);
-        } else if (current_token.type === TOKEN.EQUALS) {
-          this.handle_equals(current_token);
-        } else if (current_token.type === TOKEN.OPERATOR) {
-          this.handle_operator(current_token);
-        } else if (current_token.type === TOKEN.COMMA) {
-          this.handle_comma(current_token);
-        } else if (current_token.type === TOKEN.BLOCK_COMMENT) {
-          this.handle_block_comment(current_token, preserve_statement_flags);
-        } else if (current_token.type === TOKEN.COMMENT) {
-          this.handle_comment(current_token, preserve_statement_flags);
-        } else if (current_token.type === TOKEN.DOT) {
-          this.handle_dot(current_token);
-        } else if (current_token.type === TOKEN.EOF) {
-          this.handle_eof(current_token);
-        } else if (current_token.type === TOKEN.UNKNOWN) {
-          this.handle_unknown(current_token, preserve_statement_flags);
-        } else {
-          this.handle_unknown(current_token, preserve_statement_flags);
-        }
-      };
-      Beautifier.prototype.handle_whitespace_and_comments = function(current_token, preserve_statement_flags) {
-        var newlines = current_token.newlines;
-        var keep_whitespace = this._options.keep_array_indentation && is_array(this._flags.mode);
-        if (current_token.comments_before) {
-          var comment_token = current_token.comments_before.next();
-          while (comment_token) {
-            this.handle_whitespace_and_comments(comment_token, preserve_statement_flags);
-            this.handle_token(comment_token, preserve_statement_flags);
-            comment_token = current_token.comments_before.next();
-          }
-        }
-        if (keep_whitespace) {
-          for (var i = 0; i < newlines; i += 1) {
-            this.print_newline(i > 0, preserve_statement_flags);
-          }
-        } else {
-          if (this._options.max_preserve_newlines && newlines > this._options.max_preserve_newlines) {
-            newlines = this._options.max_preserve_newlines;
-          }
-          if (this._options.preserve_newlines) {
-            if (newlines > 1) {
-              this.print_newline(false, preserve_statement_flags);
-              for (var j = 1; j < newlines; j += 1) {
-                this.print_newline(true, preserve_statement_flags);
-              }
-            }
-          }
-        }
-      };
-      var newline_restricted_tokens = ["async", "break", "continue", "return", "throw", "yield"];
-      Beautifier.prototype.allow_wrap_or_preserved_newline = function(current_token, force_linewrap) {
-        force_linewrap = force_linewrap === void 0 ? false : force_linewrap;
-        if (this._output.just_added_newline()) {
-          return;
-        }
-        var shouldPreserveOrForce = this._options.preserve_newlines && current_token.newlines || force_linewrap;
-        var operatorLogicApplies = in_array(this._flags.last_token.text, positionable_operators) || in_array(current_token.text, positionable_operators);
-        if (operatorLogicApplies) {
-          var shouldPrintOperatorNewline = in_array(this._flags.last_token.text, positionable_operators) && in_array(this._options.operator_position, OPERATOR_POSITION_BEFORE_OR_PRESERVE) || in_array(current_token.text, positionable_operators);
-          shouldPreserveOrForce = shouldPreserveOrForce && shouldPrintOperatorNewline;
-        }
-        if (shouldPreserveOrForce) {
-          this.print_newline(false, true);
-        } else if (this._options.wrap_line_length) {
-          if (reserved_array(this._flags.last_token, newline_restricted_tokens)) {
-            return;
-          }
-          this._output.set_wrap_point();
-        }
-      };
-      Beautifier.prototype.print_newline = function(force_newline, preserve_statement_flags) {
-        if (!preserve_statement_flags) {
-          if (this._flags.last_token.text !== ";" && this._flags.last_token.text !== "," && this._flags.last_token.text !== "=" && (this._flags.last_token.type !== TOKEN.OPERATOR || this._flags.last_token.text === "--" || this._flags.last_token.text === "++")) {
-            var next_token = this._tokens.peek();
-            while (this._flags.mode === MODE.Statement && !(this._flags.if_block && reserved_word(next_token, "else")) && !this._flags.do_block) {
-              this.restore_mode();
-            }
-          }
-        }
-        if (this._output.add_new_line(force_newline)) {
-          this._flags.multiline_frame = true;
-        }
-      };
-      Beautifier.prototype.print_token_line_indentation = function(current_token) {
-        if (this._output.just_added_newline()) {
-          if (this._options.keep_array_indentation && current_token.newlines && (current_token.text === "[" || is_array(this._flags.mode))) {
-            this._output.current_line.set_indent(-1);
-            this._output.current_line.push(current_token.whitespace_before);
-            this._output.space_before_token = false;
-          } else if (this._output.set_indent(this._flags.indentation_level, this._flags.alignment)) {
-            this._flags.line_indent_level = this._flags.indentation_level;
-          }
-        }
-      };
-      Beautifier.prototype.print_token = function(current_token) {
-        if (this._output.raw) {
-          this._output.add_raw_token(current_token);
-          return;
-        }
-        if (this._options.comma_first && current_token.previous && current_token.previous.type === TOKEN.COMMA && this._output.just_added_newline()) {
-          if (this._output.previous_line.last() === ",") {
-            var popped = this._output.previous_line.pop();
-            if (this._output.previous_line.is_empty()) {
-              this._output.previous_line.push(popped);
-              this._output.trim(true);
-              this._output.current_line.pop();
-              this._output.trim();
-            }
-            this.print_token_line_indentation(current_token);
-            this._output.add_token(",");
-            this._output.space_before_token = true;
-          }
-        }
-        this.print_token_line_indentation(current_token);
-        this._output.non_breaking_space = true;
-        this._output.add_token(current_token.text);
-        if (this._output.previous_token_wrapped) {
-          this._flags.multiline_frame = true;
-        }
-      };
-      Beautifier.prototype.indent = function() {
-        this._flags.indentation_level += 1;
-        this._output.set_indent(this._flags.indentation_level, this._flags.alignment);
-      };
-      Beautifier.prototype.deindent = function() {
-        if (this._flags.indentation_level > 0 && (!this._flags.parent || this._flags.indentation_level > this._flags.parent.indentation_level)) {
-          this._flags.indentation_level -= 1;
-          this._output.set_indent(this._flags.indentation_level, this._flags.alignment);
-        }
-      };
-      Beautifier.prototype.set_mode = function(mode) {
-        if (this._flags) {
-          this._flag_store.push(this._flags);
-          this._previous_flags = this._flags;
-        } else {
-          this._previous_flags = this.create_flags(null, mode);
-        }
-        this._flags = this.create_flags(this._previous_flags, mode);
-        this._output.set_indent(this._flags.indentation_level, this._flags.alignment);
-      };
-      Beautifier.prototype.restore_mode = function() {
-        if (this._flag_store.length > 0) {
-          this._previous_flags = this._flags;
-          this._flags = this._flag_store.pop();
-          if (this._previous_flags.mode === MODE.Statement) {
-            remove_redundant_indentation(this._output, this._previous_flags);
-          }
-          this._output.set_indent(this._flags.indentation_level, this._flags.alignment);
-        }
-      };
-      Beautifier.prototype.start_of_object_property = function() {
-        return this._flags.parent.mode === MODE.ObjectLiteral && this._flags.mode === MODE.Statement && (this._flags.last_token.text === ":" && this._flags.ternary_depth === 0 || reserved_array(this._flags.last_token, ["get", "set"]));
-      };
-      Beautifier.prototype.start_of_statement = function(current_token) {
-        var start = false;
-        start = start || reserved_array(this._flags.last_token, ["var", "let", "const"]) && current_token.type === TOKEN.WORD;
-        start = start || reserved_word(this._flags.last_token, "do");
-        start = start || !(this._flags.parent.mode === MODE.ObjectLiteral && this._flags.mode === MODE.Statement) && reserved_array(this._flags.last_token, newline_restricted_tokens) && !current_token.newlines;
-        start = start || reserved_word(this._flags.last_token, "else") && !(reserved_word(current_token, "if") && !current_token.comments_before);
-        start = start || this._flags.last_token.type === TOKEN.END_EXPR && (this._previous_flags.mode === MODE.ForInitializer || this._previous_flags.mode === MODE.Conditional);
-        start = start || this._flags.last_token.type === TOKEN.WORD && this._flags.mode === MODE.BlockStatement && !this._flags.in_case && !(current_token.text === "--" || current_token.text === "++") && this._last_last_text !== "function" && current_token.type !== TOKEN.WORD && current_token.type !== TOKEN.RESERVED;
-        start = start || this._flags.mode === MODE.ObjectLiteral && (this._flags.last_token.text === ":" && this._flags.ternary_depth === 0 || reserved_array(this._flags.last_token, ["get", "set"]));
-        if (start) {
-          this.set_mode(MODE.Statement);
-          this.indent();
-          this.handle_whitespace_and_comments(current_token, true);
-          if (!this.start_of_object_property()) {
-            this.allow_wrap_or_preserved_newline(
-              current_token,
-              reserved_array(current_token, ["do", "for", "if", "while"])
-            );
-          }
-          return true;
-        }
-        return false;
-      };
-      Beautifier.prototype.handle_start_expr = function(current_token) {
-        if (!this.start_of_statement(current_token)) {
-          this.handle_whitespace_and_comments(current_token);
-        }
-        var next_mode = MODE.Expression;
-        if (current_token.text === "[") {
-          if (this._flags.last_token.type === TOKEN.WORD || this._flags.last_token.text === ")") {
-            if (reserved_array(this._flags.last_token, line_starters)) {
-              this._output.space_before_token = true;
-            }
-            this.print_token(current_token);
-            this.set_mode(next_mode);
-            this.indent();
-            if (this._options.space_in_paren) {
-              this._output.space_before_token = true;
-            }
-            return;
-          }
-          next_mode = MODE.ArrayLiteral;
-          if (is_array(this._flags.mode)) {
-            if (this._flags.last_token.text === "[" || this._flags.last_token.text === "," && (this._last_last_text === "]" || this._last_last_text === "}")) {
-              if (!this._options.keep_array_indentation) {
-                this.print_newline();
-              }
-            }
-          }
-          if (!in_array(this._flags.last_token.type, [TOKEN.START_EXPR, TOKEN.END_EXPR, TOKEN.WORD, TOKEN.OPERATOR, TOKEN.DOT])) {
-            this._output.space_before_token = true;
-          }
-        } else {
-          if (this._flags.last_token.type === TOKEN.RESERVED) {
-            if (this._flags.last_token.text === "for") {
-              this._output.space_before_token = this._options.space_before_conditional;
-              next_mode = MODE.ForInitializer;
-            } else if (in_array(this._flags.last_token.text, ["if", "while", "switch"])) {
-              this._output.space_before_token = this._options.space_before_conditional;
-              next_mode = MODE.Conditional;
-            } else if (in_array(this._flags.last_word, ["await", "async"])) {
-              this._output.space_before_token = true;
-            } else if (this._flags.last_token.text === "import" && current_token.whitespace_before === "") {
-              this._output.space_before_token = false;
-            } else if (in_array(this._flags.last_token.text, line_starters) || this._flags.last_token.text === "catch") {
-              this._output.space_before_token = true;
-            }
-          } else if (this._flags.last_token.type === TOKEN.EQUALS || this._flags.last_token.type === TOKEN.OPERATOR) {
-            if (!this.start_of_object_property()) {
-              this.allow_wrap_or_preserved_newline(current_token);
-            }
-          } else if (this._flags.last_token.type === TOKEN.WORD) {
-            this._output.space_before_token = false;
-            var peek_back_two = this._tokens.peek(-3);
-            if (this._options.space_after_named_function && peek_back_two) {
-              var peek_back_three = this._tokens.peek(-4);
-              if (reserved_array(peek_back_two, ["async", "function"]) || peek_back_two.text === "*" && reserved_array(peek_back_three, ["async", "function"])) {
-                this._output.space_before_token = true;
-              } else if (this._flags.mode === MODE.ObjectLiteral) {
-                if (peek_back_two.text === "{" || peek_back_two.text === "," || peek_back_two.text === "*" && (peek_back_three.text === "{" || peek_back_three.text === ",")) {
-                  this._output.space_before_token = true;
-                }
-              } else if (this._flags.parent && this._flags.parent.class_start_block) {
-                this._output.space_before_token = true;
-              }
-            }
-          } else {
-            this.allow_wrap_or_preserved_newline(current_token);
-          }
-          if (this._flags.last_token.type === TOKEN.RESERVED && (this._flags.last_word === "function" || this._flags.last_word === "typeof") || this._flags.last_token.text === "*" && (in_array(this._last_last_text, ["function", "yield"]) || this._flags.mode === MODE.ObjectLiteral && in_array(this._last_last_text, ["{", ","]))) {
-            this._output.space_before_token = this._options.space_after_anon_function;
-          }
-        }
-        if (this._flags.last_token.text === ";" || this._flags.last_token.type === TOKEN.START_BLOCK) {
-          this.print_newline();
-        } else if (this._flags.last_token.type === TOKEN.END_EXPR || this._flags.last_token.type === TOKEN.START_EXPR || this._flags.last_token.type === TOKEN.END_BLOCK || this._flags.last_token.text === "." || this._flags.last_token.type === TOKEN.COMMA) {
-          this.allow_wrap_or_preserved_newline(current_token, current_token.newlines);
-        }
-        this.print_token(current_token);
-        this.set_mode(next_mode);
-        if (this._options.space_in_paren) {
-          this._output.space_before_token = true;
-        }
-        this.indent();
-      };
-      Beautifier.prototype.handle_end_expr = function(current_token) {
-        while (this._flags.mode === MODE.Statement) {
-          this.restore_mode();
-        }
-        this.handle_whitespace_and_comments(current_token);
-        if (this._flags.multiline_frame) {
-          this.allow_wrap_or_preserved_newline(
-            current_token,
-            current_token.text === "]" && is_array(this._flags.mode) && !this._options.keep_array_indentation
-          );
-        }
-        if (this._options.space_in_paren) {
-          if (this._flags.last_token.type === TOKEN.START_EXPR && !this._options.space_in_empty_paren) {
-            this._output.trim();
-            this._output.space_before_token = false;
-          } else {
-            this._output.space_before_token = true;
-          }
-        }
-        this.deindent();
-        this.print_token(current_token);
-        this.restore_mode();
-        remove_redundant_indentation(this._output, this._previous_flags);
-        if (this._flags.do_while && this._previous_flags.mode === MODE.Conditional) {
-          this._previous_flags.mode = MODE.Expression;
-          this._flags.do_block = false;
-          this._flags.do_while = false;
-        }
-      };
-      Beautifier.prototype.handle_start_block = function(current_token) {
-        this.handle_whitespace_and_comments(current_token);
-        var next_token = this._tokens.peek();
-        var second_token = this._tokens.peek(1);
-        if (this._flags.last_word === "switch" && this._flags.last_token.type === TOKEN.END_EXPR) {
-          this.set_mode(MODE.BlockStatement);
-          this._flags.in_case_statement = true;
-        } else if (this._flags.case_body) {
-          this.set_mode(MODE.BlockStatement);
-        } else if (second_token && (in_array(second_token.text, [":", ","]) && in_array(next_token.type, [TOKEN.STRING, TOKEN.WORD, TOKEN.RESERVED]) || in_array(next_token.text, ["get", "set", "..."]) && in_array(second_token.type, [TOKEN.WORD, TOKEN.RESERVED]))) {
-          if (in_array(this._last_last_text, ["class", "interface"]) && !in_array(second_token.text, [":", ","])) {
-            this.set_mode(MODE.BlockStatement);
-          } else {
-            this.set_mode(MODE.ObjectLiteral);
-          }
-        } else if (this._flags.last_token.type === TOKEN.OPERATOR && this._flags.last_token.text === "=>") {
-          this.set_mode(MODE.BlockStatement);
-        } else if (in_array(this._flags.last_token.type, [TOKEN.EQUALS, TOKEN.START_EXPR, TOKEN.COMMA, TOKEN.OPERATOR]) || reserved_array(this._flags.last_token, ["return", "throw", "import", "default"])) {
-          this.set_mode(MODE.ObjectLiteral);
-        } else {
-          this.set_mode(MODE.BlockStatement);
-        }
-        if (this._flags.last_token) {
-          if (reserved_array(this._flags.last_token.previous, ["class", "extends"])) {
-            this._flags.class_start_block = true;
-          }
-        }
-        var empty_braces = !next_token.comments_before && next_token.text === "}";
-        var empty_anonymous_function = empty_braces && this._flags.last_word === "function" && this._flags.last_token.type === TOKEN.END_EXPR;
-        if (this._options.brace_preserve_inline) {
-          var index = 0;
-          var check_token = null;
-          this._flags.inline_frame = true;
-          do {
-            index += 1;
-            check_token = this._tokens.peek(index - 1);
-            if (check_token.newlines) {
-              this._flags.inline_frame = false;
-              break;
-            }
-          } while (check_token.type !== TOKEN.EOF && !(check_token.type === TOKEN.END_BLOCK && check_token.opened === current_token));
-        }
-        if ((this._options.brace_style === "expand" || this._options.brace_style === "none" && current_token.newlines) && !this._flags.inline_frame) {
-          if (this._flags.last_token.type !== TOKEN.OPERATOR && (empty_anonymous_function || this._flags.last_token.type === TOKEN.EQUALS || reserved_array(this._flags.last_token, special_words) && this._flags.last_token.text !== "else")) {
-            this._output.space_before_token = true;
-          } else {
-            this.print_newline(false, true);
-          }
-        } else {
-          if (is_array(this._previous_flags.mode) && (this._flags.last_token.type === TOKEN.START_EXPR || this._flags.last_token.type === TOKEN.COMMA)) {
-            if (this._flags.last_token.type === TOKEN.COMMA || this._options.space_in_paren) {
-              this._output.space_before_token = true;
-            }
-            if (this._flags.last_token.type === TOKEN.COMMA || this._flags.last_token.type === TOKEN.START_EXPR && this._flags.inline_frame) {
-              this.allow_wrap_or_preserved_newline(current_token);
-              this._previous_flags.multiline_frame = this._previous_flags.multiline_frame || this._flags.multiline_frame;
-              this._flags.multiline_frame = false;
-            }
-          }
-          if (this._flags.last_token.type !== TOKEN.OPERATOR && this._flags.last_token.type !== TOKEN.START_EXPR) {
-            if (in_array(this._flags.last_token.type, [TOKEN.START_BLOCK, TOKEN.SEMICOLON]) && !this._flags.inline_frame) {
-              this.print_newline();
-            } else {
-              this._output.space_before_token = true;
-            }
-          }
-        }
-        this.print_token(current_token);
-        this.indent();
-        if (!empty_braces && !(this._options.brace_preserve_inline && this._flags.inline_frame)) {
-          this.print_newline();
-        }
-      };
-      Beautifier.prototype.handle_end_block = function(current_token) {
-        this.handle_whitespace_and_comments(current_token);
-        while (this._flags.mode === MODE.Statement) {
-          this.restore_mode();
-        }
-        var empty_braces = this._flags.last_token.type === TOKEN.START_BLOCK;
-        if (this._flags.inline_frame && !empty_braces) {
-          this._output.space_before_token = true;
-        } else if (this._options.brace_style === "expand") {
-          if (!empty_braces) {
-            this.print_newline();
-          }
-        } else {
-          if (!empty_braces) {
-            if (is_array(this._flags.mode) && this._options.keep_array_indentation) {
-              this._options.keep_array_indentation = false;
-              this.print_newline();
-              this._options.keep_array_indentation = true;
-            } else {
-              this.print_newline();
-            }
-          }
-        }
-        this.restore_mode();
-        this.print_token(current_token);
-      };
-      Beautifier.prototype.handle_word = function(current_token) {
-        if (current_token.type === TOKEN.RESERVED) {
-          if (in_array(current_token.text, ["set", "get"]) && this._flags.mode !== MODE.ObjectLiteral) {
-            current_token.type = TOKEN.WORD;
-          } else if (current_token.text === "import" && in_array(this._tokens.peek().text, ["(", "."])) {
-            current_token.type = TOKEN.WORD;
-          } else if (in_array(current_token.text, ["as", "from"]) && !this._flags.import_block) {
-            current_token.type = TOKEN.WORD;
-          } else if (this._flags.mode === MODE.ObjectLiteral) {
-            var next_token = this._tokens.peek();
-            if (next_token.text === ":") {
-              current_token.type = TOKEN.WORD;
-            }
-          }
-        }
-        if (this.start_of_statement(current_token)) {
-          if (reserved_array(this._flags.last_token, ["var", "let", "const"]) && current_token.type === TOKEN.WORD) {
-            this._flags.declaration_statement = true;
-          }
-        } else if (current_token.newlines && !is_expression(this._flags.mode) && (this._flags.last_token.type !== TOKEN.OPERATOR || (this._flags.last_token.text === "--" || this._flags.last_token.text === "++")) && this._flags.last_token.type !== TOKEN.EQUALS && (this._options.preserve_newlines || !reserved_array(this._flags.last_token, ["var", "let", "const", "set", "get"]))) {
-          this.handle_whitespace_and_comments(current_token);
-          this.print_newline();
-        } else {
-          this.handle_whitespace_and_comments(current_token);
-        }
-        if (this._flags.do_block && !this._flags.do_while) {
-          if (reserved_word(current_token, "while")) {
-            this._output.space_before_token = true;
-            this.print_token(current_token);
-            this._output.space_before_token = true;
-            this._flags.do_while = true;
-            return;
-          } else {
-            this.print_newline();
-            this._flags.do_block = false;
-          }
-        }
-        if (this._flags.if_block) {
-          if (!this._flags.else_block && reserved_word(current_token, "else")) {
-            this._flags.else_block = true;
-          } else {
-            while (this._flags.mode === MODE.Statement) {
-              this.restore_mode();
-            }
-            this._flags.if_block = false;
-            this._flags.else_block = false;
-          }
-        }
-        if (this._flags.in_case_statement && reserved_array(current_token, ["case", "default"])) {
-          this.print_newline();
-          if (!this._flags.case_block && (this._flags.case_body || this._options.jslint_happy)) {
-            this.deindent();
-          }
-          this._flags.case_body = false;
-          this.print_token(current_token);
-          this._flags.in_case = true;
-          return;
-        }
-        if (this._flags.last_token.type === TOKEN.COMMA || this._flags.last_token.type === TOKEN.START_EXPR || this._flags.last_token.type === TOKEN.EQUALS || this._flags.last_token.type === TOKEN.OPERATOR) {
-          if (!this.start_of_object_property() && !// start of object property is different for numeric values with +/- prefix operators
-          (in_array(this._flags.last_token.text, ["+", "-"]) && this._last_last_text === ":" && this._flags.parent.mode === MODE.ObjectLiteral)) {
-            this.allow_wrap_or_preserved_newline(current_token);
-          }
-        }
-        if (reserved_word(current_token, "function")) {
-          if (in_array(this._flags.last_token.text, ["}", ";"]) || this._output.just_added_newline() && !(in_array(this._flags.last_token.text, ["(", "[", "{", ":", "=", ","]) || this._flags.last_token.type === TOKEN.OPERATOR)) {
-            if (!this._output.just_added_blankline() && !current_token.comments_before) {
-              this.print_newline();
-              this.print_newline(true);
-            }
-          }
-          if (this._flags.last_token.type === TOKEN.RESERVED || this._flags.last_token.type === TOKEN.WORD) {
-            if (reserved_array(this._flags.last_token, ["get", "set", "new", "export"]) || reserved_array(this._flags.last_token, newline_restricted_tokens)) {
-              this._output.space_before_token = true;
-            } else if (reserved_word(this._flags.last_token, "default") && this._last_last_text === "export") {
-              this._output.space_before_token = true;
-            } else if (this._flags.last_token.text === "declare") {
-              this._output.space_before_token = true;
-            } else {
-              this.print_newline();
-            }
-          } else if (this._flags.last_token.type === TOKEN.OPERATOR || this._flags.last_token.text === "=") {
-            this._output.space_before_token = true;
-          } else if (!this._flags.multiline_frame && (is_expression(this._flags.mode) || is_array(this._flags.mode))) {
-          } else {
-            this.print_newline();
-          }
-          this.print_token(current_token);
-          this._flags.last_word = current_token.text;
-          return;
-        }
-        var prefix = "NONE";
-        if (this._flags.last_token.type === TOKEN.END_BLOCK) {
-          if (this._previous_flags.inline_frame) {
-            prefix = "SPACE";
-          } else if (!reserved_array(current_token, ["else", "catch", "finally", "from"])) {
-            prefix = "NEWLINE";
-          } else {
-            if (this._options.brace_style === "expand" || this._options.brace_style === "end-expand" || this._options.brace_style === "none" && current_token.newlines) {
-              prefix = "NEWLINE";
-            } else {
-              prefix = "SPACE";
-              this._output.space_before_token = true;
-            }
-          }
-        } else if (this._flags.last_token.type === TOKEN.SEMICOLON && this._flags.mode === MODE.BlockStatement) {
-          prefix = "NEWLINE";
-        } else if (this._flags.last_token.type === TOKEN.SEMICOLON && is_expression(this._flags.mode)) {
-          prefix = "SPACE";
-        } else if (this._flags.last_token.type === TOKEN.STRING) {
-          prefix = "NEWLINE";
-        } else if (this._flags.last_token.type === TOKEN.RESERVED || this._flags.last_token.type === TOKEN.WORD || this._flags.last_token.text === "*" && (in_array(this._last_last_text, ["function", "yield"]) || this._flags.mode === MODE.ObjectLiteral && in_array(this._last_last_text, ["{", ","]))) {
-          prefix = "SPACE";
-        } else if (this._flags.last_token.type === TOKEN.START_BLOCK) {
-          if (this._flags.inline_frame) {
-            prefix = "SPACE";
-          } else {
-            prefix = "NEWLINE";
-          }
-        } else if (this._flags.last_token.type === TOKEN.END_EXPR) {
-          this._output.space_before_token = true;
-          prefix = "NEWLINE";
-        }
-        if (reserved_array(current_token, line_starters) && this._flags.last_token.text !== ")") {
-          if (this._flags.inline_frame || this._flags.last_token.text === "else" || this._flags.last_token.text === "export") {
-            prefix = "SPACE";
-          } else {
-            prefix = "NEWLINE";
-          }
-        }
-        if (reserved_array(current_token, ["else", "catch", "finally"])) {
-          if ((!(this._flags.last_token.type === TOKEN.END_BLOCK && this._previous_flags.mode === MODE.BlockStatement) || this._options.brace_style === "expand" || this._options.brace_style === "end-expand" || this._options.brace_style === "none" && current_token.newlines) && !this._flags.inline_frame) {
-            this.print_newline();
-          } else {
-            this._output.trim(true);
-            var line = this._output.current_line;
-            if (line.last() !== "}") {
-              this.print_newline();
-            }
-            this._output.space_before_token = true;
-          }
-        } else if (prefix === "NEWLINE") {
-          if (reserved_array(this._flags.last_token, special_words)) {
-            this._output.space_before_token = true;
-          } else if (this._flags.last_token.text === "declare" && reserved_array(current_token, ["var", "let", "const"])) {
-            this._output.space_before_token = true;
-          } else if (this._flags.last_token.type !== TOKEN.END_EXPR) {
-            if ((this._flags.last_token.type !== TOKEN.START_EXPR || !reserved_array(current_token, ["var", "let", "const"])) && this._flags.last_token.text !== ":") {
-              if (reserved_word(current_token, "if") && reserved_word(current_token.previous, "else")) {
-                this._output.space_before_token = true;
-              } else {
-                this.print_newline();
-              }
-            }
-          } else if (reserved_array(current_token, line_starters) && this._flags.last_token.text !== ")") {
-            this.print_newline();
-          }
-        } else if (this._flags.multiline_frame && is_array(this._flags.mode) && this._flags.last_token.text === "," && this._last_last_text === "}") {
-          this.print_newline();
-        } else if (prefix === "SPACE") {
-          this._output.space_before_token = true;
-        }
-        if (current_token.previous && (current_token.previous.type === TOKEN.WORD || current_token.previous.type === TOKEN.RESERVED)) {
-          this._output.space_before_token = true;
-        }
-        this.print_token(current_token);
-        this._flags.last_word = current_token.text;
-        if (current_token.type === TOKEN.RESERVED) {
-          if (current_token.text === "do") {
-            this._flags.do_block = true;
-          } else if (current_token.text === "if") {
-            this._flags.if_block = true;
-          } else if (current_token.text === "import") {
-            this._flags.import_block = true;
-          } else if (this._flags.import_block && reserved_word(current_token, "from")) {
-            this._flags.import_block = false;
-          }
-        }
-      };
-      Beautifier.prototype.handle_semicolon = function(current_token) {
-        if (this.start_of_statement(current_token)) {
-          this._output.space_before_token = false;
-        } else {
-          this.handle_whitespace_and_comments(current_token);
-        }
-        var next_token = this._tokens.peek();
-        while (this._flags.mode === MODE.Statement && !(this._flags.if_block && reserved_word(next_token, "else")) && !this._flags.do_block) {
-          this.restore_mode();
-        }
-        if (this._flags.import_block) {
-          this._flags.import_block = false;
-        }
-        this.print_token(current_token);
-      };
-      Beautifier.prototype.handle_string = function(current_token) {
-        if (current_token.text.startsWith("`") && current_token.newlines === 0 && current_token.whitespace_before === "" && (current_token.previous.text === ")" || this._flags.last_token.type === TOKEN.WORD)) {
-        } else if (this.start_of_statement(current_token)) {
-          this._output.space_before_token = true;
-        } else {
-          this.handle_whitespace_and_comments(current_token);
-          if (this._flags.last_token.type === TOKEN.RESERVED || this._flags.last_token.type === TOKEN.WORD || this._flags.inline_frame) {
-            this._output.space_before_token = true;
-          } else if (this._flags.last_token.type === TOKEN.COMMA || this._flags.last_token.type === TOKEN.START_EXPR || this._flags.last_token.type === TOKEN.EQUALS || this._flags.last_token.type === TOKEN.OPERATOR) {
-            if (!this.start_of_object_property()) {
-              this.allow_wrap_or_preserved_newline(current_token);
-            }
-          } else if (current_token.text.startsWith("`") && this._flags.last_token.type === TOKEN.END_EXPR && (current_token.previous.text === "]" || current_token.previous.text === ")") && current_token.newlines === 0) {
-            this._output.space_before_token = true;
-          } else {
-            this.print_newline();
-          }
-        }
-        this.print_token(current_token);
-      };
-      Beautifier.prototype.handle_equals = function(current_token) {
-        if (this.start_of_statement(current_token)) {
-        } else {
-          this.handle_whitespace_and_comments(current_token);
-        }
-        if (this._flags.declaration_statement) {
-          this._flags.declaration_assignment = true;
-        }
-        this._output.space_before_token = true;
-        this.print_token(current_token);
-        this._output.space_before_token = true;
-      };
-      Beautifier.prototype.handle_comma = function(current_token) {
-        this.handle_whitespace_and_comments(current_token, true);
-        this.print_token(current_token);
-        this._output.space_before_token = true;
-        if (this._flags.declaration_statement) {
-          if (is_expression(this._flags.parent.mode)) {
-            this._flags.declaration_assignment = false;
-          }
-          if (this._flags.declaration_assignment) {
-            this._flags.declaration_assignment = false;
-            this.print_newline(false, true);
-          } else if (this._options.comma_first) {
-            this.allow_wrap_or_preserved_newline(current_token);
-          }
-        } else if (this._flags.mode === MODE.ObjectLiteral || this._flags.mode === MODE.Statement && this._flags.parent.mode === MODE.ObjectLiteral) {
-          if (this._flags.mode === MODE.Statement) {
-            this.restore_mode();
-          }
-          if (!this._flags.inline_frame) {
-            this.print_newline();
-          }
-        } else if (this._options.comma_first) {
-          this.allow_wrap_or_preserved_newline(current_token);
-        }
-      };
-      Beautifier.prototype.handle_operator = function(current_token) {
-        var isGeneratorAsterisk = current_token.text === "*" && (reserved_array(this._flags.last_token, ["function", "yield"]) || in_array(this._flags.last_token.type, [TOKEN.START_BLOCK, TOKEN.COMMA, TOKEN.END_BLOCK, TOKEN.SEMICOLON]));
-        var isUnary = in_array(current_token.text, ["-", "+"]) && (in_array(this._flags.last_token.type, [TOKEN.START_BLOCK, TOKEN.START_EXPR, TOKEN.EQUALS, TOKEN.OPERATOR]) || in_array(this._flags.last_token.text, line_starters) || this._flags.last_token.text === ",");
-        if (this.start_of_statement(current_token)) {
-        } else {
-          var preserve_statement_flags = !isGeneratorAsterisk;
-          this.handle_whitespace_and_comments(current_token, preserve_statement_flags);
-        }
-        if (current_token.text === "*" && this._flags.last_token.type === TOKEN.DOT) {
-          this.print_token(current_token);
-          return;
-        }
-        if (current_token.text === "::") {
-          this.print_token(current_token);
-          return;
-        }
-        if (in_array(current_token.text, ["-", "+"]) && this.start_of_object_property()) {
-          this.print_token(current_token);
-          return;
-        }
-        if (this._flags.last_token.type === TOKEN.OPERATOR && in_array(this._options.operator_position, OPERATOR_POSITION_BEFORE_OR_PRESERVE)) {
-          this.allow_wrap_or_preserved_newline(current_token);
-        }
-        if (current_token.text === ":" && this._flags.in_case) {
-          this.print_token(current_token);
-          this._flags.in_case = false;
-          this._flags.case_body = true;
-          if (this._tokens.peek().type !== TOKEN.START_BLOCK) {
-            this.indent();
-            this.print_newline();
-            this._flags.case_block = false;
-          } else {
-            this._flags.case_block = true;
-            this._output.space_before_token = true;
-          }
-          return;
-        }
-        var space_before = true;
-        var space_after = true;
-        var in_ternary = false;
-        if (current_token.text === ":") {
-          if (this._flags.ternary_depth === 0) {
-            space_before = false;
-          } else {
-            this._flags.ternary_depth -= 1;
-            in_ternary = true;
-          }
-        } else if (current_token.text === "?") {
-          this._flags.ternary_depth += 1;
-        }
-        if (!isUnary && !isGeneratorAsterisk && this._options.preserve_newlines && in_array(current_token.text, positionable_operators)) {
-          var isColon = current_token.text === ":";
-          var isTernaryColon = isColon && in_ternary;
-          var isOtherColon = isColon && !in_ternary;
-          switch (this._options.operator_position) {
-            case OPERATOR_POSITION.before_newline:
-              this._output.space_before_token = !isOtherColon;
-              this.print_token(current_token);
-              if (!isColon || isTernaryColon) {
-                this.allow_wrap_or_preserved_newline(current_token);
-              }
-              this._output.space_before_token = true;
-              return;
-            case OPERATOR_POSITION.after_newline:
-              this._output.space_before_token = true;
-              if (!isColon || isTernaryColon) {
-                if (this._tokens.peek().newlines) {
-                  this.print_newline(false, true);
-                } else {
-                  this.allow_wrap_or_preserved_newline(current_token);
-                }
-              } else {
-                this._output.space_before_token = false;
-              }
-              this.print_token(current_token);
-              this._output.space_before_token = true;
-              return;
-            case OPERATOR_POSITION.preserve_newline:
-              if (!isOtherColon) {
-                this.allow_wrap_or_preserved_newline(current_token);
-              }
-              space_before = !(this._output.just_added_newline() || isOtherColon);
-              this._output.space_before_token = space_before;
-              this.print_token(current_token);
-              this._output.space_before_token = true;
-              return;
-          }
-        }
-        if (isGeneratorAsterisk) {
-          this.allow_wrap_or_preserved_newline(current_token);
-          space_before = false;
-          var next_token = this._tokens.peek();
-          space_after = next_token && in_array(next_token.type, [TOKEN.WORD, TOKEN.RESERVED]);
-        } else if (current_token.text === "...") {
-          this.allow_wrap_or_preserved_newline(current_token);
-          space_before = this._flags.last_token.type === TOKEN.START_BLOCK;
-          space_after = false;
-        } else if (in_array(current_token.text, ["--", "++", "!", "~"]) || isUnary) {
-          if (this._flags.last_token.type === TOKEN.COMMA || this._flags.last_token.type === TOKEN.START_EXPR) {
-            this.allow_wrap_or_preserved_newline(current_token);
-          }
-          space_before = false;
-          space_after = false;
-          if (current_token.newlines && (current_token.text === "--" || current_token.text === "++" || current_token.text === "~")) {
-            var new_line_needed = reserved_array(this._flags.last_token, special_words) && current_token.newlines;
-            if (new_line_needed && (this._previous_flags.if_block || this._previous_flags.else_block)) {
-              this.restore_mode();
-            }
-            this.print_newline(new_line_needed, true);
-          }
-          if (this._flags.last_token.text === ";" && is_expression(this._flags.mode)) {
-            space_before = true;
-          }
-          if (this._flags.last_token.type === TOKEN.RESERVED) {
-            space_before = true;
-          } else if (this._flags.last_token.type === TOKEN.END_EXPR) {
-            space_before = !(this._flags.last_token.text === "]" && (current_token.text === "--" || current_token.text === "++"));
-          } else if (this._flags.last_token.type === TOKEN.OPERATOR) {
-            space_before = in_array(current_token.text, ["--", "-", "++", "+"]) && in_array(this._flags.last_token.text, ["--", "-", "++", "+"]);
-            if (in_array(current_token.text, ["+", "-"]) && in_array(this._flags.last_token.text, ["--", "++"])) {
-              space_after = true;
-            }
-          }
-          if ((this._flags.mode === MODE.BlockStatement && !this._flags.inline_frame || this._flags.mode === MODE.Statement) && (this._flags.last_token.text === "{" || this._flags.last_token.text === ";")) {
-            this.print_newline();
-          }
-        }
-        this._output.space_before_token = this._output.space_before_token || space_before;
-        this.print_token(current_token);
-        this._output.space_before_token = space_after;
-      };
-      Beautifier.prototype.handle_block_comment = function(current_token, preserve_statement_flags) {
-        if (this._output.raw) {
-          this._output.add_raw_token(current_token);
-          if (current_token.directives && current_token.directives.preserve === "end") {
-            this._output.raw = this._options.test_output_raw;
-          }
-          return;
-        }
-        if (current_token.directives) {
-          this.print_newline(false, preserve_statement_flags);
-          this.print_token(current_token);
-          if (current_token.directives.preserve === "start") {
-            this._output.raw = true;
-          }
-          this.print_newline(false, true);
-          return;
-        }
-        if (!acorn.newline.test(current_token.text) && !current_token.newlines) {
-          this._output.space_before_token = true;
-          this.print_token(current_token);
-          this._output.space_before_token = true;
-          return;
-        } else {
-          this.print_block_commment(current_token, preserve_statement_flags);
-        }
-      };
-      Beautifier.prototype.print_block_commment = function(current_token, preserve_statement_flags) {
-        var lines = split_linebreaks(current_token.text);
-        var j;
-        var javadoc = false;
-        var starless = false;
-        var lastIndent = current_token.whitespace_before;
-        var lastIndentLength = lastIndent.length;
-        this.print_newline(false, preserve_statement_flags);
-        this.print_token_line_indentation(current_token);
-        this._output.add_token(lines[0]);
-        this.print_newline(false, preserve_statement_flags);
-        if (lines.length > 1) {
-          lines = lines.slice(1);
-          javadoc = all_lines_start_with(lines, "*");
-          starless = each_line_matches_indent(lines, lastIndent);
-          if (javadoc) {
-            this._flags.alignment = 1;
-          }
-          for (j = 0; j < lines.length; j++) {
-            if (javadoc) {
-              this.print_token_line_indentation(current_token);
-              this._output.add_token(ltrim(lines[j]));
-            } else if (starless && lines[j]) {
-              this.print_token_line_indentation(current_token);
-              this._output.add_token(lines[j].substring(lastIndentLength));
-            } else {
-              this._output.current_line.set_indent(-1);
-              this._output.add_token(lines[j]);
-            }
-            this.print_newline(false, preserve_statement_flags);
-          }
-          this._flags.alignment = 0;
-        }
-      };
-      Beautifier.prototype.handle_comment = function(current_token, preserve_statement_flags) {
-        if (current_token.newlines) {
-          this.print_newline(false, preserve_statement_flags);
-        } else {
-          this._output.trim(true);
-        }
-        this._output.space_before_token = true;
-        this.print_token(current_token);
-        this.print_newline(false, preserve_statement_flags);
-      };
-      Beautifier.prototype.handle_dot = function(current_token) {
-        if (this.start_of_statement(current_token)) {
-        } else {
-          this.handle_whitespace_and_comments(current_token, true);
-        }
-        if (this._flags.last_token.text.match("^[0-9]+$")) {
-          this._output.space_before_token = true;
-        }
-        if (reserved_array(this._flags.last_token, special_words)) {
-          this._output.space_before_token = false;
-        } else {
-          this.allow_wrap_or_preserved_newline(
-            current_token,
-            this._flags.last_token.text === ")" && this._options.break_chained_methods
-          );
-        }
-        if (this._options.unindent_chained_methods && this._output.just_added_newline()) {
-          this.deindent();
-        }
-        this.print_token(current_token);
-      };
-      Beautifier.prototype.handle_unknown = function(current_token, preserve_statement_flags) {
-        this.print_token(current_token);
-        if (current_token.text[current_token.text.length - 1] === "\n") {
-          this.print_newline(false, preserve_statement_flags);
-        }
-      };
-      Beautifier.prototype.handle_eof = function(current_token) {
-        while (this._flags.mode === MODE.Statement) {
-          this.restore_mode();
-        }
-        this.handle_whitespace_and_comments(current_token);
-      };
-      module.exports.Beautifier = Beautifier;
-    }
-  });
-
-  // node_modules/js-beautify/js/src/javascript/index.js
-  var require_javascript = __commonJS({
-    "node_modules/js-beautify/js/src/javascript/index.js"(exports, module) {
-      "use strict";
-      var Beautifier = require_beautifier().Beautifier;
-      var Options = require_options2().Options;
-      function js_beautify2(js_source_text, options) {
-        var beautifier = new Beautifier(js_source_text, options);
-        return beautifier.beautify();
-      }
-      module.exports = js_beautify2;
-      module.exports.defaultOptions = function() {
-        return new Options();
-      };
-    }
-  });
-
-  // node_modules/js-beautify/js/src/css/options.js
-  var require_options3 = __commonJS({
-    "node_modules/js-beautify/js/src/css/options.js"(exports, module) {
-      "use strict";
-      var BaseOptions = require_options().Options;
-      function Options(options) {
-        BaseOptions.call(this, options, "css");
-        this.selector_separator_newline = this._get_boolean("selector_separator_newline", true);
-        this.newline_between_rules = this._get_boolean("newline_between_rules", true);
-        var space_around_selector_separator = this._get_boolean("space_around_selector_separator");
-        this.space_around_combinator = this._get_boolean("space_around_combinator") || space_around_selector_separator;
-        var brace_style_split = this._get_selection_list("brace_style", ["collapse", "expand", "end-expand", "none", "preserve-inline"]);
-        this.brace_style = "collapse";
-        for (var bs = 0; bs < brace_style_split.length; bs++) {
-          if (brace_style_split[bs] !== "expand") {
-            this.brace_style = "collapse";
-          } else {
-            this.brace_style = brace_style_split[bs];
-          }
-        }
-      }
-      Options.prototype = new BaseOptions();
-      module.exports.Options = Options;
-    }
-  });
-
-  // node_modules/js-beautify/js/src/css/beautifier.js
-  var require_beautifier2 = __commonJS({
-    "node_modules/js-beautify/js/src/css/beautifier.js"(exports, module) {
-      "use strict";
-      var Options = require_options3().Options;
-      var Output = require_output().Output;
-      var InputScanner = require_inputscanner().InputScanner;
-      var Directives = require_directives().Directives;
-      var directives_core = new Directives(/\/\*/, /\*\//);
-      var lineBreak = /\r\n|[\r\n]/;
-      var allLineBreaks = /\r\n|[\r\n]/g;
-      var whitespaceChar = /\s/;
-      var whitespacePattern = /(?:\s|\n)+/g;
-      var block_comment_pattern = /\/\*(?:[\s\S]*?)((?:\*\/)|$)/g;
-      var comment_pattern = /\/\/(?:[^\n\r\u2028\u2029]*)/g;
-      function Beautifier(source_text, options) {
-        this._source_text = source_text || "";
-        this._options = new Options(options);
-        this._ch = null;
-        this._input = null;
-        this.NESTED_AT_RULE = {
-          "page": true,
-          "font-face": true,
-          "keyframes": true,
-          // also in CONDITIONAL_GROUP_RULE below
-          "media": true,
-          "supports": true,
-          "document": true
-        };
-        this.CONDITIONAL_GROUP_RULE = {
-          "media": true,
-          "supports": true,
-          "document": true
-        };
-        this.NON_SEMICOLON_NEWLINE_PROPERTY = [
-          "grid-template-areas",
-          "grid-template"
-        ];
-      }
-      Beautifier.prototype.eatString = function(endChars) {
-        var result = "";
-        this._ch = this._input.next();
-        while (this._ch) {
-          result += this._ch;
-          if (this._ch === "\\") {
-            result += this._input.next();
-          } else if (endChars.indexOf(this._ch) !== -1 || this._ch === "\n") {
-            break;
-          }
-          this._ch = this._input.next();
-        }
-        return result;
-      };
-      Beautifier.prototype.eatWhitespace = function(allowAtLeastOneNewLine) {
-        var result = whitespaceChar.test(this._input.peek());
-        var newline_count = 0;
-        while (whitespaceChar.test(this._input.peek())) {
-          this._ch = this._input.next();
-          if (allowAtLeastOneNewLine && this._ch === "\n") {
-            if (newline_count === 0 || newline_count < this._options.max_preserve_newlines) {
-              newline_count++;
-              this._output.add_new_line(true);
-            }
-          }
-        }
-        return result;
-      };
-      Beautifier.prototype.foundNestedPseudoClass = function() {
-        var openParen = 0;
-        var i = 1;
-        var ch = this._input.peek(i);
-        while (ch) {
-          if (ch === "{") {
-            return true;
-          } else if (ch === "(") {
-            openParen += 1;
-          } else if (ch === ")") {
-            if (openParen === 0) {
-              return false;
-            }
-            openParen -= 1;
-          } else if (ch === ";" || ch === "}") {
-            return false;
-          }
-          i++;
-          ch = this._input.peek(i);
-        }
-        return false;
-      };
-      Beautifier.prototype.print_string = function(output_string) {
-        this._output.set_indent(this._indentLevel);
-        this._output.non_breaking_space = true;
-        this._output.add_token(output_string);
-      };
-      Beautifier.prototype.preserveSingleSpace = function(isAfterSpace) {
-        if (isAfterSpace) {
-          this._output.space_before_token = true;
-        }
-      };
-      Beautifier.prototype.indent = function() {
-        this._indentLevel++;
-      };
-      Beautifier.prototype.outdent = function() {
-        if (this._indentLevel > 0) {
-          this._indentLevel--;
-        }
-      };
-      Beautifier.prototype.beautify = function() {
-        if (this._options.disabled) {
-          return this._source_text;
-        }
-        var source_text = this._source_text;
-        var eol = this._options.eol;
-        if (eol === "auto") {
-          eol = "\n";
-          if (source_text && lineBreak.test(source_text || "")) {
-            eol = source_text.match(lineBreak)[0];
-          }
-        }
-        source_text = source_text.replace(allLineBreaks, "\n");
-        var baseIndentString = source_text.match(/^[\t ]*/)[0];
-        this._output = new Output(this._options, baseIndentString);
-        this._input = new InputScanner(source_text);
-        this._indentLevel = 0;
-        this._nestedLevel = 0;
-        this._ch = null;
-        var parenLevel = 0;
-        var insideRule = false;
-        var insidePropertyValue = false;
-        var enteringConditionalGroup = false;
-        var insideNonNestedAtRule = false;
-        var insideScssMap = false;
-        var topCharacter = this._ch;
-        var insideNonSemiColonValues = false;
-        var whitespace;
-        var isAfterSpace;
-        var previous_ch;
-        while (true) {
-          whitespace = this._input.read(whitespacePattern);
-          isAfterSpace = whitespace !== "";
-          previous_ch = topCharacter;
-          this._ch = this._input.next();
-          if (this._ch === "\\" && this._input.hasNext()) {
-            this._ch += this._input.next();
-          }
-          topCharacter = this._ch;
-          if (!this._ch) {
-            break;
-          } else if (this._ch === "/" && this._input.peek() === "*") {
-            this._output.add_new_line();
-            this._input.back();
-            var comment2 = this._input.read(block_comment_pattern);
-            var directives = directives_core.get_directives(comment2);
-            if (directives && directives.ignore === "start") {
-              comment2 += directives_core.readIgnored(this._input);
-            }
-            this.print_string(comment2);
-            this.eatWhitespace(true);
-            this._output.add_new_line();
-          } else if (this._ch === "/" && this._input.peek() === "/") {
-            this._output.space_before_token = true;
-            this._input.back();
-            this.print_string(this._input.read(comment_pattern));
-            this.eatWhitespace(true);
-          } else if (this._ch === "$") {
-            this.preserveSingleSpace(isAfterSpace);
-            this.print_string(this._ch);
-            var variable = this._input.peekUntilAfter(/[: ,;{}()[\]\/='"]/g);
-            if (variable.match(/[ :]$/)) {
-              variable = this.eatString(": ").replace(/\s+$/, "");
-              this.print_string(variable);
-              this._output.space_before_token = true;
-            }
-            if (parenLevel === 0 && variable.indexOf(":") !== -1) {
-              insidePropertyValue = true;
-              this.indent();
-            }
-          } else if (this._ch === "@") {
-            this.preserveSingleSpace(isAfterSpace);
-            if (this._input.peek() === "{") {
-              this.print_string(this._ch + this.eatString("}"));
-            } else {
-              this.print_string(this._ch);
-              var variableOrRule = this._input.peekUntilAfter(/[: ,;{}()[\]\/='"]/g);
-              if (variableOrRule.match(/[ :]$/)) {
-                variableOrRule = this.eatString(": ").replace(/\s+$/, "");
-                this.print_string(variableOrRule);
-                this._output.space_before_token = true;
-              }
-              if (parenLevel === 0 && variableOrRule.indexOf(":") !== -1) {
-                insidePropertyValue = true;
-                this.indent();
-              } else if (variableOrRule in this.NESTED_AT_RULE) {
-                this._nestedLevel += 1;
-                if (variableOrRule in this.CONDITIONAL_GROUP_RULE) {
-                  enteringConditionalGroup = true;
-                }
-              } else if (parenLevel === 0 && !insidePropertyValue) {
-                insideNonNestedAtRule = true;
-              }
-            }
-          } else if (this._ch === "#" && this._input.peek() === "{") {
-            this.preserveSingleSpace(isAfterSpace);
-            this.print_string(this._ch + this.eatString("}"));
-          } else if (this._ch === "{") {
-            if (insidePropertyValue) {
-              insidePropertyValue = false;
-              this.outdent();
-            }
-            insideNonNestedAtRule = false;
-            if (enteringConditionalGroup) {
-              enteringConditionalGroup = false;
-              insideRule = this._indentLevel >= this._nestedLevel;
-            } else {
-              insideRule = this._indentLevel >= this._nestedLevel - 1;
-            }
-            if (this._options.newline_between_rules && insideRule) {
-              if (this._output.previous_line && this._output.previous_line.item(-1) !== "{") {
-                this._output.ensure_empty_line_above("/", ",");
-              }
-            }
-            this._output.space_before_token = true;
-            if (this._options.brace_style === "expand") {
-              this._output.add_new_line();
-              this.print_string(this._ch);
-              this.indent();
-              this._output.set_indent(this._indentLevel);
-            } else {
-              if (previous_ch === "(") {
-                this._output.space_before_token = false;
-              } else if (previous_ch !== ",") {
-                this.indent();
-              }
-              this.print_string(this._ch);
-            }
-            this.eatWhitespace(true);
-            this._output.add_new_line();
-          } else if (this._ch === "}") {
-            this.outdent();
-            this._output.add_new_line();
-            if (previous_ch === "{") {
-              this._output.trim(true);
-            }
-            if (insidePropertyValue) {
-              this.outdent();
-              insidePropertyValue = false;
-            }
-            this.print_string(this._ch);
-            insideRule = false;
-            if (this._nestedLevel) {
-              this._nestedLevel--;
-            }
-            this.eatWhitespace(true);
-            this._output.add_new_line();
-            if (this._options.newline_between_rules && !this._output.just_added_blankline()) {
-              if (this._input.peek() !== "}") {
-                this._output.add_new_line(true);
-              }
-            }
-            if (this._input.peek() === ")") {
-              this._output.trim(true);
-              if (this._options.brace_style === "expand") {
-                this._output.add_new_line(true);
-              }
-            }
-          } else if (this._ch === ":") {
-            for (var i = 0; i < this.NON_SEMICOLON_NEWLINE_PROPERTY.length; i++) {
-              if (this._input.lookBack(this.NON_SEMICOLON_NEWLINE_PROPERTY[i])) {
-                insideNonSemiColonValues = true;
-                break;
-              }
-            }
-            if ((insideRule || enteringConditionalGroup) && !(this._input.lookBack("&") || this.foundNestedPseudoClass()) && !this._input.lookBack("(") && !insideNonNestedAtRule && parenLevel === 0) {
-              this.print_string(":");
-              if (!insidePropertyValue) {
-                insidePropertyValue = true;
-                this._output.space_before_token = true;
-                this.eatWhitespace(true);
-                this.indent();
-              }
-            } else {
-              if (this._input.lookBack(" ")) {
-                this._output.space_before_token = true;
-              }
-              if (this._input.peek() === ":") {
-                this._ch = this._input.next();
-                this.print_string("::");
-              } else {
-                this.print_string(":");
-              }
-            }
-          } else if (this._ch === '"' || this._ch === "'") {
-            var preserveQuoteSpace = previous_ch === '"' || previous_ch === "'";
-            this.preserveSingleSpace(preserveQuoteSpace || isAfterSpace);
-            this.print_string(this._ch + this.eatString(this._ch));
-            this.eatWhitespace(true);
-          } else if (this._ch === ";") {
-            insideNonSemiColonValues = false;
-            if (parenLevel === 0) {
-              if (insidePropertyValue) {
-                this.outdent();
-                insidePropertyValue = false;
-              }
-              insideNonNestedAtRule = false;
-              this.print_string(this._ch);
-              this.eatWhitespace(true);
-              if (this._input.peek() !== "/") {
-                this._output.add_new_line();
-              }
-            } else {
-              this.print_string(this._ch);
-              this.eatWhitespace(true);
-              this._output.space_before_token = true;
-            }
-          } else if (this._ch === "(") {
-            if (this._input.lookBack("url")) {
-              this.print_string(this._ch);
-              this.eatWhitespace();
-              parenLevel++;
-              this.indent();
-              this._ch = this._input.next();
-              if (this._ch === ")" || this._ch === '"' || this._ch === "'") {
-                this._input.back();
-              } else if (this._ch) {
-                this.print_string(this._ch + this.eatString(")"));
-                if (parenLevel) {
-                  parenLevel--;
-                  this.outdent();
-                }
-              }
-            } else {
-              var space_needed = false;
-              if (this._input.lookBack("with")) {
-                space_needed = true;
-              }
-              this.preserveSingleSpace(isAfterSpace || space_needed);
-              this.print_string(this._ch);
-              if (insidePropertyValue && previous_ch === "$" && this._options.selector_separator_newline) {
-                this._output.add_new_line();
-                insideScssMap = true;
-              } else {
-                this.eatWhitespace();
-                parenLevel++;
-                this.indent();
-              }
-            }
-          } else if (this._ch === ")") {
-            if (parenLevel) {
-              parenLevel--;
-              this.outdent();
-            }
-            if (insideScssMap && this._input.peek() === ";" && this._options.selector_separator_newline) {
-              insideScssMap = false;
-              this.outdent();
-              this._output.add_new_line();
-            }
-            this.print_string(this._ch);
-          } else if (this._ch === ",") {
-            this.print_string(this._ch);
-            this.eatWhitespace(true);
-            if (this._options.selector_separator_newline && (!insidePropertyValue || insideScssMap) && parenLevel === 0 && !insideNonNestedAtRule) {
-              this._output.add_new_line();
-            } else {
-              this._output.space_before_token = true;
-            }
-          } else if ((this._ch === ">" || this._ch === "+" || this._ch === "~") && !insidePropertyValue && parenLevel === 0) {
-            if (this._options.space_around_combinator) {
-              this._output.space_before_token = true;
-              this.print_string(this._ch);
-              this._output.space_before_token = true;
-            } else {
-              this.print_string(this._ch);
-              this.eatWhitespace();
-              if (this._ch && whitespaceChar.test(this._ch)) {
-                this._ch = "";
-              }
-            }
-          } else if (this._ch === "]") {
-            this.print_string(this._ch);
-          } else if (this._ch === "[") {
-            this.preserveSingleSpace(isAfterSpace);
-            this.print_string(this._ch);
-          } else if (this._ch === "=") {
-            this.eatWhitespace();
-            this.print_string("=");
-            if (whitespaceChar.test(this._ch)) {
-              this._ch = "";
-            }
-          } else if (this._ch === "!" && !this._input.lookBack("\\")) {
-            this._output.space_before_token = true;
-            this.print_string(this._ch);
-          } else {
-            var preserveAfterSpace = previous_ch === '"' || previous_ch === "'";
-            this.preserveSingleSpace(preserveAfterSpace || isAfterSpace);
-            this.print_string(this._ch);
-            if (!this._output.just_added_newline() && this._input.peek() === "\n" && insideNonSemiColonValues) {
-              this._output.add_new_line();
-            }
-          }
-        }
-        var sweetCode = this._output.get_code(eol);
-        return sweetCode;
-      };
-      module.exports.Beautifier = Beautifier;
-    }
-  });
-
-  // node_modules/js-beautify/js/src/css/index.js
-  var require_css = __commonJS({
-    "node_modules/js-beautify/js/src/css/index.js"(exports, module) {
-      "use strict";
-      var Beautifier = require_beautifier2().Beautifier;
-      var Options = require_options3().Options;
-      function css_beautify(source_text, options) {
-        var beautifier = new Beautifier(source_text, options);
-        return beautifier.beautify();
-      }
-      module.exports = css_beautify;
-      module.exports.defaultOptions = function() {
-        return new Options();
-      };
-    }
-  });
-
-  // node_modules/js-beautify/js/src/html/options.js
-  var require_options4 = __commonJS({
-    "node_modules/js-beautify/js/src/html/options.js"(exports, module) {
-      "use strict";
-      var BaseOptions = require_options().Options;
-      function Options(options) {
-        BaseOptions.call(this, options, "html");
-        if (this.templating.length === 1 && this.templating[0] === "auto") {
-          this.templating = ["django", "erb", "handlebars", "php"];
-        }
-        this.indent_inner_html = this._get_boolean("indent_inner_html");
-        this.indent_body_inner_html = this._get_boolean("indent_body_inner_html", true);
-        this.indent_head_inner_html = this._get_boolean("indent_head_inner_html", true);
-        this.indent_handlebars = this._get_boolean("indent_handlebars", true);
-        this.wrap_attributes = this._get_selection(
-          "wrap_attributes",
-          ["auto", "force", "force-aligned", "force-expand-multiline", "aligned-multiple", "preserve", "preserve-aligned"]
-        );
-        this.wrap_attributes_min_attrs = this._get_number("wrap_attributes_min_attrs", 2);
-        this.wrap_attributes_indent_size = this._get_number("wrap_attributes_indent_size", this.indent_size);
-        this.extra_liners = this._get_array("extra_liners", ["head", "body", "/html"]);
-        this.inline = this._get_array("inline", [
-          "a",
-          "abbr",
-          "area",
-          "audio",
-          "b",
-          "bdi",
-          "bdo",
-          "br",
-          "button",
-          "canvas",
-          "cite",
-          "code",
-          "data",
-          "datalist",
-          "del",
-          "dfn",
-          "em",
-          "embed",
-          "i",
-          "iframe",
-          "img",
-          "input",
-          "ins",
-          "kbd",
-          "keygen",
-          "label",
-          "map",
-          "mark",
-          "math",
-          "meter",
-          "noscript",
-          "object",
-          "output",
-          "progress",
-          "q",
-          "ruby",
-          "s",
-          "samp",
-          /* 'script', */
-          "select",
-          "small",
-          "span",
-          "strong",
-          "sub",
-          "sup",
-          "svg",
-          "template",
-          "textarea",
-          "time",
-          "u",
-          "var",
-          "video",
-          "wbr",
-          "text",
-          // obsolete inline tags
-          "acronym",
-          "big",
-          "strike",
-          "tt"
-        ]);
-        this.inline_custom_elements = this._get_boolean("inline_custom_elements", true);
-        this.void_elements = this._get_array("void_elements", [
-          // HTLM void elements - aka self-closing tags - aka singletons
-          // https://www.w3.org/html/wg/drafts/html/master/syntax.html#void-elements
-          "area",
-          "base",
-          "br",
-          "col",
-          "embed",
-          "hr",
-          "img",
-          "input",
-          "keygen",
-          "link",
-          "menuitem",
-          "meta",
-          "param",
-          "source",
-          "track",
-          "wbr",
-          // NOTE: Optional tags are too complex for a simple list
-          // they are hard coded in _do_optional_end_element
-          // Doctype and xml elements
-          "!doctype",
-          "?xml",
-          // obsolete tags
-          // basefont: https://www.computerhope.com/jargon/h/html-basefont-tag.htm
-          // isndex: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/isindex
-          "basefont",
-          "isindex"
-        ]);
-        this.unformatted = this._get_array("unformatted", []);
-        this.content_unformatted = this._get_array("content_unformatted", [
-          "pre",
-          "textarea"
-        ]);
-        this.unformatted_content_delimiter = this._get_characters("unformatted_content_delimiter");
-        this.indent_scripts = this._get_selection("indent_scripts", ["normal", "keep", "separate"]);
-      }
-      Options.prototype = new BaseOptions();
-      module.exports.Options = Options;
-    }
-  });
-
-  // node_modules/js-beautify/js/src/html/tokenizer.js
-  var require_tokenizer3 = __commonJS({
-    "node_modules/js-beautify/js/src/html/tokenizer.js"(exports, module) {
-      "use strict";
-      var BaseTokenizer = require_tokenizer().Tokenizer;
-      var BASETOKEN = require_tokenizer().TOKEN;
-      var Directives = require_directives().Directives;
-      var TemplatablePattern = require_templatablepattern().TemplatablePattern;
-      var Pattern = require_pattern().Pattern;
-      var TOKEN = {
-        TAG_OPEN: "TK_TAG_OPEN",
-        TAG_CLOSE: "TK_TAG_CLOSE",
-        CONTROL_FLOW_OPEN: "TK_CONTROL_FLOW_OPEN",
-        CONTROL_FLOW_CLOSE: "TK_CONTROL_FLOW_CLOSE",
-        ATTRIBUTE: "TK_ATTRIBUTE",
-        EQUALS: "TK_EQUALS",
-        VALUE: "TK_VALUE",
-        COMMENT: "TK_COMMENT",
-        TEXT: "TK_TEXT",
-        UNKNOWN: "TK_UNKNOWN",
-        START: BASETOKEN.START,
-        RAW: BASETOKEN.RAW,
-        EOF: BASETOKEN.EOF
-      };
-      var directives_core = new Directives(/<\!--/, /-->/);
-      var Tokenizer = function(input_string, options) {
-        BaseTokenizer.call(this, input_string, options);
-        this._current_tag_name = "";
-        var templatable_reader = new TemplatablePattern(this._input).read_options(this._options);
-        var pattern_reader = new Pattern(this._input);
-        this.__patterns = {
-          word: templatable_reader.until(/[\n\r\t <]/),
-          word_control_flow_close_excluded: templatable_reader.until(/[\n\r\t <}]/),
-          single_quote: templatable_reader.until_after(/'/),
-          double_quote: templatable_reader.until_after(/"/),
-          attribute: templatable_reader.until(/[\n\r\t =>]|\/>/),
-          element_name: templatable_reader.until(/[\n\r\t >\/]/),
-          angular_control_flow_start: pattern_reader.matching(/\@[a-zA-Z]+[^({]*[({]/),
-          handlebars_comment: pattern_reader.starting_with(/{{!--/).until_after(/--}}/),
-          handlebars: pattern_reader.starting_with(/{{/).until_after(/}}/),
-          handlebars_open: pattern_reader.until(/[\n\r\t }]/),
-          handlebars_raw_close: pattern_reader.until(/}}/),
-          comment: pattern_reader.starting_with(/<!--/).until_after(/-->/),
-          cdata: pattern_reader.starting_with(/<!\[CDATA\[/).until_after(/]]>/),
-          // https://en.wikipedia.org/wiki/Conditional_comment
-          conditional_comment: pattern_reader.starting_with(/<!\[/).until_after(/]>/),
-          processing: pattern_reader.starting_with(/<\?/).until_after(/\?>/)
-        };
-        if (this._options.indent_handlebars) {
-          this.__patterns.word = this.__patterns.word.exclude("handlebars");
-          this.__patterns.word_control_flow_close_excluded = this.__patterns.word_control_flow_close_excluded.exclude("handlebars");
-        }
-        this._unformatted_content_delimiter = null;
-        if (this._options.unformatted_content_delimiter) {
-          var literal_regexp = this._input.get_literal_regexp(this._options.unformatted_content_delimiter);
-          this.__patterns.unformatted_content_delimiter = pattern_reader.matching(literal_regexp).until_after(literal_regexp);
-        }
-      };
-      Tokenizer.prototype = new BaseTokenizer();
-      Tokenizer.prototype._is_comment = function(current_token) {
-        return false;
-      };
-      Tokenizer.prototype._is_opening = function(current_token) {
-        return current_token.type === TOKEN.TAG_OPEN || current_token.type === TOKEN.CONTROL_FLOW_OPEN;
-      };
-      Tokenizer.prototype._is_closing = function(current_token, open_token) {
-        return current_token.type === TOKEN.TAG_CLOSE && (open_token && ((current_token.text === ">" || current_token.text === "/>") && open_token.text[0] === "<" || current_token.text === "}}" && open_token.text[0] === "{" && open_token.text[1] === "{")) || current_token.type === TOKEN.CONTROL_FLOW_CLOSE && (current_token.text === "}" && open_token.text.endsWith("{"));
-      };
-      Tokenizer.prototype._reset = function() {
-        this._current_tag_name = "";
-      };
-      Tokenizer.prototype._get_next_token = function(previous_token, open_token) {
-        var token = null;
-        this._readWhitespace();
-        var c = this._input.peek();
-        if (c === null) {
-          return this._create_token(TOKEN.EOF, "");
-        }
-        token = token || this._read_open_handlebars(c, open_token);
-        token = token || this._read_attribute(c, previous_token, open_token);
-        token = token || this._read_close(c, open_token);
-        token = token || this._read_script_and_style(c, previous_token);
-        token = token || this._read_control_flows(c, open_token);
-        token = token || this._read_raw_content(c, previous_token, open_token);
-        token = token || this._read_content_word(c, open_token);
-        token = token || this._read_comment_or_cdata(c);
-        token = token || this._read_processing(c);
-        token = token || this._read_open(c, open_token);
-        token = token || this._create_token(TOKEN.UNKNOWN, this._input.next());
-        return token;
-      };
-      Tokenizer.prototype._read_comment_or_cdata = function(c) {
-        var token = null;
-        var resulting_string = null;
-        var directives = null;
-        if (c === "<") {
-          var peek1 = this._input.peek(1);
-          if (peek1 === "!") {
-            resulting_string = this.__patterns.comment.read();
-            if (resulting_string) {
-              directives = directives_core.get_directives(resulting_string);
-              if (directives && directives.ignore === "start") {
-                resulting_string += directives_core.readIgnored(this._input);
-              }
-            } else {
-              resulting_string = this.__patterns.cdata.read();
-            }
-          }
-          if (resulting_string) {
-            token = this._create_token(TOKEN.COMMENT, resulting_string);
-            token.directives = directives;
-          }
-        }
-        return token;
-      };
-      Tokenizer.prototype._read_processing = function(c) {
-        var token = null;
-        var resulting_string = null;
-        var directives = null;
-        if (c === "<") {
-          var peek1 = this._input.peek(1);
-          if (peek1 === "!" || peek1 === "?") {
-            resulting_string = this.__patterns.conditional_comment.read();
-            resulting_string = resulting_string || this.__patterns.processing.read();
-          }
-          if (resulting_string) {
-            token = this._create_token(TOKEN.COMMENT, resulting_string);
-            token.directives = directives;
-          }
-        }
-        return token;
-      };
-      Tokenizer.prototype._read_open = function(c, open_token) {
-        var resulting_string = null;
-        var token = null;
-        if (!open_token || open_token.type === TOKEN.CONTROL_FLOW_OPEN) {
-          if (c === "<") {
-            resulting_string = this._input.next();
-            if (this._input.peek() === "/") {
-              resulting_string += this._input.next();
-            }
-            resulting_string += this.__patterns.element_name.read();
-            token = this._create_token(TOKEN.TAG_OPEN, resulting_string);
-          }
-        }
-        return token;
-      };
-      Tokenizer.prototype._read_open_handlebars = function(c, open_token) {
-        var resulting_string = null;
-        var token = null;
-        if (!open_token || open_token.type === TOKEN.CONTROL_FLOW_OPEN) {
-          if ((this._options.templating.includes("angular") || this._options.indent_handlebars) && c === "{" && this._input.peek(1) === "{") {
-            if (this._options.indent_handlebars && this._input.peek(2) === "!") {
-              resulting_string = this.__patterns.handlebars_comment.read();
-              resulting_string = resulting_string || this.__patterns.handlebars.read();
-              token = this._create_token(TOKEN.COMMENT, resulting_string);
-            } else {
-              resulting_string = this.__patterns.handlebars_open.read();
-              token = this._create_token(TOKEN.TAG_OPEN, resulting_string);
-            }
-          }
-        }
-        return token;
-      };
-      Tokenizer.prototype._read_control_flows = function(c, open_token) {
-        var resulting_string = "";
-        var token = null;
-        if (!this._options.templating.includes("angular")) {
-          return token;
-        }
-        if (c === "@") {
-          resulting_string = this.__patterns.angular_control_flow_start.read();
-          if (resulting_string === "") {
-            return token;
-          }
-          var opening_parentheses_count = resulting_string.endsWith("(") ? 1 : 0;
-          var closing_parentheses_count = 0;
-          while (!(resulting_string.endsWith("{") && opening_parentheses_count === closing_parentheses_count)) {
-            var next_char = this._input.next();
-            if (next_char === null) {
-              break;
-            } else if (next_char === "(") {
-              opening_parentheses_count++;
-            } else if (next_char === ")") {
-              closing_parentheses_count++;
-            }
-            resulting_string += next_char;
-          }
-          token = this._create_token(TOKEN.CONTROL_FLOW_OPEN, resulting_string);
-        } else if (c === "}" && open_token && open_token.type === TOKEN.CONTROL_FLOW_OPEN) {
-          resulting_string = this._input.next();
-          token = this._create_token(TOKEN.CONTROL_FLOW_CLOSE, resulting_string);
-        }
-        return token;
-      };
-      Tokenizer.prototype._read_close = function(c, open_token) {
-        var resulting_string = null;
-        var token = null;
-        if (open_token && open_token.type === TOKEN.TAG_OPEN) {
-          if (open_token.text[0] === "<" && (c === ">" || c === "/" && this._input.peek(1) === ">")) {
-            resulting_string = this._input.next();
-            if (c === "/") {
-              resulting_string += this._input.next();
-            }
-            token = this._create_token(TOKEN.TAG_CLOSE, resulting_string);
-          } else if (open_token.text[0] === "{" && c === "}" && this._input.peek(1) === "}") {
-            this._input.next();
-            this._input.next();
-            token = this._create_token(TOKEN.TAG_CLOSE, "}}");
-          }
-        }
-        return token;
-      };
-      Tokenizer.prototype._read_attribute = function(c, previous_token, open_token) {
-        var token = null;
-        var resulting_string = "";
-        if (open_token && open_token.text[0] === "<") {
-          if (c === "=") {
-            token = this._create_token(TOKEN.EQUALS, this._input.next());
-          } else if (c === '"' || c === "'") {
-            var content2 = this._input.next();
-            if (c === '"') {
-              content2 += this.__patterns.double_quote.read();
-            } else {
-              content2 += this.__patterns.single_quote.read();
-            }
-            token = this._create_token(TOKEN.VALUE, content2);
-          } else {
-            resulting_string = this.__patterns.attribute.read();
-            if (resulting_string) {
-              if (previous_token.type === TOKEN.EQUALS) {
-                token = this._create_token(TOKEN.VALUE, resulting_string);
-              } else {
-                token = this._create_token(TOKEN.ATTRIBUTE, resulting_string);
-              }
-            }
-          }
-        }
-        return token;
-      };
-      Tokenizer.prototype._is_content_unformatted = function(tag_name) {
-        return this._options.void_elements.indexOf(tag_name) === -1 && (this._options.content_unformatted.indexOf(tag_name) !== -1 || this._options.unformatted.indexOf(tag_name) !== -1);
-      };
-      Tokenizer.prototype._read_raw_content = function(c, previous_token, open_token) {
-        var resulting_string = "";
-        if (open_token && open_token.text[0] === "{") {
-          resulting_string = this.__patterns.handlebars_raw_close.read();
-        } else if (previous_token.type === TOKEN.TAG_CLOSE && previous_token.opened.text[0] === "<" && previous_token.text[0] !== "/") {
-          var tag_name = previous_token.opened.text.substr(1).toLowerCase();
-          if (this._is_content_unformatted(tag_name)) {
-            resulting_string = this._input.readUntil(new RegExp("</" + tag_name + "[\\n\\r\\t ]*?>", "ig"));
-          }
-        }
-        if (resulting_string) {
-          return this._create_token(TOKEN.TEXT, resulting_string);
-        }
-        return null;
-      };
-      Tokenizer.prototype._read_script_and_style = function(c, previous_token) {
-        if (previous_token.type === TOKEN.TAG_CLOSE && previous_token.opened.text[0] === "<" && previous_token.text[0] !== "/") {
-          var tag_name = previous_token.opened.text.substr(1).toLowerCase();
-          if (tag_name === "script" || tag_name === "style") {
-            var token = this._read_comment_or_cdata(c);
-            if (token) {
-              token.type = TOKEN.TEXT;
-              return token;
-            }
-            var resulting_string = this._input.readUntil(new RegExp("</" + tag_name + "[\\n\\r\\t ]*?>", "ig"));
-            if (resulting_string) {
-              return this._create_token(TOKEN.TEXT, resulting_string);
-            }
-          }
-        }
-        return null;
-      };
-      Tokenizer.prototype._read_content_word = function(c, open_token) {
-        var resulting_string = "";
-        if (this._options.unformatted_content_delimiter) {
-          if (c === this._options.unformatted_content_delimiter[0]) {
-            resulting_string = this.__patterns.unformatted_content_delimiter.read();
-          }
-        }
-        if (!resulting_string) {
-          resulting_string = open_token && open_token.type === TOKEN.CONTROL_FLOW_OPEN ? this.__patterns.word_control_flow_close_excluded.read() : this.__patterns.word.read();
-        }
-        if (resulting_string) {
-          return this._create_token(TOKEN.TEXT, resulting_string);
-        }
-        return null;
-      };
-      module.exports.Tokenizer = Tokenizer;
-      module.exports.TOKEN = TOKEN;
-    }
-  });
-
-  // node_modules/js-beautify/js/src/html/beautifier.js
-  var require_beautifier3 = __commonJS({
-    "node_modules/js-beautify/js/src/html/beautifier.js"(exports, module) {
-      "use strict";
-      var Options = require_options4().Options;
-      var Output = require_output().Output;
-      var Tokenizer = require_tokenizer3().Tokenizer;
-      var TOKEN = require_tokenizer3().TOKEN;
-      var lineBreak = /\r\n|[\r\n]/;
-      var allLineBreaks = /\r\n|[\r\n]/g;
-      var Printer = function(options, base_indent_string) {
-        this.indent_level = 0;
-        this.alignment_size = 0;
-        this.max_preserve_newlines = options.max_preserve_newlines;
-        this.preserve_newlines = options.preserve_newlines;
-        this._output = new Output(options, base_indent_string);
-      };
-      Printer.prototype.current_line_has_match = function(pattern) {
-        return this._output.current_line.has_match(pattern);
-      };
-      Printer.prototype.set_space_before_token = function(value, non_breaking) {
-        this._output.space_before_token = value;
-        this._output.non_breaking_space = non_breaking;
-      };
-      Printer.prototype.set_wrap_point = function() {
-        this._output.set_indent(this.indent_level, this.alignment_size);
-        this._output.set_wrap_point();
-      };
-      Printer.prototype.add_raw_token = function(token) {
-        this._output.add_raw_token(token);
-      };
-      Printer.prototype.print_preserved_newlines = function(raw_token) {
-        var newlines = 0;
-        if (raw_token.type !== TOKEN.TEXT && raw_token.previous.type !== TOKEN.TEXT) {
-          newlines = raw_token.newlines ? 1 : 0;
-        }
-        if (this.preserve_newlines) {
-          newlines = raw_token.newlines < this.max_preserve_newlines + 1 ? raw_token.newlines : this.max_preserve_newlines + 1;
-        }
-        for (var n = 0; n < newlines; n++) {
-          this.print_newline(n > 0);
-        }
-        return newlines !== 0;
-      };
-      Printer.prototype.traverse_whitespace = function(raw_token) {
-        if (raw_token.whitespace_before || raw_token.newlines) {
-          if (!this.print_preserved_newlines(raw_token)) {
-            this._output.space_before_token = true;
-          }
-          return true;
-        }
-        return false;
-      };
-      Printer.prototype.previous_token_wrapped = function() {
-        return this._output.previous_token_wrapped;
-      };
-      Printer.prototype.print_newline = function(force) {
-        this._output.add_new_line(force);
-      };
-      Printer.prototype.print_token = function(token) {
-        if (token.text) {
-          this._output.set_indent(this.indent_level, this.alignment_size);
-          this._output.add_token(token.text);
-        }
-      };
-      Printer.prototype.indent = function() {
-        this.indent_level++;
-      };
-      Printer.prototype.deindent = function() {
-        if (this.indent_level > 0) {
-          this.indent_level--;
-          this._output.set_indent(this.indent_level, this.alignment_size);
-        }
-      };
-      Printer.prototype.get_full_indent = function(level) {
-        level = this.indent_level + (level || 0);
-        if (level < 1) {
-          return "";
-        }
-        return this._output.get_indent_string(level);
-      };
-      var get_type_attribute = function(start_token) {
-        var result = null;
-        var raw_token = start_token.next;
-        while (raw_token.type !== TOKEN.EOF && start_token.closed !== raw_token) {
-          if (raw_token.type === TOKEN.ATTRIBUTE && raw_token.text === "type") {
-            if (raw_token.next && raw_token.next.type === TOKEN.EQUALS && raw_token.next.next && raw_token.next.next.type === TOKEN.VALUE) {
-              result = raw_token.next.next.text;
-            }
-            break;
-          }
-          raw_token = raw_token.next;
-        }
-        return result;
-      };
-      var get_custom_beautifier_name = function(tag_check, raw_token) {
-        var typeAttribute = null;
-        var result = null;
-        if (!raw_token.closed) {
-          return null;
-        }
-        if (tag_check === "script") {
-          typeAttribute = "text/javascript";
-        } else if (tag_check === "style") {
-          typeAttribute = "text/css";
-        }
-        typeAttribute = get_type_attribute(raw_token) || typeAttribute;
-        if (typeAttribute.search("text/css") > -1) {
-          result = "css";
-        } else if (typeAttribute.search(/module|((text|application|dojo)\/(x-)?(javascript|ecmascript|jscript|livescript|(ld\+)?json|method|aspect))/) > -1) {
-          result = "javascript";
-        } else if (typeAttribute.search(/(text|application|dojo)\/(x-)?(html)/) > -1) {
-          result = "html";
-        } else if (typeAttribute.search(/test\/null/) > -1) {
-          result = "null";
-        }
-        return result;
-      };
-      function in_array(what, arr) {
-        return arr.indexOf(what) !== -1;
-      }
-      function TagFrame(parent, parser_token, indent_level) {
-        this.parent = parent || null;
-        this.tag = parser_token ? parser_token.tag_name : "";
-        this.indent_level = indent_level || 0;
-        this.parser_token = parser_token || null;
-      }
-      function TagStack(printer) {
-        this._printer = printer;
-        this._current_frame = null;
-      }
-      TagStack.prototype.get_parser_token = function() {
-        return this._current_frame ? this._current_frame.parser_token : null;
-      };
-      TagStack.prototype.record_tag = function(parser_token) {
-        var new_frame = new TagFrame(this._current_frame, parser_token, this._printer.indent_level);
-        this._current_frame = new_frame;
-      };
-      TagStack.prototype._try_pop_frame = function(frame) {
-        var parser_token = null;
-        if (frame) {
-          parser_token = frame.parser_token;
-          this._printer.indent_level = frame.indent_level;
-          this._current_frame = frame.parent;
-        }
-        return parser_token;
-      };
-      TagStack.prototype._get_frame = function(tag_list, stop_list) {
-        var frame = this._current_frame;
-        while (frame) {
-          if (tag_list.indexOf(frame.tag) !== -1) {
-            break;
-          } else if (stop_list && stop_list.indexOf(frame.tag) !== -1) {
-            frame = null;
-            break;
-          }
-          frame = frame.parent;
-        }
-        return frame;
-      };
-      TagStack.prototype.try_pop = function(tag, stop_list) {
-        var frame = this._get_frame([tag], stop_list);
-        return this._try_pop_frame(frame);
-      };
-      TagStack.prototype.indent_to_tag = function(tag_list) {
-        var frame = this._get_frame(tag_list);
-        if (frame) {
-          this._printer.indent_level = frame.indent_level;
-        }
-      };
-      function Beautifier(source_text, options, js_beautify2, css_beautify) {
-        this._source_text = source_text || "";
-        options = options || {};
-        this._js_beautify = js_beautify2;
-        this._css_beautify = css_beautify;
-        this._tag_stack = null;
-        var optionHtml = new Options(options, "html");
-        this._options = optionHtml;
-        this._is_wrap_attributes_force = this._options.wrap_attributes.substr(0, "force".length) === "force";
-        this._is_wrap_attributes_force_expand_multiline = this._options.wrap_attributes === "force-expand-multiline";
-        this._is_wrap_attributes_force_aligned = this._options.wrap_attributes === "force-aligned";
-        this._is_wrap_attributes_aligned_multiple = this._options.wrap_attributes === "aligned-multiple";
-        this._is_wrap_attributes_preserve = this._options.wrap_attributes.substr(0, "preserve".length) === "preserve";
-        this._is_wrap_attributes_preserve_aligned = this._options.wrap_attributes === "preserve-aligned";
-      }
-      Beautifier.prototype.beautify = function() {
-        if (this._options.disabled) {
-          return this._source_text;
-        }
-        var source_text = this._source_text;
-        var eol = this._options.eol;
-        if (this._options.eol === "auto") {
-          eol = "\n";
-          if (source_text && lineBreak.test(source_text)) {
-            eol = source_text.match(lineBreak)[0];
-          }
-        }
-        source_text = source_text.replace(allLineBreaks, "\n");
-        var baseIndentString = source_text.match(/^[\t ]*/)[0];
-        var last_token = {
-          text: "",
-          type: ""
-        };
-        var last_tag_token = new TagOpenParserToken(this._options);
-        var printer = new Printer(this._options, baseIndentString);
-        var tokens = new Tokenizer(source_text, this._options).tokenize();
-        this._tag_stack = new TagStack(printer);
-        var parser_token = null;
-        var raw_token = tokens.next();
-        while (raw_token.type !== TOKEN.EOF) {
-          if (raw_token.type === TOKEN.TAG_OPEN || raw_token.type === TOKEN.COMMENT) {
-            parser_token = this._handle_tag_open(printer, raw_token, last_tag_token, last_token, tokens);
-            last_tag_token = parser_token;
-          } else if (raw_token.type === TOKEN.ATTRIBUTE || raw_token.type === TOKEN.EQUALS || raw_token.type === TOKEN.VALUE || raw_token.type === TOKEN.TEXT && !last_tag_token.tag_complete) {
-            parser_token = this._handle_inside_tag(printer, raw_token, last_tag_token, last_token);
-          } else if (raw_token.type === TOKEN.TAG_CLOSE) {
-            parser_token = this._handle_tag_close(printer, raw_token, last_tag_token);
-          } else if (raw_token.type === TOKEN.TEXT) {
-            parser_token = this._handle_text(printer, raw_token, last_tag_token);
-          } else if (raw_token.type === TOKEN.CONTROL_FLOW_OPEN) {
-            parser_token = this._handle_control_flow_open(printer, raw_token);
-          } else if (raw_token.type === TOKEN.CONTROL_FLOW_CLOSE) {
-            parser_token = this._handle_control_flow_close(printer, raw_token);
-          } else {
-            printer.add_raw_token(raw_token);
-          }
-          last_token = parser_token;
-          raw_token = tokens.next();
-        }
-        var sweet_code = printer._output.get_code(eol);
-        return sweet_code;
-      };
-      Beautifier.prototype._handle_control_flow_open = function(printer, raw_token) {
-        var parser_token = {
-          text: raw_token.text,
-          type: raw_token.type
-        };
-        printer.set_space_before_token(raw_token.newlines || raw_token.whitespace_before !== "", true);
-        if (raw_token.newlines) {
-          printer.print_preserved_newlines(raw_token);
-        } else {
-          printer.set_space_before_token(raw_token.newlines || raw_token.whitespace_before !== "", true);
-        }
-        printer.print_token(raw_token);
-        printer.indent();
-        return parser_token;
-      };
-      Beautifier.prototype._handle_control_flow_close = function(printer, raw_token) {
-        var parser_token = {
-          text: raw_token.text,
-          type: raw_token.type
-        };
-        printer.deindent();
-        if (raw_token.newlines) {
-          printer.print_preserved_newlines(raw_token);
-        } else {
-          printer.set_space_before_token(raw_token.newlines || raw_token.whitespace_before !== "", true);
-        }
-        printer.print_token(raw_token);
-        return parser_token;
-      };
-      Beautifier.prototype._handle_tag_close = function(printer, raw_token, last_tag_token) {
-        var parser_token = {
-          text: raw_token.text,
-          type: raw_token.type
-        };
-        printer.alignment_size = 0;
-        last_tag_token.tag_complete = true;
-        printer.set_space_before_token(raw_token.newlines || raw_token.whitespace_before !== "", true);
-        if (last_tag_token.is_unformatted) {
-          printer.add_raw_token(raw_token);
-        } else {
-          if (last_tag_token.tag_start_char === "<") {
-            printer.set_space_before_token(raw_token.text[0] === "/", true);
-            if (this._is_wrap_attributes_force_expand_multiline && last_tag_token.has_wrapped_attrs) {
-              printer.print_newline(false);
-            }
-          }
-          printer.print_token(raw_token);
-        }
-        if (last_tag_token.indent_content && !(last_tag_token.is_unformatted || last_tag_token.is_content_unformatted)) {
-          printer.indent();
-          last_tag_token.indent_content = false;
-        }
-        if (!last_tag_token.is_inline_element && !(last_tag_token.is_unformatted || last_tag_token.is_content_unformatted)) {
-          printer.set_wrap_point();
-        }
-        return parser_token;
-      };
-      Beautifier.prototype._handle_inside_tag = function(printer, raw_token, last_tag_token, last_token) {
-        var wrapped = last_tag_token.has_wrapped_attrs;
-        var parser_token = {
-          text: raw_token.text,
-          type: raw_token.type
-        };
-        printer.set_space_before_token(raw_token.newlines || raw_token.whitespace_before !== "", true);
-        if (last_tag_token.is_unformatted) {
-          printer.add_raw_token(raw_token);
-        } else if (last_tag_token.tag_start_char === "{" && raw_token.type === TOKEN.TEXT) {
-          if (printer.print_preserved_newlines(raw_token)) {
-            raw_token.newlines = 0;
-            printer.add_raw_token(raw_token);
-          } else {
-            printer.print_token(raw_token);
-          }
-        } else {
-          if (raw_token.type === TOKEN.ATTRIBUTE) {
-            printer.set_space_before_token(true);
-          } else if (raw_token.type === TOKEN.EQUALS) {
-            printer.set_space_before_token(false);
-          } else if (raw_token.type === TOKEN.VALUE && raw_token.previous.type === TOKEN.EQUALS) {
-            printer.set_space_before_token(false);
-          }
-          if (raw_token.type === TOKEN.ATTRIBUTE && last_tag_token.tag_start_char === "<") {
-            if (this._is_wrap_attributes_preserve || this._is_wrap_attributes_preserve_aligned) {
-              printer.traverse_whitespace(raw_token);
-              wrapped = wrapped || raw_token.newlines !== 0;
-            }
-            if (this._is_wrap_attributes_force && last_tag_token.attr_count >= this._options.wrap_attributes_min_attrs && (last_token.type !== TOKEN.TAG_OPEN || // ie. second attribute and beyond
-            this._is_wrap_attributes_force_expand_multiline)) {
-              printer.print_newline(false);
-              wrapped = true;
-            }
-          }
-          printer.print_token(raw_token);
-          wrapped = wrapped || printer.previous_token_wrapped();
-          last_tag_token.has_wrapped_attrs = wrapped;
-        }
-        return parser_token;
-      };
-      Beautifier.prototype._handle_text = function(printer, raw_token, last_tag_token) {
-        var parser_token = {
-          text: raw_token.text,
-          type: "TK_CONTENT"
-        };
-        if (last_tag_token.custom_beautifier_name) {
-          this._print_custom_beatifier_text(printer, raw_token, last_tag_token);
-        } else if (last_tag_token.is_unformatted || last_tag_token.is_content_unformatted) {
-          printer.add_raw_token(raw_token);
-        } else {
-          printer.traverse_whitespace(raw_token);
-          printer.print_token(raw_token);
-        }
-        return parser_token;
-      };
-      Beautifier.prototype._print_custom_beatifier_text = function(printer, raw_token, last_tag_token) {
-        var local = this;
-        if (raw_token.text !== "") {
-          var text2 = raw_token.text, _beautifier, script_indent_level = 1, pre = "", post = "";
-          if (last_tag_token.custom_beautifier_name === "javascript" && typeof this._js_beautify === "function") {
-            _beautifier = this._js_beautify;
-          } else if (last_tag_token.custom_beautifier_name === "css" && typeof this._css_beautify === "function") {
-            _beautifier = this._css_beautify;
-          } else if (last_tag_token.custom_beautifier_name === "html") {
-            _beautifier = function(html_source, options) {
-              var beautifier = new Beautifier(html_source, options, local._js_beautify, local._css_beautify);
-              return beautifier.beautify();
-            };
-          }
-          if (this._options.indent_scripts === "keep") {
-            script_indent_level = 0;
-          } else if (this._options.indent_scripts === "separate") {
-            script_indent_level = -printer.indent_level;
-          }
-          var indentation = printer.get_full_indent(script_indent_level);
-          text2 = text2.replace(/\n[ \t]*$/, "");
-          if (last_tag_token.custom_beautifier_name !== "html" && text2[0] === "<" && text2.match(/^(<!--|<!\[CDATA\[)/)) {
-            var matched = /^(<!--[^\n]*|<!\[CDATA\[)(\n?)([ \t\n]*)([\s\S]*)(-->|]]>)$/.exec(text2);
-            if (!matched) {
-              printer.add_raw_token(raw_token);
-              return;
-            }
-            pre = indentation + matched[1] + "\n";
-            text2 = matched[4];
-            if (matched[5]) {
-              post = indentation + matched[5];
-            }
-            text2 = text2.replace(/\n[ \t]*$/, "");
-            if (matched[2] || matched[3].indexOf("\n") !== -1) {
-              matched = matched[3].match(/[ \t]+$/);
-              if (matched) {
-                raw_token.whitespace_before = matched[0];
-              }
-            }
-          }
-          if (text2) {
-            if (_beautifier) {
-              var Child_options = function() {
-                this.eol = "\n";
-              };
-              Child_options.prototype = this._options.raw_options;
-              var child_options = new Child_options();
-              text2 = _beautifier(indentation + text2, child_options);
-            } else {
-              var white = raw_token.whitespace_before;
-              if (white) {
-                text2 = text2.replace(new RegExp("\n(" + white + ")?", "g"), "\n");
-              }
-              text2 = indentation + text2.replace(/\n/g, "\n" + indentation);
-            }
-          }
-          if (pre) {
-            if (!text2) {
-              text2 = pre + post;
-            } else {
-              text2 = pre + text2 + "\n" + post;
-            }
-          }
-          printer.print_newline(false);
-          if (text2) {
-            raw_token.text = text2;
-            raw_token.whitespace_before = "";
-            raw_token.newlines = 0;
-            printer.add_raw_token(raw_token);
-            printer.print_newline(true);
-          }
-        }
-      };
-      Beautifier.prototype._handle_tag_open = function(printer, raw_token, last_tag_token, last_token, tokens) {
-        var parser_token = this._get_tag_open_token(raw_token);
-        if ((last_tag_token.is_unformatted || last_tag_token.is_content_unformatted) && !last_tag_token.is_empty_element && raw_token.type === TOKEN.TAG_OPEN && !parser_token.is_start_tag) {
-          printer.add_raw_token(raw_token);
-          parser_token.start_tag_token = this._tag_stack.try_pop(parser_token.tag_name);
-        } else {
-          printer.traverse_whitespace(raw_token);
-          this._set_tag_position(printer, raw_token, parser_token, last_tag_token, last_token);
-          if (!parser_token.is_inline_element) {
-            printer.set_wrap_point();
-          }
-          printer.print_token(raw_token);
-        }
-        if (parser_token.is_start_tag && this._is_wrap_attributes_force) {
-          var peek_index = 0;
-          var peek_token;
-          do {
-            peek_token = tokens.peek(peek_index);
-            if (peek_token.type === TOKEN.ATTRIBUTE) {
-              parser_token.attr_count += 1;
-            }
-            peek_index += 1;
-          } while (peek_token.type !== TOKEN.EOF && peek_token.type !== TOKEN.TAG_CLOSE);
-        }
-        if (this._is_wrap_attributes_force_aligned || this._is_wrap_attributes_aligned_multiple || this._is_wrap_attributes_preserve_aligned) {
-          parser_token.alignment_size = raw_token.text.length + 1;
-        }
-        if (!parser_token.tag_complete && !parser_token.is_unformatted) {
-          printer.alignment_size = parser_token.alignment_size;
-        }
-        return parser_token;
-      };
-      var TagOpenParserToken = function(options, parent, raw_token) {
-        this.parent = parent || null;
-        this.text = "";
-        this.type = "TK_TAG_OPEN";
-        this.tag_name = "";
-        this.is_inline_element = false;
-        this.is_unformatted = false;
-        this.is_content_unformatted = false;
-        this.is_empty_element = false;
-        this.is_start_tag = false;
-        this.is_end_tag = false;
-        this.indent_content = false;
-        this.multiline_content = false;
-        this.custom_beautifier_name = null;
-        this.start_tag_token = null;
-        this.attr_count = 0;
-        this.has_wrapped_attrs = false;
-        this.alignment_size = 0;
-        this.tag_complete = false;
-        this.tag_start_char = "";
-        this.tag_check = "";
-        if (!raw_token) {
-          this.tag_complete = true;
-        } else {
-          var tag_check_match;
-          this.tag_start_char = raw_token.text[0];
-          this.text = raw_token.text;
-          if (this.tag_start_char === "<") {
-            tag_check_match = raw_token.text.match(/^<([^\s>]*)/);
-            this.tag_check = tag_check_match ? tag_check_match[1] : "";
-          } else {
-            tag_check_match = raw_token.text.match(/^{{~?(?:[\^]|#\*?)?([^\s}]+)/);
-            this.tag_check = tag_check_match ? tag_check_match[1] : "";
-            if ((raw_token.text.startsWith("{{#>") || raw_token.text.startsWith("{{~#>")) && this.tag_check[0] === ">") {
-              if (this.tag_check === ">" && raw_token.next !== null) {
-                this.tag_check = raw_token.next.text.split(" ")[0];
-              } else {
-                this.tag_check = raw_token.text.split(">")[1];
-              }
-            }
-          }
-          this.tag_check = this.tag_check.toLowerCase();
-          if (raw_token.type === TOKEN.COMMENT) {
-            this.tag_complete = true;
-          }
-          this.is_start_tag = this.tag_check.charAt(0) !== "/";
-          this.tag_name = !this.is_start_tag ? this.tag_check.substr(1) : this.tag_check;
-          this.is_end_tag = !this.is_start_tag || raw_token.closed && raw_token.closed.text === "/>";
-          var handlebar_starts = 2;
-          if (this.tag_start_char === "{" && this.text.length >= 3) {
-            if (this.text.charAt(2) === "~") {
-              handlebar_starts = 3;
-            }
-          }
-          this.is_end_tag = this.is_end_tag || this.tag_start_char === "{" && (!options.indent_handlebars || this.text.length < 3 || /[^#\^]/.test(this.text.charAt(handlebar_starts)));
-        }
-      };
-      Beautifier.prototype._get_tag_open_token = function(raw_token) {
-        var parser_token = new TagOpenParserToken(this._options, this._tag_stack.get_parser_token(), raw_token);
-        parser_token.alignment_size = this._options.wrap_attributes_indent_size;
-        parser_token.is_end_tag = parser_token.is_end_tag || in_array(parser_token.tag_check, this._options.void_elements);
-        parser_token.is_empty_element = parser_token.tag_complete || parser_token.is_start_tag && parser_token.is_end_tag;
-        parser_token.is_unformatted = !parser_token.tag_complete && in_array(parser_token.tag_check, this._options.unformatted);
-        parser_token.is_content_unformatted = !parser_token.is_empty_element && in_array(parser_token.tag_check, this._options.content_unformatted);
-        parser_token.is_inline_element = in_array(parser_token.tag_name, this._options.inline) || this._options.inline_custom_elements && parser_token.tag_name.includes("-") || parser_token.tag_start_char === "{";
-        return parser_token;
-      };
-      Beautifier.prototype._set_tag_position = function(printer, raw_token, parser_token, last_tag_token, last_token) {
-        if (!parser_token.is_empty_element) {
-          if (parser_token.is_end_tag) {
-            parser_token.start_tag_token = this._tag_stack.try_pop(parser_token.tag_name);
-          } else {
-            if (this._do_optional_end_element(parser_token)) {
-              if (!parser_token.is_inline_element) {
-                printer.print_newline(false);
-              }
-            }
-            this._tag_stack.record_tag(parser_token);
-            if ((parser_token.tag_name === "script" || parser_token.tag_name === "style") && !(parser_token.is_unformatted || parser_token.is_content_unformatted)) {
-              parser_token.custom_beautifier_name = get_custom_beautifier_name(parser_token.tag_check, raw_token);
-            }
-          }
-        }
-        if (in_array(parser_token.tag_check, this._options.extra_liners)) {
-          printer.print_newline(false);
-          if (!printer._output.just_added_blankline()) {
-            printer.print_newline(true);
-          }
-        }
-        if (parser_token.is_empty_element) {
-          if (parser_token.tag_start_char === "{" && parser_token.tag_check === "else") {
-            this._tag_stack.indent_to_tag(["if", "unless", "each"]);
-            parser_token.indent_content = true;
-            var foundIfOnCurrentLine = printer.current_line_has_match(/{{#if/);
-            if (!foundIfOnCurrentLine) {
-              printer.print_newline(false);
-            }
-          }
-          if (parser_token.tag_name === "!--" && last_token.type === TOKEN.TAG_CLOSE && last_tag_token.is_end_tag && parser_token.text.indexOf("\n") === -1) {
-          } else {
-            if (!(parser_token.is_inline_element || parser_token.is_unformatted)) {
-              printer.print_newline(false);
-            }
-            this._calcluate_parent_multiline(printer, parser_token);
-          }
-        } else if (parser_token.is_end_tag) {
-          var do_end_expand = false;
-          do_end_expand = parser_token.start_tag_token && parser_token.start_tag_token.multiline_content;
-          do_end_expand = do_end_expand || !parser_token.is_inline_element && !(last_tag_token.is_inline_element || last_tag_token.is_unformatted) && !(last_token.type === TOKEN.TAG_CLOSE && parser_token.start_tag_token === last_tag_token) && last_token.type !== "TK_CONTENT";
-          if (parser_token.is_content_unformatted || parser_token.is_unformatted) {
-            do_end_expand = false;
-          }
-          if (do_end_expand) {
-            printer.print_newline(false);
-          }
-        } else {
-          parser_token.indent_content = !parser_token.custom_beautifier_name;
-          if (parser_token.tag_start_char === "<") {
-            if (parser_token.tag_name === "html") {
-              parser_token.indent_content = this._options.indent_inner_html;
-            } else if (parser_token.tag_name === "head") {
-              parser_token.indent_content = this._options.indent_head_inner_html;
-            } else if (parser_token.tag_name === "body") {
-              parser_token.indent_content = this._options.indent_body_inner_html;
-            }
-          }
-          if (!(parser_token.is_inline_element || parser_token.is_unformatted) && (last_token.type !== "TK_CONTENT" || parser_token.is_content_unformatted)) {
-            printer.print_newline(false);
-          }
-          this._calcluate_parent_multiline(printer, parser_token);
-        }
-      };
-      Beautifier.prototype._calcluate_parent_multiline = function(printer, parser_token) {
-        if (parser_token.parent && printer._output.just_added_newline() && !((parser_token.is_inline_element || parser_token.is_unformatted) && parser_token.parent.is_inline_element)) {
-          parser_token.parent.multiline_content = true;
-        }
-      };
-      var p_closers = ["address", "article", "aside", "blockquote", "details", "div", "dl", "fieldset", "figcaption", "figure", "footer", "form", "h1", "h2", "h3", "h4", "h5", "h6", "header", "hr", "main", "menu", "nav", "ol", "p", "pre", "section", "table", "ul"];
-      var p_parent_excludes = ["a", "audio", "del", "ins", "map", "noscript", "video"];
-      Beautifier.prototype._do_optional_end_element = function(parser_token) {
-        var result = null;
-        if (parser_token.is_empty_element || !parser_token.is_start_tag || !parser_token.parent) {
-          return;
-        }
-        if (parser_token.tag_name === "body") {
-          result = result || this._tag_stack.try_pop("head");
-        } else if (parser_token.tag_name === "li") {
-          result = result || this._tag_stack.try_pop("li", ["ol", "ul", "menu"]);
-        } else if (parser_token.tag_name === "dd" || parser_token.tag_name === "dt") {
-          result = result || this._tag_stack.try_pop("dt", ["dl"]);
-          result = result || this._tag_stack.try_pop("dd", ["dl"]);
-        } else if (parser_token.parent.tag_name === "p" && p_closers.indexOf(parser_token.tag_name) !== -1) {
-          var p_parent = parser_token.parent.parent;
-          if (!p_parent || p_parent_excludes.indexOf(p_parent.tag_name) === -1) {
-            result = result || this._tag_stack.try_pop("p");
-          }
-        } else if (parser_token.tag_name === "rp" || parser_token.tag_name === "rt") {
-          result = result || this._tag_stack.try_pop("rt", ["ruby", "rtc"]);
-          result = result || this._tag_stack.try_pop("rp", ["ruby", "rtc"]);
-        } else if (parser_token.tag_name === "optgroup") {
-          result = result || this._tag_stack.try_pop("optgroup", ["select"]);
-        } else if (parser_token.tag_name === "option") {
-          result = result || this._tag_stack.try_pop("option", ["select", "datalist", "optgroup"]);
-        } else if (parser_token.tag_name === "colgroup") {
-          result = result || this._tag_stack.try_pop("caption", ["table"]);
-        } else if (parser_token.tag_name === "thead") {
-          result = result || this._tag_stack.try_pop("caption", ["table"]);
-          result = result || this._tag_stack.try_pop("colgroup", ["table"]);
-        } else if (parser_token.tag_name === "tbody" || parser_token.tag_name === "tfoot") {
-          result = result || this._tag_stack.try_pop("caption", ["table"]);
-          result = result || this._tag_stack.try_pop("colgroup", ["table"]);
-          result = result || this._tag_stack.try_pop("thead", ["table"]);
-          result = result || this._tag_stack.try_pop("tbody", ["table"]);
-        } else if (parser_token.tag_name === "tr") {
-          result = result || this._tag_stack.try_pop("caption", ["table"]);
-          result = result || this._tag_stack.try_pop("colgroup", ["table"]);
-          result = result || this._tag_stack.try_pop("tr", ["table", "thead", "tbody", "tfoot"]);
-        } else if (parser_token.tag_name === "th" || parser_token.tag_name === "td") {
-          result = result || this._tag_stack.try_pop("td", ["table", "thead", "tbody", "tfoot", "tr"]);
-          result = result || this._tag_stack.try_pop("th", ["table", "thead", "tbody", "tfoot", "tr"]);
-        }
-        parser_token.parent = this._tag_stack.get_parser_token();
-        return result;
-      };
-      module.exports.Beautifier = Beautifier;
-    }
-  });
-
-  // node_modules/js-beautify/js/src/html/index.js
-  var require_html = __commonJS({
-    "node_modules/js-beautify/js/src/html/index.js"(exports, module) {
-      "use strict";
-      var Beautifier = require_beautifier3().Beautifier;
-      var Options = require_options4().Options;
-      function style_html(html_source, options, js_beautify2, css_beautify) {
-        var beautifier = new Beautifier(html_source, options, js_beautify2, css_beautify);
-        return beautifier.beautify();
-      }
-      module.exports = style_html;
-      module.exports.defaultOptions = function() {
-        return new Options();
-      };
-    }
-  });
-
-  // node_modules/js-beautify/js/src/index.js
-  var require_src = __commonJS({
-    "node_modules/js-beautify/js/src/index.js"(exports, module) {
-      "use strict";
-      var js_beautify2 = require_javascript();
-      var css_beautify = require_css();
-      var html_beautify = require_html();
-      function style_html(html_source, options, js, css) {
-        js = js || js_beautify2;
-        css = css || css_beautify;
-        return html_beautify(html_source, options, js, css);
-      }
-      style_html.defaultOptions = html_beautify.defaultOptions;
-      module.exports.js = js_beautify2;
-      module.exports.css = css_beautify;
-      module.exports.html = style_html;
-    }
-  });
-
-  // node_modules/js-beautify/js/index.js
-  var require_js = __commonJS({
-    "node_modules/js-beautify/js/index.js"(exports, module) {
-      "use strict";
-      function get_beautify(js_beautify2, css_beautify, html_beautify) {
-        var beautify = function(src, config2) {
-          return js_beautify2.js_beautify(src, config2);
-        };
-        beautify.js = js_beautify2.js_beautify;
-        beautify.css = css_beautify.css_beautify;
-        beautify.html = html_beautify.html_beautify;
-        beautify.js_beautify = js_beautify2.js_beautify;
-        beautify.css_beautify = css_beautify.css_beautify;
-        beautify.html_beautify = html_beautify.html_beautify;
-        return beautify;
-      }
-      if (typeof define === "function" && define.amd) {
-        define([
-          "./lib/beautify",
-          "./lib/beautify-css",
-          "./lib/beautify-html"
-        ], function(js_beautify2, css_beautify, html_beautify) {
-          return get_beautify(js_beautify2, css_beautify, html_beautify);
-        });
-      } else {
-        (function(mod) {
-          var beautifier = require_src();
-          beautifier.js_beautify = beautifier.js;
-          beautifier.css_beautify = beautifier.css;
-          beautifier.html_beautify = beautifier.html;
-          mod.exports = get_beautify(beautifier, beautifier, beautifier);
-        })(module);
-      }
-    }
-  });
-
   // src/editor/editor.js
   var import_feather_icons = __toESM(require_feather(), 1);
 
@@ -6932,110 +2690,86 @@
     }
   }
 
-  // src/utils/editor_managers.js
+  // src/editor/editor_managers.js
   var BaseUIComponent = class {
-    constructor(elements, eventBus) {
-      this.elements = elements;
-      this.eventBus = eventBus;
-      this.eventListeners = [];
+    constructor(e, t2) {
+      this.elements = e, this.eventBus = t2, this.eventListeners = [];
     }
-    addEventListener(element, event, handler, options = {}) {
-      if (element) {
-        element.addEventListener(event, handler, options);
-        this.eventListeners.push({ element, event, handler });
-      }
+    addEventListener(e, t2, s, i = {}) {
+      e && (e.addEventListener(t2, s, i), this.eventListeners.push({
+        element: e,
+        event: t2,
+        handler: s
+      }));
     }
     destroy() {
-      this.eventListeners.forEach(({ element, event, handler }) => {
-        element.removeEventListener(event, handler);
-      });
-      this.eventListeners = [];
+      this.eventListeners.forEach(({
+        element: e,
+        event: t2,
+        handler: s
+      }) => {
+        e.removeEventListener(t2, s);
+      }), this.eventListeners = [];
     }
-    emit(eventName, data = {}) {
-      this.eventBus.emit(eventName, data);
+    emit(e, t2 = {}) {
+      this.eventBus.emit(e, t2);
     }
-    on(eventName, handler) {
-      this.eventBus.on(eventName, handler);
+    on(e, t2) {
+      this.eventBus.on(e, t2);
     }
   };
   var ModalManager = class extends BaseUIComponent {
-    constructor(elements, eventBus) {
-      super(elements, eventBus);
-      this.setupEventListeners();
+    constructor(e, t2) {
+      super(e, t2), this.setupEventListeners();
     }
     setupEventListeners() {
-      if (this.elements.settingsBtn) {
-        this.addEventListener(this.elements.settingsBtn, "click", () => {
-          this.showModal("settings");
-        });
-        this.addEventListener(this.elements.closeSettings, "click", () => {
-          this.hideModal("settings");
-        });
-      }
-      if (this.elements.helpButton) {
-        this.addEventListener(this.elements.helpButton, "click", (e) => {
-          e.stopPropagation();
-          this.hideModal("settings");
-          setTimeout(() => this.showModal("help"), 200);
-        });
-        const closeHelpButton = document.querySelector(".close-help-modal");
-        if (closeHelpButton) {
-          this.addEventListener(closeHelpButton, "click", (e) => {
-            e.stopPropagation();
-            this.hideModal("help");
-          });
-        }
-      }
-      this.addEventListener(document, "click", (e) => {
+      this.elements.settingsBtn && (this.addEventListener(this.elements.settingsBtn, "click", () => {
+        this.showModal("settings");
+      }), this.addEventListener(this.elements.closeSettings, "click", () => {
+        this.hideModal("settings");
+      })), this.elements.helpButton && (this.addEventListener(this.elements.helpButton, "click", (e) => {
+        e.stopPropagation(), this.hideModal("settings"), setTimeout(() => this.showModal("help"), 200);
+      }), this.addEventListener(document.querySelector(".close-help-modal"), "click", (e) => {
+        e.stopPropagation(), this.hideModal("help");
+      })), this.addEventListener(document, "click", (e) => {
         if (e.target.classList.contains("modal") && e.target.classList.contains("show")) {
-          const modalType = e.target.id.replace("Modal", "");
-          this.hideModal(modalType);
+          const t2 = e.target.id.replace("Modal", "");
+          this.hideModal(t2);
         }
-      });
-      this.addEventListener(document, "keydown", (e) => {
-        if (e.key === "Escape") {
-          const openModal = document.querySelector(".modal.show");
-          if (openModal) {
-            const modalType = openModal.id.replace("Modal", "");
-            this.hideModal(modalType);
+      }), this.addEventListener(document, "keydown", (e) => {
+        if ("Escape" === e.key) {
+          const e2 = document.querySelector(".modal.show");
+          if (e2) {
+            const t2 = e2.id.replace("Modal", "");
+            this.hideModal(t2);
           }
         }
       });
     }
-    showModal(modalType) {
-      const modal = document.getElementById(`${modalType}Modal`);
-      if (modal) {
-        document.body.style.overflow = "hidden";
-        modal.classList.add("show");
-        modal.style.display = "flex";
-        document.body.classList.add("modal-open");
-        const focusable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-        if (focusable)
-          focusable.focus();
-        this.emit("modalOpened", { type: modalType });
+    showModal(e) {
+      const t2 = document.getElementById(`${e}Modal`);
+      if (t2) {
+        document.body.style.overflow = "hidden", t2.classList.add("show"), t2.style.display = "flex", document.body.classList.add("modal-open");
+        const s = t2.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        s && s.focus(), this.emit("modalOpened", {
+          type: e
+        });
       }
     }
-    hideModal(modalType) {
-      const modal = document.getElementById(`${modalType}Modal`);
-      if (modal && modal.classList.contains("show")) {
-        const openModals = document.querySelectorAll(".modal.show");
-        if (openModals.length <= 1) {
-          document.body.style.overflow = "";
-          document.body.classList.remove("modal-open");
-        }
-        modal.classList.remove("show");
-        setTimeout(() => {
-          modal.style.display = "none";
-        }, 200);
-        this.emit("modalClosed", { type: modalType });
+    hideModal(e) {
+      const t2 = document.getElementById(`${e}Modal`);
+      if (t2 && t2.classList.contains("show")) {
+        document.querySelectorAll(".modal.show").length <= 1 && (document.body.style.overflow = "", document.body.classList.remove("modal-open")), t2.classList.remove("show"), setTimeout(() => {
+          t2.style.display = "none";
+        }, 200), this.emit("modalClosed", {
+          type: e
+        });
       }
     }
   };
   var SidebarManager = class extends BaseUIComponent {
-    constructor(elements, eventBus, config2) {
-      super(elements, eventBus);
-      this.config = config2;
-      this.setupEventListeners();
+    constructor(e, t2, s) {
+      super(e, t2), this.config = s, this.setupEventListeners();
     }
     setupEventListeners() {
       this.addEventListener(window, "resize", () => {
@@ -7049,60 +2783,42 @@
     }
   };
   var StatusManager = class extends BaseUIComponent {
-    constructor(elements, eventBus) {
-      super(elements, eventBus);
-      this.setupEventListeners();
+    constructor(e, t2) {
+      super(e, t2), this.setupEventListeners();
     }
     setupEventListeners() {
-      this.on("scriptStatusChanged", ({ hasUnsavedChanges }) => {
-        this.updateScriptStatus(hasUnsavedChanges);
+      this.on("scriptStatusChanged", ({
+        hasUnsavedChanges: e
+      }) => {
+        this.updateScriptStatus(e);
       });
     }
-    updateScriptStatus(hasUnsavedChanges) {
-      const badge = this.elements.scriptStatusBadge;
-      if (!badge)
-        return;
-      if (hasUnsavedChanges) {
-        badge.textContent = "Unsaved Changes";
-        badge.style.backgroundColor = "#4B5563";
-        badge.style.color = "#D1D5DB";
-      } else {
-        badge.textContent = "Saved";
-        badge.style.backgroundColor = "#065F46";
-        badge.style.color = "#A7F3D0";
-      }
+    updateScriptStatus(e) {
+      const t2 = this.elements.scriptStatusBadge;
+      t2 && (e ? (t2.textContent = "Unsaved Changes", t2.style.backgroundColor = "#4B5563", t2.style.color = "#D1D5DB") : (t2.textContent = "Saved", t2.style.backgroundColor = "#065F46", t2.style.color = "#A7F3D0"));
     }
-    showMessage(message, type = "success", duration = 3e3) {
-      const { statusMessage } = this.elements;
-      if (!statusMessage)
-        return;
-      statusMessage.textContent = message;
-      statusMessage.className = `status-message ${type}`;
-      statusMessage.style.display = "block";
-      if (duration > 0) {
-        setTimeout(() => this.clearMessage(), duration);
-      }
+    showMessage(e, t2 = "success", s = 3e3) {
+      const {
+        statusMessage: i
+      } = this.elements;
+      i && (i.textContent = e, i.className = `status-message ${t2}`, i.style.display = "block", s > 0 && setTimeout(() => this.clearMessage(), s));
     }
     clearMessage() {
-      const { statusMessage } = this.elements;
-      if (!statusMessage)
-        return;
-      statusMessage.textContent = "";
-      statusMessage.className = "status-message";
-      statusMessage.style.display = "none";
+      const {
+        statusMessage: e
+      } = this.elements;
+      e && (e.textContent = "", e.className = "status-message", e.style.display = "none");
     }
-    showError(message) {
-      this.showMessage(message, "error", 5e3);
+    showError(e) {
+      this.showMessage(e, "error", 5e3);
     }
-    showSuccess(message) {
-      this.showMessage(message, "success", 3e3);
+    showSuccess(e) {
+      this.showMessage(e, "success", 3e3);
     }
   };
   var SettingsManager = class extends BaseUIComponent {
-    constructor(elements, eventBus) {
-      super(elements, eventBus);
-      this.settingsInputs = this.getSettingsInputs();
-      this.setupEventListeners();
+    constructor(e, t2) {
+      super(e, t2), this.settingsInputs = this.getSettingsInputs(), this.setupEventListeners();
     }
     getSettingsInputs() {
       return {
@@ -7117,184 +2833,117 @@
       };
     }
     setupEventListeners() {
-      this.setupInstantApplyListeners();
-      this.setupModalListeners();
-      this.setupActionButtons();
+      this.setupInstantApplyListeners(), this.setupModalListeners(), this.setupActionButtons();
     }
     setupInstantApplyListeners() {
-      const { settingsInputs } = this;
-      if (settingsInputs.fontSize) {
-        this.addEventListener(settingsInputs.fontSize, "input", () => {
-          const value = parseInt(settingsInputs.fontSize.value, 10);
-          const fontSizeValue = document.getElementById("fontSizeValue");
-          if (fontSizeValue) {
-            fontSizeValue.textContent = value + "px";
-          }
-          this.emit("settingChanged", { fontSize: value });
+      const {
+        settingsInputs: e
+      } = this;
+      e.fontSize && this.addEventListener(e.fontSize, "input", () => {
+        const t2 = parseInt(e.fontSize.value, 10), s = document.getElementById("fontSizeValue");
+        s && (s.textContent = t2 + "px"), this.emit("settingChanged", {
+          fontSize: t2
         });
-      }
-      if (settingsInputs.tabSize) {
-        this.addEventListener(settingsInputs.tabSize, "input", () => {
+      }), e.tabSize && this.addEventListener(e.tabSize, "input", () => {
+        this.emit("settingChanged", {
+          tabSize: parseInt(e.tabSize.value, 10)
+        });
+      }), ["lineNumbers", "lineWrapping", "matchBrackets", "minimap"].forEach((t2) => {
+        e[t2] && this.addEventListener(e[t2], "change", () => {
           this.emit("settingChanged", {
-            tabSize: parseInt(settingsInputs.tabSize.value, 10)
+            [t2]: e[t2].checked
           });
         });
-      }
-      ["lineNumbers", "lineWrapping", "matchBrackets", "minimap"].forEach((setting) => {
-        if (settingsInputs[setting]) {
-          this.addEventListener(settingsInputs[setting], "change", () => {
-            this.emit("settingChanged", {
-              [setting]: settingsInputs[setting].checked
-            });
-          });
-        }
+      }), e.lintingEnabled && this.addEventListener(e.lintingEnabled, "change", () => {
+        const t2 = e.lintingEnabled.checked;
+        localStorage.setItem("lintingEnabled", t2.toString()), this.emit("lintingToggled", {
+          enabled: t2
+        });
+      }), e.autosaveEnabled && this.addEventListener(e.autosaveEnabled, "change", () => {
+        const t2 = e.autosaveEnabled.checked;
+        localStorage.setItem("autosaveEnabled", t2.toString()), this.emit("autosaveToggled", {
+          enabled: t2
+        });
       });
-      if (settingsInputs.lintingEnabled) {
-        this.addEventListener(settingsInputs.lintingEnabled, "change", () => {
-          const enabled = settingsInputs.lintingEnabled.checked;
-          localStorage.setItem("lintingEnabled", enabled.toString());
-          this.emit("lintingToggled", { enabled });
-        });
-      }
-      if (settingsInputs.autosaveEnabled) {
-        this.addEventListener(settingsInputs.autosaveEnabled, "change", () => {
-          const enabled = settingsInputs.autosaveEnabled.checked;
-          localStorage.setItem("autosaveEnabled", enabled.toString());
-          this.emit("autosaveToggled", { enabled });
-        });
-      }
     }
     setupModalListeners() {
-      this.on("modalOpened", ({ type }) => {
-        if (type === "settings") {
-          this.loadSettingsIntoModal();
-        }
+      this.on("modalOpened", ({
+        type: e
+      }) => {
+        "settings" === e && this.loadSettingsIntoModal();
       });
     }
     setupActionButtons() {
-      const saveBtn = document.getElementById("saveSettings");
-      const resetBtn = document.getElementById("resetSettings");
-      const closeBtn = document.querySelector("#settingsModal .close");
-      if (saveBtn) {
-        this.addEventListener(saveBtn, "click", async (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          await this.saveAllSettings();
-        });
-      }
-      if (resetBtn) {
-        this.addEventListener(resetBtn, "click", (e) => {
-          e.preventDefault();
-          this.resetToDefaults();
-        });
-      }
-      if (closeBtn) {
-        this.addEventListener(closeBtn, "click", (e) => {
-          e.preventDefault();
-          const modal = document.getElementById("settingsModal");
-          if (modal) {
-            modal.classList.remove("show");
-            modal.style.display = "none";
-            document.body.style.overflow = "";
-          }
-        });
-      }
+      const e = document.getElementById("saveSettings"), t2 = document.getElementById("resetSettings"), s = document.querySelector("#settingsModal .close");
+      e && this.addEventListener(e, "click", async (e2) => {
+        e2.preventDefault(), e2.stopPropagation(), await this.saveAllSettings();
+      }), t2 && this.addEventListener(t2, "click", (e2) => {
+        e2.preventDefault(), this.resetToDefaults();
+      }), s && this.addEventListener(s, "click", (e2) => {
+        e2.preventDefault();
+        const t3 = document.getElementById("settingsModal");
+        t3 && (t3.classList.remove("show"), t3.style.display = "none", document.body.style.overflow = "");
+      });
     }
     async loadSettingsIntoModal() {
       try {
-        const settings = await this.loadSettings();
-        const { settingsInputs } = this;
-        if (settingsInputs.fontSize && settings.fontSize !== void 0) {
-          settingsInputs.fontSize.value = settings.fontSize;
-          const fontSizeValue = document.getElementById("fontSizeValue");
-          if (fontSizeValue)
-            fontSizeValue.textContent = settings.fontSize + "px";
+        const e = await this.loadSettings(), {
+          settingsInputs: t2
+        } = this;
+        if (t2.fontSize && void 0 !== e.fontSize) {
+          t2.fontSize.value = e.fontSize;
+          const s = document.getElementById("fontSizeValue");
+          s && (s.textContent = e.fontSize + "px");
         }
-        if (settingsInputs.tabSize && settings.tabSize !== void 0)
-          settingsInputs.tabSize.value = settings.tabSize;
-        if (settingsInputs.lineNumbers && settings.lineNumbers !== void 0)
-          settingsInputs.lineNumbers.checked = !!settings.lineNumbers;
-        if (settingsInputs.lineWrapping && settings.lineWrapping !== void 0)
-          settingsInputs.lineWrapping.checked = !!settings.lineWrapping;
-        if (settingsInputs.matchBrackets && settings.matchBrackets !== void 0)
-          settingsInputs.matchBrackets.checked = !!settings.matchBrackets;
-        if (settingsInputs.minimap && settings.minimap !== void 0)
-          settingsInputs.minimap.checked = !!settings.minimap;
-        if (settingsInputs.lintingEnabled) {
-          settingsInputs.lintingEnabled.checked = localStorage.getItem("lintingEnabled") === "true";
-        }
-        if (settingsInputs.autosaveEnabled) {
-          settingsInputs.autosaveEnabled.checked = localStorage.getItem("autosaveEnabled") === "true";
-        }
-      } catch (error) {
-        console.error("Failed to load settings:", error);
+        t2.tabSize && void 0 !== e.tabSize && (t2.tabSize.value = e.tabSize), t2.lineNumbers && void 0 !== e.lineNumbers && (t2.lineNumbers.checked = !!e.lineNumbers), t2.lineWrapping && void 0 !== e.lineWrapping && (t2.lineWrapping.checked = !!e.lineWrapping), t2.matchBrackets && void 0 !== e.matchBrackets && (t2.matchBrackets.checked = !!e.matchBrackets), t2.minimap && void 0 !== e.minimap && (t2.minimap.checked = !!e.minimap), t2.lintingEnabled && (t2.lintingEnabled.checked = "true" === localStorage.getItem("lintingEnabled")), t2.autosaveEnabled && (t2.autosaveEnabled.checked = "true" === localStorage.getItem("autosaveEnabled"));
+      } catch (e) {
+        console.error("Failed to load settings:", e);
       }
     }
     async loadSettings() {
       try {
-        const result = await chrome.storage.local.get(["editorSettings"]);
-        return result.editorSettings || {};
-      } catch (error) {
-        console.error("Failed to load settings from storage:", error);
-        return {};
+        return (await chrome.storage.local.get(["editorSettings"])).editorSettings || {};
+      } catch (e) {
+        return console.error("Failed to load settings from storage:", e), {};
       }
     }
     async saveAllSettings() {
       try {
-        const { settingsInputs } = this;
-        const newSettings = {
-          fontSize: parseInt(settingsInputs.fontSize?.value, 10) || 14,
-          tabSize: parseInt(settingsInputs.tabSize?.value, 10) || 2,
-          lineNumbers: !!settingsInputs.lineNumbers?.checked,
-          lineWrapping: !!settingsInputs.lineWrapping?.checked,
-          matchBrackets: !!settingsInputs.matchBrackets?.checked,
-          minimap: !!settingsInputs.minimap?.checked
+        const {
+          settingsInputs: e
+        } = this, t2 = {
+          fontSize: parseInt(e.fontSize?.value, 10) || 14,
+          tabSize: parseInt(e.tabSize?.value, 10) || 2,
+          lineNumbers: !!e.lineNumbers?.checked,
+          lineWrapping: !!e.lineWrapping?.checked,
+          matchBrackets: !!e.matchBrackets?.checked,
+          minimap: !!e.minimap?.checked
         };
-        await chrome.storage.local.set({ editorSettings: newSettings });
-        this.emit("settingsSaved", newSettings);
-        this.emit("settingChanged", newSettings);
-        this.emit("showStatus", { message: "Settings saved successfully", type: "success" });
-        const modal = document.getElementById("settingsModal");
-        if (modal) {
-          modal.classList.remove("show");
-          modal.style.display = "none";
-          document.body.style.overflow = "";
-        }
-        return true;
-      } catch (error) {
-        console.error("Failed to save settings:", error);
-        this.emit("showStatus", {
-          message: "Failed to save settings: " + (error.message || "Unknown error"),
-          type: "error"
+        await chrome.storage.local.set({
+          editorSettings: t2
+        }), this.emit("settingsSaved", t2), this.emit("settingChanged", t2), this.emit("showStatus", {
+          message: "Settings saved successfully",
+          type: "success"
         });
-        return false;
+        const s = document.getElementById("settingsModal");
+        return s && (s.classList.remove("show"), s.style.display = "none", document.body.style.overflow = ""), true;
+      } catch (e) {
+        return console.error("Failed to save settings:", e), this.emit("showStatus", {
+          message: "Failed to save settings: " + (e.message || "Unknown error"),
+          type: "error"
+        }), false;
       }
     }
     resetToDefaults() {
-      const { settingsInputs } = this;
-      if (settingsInputs.fontSize) {
-        settingsInputs.fontSize.value = 14;
-        const fontSizeValue = document.getElementById("fontSizeValue");
-        if (fontSizeValue)
-          fontSizeValue.textContent = "14px";
+      const {
+        settingsInputs: e
+      } = this;
+      if (e.fontSize) {
+        e.fontSize.value = 14;
+        const t2 = document.getElementById("fontSizeValue");
+        t2 && (t2.textContent = "14px");
       }
-      if (settingsInputs.tabSize)
-        settingsInputs.tabSize.value = 2;
-      if (settingsInputs.lineNumbers)
-        settingsInputs.lineNumbers.checked = true;
-      if (settingsInputs.lineWrapping)
-        settingsInputs.lineWrapping.checked = false;
-      if (settingsInputs.matchBrackets)
-        settingsInputs.matchBrackets.checked = true;
-      if (settingsInputs.minimap)
-        settingsInputs.minimap.checked = true;
-      if (settingsInputs.lintingEnabled)
-        settingsInputs.lintingEnabled.checked = true;
-      if (settingsInputs.autosaveEnabled)
-        settingsInputs.autosaveEnabled.checked = true;
-      localStorage.setItem("lintingEnabled", "true");
-      localStorage.setItem("autosaveEnabled", "true");
-      this.emit("settingsReset", {
+      e.tabSize && (e.tabSize.value = 2), e.lineNumbers && (e.lineNumbers.checked = true), e.lineWrapping && (e.lineWrapping.checked = false), e.matchBrackets && (e.matchBrackets.checked = true), e.minimap && (e.minimap.checked = true), e.lintingEnabled && (e.lintingEnabled.checked = true), e.autosaveEnabled && (e.autosaveEnabled.checked = true), localStorage.setItem("lintingEnabled", "true"), localStorage.setItem("autosaveEnabled", "true"), this.emit("settingsReset", {
         fontSize: 14,
         tabSize: 2,
         lineNumbers: true,
@@ -7305,294 +2954,172 @@
     }
   };
   var URLManager = class extends BaseUIComponent {
-    constructor(elements, eventBus) {
-      super(elements, eventBus);
-      this.statusManager = elements.statusManager || elements.status;
-      this.setupEventListeners();
+    constructor(e, t2) {
+      super(e, t2), this.statusManager = e.statusManager || e.status, this.setupEventListeners();
     }
     setupEventListeners() {
-      if (this.elements.addUrlBtn) {
-        this.addEventListener(this.elements.addUrlBtn, "click", (e) => {
-          e.preventDefault();
-          this.addCurrentUrl();
-        });
-      }
-      if (this.elements.urlList) {
-        this.addEventListener(this.elements.urlList, "click", (e) => {
-          if (e.target.closest(".remove-btn")) {
-            e.preventDefault();
-            this.removeUrl(e.target.closest(".url-item"));
-          }
-        });
-      }
-      if (this.elements.targetUrl) {
-        this.addEventListener(this.elements.targetUrl, "keypress", (e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            this.addCurrentUrl();
-          }
-        });
-      }
-      if (this.elements.generatePatternBtn) {
-        this.elements.generatePatternBtn.addEventListener("click", () => {
-          const base2 = this.elements.patternBaseUrl.value.trim();
-          const scope = this.elements.patternScope.value;
-          const pattern = generateUrlMatchPattern(base2, scope);
-          if (pattern) {
-            this.elements.generatedPattern.value = pattern + (scope === "exact" ? "" : "");
-            this.elements.generatedPatternGroup.classList.remove("hidden");
-          }
-        });
-      }
-      if (this.elements.insertPatternBtn) {
-        this.elements.insertPatternBtn.addEventListener("click", () => {
-          const pattern = this.elements.generatedPattern.value.trim();
-          if (pattern) {
-            this.addUrlToList(pattern);
-            this.elements.generatedPatternGroup.classList.add("hidden");
-            this.elements.patternBaseUrl.value = "";
-          }
-        });
-      }
+      this.elements.addUrlBtn && this.addEventListener(this.elements.addUrlBtn, "click", (e) => {
+        e.preventDefault(), this.addCurrentUrl();
+      }), this.elements.urlList && this.addEventListener(this.elements.urlList, "click", (e) => {
+        e.target.closest(".remove-btn") && (e.preventDefault(), this.removeUrl(e.target.closest(".url-item")));
+      }), this.elements.targetUrl && this.addEventListener(this.elements.targetUrl, "keypress", (e) => {
+        "Enter" === e.key && (e.preventDefault(), this.addCurrentUrl());
+      }), this.elements.generatePatternBtn && this.elements.generatePatternBtn.addEventListener("click", () => {
+        const e = this.elements.patternBaseUrl.value.trim(), t2 = this.elements.patternScope.value, s = generateUrlMatchPattern(e, t2);
+        s && (this.elements.generatedPattern.value = s + ("exact" === t2 ? "" : ""), this.elements.generatedPatternGroup.classList.remove("hidden"));
+      }), this.elements.insertPatternBtn && this.elements.insertPatternBtn.addEventListener("click", () => {
+        const e = this.elements.generatedPattern.value.trim();
+        e && (this.addUrlToList(e), this.elements.generatedPatternGroup.classList.add("hidden"), this.elements.patternBaseUrl.value = "");
+      });
     }
     addCurrentUrl() {
-      const url = this.elements.targetUrl?.value?.trim();
-      if (!url) {
-        if (this.statusManager) {
-          this.statusManager.showError("URL cannot be empty.");
-        }
-        return;
-      }
-      if (this.isValidUrl(url)) {
-        this.addUrlToList(url);
-        this.elements.targetUrl.value = "";
-        this.emit("urlAdded", { url });
-      } else {
-        if (this.statusManager) {
-          this.statusManager.showError("Invalid URL pattern.");
-        }
-      }
+      const e = this.elements.targetUrl?.value?.trim();
+      if (!e)
+        return void (this.statusManager && this.statusManager.showError("URL cannot be empty."));
+      this.isValidUrl(e) ? (this.addUrlToList(e), this.elements.targetUrl.value = "", this.emit("urlAdded", {
+        url: e
+      })) : this.statusManager && this.statusManager.showError("Invalid URL pattern.");
     }
-    addUrlToList(url) {
-      if (this.elements.urlList) {
-        const existing = Array.from(this.elements.urlList.querySelectorAll(".url-item")).some((item) => item.dataset.url === url);
-        if (existing) {
-          return false;
-        }
-      }
+    addUrlToList(e) {
+      if (this.elements.urlList && Array.from(this.elements.urlList.querySelectorAll(".url-item")).some((t2) => t2.dataset.url === e))
+        return false;
       try {
-        const urlItem = document.createElement("div");
-        urlItem.className = "url-item";
-        urlItem.dataset.url = url;
-        urlItem.innerHTML = `
-        <span>${this.escapeHtml(url)}</span>
-        <button type="button" class="remove-btn" title="Remove URL">
-          <i data-feather="x"></i>
-        </button>
-      `;
-        if (this.elements.urlList) {
-          this.elements.urlList.appendChild(urlItem);
-          this.emit("sidebarChanged");
-          feather.replace();
-          return true;
-        }
-      } catch (e) {
-        console.error("Error adding URL to list:", e);
+        const t2 = document.createElement("div");
+        if (t2.className = "url-item", t2.dataset.url = e, t2.innerHTML = `<span>${this.escapeHtml(e)}</span><button type="button" class="remove-btn" title="Remove URL"><i data-feather="x"></i></button>`, this.elements.urlList)
+          return this.elements.urlList.appendChild(t2), this.emit("sidebarChanged"), feather.replace(), true;
+      } catch (e2) {
+        console.error("Error adding URL to list:", e2);
       }
       return false;
     }
-    removeUrl(urlItem) {
-      if (!urlItem)
+    removeUrl(e) {
+      if (!e)
         return;
-      const url = urlItem.dataset?.url;
-      if (urlItem.remove) {
-        urlItem.remove();
-      } else if (urlItem.parentNode) {
-        urlItem.parentNode.removeChild(urlItem);
-      }
-      if (url) {
-        this.emit("urlRemoved", { url });
-        this.emit("sidebarChanged");
-      }
+      const t2 = e.dataset?.url;
+      e.remove ? e.remove() : e.parentNode && e.parentNode.removeChild(e), t2 && (this.emit("urlRemoved", {
+        url: t2
+      }), this.emit("sidebarChanged"));
     }
     getUrls() {
-      return Array.from(this.elements.urlList.querySelectorAll(".url-item")).map((item) => item.dataset.url);
+      return Array.from(this.elements.urlList.querySelectorAll(".url-item")).map((e) => e.dataset.url);
     }
-    isValidUrl(url) {
+    isValidUrl(e) {
       try {
-        if (!url.match(/^https?:\/\//i)) {
-          if (this.statusManager) {
-            this.statusManager.showError(
-              "Please enter a valid URL in this format: https://example.com (include http:// or https://)"
-            );
-          }
-          return false;
-        }
-        new URL(url);
-        return true;
+        if (!e.match(/^https?:\/\//i))
+          return this.statusManager && this.statusManager.showError("Please enter a valid URL in this format: https://example.com (include http:// or https://)"), false;
+        return new URL(e), true;
       } catch {
-        if (this.statusManager) {
-          this.statusManager.showError(
-            "Please enter a valid URL in this format: https://example.com (include http:// or https://)"
-          );
-        }
-        return false;
+        return this.statusManager && this.statusManager.showError("Please enter a valid URL in this format: https://example.com (include http:// or https://)"), false;
       }
     }
-    escapeHtml(text2) {
-      const div = document.createElement("div");
-      div.textContent = text2;
-      return div.innerHTML;
+    escapeHtml(e) {
+      const t2 = document.createElement("div");
+      return t2.textContent = e, t2.innerHTML;
     }
   };
   var RequireManager = class extends BaseUIComponent {
-    constructor(elements, eventBus) {
-      super(elements, eventBus);
-      this.setupEventListeners();
+    constructor(e, t2) {
+      super(e, t2), this.callbacks = {}, this.setupEventListeners();
     }
     setupEventListeners() {
-      if (this.elements.addRequireBtn) {
-        this.addEventListener(this.elements.addRequireBtn, "click", () => {
-          this.addCurrentRequire();
-        });
-      }
-      if (this.elements.requireList) {
-        this.addEventListener(this.elements.requireList, "click", (e) => {
-          if (e.target.classList.contains("remove-require-btn")) {
-            this.removeRequire(e.target.closest(".require-item"));
-          }
-        });
-      }
+      this.elements.addRequireBtn && this.addEventListener(this.elements.addRequireBtn, "click", () => {
+        this.addCurrentRequire();
+      }), this.elements.requireList && this.addEventListener(this.elements.requireList, "click", (e) => {
+        e.target.classList.contains("remove-require-btn") && this.removeRequire(e.target.closest(".require-item"));
+      });
     }
     addCurrentRequire() {
-      const url = this.elements.requireURL.value.trim();
-      if (url) {
-        this.addRequireToList(url);
-        this.elements.requireURL.value = "";
-        this.emit("requireAdded", { url });
-      }
+      const e = this.elements.requireURL.value.trim();
+      e && (this.addRequireToList(e), this.elements.requireURL.value = "", this.emit("requireAdded", {
+        url: e
+      }));
     }
-    addRequireToList(url) {
-      if (!url)
+    addRequireToList(e) {
+      if (!e)
         return;
-      const item = document.createElement("li");
-      item.className = "require-item";
-      item.dataset.url = url;
-      item.innerHTML = `
-      <span>${this.escapeHtml(url)}</span>
-      <button class="remove-require-btn" title="Remove Required Script">\xD7</button>
-    `;
-      this.elements.requireList.appendChild(item);
-      this.emit("requireAdded", { url });
-      this.emit("sidebarChanged");
+      const t2 = document.createElement("li");
+      t2.className = "require-item", t2.dataset.url = e, t2.innerHTML = `<span>${this.escapeHtml(e)}</span><button class="remove-require-btn" title="Remove Required Script">\xD7</button>`, this.elements.requireList.appendChild(t2), this.emit("requireAdded", {
+        url: e
+      }), this.emit("sidebarChanged"), this.callbacks.updateSectionVisibility && this.callbacks.updateSectionVisibility();
     }
-    removeRequire(item) {
-      const url = item.dataset.url;
-      item.remove();
-      this.emit("requireRemoved", { url });
-      this.emit("sidebarChanged");
+    removeRequire(e) {
+      const t2 = e.dataset.url;
+      e.remove(), this.emit("requireRemoved", {
+        url: t2
+      }), this.emit("sidebarChanged"), this.callbacks.updateSectionVisibility && this.callbacks.updateSectionVisibility();
     }
     getRequires() {
-      return Array.from(this.elements.requireList.querySelectorAll(".require-item")).map((i) => i.dataset.url);
+      return Array.from(this.elements.requireList.querySelectorAll(".require-item")).map((e) => e.dataset.url);
     }
-    escapeHtml(text2) {
-      const div = document.createElement("div");
-      div.textContent = text2;
-      return div.innerHTML;
+    escapeHtml(e) {
+      const t2 = document.createElement("div");
+      return t2.textContent = e, t2.innerHTML;
     }
   };
   var ResourceManager = class extends BaseUIComponent {
-    constructor(elements, eventBus) {
-      super(elements, eventBus);
-      this.setupEventListeners();
+    constructor(e, t2) {
+      super(e, t2), this.callbacks = {}, this.setupEventListeners();
     }
     setupEventListeners() {
       this.addEventListener(this.elements.addResourceBtn, "click", () => {
         this.addCurrentResource();
-      });
-      this.addEventListener(this.elements.resourceList, "click", (e) => {
-        const btn = e.target.closest(".remove-resource-btn, .remove-resource");
-        if (btn) {
-          this.removeResource(btn.closest(".resource-item"));
-        }
-      });
-      this.on("gmApiChanged", ({ api }) => {
-        if (api === "GM_getResourceText" || api === "GM_getResourceURL") {
-          this.toggleResourceSection();
-        }
+      }), this.addEventListener(this.elements.resourceList, "click", (e) => {
+        const t2 = e.target.closest(".remove-resource-btn, .remove-resource");
+        t2 && this.removeResource(t2.closest(".resource-item"));
+      }), this.on("gmApiChanged", ({
+        api: e
+      }) => {
+        "GM_getResourceText" !== e && "GM_getResourceURL" !== e || this.toggleResourceSection();
       });
     }
     addCurrentResource() {
-      const name2 = this.elements.resourceName.value.trim();
-      const url = this.elements.resourceURL.value.trim();
-      if (name2 && url) {
-        this.addResourceToList(name2, url);
-        this.elements.resourceName.value = "";
-        this.elements.resourceURL.value = "";
-        this.emit("resourceAdded", { name: name2, url });
-      }
-    }
-    addResourceToList(name2, url) {
-      if (!name2 || !url)
-        return;
-      const resourceItem = document.createElement("li");
-      resourceItem.className = "resource-item";
-      resourceItem.dataset.name = name2;
-      resourceItem.dataset.url = url;
-      resourceItem.innerHTML = `
-      <span>${this.escapeHtml(name2)} (${this.escapeHtml(url)})</span>
-      <button class="remove-resource" title="Remove Resource">\xD7</button>
-    `;
-      this.elements.resourceList.appendChild(resourceItem);
-      this.emit("resourceAdded", { name: name2, url });
-      this.emit("sidebarChanged");
-    }
-    removeResource(resourceItem) {
-      const name2 = resourceItem.dataset.name;
-      const url = resourceItem.dataset.url;
-      resourceItem.remove();
-      this.emit("resourceRemoved", { name: name2, url });
-      this.emit("sidebarChanged");
-    }
-    toggleResourceSection() {
-      const section = document.getElementById("resourcesSection");
-      const shouldShow = this.elements.gmGetResourceText?.checked || this.elements.gmGetResourceURL?.checked;
-      if (section) {
-        section.classList.toggle("hidden", !shouldShow);
-      }
-    }
-    getResources() {
-      return Array.from(this.elements.resourceList.querySelectorAll(".resource-item")).map((item) => ({
-        name: item.dataset.name,
-        url: item.dataset.url
+      const e = this.elements.resourceName.value.trim(), t2 = this.elements.resourceURL.value.trim();
+      e && t2 && (this.addResourceToList(e, t2), this.elements.resourceName.value = "", this.elements.resourceURL.value = "", this.emit("resourceAdded", {
+        name: e,
+        url: t2
       }));
     }
-    escapeHtml(text2) {
-      const div = document.createElement("div");
-      div.textContent = text2;
-      return div.innerHTML;
+    addResourceToList(e, t2) {
+      if (!e || !t2)
+        return;
+      const s = document.createElement("li");
+      s.className = "resource-item", s.dataset.name = e, s.dataset.url = t2, s.innerHTML = `<span>${this.escapeHtml(e)} (${this.escapeHtml(t2)})</span><button class="remove-resource" title="Remove Resource">\xD7</button>`, this.elements.resourceList.appendChild(s), this.emit("resourceAdded", {
+        name: e,
+        url: t2
+      }), this.emit("sidebarChanged"), this.callbacks.updateSectionVisibility && this.callbacks.updateSectionVisibility();
+    }
+    removeResource(e) {
+      const t2 = e.dataset.name, s = e.dataset.url;
+      e.remove(), this.emit("resourceRemoved", {
+        name: t2,
+        url: s
+      }), this.emit("sidebarChanged"), this.callbacks.updateSectionVisibility && this.callbacks.updateSectionVisibility();
+    }
+    toggleResourceSection() {
+      const e = document.getElementById("resourcesSection"), t2 = this.elements.gmGetResourceText?.checked || this.elements.gmGetResourceURL?.checked;
+      e && e.classList.toggle("hidden", !t2);
+    }
+    getResources() {
+      return Array.from(this.elements.resourceList.querySelectorAll(".resource-item")).map((e) => ({
+        name: e.dataset.name,
+        url: e.dataset.url
+      }));
+    }
+    escapeHtml(e) {
+      const t2 = document.createElement("div");
+      return t2.textContent = e, t2.innerHTML;
     }
   };
   var FormManager = class extends BaseUIComponent {
-    constructor(elements, eventBus) {
-      super(elements, eventBus);
-      this.setupEventListeners();
+    constructor(e, t2) {
+      super(e, t2), this.setupEventListeners();
     }
     setupEventListeners() {
-      const formElements = [
-        "scriptName",
-        "scriptAuthor",
-        "scriptVersion",
-        "scriptDescription",
-        "runAt",
-        "waitForSelector",
-        "scriptResources"
-      ];
-      formElements.forEach((elementKey) => {
-        const element = this.elements[elementKey];
-        if (element) {
-          const eventType = element.type === "checkbox" ? "change" : "input";
-          this.addEventListener(element, eventType, () => {
+      ["scriptName", "scriptAuthor", "scriptVersion", "scriptDescription", "runAt", "waitForSelector", "scriptResources"].forEach((e) => {
+        const t2 = this.elements[e];
+        if (t2) {
+          const e2 = "checkbox" === t2.type ? "change" : "input";
+          this.addEventListener(t2, e2, () => {
             this.emit("formChanged");
           });
         }
@@ -7608,42 +3135,20 @@
         waitForSelector: this.elements.waitForSelector?.value?.trim() || ""
       };
     }
-    setFormData(data) {
-      if (this.elements.scriptName)
-        this.elements.scriptName.value = data.name || "";
-      if (this.elements.scriptAuthor)
-        this.elements.scriptAuthor.value = data.author || "";
-      if (this.elements.scriptVersion)
-        this.elements.scriptVersion.value = data.version || "1.0";
-      if (this.elements.scriptDescription)
-        this.elements.scriptDescription.value = data.description || "";
-      if (this.elements.runAt)
-        this.elements.runAt.value = data.runAt || "document-end";
-      if (this.elements.waitForSelector)
-        this.elements.waitForSelector.value = data.waitForSelector || "";
+    setFormData(e) {
+      this.elements.scriptName && (this.elements.scriptName.value = e.name || ""), this.elements.scriptAuthor && (this.elements.scriptAuthor.value = e.author || ""), this.elements.scriptVersion && (this.elements.scriptVersion.value = e.version || "1.0"), this.elements.scriptDescription && (this.elements.scriptDescription.value = e.description || ""), this.elements.runAt && (this.elements.runAt.value = e.runAt || "document-end"), this.elements.waitForSelector && (this.elements.waitForSelector.value = e.waitForSelector || "");
     }
     validate() {
-      const errors = [];
-      const data = this.getFormData();
-      if (!data.name) {
-        errors.push("Script name is required");
-      }
-      return {
-        isValid: errors.length === 0,
-        errors
+      const e = [];
+      return this.getFormData().name || e.push("Script name is required"), {
+        isValid: 0 === e.length,
+        errors: e
       };
     }
   };
   var UIManager = class {
-    constructor(elements, config2) {
-      this.elements = elements;
-      this.config = config2;
-      this.eventBus = new EventBus();
-      this.components = {};
-      this.hasUnsavedChanges = false;
-      this.initializeComponents();
-      this.setupGlobalEventListeners();
-      this.setupButtonEventListeners();
+    constructor(e, t2) {
+      this.elements = e, this.config = t2, this.eventBus = new EventBus(), this.components = {}, this.hasUnsavedChanges = false, this.initializeComponents(), this.setupGlobalEventListeners(), this.setupButtonEventListeners();
     }
     initializeComponents() {
       this.components.modal = new ModalManager({
@@ -7651,217 +3156,164 @@
         closeSettings: this.elements.closeSettings,
         settingsModal: this.elements.settingsModal,
         helpButton: document.getElementById("helpButton")
-      }, this.eventBus);
-      this.components.sidebar = new SidebarManager(this.elements, this.eventBus, this.config);
-      this.components.status = new StatusManager(this.elements, this.eventBus);
-      this.components.settings = new SettingsManager(this.elements, this.eventBus);
-      this.components.url = new URLManager(this.elements, this.eventBus);
-      this.components.resource = new ResourceManager(this.elements, this.eventBus);
-      this.components.require = new RequireManager(this.elements, this.eventBus);
-      this.components.form = new FormManager(this.elements, this.eventBus);
-      if (this.components.url && this.components.status) {
-        this.components.url.statusManager = this.components.status;
-      }
+      }, this.eventBus), this.components.sidebar = new SidebarManager(this.elements, this.eventBus, this.config), this.components.status = new StatusManager(this.elements, this.eventBus), this.components.settings = new SettingsManager(this.elements, this.eventBus), this.components.url = new URLManager(this.elements, this.eventBus), this.components.resource = new ResourceManager(this.elements, this.eventBus), this.components.require = new RequireManager(this.elements, this.eventBus), this.components.form = new FormManager(this.elements, this.eventBus), this.components.url && this.components.status && (this.components.url.statusManager = this.components.status);
     }
     setupGlobalEventListeners() {
-      let hasUserInteraction = false;
-      const trackInteraction = () => {
-        hasUserInteraction = true;
+      let e = false;
+      const t2 = () => {
+        e = true;
       };
-      document.addEventListener("mousedown", trackInteraction, { once: true });
-      document.addEventListener("keydown", trackInteraction, { once: true });
-      window.addEventListener("beforeunload", (e) => {
-        if (this.hasUnsavedChanges && hasUserInteraction) {
-          e.preventDefault();
-          e.returnValue = "You have unsaved changes. Are you sure you want to leave?";
-          return e.returnValue;
-        }
+      document.addEventListener("mousedown", t2, {
+        once: true
+      }), document.addEventListener("keydown", t2, {
+        once: true
+      }), window.addEventListener("beforeunload", (t3) => {
+        if (this.hasUnsavedChanges && e)
+          return t3.preventDefault(), t3.returnValue = "You have unsaved changes. Are you sure you want to leave?", t3.returnValue;
       });
     }
     setupButtonEventListeners() {
-      if (this.components.form && typeof this.components.form.setupEventListeners === "function") {
-        this.components.form.setupEventListeners();
-      }
+      this.components.form && "function" == typeof this.components.form.setupEventListeners && this.components.form.setupEventListeners();
     }
-    setupFormEventListeners(onChange) {
-      if (this.components.form && typeof this.components.form.setupEventListeners === "function") {
-        this.components.form.setupEventListeners(onChange);
-      }
+    setupFormEventListeners(e) {
+      this.components.form && "function" == typeof this.components.form.setupEventListeners && this.components.form.setupEventListeners(e);
     }
-    setupUrlManagement(callbacks) {
-      if (this.components.url && typeof this.components.url.setupUrlManagement === "function") {
-        this.components.url.setupUrlManagement(callbacks);
-      }
+    setupUrlManagement(e) {
+      this.components.url && "function" == typeof this.components.url.setupUrlManagement && this.components.url.setupUrlManagement(e);
     }
-    setupSettingsModal(callbacks) {
-      if (this.components.settings && typeof this.components.settings.setupModalListeners === "function") {
-        this.components.settings.setupModalListeners(callbacks);
-      }
+    setupSettingsModal(e) {
+      this.components.settings && "function" == typeof this.components.settings.setupModalListeners && this.components.settings.setupModalListeners(e);
     }
-    setupResourceManagement(callbacks) {
-      if (this.components.resource && typeof this.components.resource.setupEventListeners === "function") {
-        this.components.resource.setupEventListeners(callbacks);
-      }
+    setupResourceManagement(e) {
+      this.components.resource && (this.components.resource.callbacks = e || {}, "function" == typeof this.components.resource.setupEventListeners && this.components.resource.setupEventListeners(e)), this.components.require && (this.components.require.callbacks = e || {});
     }
-    // Public API methods
-    on(eventName, handler) {
-      this.eventBus.on(eventName, handler);
+    on(e, t2) {
+      this.eventBus.on(e, t2);
     }
-    emit(eventName, data) {
-      this.eventBus.emit(eventName, data);
+    emit(e, t2) {
+      this.eventBus.emit(e, t2);
     }
-    addResourceToList(name2, url) {
-      if (this.components.resource && typeof this.components.resource.addResourceToList === "function") {
-        this.components.resource.addResourceToList(name2, url);
-      } else {
-        console.warn("ResourceManager not properly initialized");
-      }
+    addResourceToList(e, t2) {
+      this.components.resource && "function" == typeof this.components.resource.addResourceToList ? this.components.resource.addResourceToList(e, t2) : console.warn("ResourceManager not properly initialized");
     }
-    addRequireToList(url) {
-      if (this.components.require && typeof this.components.require.addRequireToList === "function") {
-        this.components.require.addRequireToList(url);
-      }
+    addRequireToList(e) {
+      this.components.require && "function" == typeof this.components.require.addRequireToList && this.components.require.addRequireToList(e);
     }
-    getComponent(name2) {
-      return this.components[name2];
+    getComponent(e) {
+      return this.components[e];
     }
     destroy() {
-      Object.values(this.components).forEach((component) => {
-        if (component.destroy) {
-          component.destroy();
-        }
+      Object.values(this.components).forEach((e) => {
+        e.destroy && e.destroy();
       });
     }
-    updateScriptStatus(hasUnsavedChanges) {
-      this.hasUnsavedChanges = hasUnsavedChanges;
-      if (this.components.status && typeof this.components.status.updateScriptStatus === "function") {
-        this.components.status.updateScriptStatus(hasUnsavedChanges);
-      }
+    updateScriptStatus(e) {
+      this.hasUnsavedChanges = e, this.components.status && "function" == typeof this.components.status.updateScriptStatus && this.components.status.updateScriptStatus(e);
     }
-    showStatusMessage(message, type = "success", duration = 3e3) {
-      if (this.components.status && typeof this.components.status.showMessage === "function") {
-        this.components.status.showMessage(message, type, duration);
-      }
+    showStatusMessage(e, t2 = "success", s = 3e3) {
+      this.components.status && "function" == typeof this.components.status.showMessage && this.components.status.showMessage(e, t2, s);
     }
     clearStatusMessage() {
-      if (this.components.status && typeof this.components.status.clearMessage === "function") {
-        this.components.status.clearMessage();
-      }
+      this.components.status && "function" == typeof this.components.status.clearMessage && this.components.status.clearMessage();
     }
-    // Proxies for backwords compatability
     initializeCollapsibleSections() {
-      if (this.components.sidebar && typeof this.components.sidebar.initializeCollapsibleSections === "function") {
-        this.components.sidebar.initializeCollapsibleSections();
-      }
+      this.components.sidebar && "function" == typeof this.components.sidebar.initializeCollapsibleSections && this.components.sidebar.initializeCollapsibleSections();
     }
-    addUrlToList(url) {
-      if (this.components.url && typeof this.components.url.addUrlToList === "function") {
-        this.components.url.addUrlToList(url);
-      }
+    addUrlToList(e) {
+      this.components.url && "function" == typeof this.components.url.addUrlToList && this.components.url.addUrlToList(e);
     }
     updateSidebarState() {
-      if (this.components.sidebar && typeof this.components.sidebar.updateVisibility === "function") {
-        this.components.sidebar.updateVisibility();
-      }
+      this.components.sidebar && "function" == typeof this.components.sidebar.updateVisibility && this.components.sidebar.updateVisibility();
     }
   };
   var EventBus = class {
     constructor() {
       this.events = /* @__PURE__ */ new Map();
     }
-    on(eventName, handler) {
-      if (!this.events.has(eventName)) {
-        this.events.set(eventName, []);
-      }
-      this.events.get(eventName).push(handler);
+    on(e, t2) {
+      this.events.has(e) || this.events.set(e, []), this.events.get(e).push(t2);
     }
-    off(eventName, handler) {
-      if (this.events.has(eventName)) {
-        const handlers2 = this.events.get(eventName);
-        const index = handlers2.indexOf(handler);
-        if (index > -1) {
-          handlers2.splice(index, 1);
+    off(e, t2) {
+      if (this.events.has(e)) {
+        const s = this.events.get(e).indexOf(t2);
+        s > -1 && this.events.get(e).splice(s, 1);
+      }
+    }
+    emit(e, t2 = {}) {
+      this.events.has(e) && this.events.get(e).forEach((e2) => {
+        try {
+          e2(t2);
+        } catch (t3) {
+          console.error(`Error in event handler for ${e2}:`, t3);
         }
-      }
-    }
-    emit(eventName, data = {}) {
-      if (this.events.has(eventName)) {
-        this.events.get(eventName).forEach((handler) => {
-          try {
-            handler(data);
-          } catch (error) {
-            console.error(`Error in event handler for ${eventName}:`, error);
-          }
-        });
-      }
+      });
     }
   };
   var StorageManager = class {
     constructor() {
       this.storageKey = "scripts";
     }
-    async getScript(id2) {
+    async getScript(e) {
       try {
-        const { [this.storageKey]: scripts = [] } = await chrome.storage.local.get(this.storageKey);
-        return scripts.find((script) => script.id === id2) || null;
-      } catch (error) {
-        console.error("Failed to get script:", error);
-        return null;
+        const {
+          [this.storageKey]: t2 = []
+        } = await chrome.storage.local.get(this.storageKey);
+        return t2.find((t3) => t3.id === e) || null;
+      } catch (e2) {
+        return console.error("Failed to get script:", e2), null;
       }
     }
-    async saveScript(scriptData, scriptId = null, isEditMode = false) {
+    async saveScript(e, t2 = null, s = false) {
       try {
-        const { [this.storageKey]: scripts = [] } = await chrome.storage.local.get(this.storageKey);
-        const now = (/* @__PURE__ */ new Date()).toISOString();
-        if (isEditMode && scriptId) {
-          const scriptIndex = scripts.findIndex((script) => script.id === scriptId);
-          if (scriptIndex === -1) {
+        const {
+          [this.storageKey]: i = []
+        } = await chrome.storage.local.get(this.storageKey), n = (/* @__PURE__ */ new Date()).toISOString();
+        if (s && t2) {
+          const s2 = i.findIndex((e2) => e2.id === t2);
+          if (-1 === s2)
             throw new Error("Script not found for editing");
-          }
-          const existingScript = scripts[scriptIndex];
-          const updatedScript = {
-            ...scriptData,
-            id: scriptId,
-            createdAt: existingScript.createdAt || now,
-            updatedAt: now
+          const r = i[s2], o = {
+            ...e,
+            id: t2,
+            createdAt: r.createdAt || n,
+            updatedAt: n
           };
-          scripts[scriptIndex] = updatedScript;
-          await chrome.storage.local.set({ [this.storageKey]: scripts });
-          return updatedScript;
-        } else {
-          const newScript = {
-            ...scriptData,
-            id: this.generateUniqueId(),
-            createdAt: now,
-            updatedAt: now
-          };
-          scripts.push(newScript);
-          await chrome.storage.local.set({ [this.storageKey]: scripts });
-          return newScript;
+          return i[s2] = o, await chrome.storage.local.set({
+            [this.storageKey]: i
+          }), o;
         }
-      } catch (error) {
-        console.error("Failed to save script:", error);
-        throw error;
+        {
+          const t3 = {
+            ...e,
+            id: this.generateUniqueId(),
+            createdAt: n,
+            updatedAt: n
+          };
+          return i.push(t3), await chrome.storage.local.set({
+            [this.storageKey]: i
+          }), t3;
+        }
+      } catch (e2) {
+        throw console.error("Failed to save script:", e2), e2;
       }
     }
-    async deleteScript(id2) {
+    async deleteScript(e) {
       try {
-        const { [this.storageKey]: scripts = [] } = await chrome.storage.local.get(this.storageKey);
-        const filteredScripts = scripts.filter((script) => script.id !== id2);
-        await chrome.storage.local.set({ [this.storageKey]: filteredScripts });
-        return true;
-      } catch (error) {
-        console.error("Failed to delete script:", error);
-        return false;
+        const {
+          [this.storageKey]: t2 = []
+        } = await chrome.storage.local.get(this.storageKey), s = t2.filter((t3) => t3.id !== e);
+        return await chrome.storage.local.set({
+          [this.storageKey]: s
+        }), true;
+      } catch (e2) {
+        return console.error("Failed to delete script:", e2), false;
       }
     }
     async getAllScripts() {
       try {
-        const { [this.storageKey]: scripts = [] } = await chrome.storage.local.get(this.storageKey);
-        return scripts;
-      } catch (error) {
-        console.error("Failed to get all scripts:", error);
-        return [];
+        return (await chrome.storage.local.get(this.storageKey))[this.storageKey] || [];
+      } catch (e) {
+        return console.error("Failed to get all scripts:", e), [];
       }
     }
     generateUniqueId() {
@@ -7869,121 +3321,112 @@
     }
   };
   var FormValidator = class {
-    constructor(elements) {
-      this.elements = elements;
+    constructor(e) {
+      this.elements = e;
     }
     validateForm() {
-      const validations = [
-        // Name is optional (auto-generated on save if empty)
-        this.validateTargetUrls(),
-        this.validateVersion(),
-        this.validateRunAt(),
-        this.validateIconUrl(),
-        this.validateRequireUrls(),
-        this.validateResources()
-      ];
-      return validations.every((validation) => validation.isValid);
+      return [this.validateTargetUrls(), this.validateVersion(), this.validateRunAt(), this.validateIconUrl(), this.validateRequireUrls(), this.validateResources()].every((e) => e.isValid);
     }
     validateTargetUrls() {
-      const urlList = Array.from(document.querySelectorAll(".url-item")).map(
-        (item) => item.dataset.url
-      );
-      const currentUrl = this.elements.targetUrl.value.trim();
-      if (urlList.length === 0 && !currentUrl) {
-        this.showValidationError("Please add at least one target URL.");
-        return { isValid: false };
-      }
-      if (currentUrl) {
+      const e = Array.from(document.querySelectorAll(".url-item")).map((e2) => e2.dataset.url), t2 = this.elements.targetUrl.value.trim();
+      if (0 === e.length && !t2)
+        return this.showValidationError("Please add at least one target URL."), {
+          isValid: false
+        };
+      if (t2)
         try {
-          new URL(currentUrl);
+          new URL(t2);
         } catch {
-          this.showValidationError("The target URL must be a valid http(s) URL.");
-          return { isValid: false };
+          return this.showValidationError("The target URL must be a valid http(s) URL."), {
+            isValid: false
+          };
         }
-      }
-      return { isValid: true };
+      return {
+        isValid: true
+      };
     }
     validateVersion() {
-      const versionEl = this.elements.scriptVersion;
-      const version = (versionEl?.value || "").trim();
-      if (!version)
-        return { isValid: true };
-      const semverLike = /^\d+\.\d+\.\d+$/;
-      if (!semverLike.test(version)) {
-        this.showValidationError("Version must be in the format X.Y.Z (e.g., 1.0.0).");
-        return { isValid: false };
-      }
-      return { isValid: true };
+      const e = this.elements.scriptVersion, t2 = (e?.value || "").trim();
+      return t2 && !/^\d+\.\d+\.\d+$/.test(t2) ? (this.showValidationError("Version must be in the format X.Y.Z (e.g., 1.0.0)."), {
+        isValid: false
+      }) : {
+        isValid: true
+      };
     }
     validateRunAt() {
-      const allowed = /* @__PURE__ */ new Set(["document_start", "document_end", "document_idle"]);
-      const runAt = this.elements.runAt?.value;
-      if (runAt && !allowed.has(runAt)) {
-        this.showValidationError("Invalid 'Run at' value selected.");
-        return { isValid: false };
-      }
-      return { isValid: true };
+      const e = /* @__PURE__ */ new Set(["document_start", "document_end", "document_idle"]), t2 = this.elements.runAt?.value;
+      return t2 && !e.has(t2) ? (this.showValidationError("Invalid 'Run at' value selected."), {
+        isValid: false
+      }) : {
+        isValid: true
+      };
     }
     validateIconUrl() {
-      const icon = this.elements.scriptIcon?.value?.trim();
-      if (!icon)
-        return { isValid: true };
+      const e = this.elements.scriptIcon?.value?.trim();
+      if (!e)
+        return {
+          isValid: true
+        };
       try {
-        const u = new URL(icon);
-        if (u.protocol !== "http:" && u.protocol !== "https:") {
-          this.showValidationError("Icon URL must start with http:// or https://");
-          return { isValid: false };
-        }
-        return { isValid: true };
+        const t2 = new URL(e);
+        return "http:" !== t2.protocol && "https:" !== t2.protocol ? (this.showValidationError("Icon URL must start with http:// or https://"), {
+          isValid: false
+        }) : {
+          isValid: true
+        };
       } catch {
-        this.showValidationError("Icon URL is not a valid URL.");
-        return { isValid: false };
+        return this.showValidationError("Icon URL is not a valid URL."), {
+          isValid: false
+        };
       }
     }
     validateRequireUrls() {
-      const items = Array.from(document.querySelectorAll(".require-item"));
-      for (const item of items) {
-        const url = item.dataset.url?.trim();
-        if (!url) {
-          this.showValidationError("A required script entry is missing its URL.");
-          return { isValid: false };
-        }
+      const e = Array.from(document.querySelectorAll(".require-item"));
+      for (const t2 of e) {
+        const e2 = t2.dataset.url?.trim();
+        if (!e2)
+          return this.showValidationError("A required script entry is missing its URL."), {
+            isValid: false
+          };
         try {
-          new URL(url);
+          new URL(e2);
         } catch {
-          this.showValidationError("One of the required script URLs is invalid.");
-          return { isValid: false };
+          return this.showValidationError("One of the required script URLs is invalid."), {
+            isValid: false
+          };
         }
       }
-      return { isValid: true };
+      return {
+        isValid: true
+      };
     }
     validateResources() {
-      const items = Array.from(document.querySelectorAll(".resource-item"));
-      for (const item of items) {
-        const name2 = item.dataset.name?.trim();
-        const url = item.dataset.url?.trim();
-        if (!name2) {
-          this.showValidationError("A resource is missing its name.");
-          return { isValid: false };
-        }
-        if (!url) {
-          this.showValidationError("A resource is missing its URL.");
-          return { isValid: false };
-        }
+      const e = Array.from(document.querySelectorAll(".resource-item"));
+      for (const t2 of e) {
+        const e2 = t2.dataset.name?.trim(), s = t2.dataset.url?.trim();
+        if (!e2)
+          return this.showValidationError("A resource is missing its name."), {
+            isValid: false
+          };
+        if (!s)
+          return this.showValidationError("A resource is missing its URL."), {
+            isValid: false
+          };
         try {
-          new URL(url);
+          new URL(s);
         } catch {
-          this.showValidationError("One of the resource URLs is invalid.");
-          return { isValid: false };
+          return this.showValidationError("One of the resource URLs is invalid."), {
+            isValid: false
+          };
         }
       }
-      return { isValid: true };
+      return {
+        isValid: true
+      };
     }
-    showValidationError(message) {
-      const statusMessage = this.elements.statusMessage;
-      statusMessage.textContent = message;
-      statusMessage.className = "status-message error";
-      statusMessage.style.display = "block";
+    showValidationError(e) {
+      const t2 = this.elements.statusMessage;
+      t2.textContent = e, t2.className = "status-message error", t2.style.display = "block";
     }
   };
 
@@ -33188,9 +28631,6 @@
     return lines.join("\n");
   }
 
-  // src/utils/editor_settings.js
-  var import_js_beautify = __toESM(require_js(), 1);
-
   // node_modules/@replit/codemirror-minimap/dist/index.js
   var __rest = function(s, e) {
     var t2 = {};
@@ -34334,7 +29774,7 @@
   ]);
   var oneDark = [oneDarkTheme, /* @__PURE__ */ syntaxHighlighting(oneDarkHighlightStyle)];
 
-  // src/utils/editor_settings.js
+  // src/editor/editor_settings.js
   var CodeEditorManager = class {
     constructor(elements, state, config2, gmApiDefinitions) {
       this.elements = elements;
@@ -34487,10 +29927,6 @@
         } },
         { key: "Cmd-s", run: () => {
           this.onSaveCallback?.();
-          return true;
-        } },
-        { key: "Alt-f", run: () => {
-          this.formatCode(true);
           return true;
         } },
         { key: "F11", run: (view) => {
@@ -34665,35 +30101,6 @@
       localStorage.setItem("lintingEnabled", this.state.lintingEnabled);
       return this.state.lintingEnabled;
     }
-    async formatCode(showMessage = true, onFormatComplete) {
-      try {
-        if (!this.codeEditor) {
-          throw new Error("Code editor not initialized");
-        }
-        const unformattedCode = this.getValue();
-        const formattedCode = (0, import_js_beautify.js_beautify)(unformattedCode, {
-          indent_size: 2,
-          space_in_empty_paren: true
-        });
-        this.setValue(formattedCode);
-        if (showMessage && this.onStatusCallback) {
-          this.onStatusCallback("Code formatted", "success");
-          setTimeout(
-            () => this.onStatusCallback(null),
-            this.config.STATUS_TIMEOUT
-          );
-        }
-        if (typeof onFormatComplete === "function") {
-          await onFormatComplete();
-        }
-      } catch (error) {
-        console.error("Error formatting code:", error);
-        if (showMessage && this.onStatusCallback) {
-          this.onStatusCallback("Could not format code", "error");
-        }
-        return false;
-      }
-    }
     insertTemplateCode(template) {
       const wrappedCode = `(function() {
     'use strict';
@@ -34702,7 +30109,6 @@
   
   })();`;
       this.setValue(wrappedCode);
-      this.formatCode(false);
     }
     insertDefaultTemplate() {
       const defaultCode = `(function() {
@@ -34713,7 +30119,6 @@
   
   })();`;
       this.setValue(defaultCode);
-      this.formatCode(false);
     }
     getValue() {
       return this.codeEditor ? this.codeEditor.state.doc.toString() : "";
@@ -34781,131 +30186,73 @@
       this.storage = new StorageManager();
       this.validator = new FormValidator(this.elements);
       this.gmApiDefinitions = GM_API_DEFINITIONS;
-      this.codeEditorManager = new CodeEditorManager(
-        this.elements,
-        this.state,
-        this.config,
-        this.gmApiDefinitions
-      );
+      this.codeEditorManager = new CodeEditorManager(this.elements, this.state, this.config, this.gmApiDefinitions);
     }
     _debouncedSave() {
-      if (this.state.autosaveTimeout) {
-        clearTimeout(this.state.autosaveTimeout);
-      }
+      this.state.autosaveTimeout && clearTimeout(this.state.autosaveTimeout);
       this.state.autosaveTimeout = setTimeout(async () => {
-        if (this.state.hasUnsavedChanges) {
-          if (this.state.isEditMode) {
-            try {
-              await this.saveScript(true);
-            } catch (error) {
-              console.error("Autosave failed:", error);
-              if (this.ui && this.ui.showStatusMessage) {
-                this.ui.showStatusMessage("Autosave failed", "error");
-              }
-            }
+        if (this.state.hasUnsavedChanges && this.state.isEditMode) {
+          try {
+            await this.saveScript(true);
+          } catch (e) {
+            console.error("Autosave failed:", e);
+            this.ui && this.ui.showStatusMessage && this.ui.showStatusMessage("Autosave failed", "error");
           }
         }
       }, this.config.AUTOSAVE_DELAY);
     }
     _debouncedHeaderSync() {
-      if (this.state.headerSyncTimeout) {
-        clearTimeout(this.state.headerSyncTimeout);
-      }
+      this.state.headerSyncTimeout && clearTimeout(this.state.headerSyncTimeout);
       this.state.headerSyncTimeout = setTimeout(() => {
-        if (!this.state.isUpdatingFromSidebar) {
-          this.syncHeaderToSidebar();
-        }
+        this.state.isUpdatingFromSidebar || this.syncHeaderToSidebar();
       }, 500);
     }
     _debouncedSidebarSync() {
-      if (this.state.sidebarSyncTimeout) {
-        clearTimeout(this.state.sidebarSyncTimeout);
-      }
+      this.state.sidebarSyncTimeout && clearTimeout(this.state.sidebarSyncTimeout);
       this.state.sidebarSyncTimeout = setTimeout(() => {
         this.syncSidebarToHeader();
       }, 500);
     }
     syncHeaderToSidebar() {
       try {
-        const currentCode = this.codeEditorManager.getValue();
-        const headerMatch = currentCode.match(/\/\/ ==UserScript==[\s\S]*?\/\/ ==\/UserScript==/);
-        if (!headerMatch)
+        const e = this.codeEditorManager.getValue(), t2 = e.match(/\/\/ ==UserScript==[\s\S]*?\/\/ ==\/UserScript==/);
+        if (!t2)
           return;
-        const metadata = parseUserScriptMetadata(headerMatch[0]);
-        if (metadata.name)
-          this.elements.scriptName.value = metadata.name;
-        if (metadata.author)
-          this.elements.scriptAuthor.value = metadata.author;
-        if (metadata.version)
-          this.elements.scriptVersion.value = metadata.version;
-        if (metadata.description)
-          this.elements.scriptDescription.value = metadata.description;
-        if (metadata.license)
-          this.elements.scriptLicense.value = metadata.license;
-        if (metadata.icon)
-          this.elements.scriptIcon.value = metadata.icon;
-        if (metadata.runAt)
-          this.elements.runAt.value = metadata.runAt.replace(/-/g, "_");
-        if (this.elements.urlList) {
-          this.elements.urlList.innerHTML = "";
-        }
-        if (Array.isArray(metadata.matches) && metadata.matches.length > 0) {
-          metadata.matches.forEach((match) => {
-            this.ui.addUrlToList(match);
-          });
-        }
-        if (this.gmApiDefinitions) {
-          Object.values(this.gmApiDefinitions).forEach((def) => {
-            const el = this.elements[def.el];
-            if (el)
-              el.checked = false;
-          });
-        }
-        if (metadata.gmApis) {
-          Object.keys(metadata.gmApis).forEach((apiFlag) => {
-            const element = this.elements[apiFlag];
-            if (element) {
-              element.checked = !!metadata.gmApis[apiFlag];
-            }
-          });
-        }
+        const s = parseUserScriptMetadata(t2[0]);
+        s.name && (this.elements.scriptName.value = s.name);
+        s.author && (this.elements.scriptAuthor.value = s.author);
+        s.version && (this.elements.scriptVersion.value = s.version);
+        s.description && (this.elements.scriptDescription.value = s.description);
+        s.license && (this.elements.scriptLicense.value = s.license);
+        s.icon && (this.elements.scriptIcon.value = s.icon);
+        s.runAt && (this.elements.runAt.value = s.runAt.replace(/-/g, "_"));
+        this.elements.urlList && (this.elements.urlList.innerHTML = "");
+        Array.isArray(s.matches) && s.matches.length > 0 && s.matches.forEach((e2) => this.ui.addUrlToList(e2));
+        this.gmApiDefinitions && Object.values(this.gmApiDefinitions).forEach((e2) => {
+          const t3 = this.elements[e2.el];
+          t3 && (t3.checked = false);
+        });
+        s.gmApis && Object.keys(s.gmApis).forEach((e2) => {
+          const t3 = this.elements[e2];
+          t3 && (t3.checked = !!s.gmApis[e2]);
+        });
         this.updateApiCount();
-        this.toggleResourcesSection(
-          this.elements.gmGetResourceText?.checked || this.elements.gmGetResourceURL?.checked
-        );
-        this.toggleRequiredScriptsSection();
-        if (this.elements.resourceList) {
-          this.elements.resourceList.innerHTML = "";
-        }
-        if (Array.isArray(metadata.resources) && metadata.resources.length > 0) {
-          metadata.resources.forEach((resource) => {
-            this.ui.addResourceToList(resource.name, resource.url);
-          });
-        }
-        if (this.elements.requireList) {
-          this.elements.requireList.innerHTML = "";
-        }
-        if (Array.isArray(metadata.requires) && metadata.requires.length > 0) {
-          metadata.requires.forEach((url) => this.ui.addRequireToList(url));
-        }
+        this.updateSectionVisibility();
+        this.elements.resourceList && (this.elements.resourceList.innerHTML = "");
+        Array.isArray(s.resources) && s.resources.length > 0 && s.resources.forEach((e2) => this.ui.addResourceToList(e2.name, e2.url));
+        this.elements.requireList && (this.elements.requireList.innerHTML = "");
+        Array.isArray(s.requires) && s.requires.length > 0 && s.requires.forEach((e2) => this.ui.addRequireToList(e2));
       } catch {
       }
     }
     syncSidebarToHeader() {
       try {
-        const currentCode = this.codeEditorManager.getValue();
-        const headerMatch = currentCode.match(/\/\/ ==UserScript==[\s\S]*?\/\/ ==\/UserScript==/);
-        const scriptData = this.gatherScriptData();
-        const newMetadata = buildTampermonkeyMetadata(scriptData);
-        let newCode;
-        if (headerMatch) {
-          newCode = currentCode.replace(headerMatch[0], newMetadata);
-        } else {
-          newCode = newMetadata + "\n\n" + currentCode;
-        }
-        if (newCode !== currentCode) {
+        const e = this.codeEditorManager.getValue(), t2 = e.match(/\/\/ ==UserScript==[\s\S]*?\/\/ ==\/UserScript==/), s = this.gatherScriptData(), i = buildTampermonkeyMetadata(s);
+        let a;
+        a = t2 ? e.replace(t2[0], i) : i + "\n\n" + e;
+        if (a !== e) {
           this.state.isUpdatingFromSidebar = true;
-          this.codeEditorManager.setValue(newCode);
+          this.codeEditorManager.setValue(a);
           setTimeout(() => {
             this.state.isUpdatingFromSidebar = false;
           }, 100);
@@ -34920,68 +30267,21 @@
       this.ui.updateScriptStatus(true);
     }
     cacheElements() {
-      const elementIds = [
-        "pageTitle",
-        "settingsBtn",
-        "closeSettings",
-        "scriptName",
-        "scriptAuthor",
-        "scriptLicense",
-        "scriptIcon",
-        "targetUrl",
-        "runAt",
-        "scriptVersion",
-        "scriptDescription",
-        "saveBtn",
-        "waitForSelector",
-        "statusMessage",
-        "formatBtn",
-        "lintBtn",
-        "lintBtnText",
-        "cursorInfo",
-        "scriptStatusBadge",
-        "autosaveBtn",
-        "autosaveBtnText",
-        "codeEditor",
-        "minimap",
-        ...getApiElementIds(),
-        // All GM API checkboxes
-        "apiSearch",
-        "apiCountBadge",
-        "addUrlBtn",
-        "urlList",
-        "targetUrl",
-        "patternBaseUrl",
-        "patternScope",
-        "generatePatternBtn",
-        "generatedPattern",
-        "generatedPatternGroup",
-        "insertPatternBtn",
-        "addResourceBtn",
-        "resourceName",
-        "resourceURL",
-        "resourceList",
-        "addRequireBtn",
-        "requireURL",
-        "requireList",
-        "helpButton",
-        "generateHeaderBtn"
-      ];
-      const elements = {};
-      elementIds.forEach((id2) => {
-        elements[id2] = document.getElementById(id2);
+      const e = ["pageTitle", "settingsBtn", "closeSettings", "scriptName", "scriptAuthor", "scriptLicense", "scriptIcon", "targetUrl", "runAt", "scriptVersion", "scriptDescription", "saveBtn", "waitForSelector", "statusMessage", "lintBtn", "lintBtnText", "cursorInfo", "scriptStatusBadge", "autosaveBtn", "autosaveBtnText", "codeEditor", "minimap", ...getApiElementIds(), "apiSearch", "apiCountBadge", "addUrlBtn", "urlList", "targetUrl", "patternBaseUrl", "patternScope", "generatePatternBtn", "generatedPattern", "generatedPatternGroup", "insertPatternBtn", "addResourceBtn", "resourceName", "resourceURL", "resourceList", "addRequireBtn", "requireURL", "requireList", "helpButton", "generateHeaderBtn"], t2 = {};
+      e.forEach((e2) => {
+        t2[e2] = document.getElementById(e2);
       });
-      elements.sidebar = document.querySelector(".sidebar");
-      elements.sidebarIconBar = document.querySelector(".sidebar-icon-bar");
-      elements.sidebarContentArea = document.querySelector(".sidebar-content-area");
-      elements.sidebarIconBtns = document.querySelectorAll(".sidebar-icon-btn");
-      elements.sidebarPanels = document.querySelectorAll(".sidebar-panel");
-      elements.sectionToggles = document.querySelectorAll(".section-toggle");
-      elements.mainContent = document.querySelector(".main-content");
-      elements.settingsModal = document.getElementById("settingsModal");
-      elements.requiresSection = document.getElementById("requiresSection");
-      elements.status = null;
-      return elements;
+      t2.sidebar = document.querySelector(".sidebar");
+      t2.sidebarIconBar = document.querySelector(".sidebar-icon-bar");
+      t2.sidebarContentArea = document.querySelector(".sidebar-content-area");
+      t2.sidebarIconBtns = document.querySelectorAll(".sidebar-icon-btn");
+      t2.sidebarPanels = document.querySelectorAll(".sidebar-panel");
+      t2.sectionToggles = document.querySelectorAll(".section-toggle");
+      t2.mainContent = document.querySelector(".main-content");
+      t2.settingsModal = document.getElementById("settingsModal");
+      t2.requiresSection = document.getElementById("requiresSection");
+      t2.status = null;
+      return t2;
     }
     async init() {
       try {
@@ -34993,18 +30293,13 @@
         this.codeEditorManager.setSaveCallback(() => this.saveScript());
         this.codeEditorManager.setChangeCallback(() => {
           this.markAsDirty();
-          if (this.state.isAutosaveEnabled) {
-            this._debouncedSave();
-          }
+          this.state.isAutosaveEnabled && this._debouncedSave();
           this._debouncedHeaderSync();
+          this.updateSectionVisibility();
         });
-        this.codeEditorManager.setImportCallback((importData) => this.handleScriptImport(importData));
-        this.codeEditorManager.setStatusCallback((message, type) => {
-          if (message) {
-            this.ui.showStatusMessage(message, type);
-          } else {
-            this.ui.clearStatusMessage();
-          }
+        this.codeEditorManager.setImportCallback((e) => this.handleScriptImport(e));
+        this.codeEditorManager.setStatusCallback((e, t2) => {
+          e ? this.ui.showStatusMessage(e, t2) : this.ui.clearStatusMessage();
         });
         this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
         await this.parseUrlParams();
@@ -35012,288 +30307,206 @@
         this.ui.initializeCollapsibleSections();
         this.ui.updateSidebarState();
         this.registerEventListeners();
-        if (this.ui && typeof this.ui.on === "function") {
-          this.ui.on("saveRequested", async () => {
-            await this.saveScript();
-            this.ui.showStatusMessage("Script saved!", "success", 2e3);
-          });
-        }
+        this.ui && typeof this.ui.on === "function" && this.ui.on("saveRequested", async () => {
+          await this.saveScript();
+          this.ui.showStatusMessage("Script saved!", "success", 2e3);
+        });
         this.setupBackgroundConnection();
         this.codeEditorManager.updateEditorLintAndAutocomplete();
         setTimeout(() => this.codeEditorManager.focus(), 100);
-      } catch (error) {
-        console.error("Failed to initialize editor:", error);
+      } catch (e) {
+        console.error("Failed to initialize editor:", e);
         this.ui.showStatusMessage("Failed to initialize editor", "error");
       }
     }
     setDefaultValues() {
-      if (!this.elements.scriptVersion.value) {
-        this.elements.scriptVersion.value = this.config.DEFAULT_VERSION;
-      }
+      this.elements.scriptVersion.value || (this.elements.scriptVersion.value = this.config.DEFAULT_VERSION);
     }
     async parseUrlParams() {
-      const urlParams = new URLSearchParams(window.location.search);
-      this.state.scriptId = urlParams.get("id");
-      const initialTargetUrl = urlParams.get("targetUrl");
-      const template = urlParams.get("template");
-      const importId = urlParams.get("importId");
+      const e = new URLSearchParams(window.location.search);
+      this.state.scriptId = e.get("id");
+      const t2 = e.get("targetUrl"), s = e.get("template"), i = e.get("importId");
       this.state.isEditMode = Boolean(this.state.scriptId);
-      if (initialTargetUrl && this.elements.targetUrl) {
-        const decodedUrl = decodeURIComponent(initialTargetUrl);
-        this.elements.targetUrl.value = decodedUrl;
-        this.ui.addUrlToList(decodedUrl);
+      if (t2 && this.elements.targetUrl) {
+        const e2 = decodeURIComponent(t2);
+        this.elements.targetUrl.value = e2;
+        this.ui.addUrlToList(e2);
       }
-      if (template) {
-        const decodedTemplate = decodeURIComponent(template);
-        this.codeEditorManager.insertTemplateCode(decodedTemplate);
-      } else if (!this.state.isEditMode && !this.codeEditorManager.getValue()) {
-        this.codeEditorManager.insertDefaultTemplate();
-      }
-      if (importId) {
-        await this.loadImportedScript(importId);
-      }
+      s ? this.codeEditorManager.insertTemplateCode(decodeURIComponent(s)) : !this.state.isEditMode && !this.codeEditorManager.getValue() && this.codeEditorManager.insertDefaultTemplate();
+      i && await this.loadImportedScript(i);
     }
-    handleScriptImport(importData) {
+    handleScriptImport(e) {
       try {
-        const { code, ...metadata } = importData;
-        const scriptData = { code };
-        if (metadata.name)
-          scriptData.name = metadata.name;
-        if (metadata.version)
-          scriptData.version = metadata.version;
-        if (metadata.description)
-          scriptData.description = metadata.description;
-        if (metadata.author)
-          scriptData.author = metadata.author;
-        if (metadata.namespace)
-          scriptData.namespace = metadata.namespace;
-        if (metadata.runAt)
-          scriptData.runAt = metadata.runAt;
-        if (metadata.license)
-          scriptData.license = metadata.license;
-        if (metadata.icon)
-          scriptData.icon = metadata.icon;
-        if (metadata.matches?.length) {
-          scriptData.targetUrls = [...new Set(metadata.matches)];
-        }
-        if (metadata.requires?.length) {
-          scriptData.requires = metadata.requires;
-        }
-        if (metadata.resources?.length) {
-          scriptData.resources = metadata.resources;
-        }
-        if (metadata.gmApis) {
-          Object.entries(metadata.gmApis).forEach(([api, enabled]) => {
-            if (enabled && this.elements[api]) {
-              scriptData[api] = true;
-            }
-          });
-        }
-        this.populateFormWithScript(scriptData);
-        this.codeEditorManager.setValue(code);
+        const {
+          code: t2,
+          ...s
+        } = e, i = {
+          code: t2
+        };
+        s.name && (i.name = s.name);
+        s.version && (i.version = s.version);
+        s.description && (i.description = s.description);
+        s.author && (i.author = s.author);
+        s.namespace && (i.namespace = s.namespace);
+        s.runAt && (i.runAt = s.runAt);
+        s.license && (i.license = s.license);
+        s.icon && (i.icon = s.icon);
+        s.matches?.length && (i.targetUrls = [...new Set(s.matches)]);
+        s.requires?.length && (i.requires = s.requires);
+        s.resources?.length && (i.resources = s.resources);
+        s.gmApis && Object.entries(s.gmApis).forEach(([e2, t3]) => {
+          t3 && this.elements[e2] && (i[e2] = true);
+        });
+        this.populateFormWithScript(i);
+        this.codeEditorManager.setValue(t2);
         this.ui.showStatusMessage("Script metadata imported successfully", "success");
-      } catch (error) {
-        console.error("Error handling script import:", error);
+      } catch (e2) {
+        console.error("Error handling script import:", e2);
         this.ui.showStatusMessage("Failed to import script metadata", "error");
       }
     }
-    async loadImportedScript(importId) {
+    async loadImportedScript(e) {
       try {
-        const key = `tempImport_${importId}`;
-        const data = await chrome.storage.local.get(key);
-        const importData = data[key];
-        if (!importData)
+        const t2 = `tempImport_${e}`, s = await chrome.storage.local.get(t2), i = s[t2];
+        if (!i)
           return;
-        const { code } = importData;
-        const metadata = parseUserScriptMetadata(code);
-        this.handleScriptImport({ code, ...metadata });
+        const {
+          code: a
+        } = i, r = parseUserScriptMetadata(a);
+        this.handleScriptImport({
+          code: a,
+          ...r
+        });
         this.state.hasUnsavedChanges = true;
         this.ui.updateScriptStatus(true);
-        await chrome.storage.local.remove(key);
-      } catch (err) {
-        console.error("Error loading imported script:", err);
+        await chrome.storage.local.remove(t2);
+      } catch (e2) {
+        console.error("Error loading imported script:", e2);
         this.ui.showStatusMessage("Failed to load imported script", "error");
       }
     }
-    // edit vs create
     async setupEditorMode() {
-      if (this.state.isEditMode) {
-        await this.loadScript(this.state.scriptId);
-      } else if (!this.codeEditorManager.getValue()) {
-        this.codeEditorManager.insertDefaultTemplate();
-      }
+      this.state.isEditMode ? await this.loadScript(this.state.scriptId) : this.codeEditorManager.getValue() || this.codeEditorManager.insertDefaultTemplate();
       this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
     }
-    toggleResourcesSection(show) {
-      const resourcesSection = document.getElementById("resourcesSection");
-      if (resourcesSection) {
-        if (show) {
-          resourcesSection.classList.remove("hidden");
-        } else {
-          const hasResources = this.elements.resourceList?.children.length > 0;
-          if (!this.elements.gmGetResourceText.checked && !this.elements.gmGetResourceURL.checked && !hasResources) {
-            resourcesSection.classList.add("hidden");
-          }
-        }
+    hasRequireInCode() {
+      return /@require\s+\S+/i.test(this.codeEditorManager?.getValue() || "");
+    }
+    hasResourceInCode() {
+      return /@resource\s+\S+/i.test(this.codeEditorManager?.getValue() || "");
+    }
+    toggleResourcesSection() {
+      const e = document.getElementById("resources-panel"), t2 = document.querySelector('[data-section="resources"]'), s = this.elements.gmGetResourceText?.checked || this.elements.gmGetResourceURL?.checked, i = this.elements.resourceList?.children.length > 0, a = this.hasResourceInCode(), r = s || i || a;
+      e && (r ? e.classList.remove("hidden") : e.classList.add("hidden"));
+      if (t2) {
+        r ? t2.style.display = "flex" : (t2.style.display = "none", t2.classList.contains("active") && (this.elements.sidebar?.classList.remove("expanded", "has-active-panel"), t2.classList.remove("active"), this.elements.sidebarContentArea && (this.elements.sidebarContentArea.style.display = "none")));
       }
     }
     toggleRequiredScriptsSection() {
-      const requiresSection = this.elements.requiresSection;
-      if (!requiresSection)
-        return;
-      const requiredScriptsVisible = this.elements.gmGetResourceURL?.checked || false;
-      if (requiredScriptsVisible) {
-        requiresSection.classList.remove("hidden");
-      } else {
-        requiresSection.classList.add("hidden");
+      const e = document.getElementById("requires-panel"), t2 = document.querySelector('[data-section="requires"]'), s = this.elements.requireList?.children.length > 0, i = this.hasRequireInCode(), a = s || i;
+      e && (a ? e.classList.remove("hidden") : e.classList.add("hidden"));
+      if (t2) {
+        a ? t2.style.display = "flex" : (t2.style.display = "none", t2.classList.contains("active") && (this.elements.sidebar?.classList.remove("expanded", "has-active-panel"), t2.classList.remove("active"), this.elements.sidebarContentArea && (this.elements.sidebarContentArea.style.display = "none")));
       }
     }
+    updateSectionVisibility() {
+      this.toggleResourcesSection();
+      this.toggleRequiredScriptsSection();
+    }
     setupResourceApiListeners() {
-      const resourceCheckboxes = [this.elements.gmGetResourceText, this.elements.gmGetResourceURL];
-      resourceCheckboxes.forEach((checkbox) => {
-        if (checkbox) {
-          checkbox.addEventListener("change", () => {
-            const shouldShow = this.elements.gmGetResourceText.checked || this.elements.gmGetResourceURL.checked;
-            this.toggleResourcesSection(shouldShow);
-            if (!this.elements.gmGetResourceText.checked && !this.elements.gmGetResourceURL.checked && this.elements.resourceList) {
-              this.elements.resourceList.innerHTML = "";
-            }
-          });
-        }
-      });
-      if (this.elements.gmGetResourceURL) {
-        this.elements.gmGetResourceURL.addEventListener("change", () => {
-          this.toggleRequiredScriptsSection();
+      [this.elements.gmGetResourceText, this.elements.gmGetResourceURL].forEach((e) => {
+        e && e.addEventListener("change", () => {
+          this.updateSectionVisibility();
         });
-      }
+      });
     }
     registerEventListeners() {
       this.ui.on("sidebarChanged", () => {
         this.markAsUnsaved();
       });
-      this.ui.on("settingChanged", (settings) => {
-        this.codeEditorManager.applySettings(settings);
+      this.ui.on("settingChanged", (e2) => {
+        this.codeEditorManager.applySettings(e2);
       });
       this.setupSidebarIconHandlers();
-      this.elements.saveBtn?.addEventListener("click", (e) => {
-        e.preventDefault();
+      this.elements.saveBtn?.addEventListener("click", (e2) => {
+        e2.preventDefault();
         this.saveScript();
       });
-      this.elements.generateHeaderBtn?.addEventListener("click", (e) => {
-        e.preventDefault();
+      this.elements.generateHeaderBtn?.addEventListener("click", (e2) => {
+        e2.preventDefault();
         this.generateTampermonkeyHeader();
       });
-      const callbacks = {
+      const e = {
         saveScript: () => this.saveScript(),
-        formatCode: async () => {
-          await this.codeEditorManager.formatCode(true, async () => {
-            await this.saveScript(true);
-          });
-        },
         exportScript: () => this.exportScript(),
         loadSettings: () => this.codeEditorManager.loadSettings(),
-        saveSettings: (settings) => {
-          this.codeEditorManager.saveSettings(settings);
-          this.codeEditorManager.applySettings(settings);
+        saveSettings: (t3) => {
+          this.codeEditorManager.saveSettings(t3);
+          this.codeEditorManager.applySettings(t3);
         },
         markAsDirty: () => this.markAsDirty(),
         markAsUnsaved: () => this.markAsUnsaved(),
         debouncedSave: () => this._debouncedSave()
       };
-      this.ui.setupSettingsModal(callbacks);
+      this.ui.setupSettingsModal(e);
       this.ui.setupUrlManagement({
         markAsUnsaved: () => {
           this.markAsUnsaved();
           this._debouncedSidebarSync();
-        }
+        },
+        updateSectionVisibility: () => this.updateSectionVisibility()
       });
       this.ui.setupResourceManagement({
-        ...callbacks,
+        ...e,
         markAsUnsaved: () => {
           this.markAsUnsaved();
           this._debouncedSidebarSync();
-        }
+        },
+        updateSectionVisibility: () => this.updateSectionVisibility()
       });
-      const handleChange = () => {
+      const t2 = () => {
         this.markAsDirty();
-        if (this.state.isAutosaveEnabled) {
-          this._debouncedSave();
-        }
+        this.state.isAutosaveEnabled && this._debouncedSave();
         this._debouncedSidebarSync();
       };
-      const formInputs = [
-        this.elements.scriptName,
-        this.elements.scriptAuthor,
-        this.elements.scriptLicense,
-        this.elements.scriptIcon,
-        this.elements.scriptVersion,
-        this.elements.scriptDescription,
-        this.elements.runAt,
-        this.elements.targetUrl
-      ];
-      formInputs.forEach((input) => {
-        if (input) {
-          input.addEventListener("change", handleChange);
-          input.addEventListener("input", handleChange);
-        }
+      [this.elements.scriptName, this.elements.scriptAuthor, this.elements.scriptLicense, this.elements.scriptIcon, this.elements.scriptVersion, this.elements.scriptDescription, this.elements.runAt, this.elements.targetUrl].forEach((e2) => {
+        e2 && (e2.addEventListener("change", t2), e2.addEventListener("input", t2));
       });
-      Object.values(this.gmApiDefinitions).forEach((api) => {
-        const element = this.elements[api.el];
-        if (element) {
-          element.addEventListener("change", () => {
-            handleChange();
-            this.updateApiCount();
-          });
-        }
+      Object.values(this.gmApiDefinitions).forEach((e2) => {
+        const s = this.elements[e2.el];
+        s && s.addEventListener("change", () => {
+          t2();
+          this.updateApiCount();
+        });
       });
       this.setupResourceApiListeners();
-      if (this.elements.gmGetResourceText?.checked || this.elements.gmGetResourceURL?.checked) {
-        this.toggleResourcesSection(true);
-      }
-      if (this.elements.apiSearch) {
-        this.elements.apiSearch.addEventListener("input", () => {
-          const query = this.elements.apiSearch.value.toLowerCase();
-          const checkboxes = this.elements.sidebar.querySelectorAll(".api-list .form-group-checkbox");
-          checkboxes.forEach((cb) => {
-            const label = cb.querySelector("label").textContent.toLowerCase();
-            const shouldShow = label.includes(query);
-            cb.style.display = shouldShow ? "flex" : "none";
-          });
+      this.updateSectionVisibility();
+      this.elements.apiSearch && this.elements.apiSearch.addEventListener("input", () => {
+        const e2 = this.elements.apiSearch.value.toLowerCase(), t3 = this.elements.sidebar.querySelectorAll(".api-list .form-group-checkbox");
+        t3.forEach((t4) => {
+          const s = t4.querySelector("label").textContent.toLowerCase().includes(e2);
+          t4.style.display = s ? "flex" : "none";
         });
-      }
+      });
     }
     setupSidebarIconHandlers() {
-      const sidebarIconBtns = this.elements.sidebarIconBtns;
-      if (!sidebarIconBtns)
+      const e = this.elements.sidebarIconBtns;
+      if (!e)
         return;
       this.elements.sidebar.classList.remove("expanded", "has-active-panel");
-      sidebarIconBtns.forEach((btn) => btn.classList.remove("active"));
-      this.elements.sidebarPanels.forEach((panel) => panel.classList.remove("active"));
+      e.forEach((e2) => e2.classList.remove("active"));
+      this.elements.sidebarPanels.forEach((e2) => e2.classList.remove("active"));
       this.elements.sidebarContentArea.style.display = "none";
-      sidebarIconBtns.forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const section = btn.getAttribute("data-section");
-          if (!section)
+      e.forEach((t2) => {
+        t2.addEventListener("click", () => {
+          const s = t2.getAttribute("data-section");
+          if (!s)
             return;
-          const panel = document.getElementById(`${section}-panel`);
-          if (!panel)
+          const i = document.getElementById(`${s}-panel`);
+          if (!i)
             return;
-          const isCurrentlyActive = btn.classList.contains("active");
-          if (isCurrentlyActive) {
-            this.elements.sidebar.classList.remove("expanded", "has-active-panel");
-            btn.classList.remove("active");
-            panel.classList.remove("active");
-            this.elements.sidebarContentArea.style.display = "none";
-            this.elements.sidebarContentArea.style.width = "0";
-          } else {
-            this.elements.sidebar.classList.add("has-active-panel", "expanded");
-            sidebarIconBtns.forEach((b) => b.classList.remove("active"));
-            btn.classList.add("active");
-            this.elements.sidebarPanels.forEach((p) => p.classList.remove("active"));
-            panel.classList.add("active");
-            this.elements.sidebarContentArea.style.display = "flex";
-            this.elements.sidebarContentArea.style.width = "280px";
-          }
+          const a = t2.classList.contains("active");
+          a ? (this.elements.sidebar.classList.remove("expanded", "has-active-panel"), t2.classList.remove("active"), i.classList.remove("active"), this.elements.sidebarContentArea.style.display = "none", this.elements.sidebarContentArea.style.width = "0") : (this.elements.sidebar.classList.add("has-active-panel", "expanded"), e.forEach((e2) => e2.classList.remove("active")), t2.classList.add("active"), this.elements.sidebarPanels.forEach((e2) => e2.classList.remove("active")), i.classList.add("active"), this.elements.sidebarContentArea.style.display = "flex", this.elements.sidebarContentArea.style.width = "280px");
         });
       });
     }
@@ -35301,97 +30514,66 @@
       this.state.hasUnsavedChanges = true;
       this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
     }
-    async loadScript(id2) {
+    async loadScript(e) {
       try {
-        const script = await this.storage.getScript(id2);
-        if (!script) {
+        const t2 = await this.storage.getScript(e);
+        if (!t2) {
           this.ui.showStatusMessage("Script not found.", "error");
           return;
         }
-        this.populateFormWithScript(script);
+        this.populateFormWithScript(t2);
         this.state.hasUnsavedChanges = false;
         this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
         this.codeEditorManager.updateEditorLintAndAutocomplete();
-      } catch (error) {
-        console.error("Error loading script:", error);
-        this.ui.showStatusMessage(
-          `Failed to load script: ${error.message}`,
-          "error"
-        );
+      } catch (e2) {
+        console.error("Error loading script:", e2);
+        this.ui.showStatusMessage(`Failed to load script: ${e2.message}`, "error");
       }
     }
-    populateFormWithScript(script) {
-      this.elements.scriptName.value = script.name || "";
-      this.elements.scriptAuthor.value = script.author || "";
-      this.elements.runAt.value = script.runAt || "document_idle";
-      this.elements.scriptVersion.value = script.version || this.config.DEFAULT_VERSION;
-      this.elements.scriptDescription.value = script.description || "";
-      this.elements.scriptLicense.value = script.license || "";
-      this.elements.scriptIcon.value = script.icon || "";
-      this.codeEditorManager.setValue(script.code || "");
-      if (this.elements.urlList) {
-        this.elements.urlList.innerHTML = "";
-      }
-      script.targetUrls?.forEach((url) => this.ui.addUrlToList(url));
-      if (this.elements.gmSetValue)
-        this.elements.gmSetValue.checked = !!script.gmSetValue;
-      if (this.elements.gmGetValue)
-        this.elements.gmGetValue.checked = !!script.gmGetValue;
-      if (this.elements.gmDeleteValue)
-        this.elements.gmDeleteValue.checked = !!script.gmDeleteValue;
-      if (this.elements.gmListValues)
-        this.elements.gmListValues.checked = !!script.gmListValues;
-      if (this.elements.gmOpenInTab)
-        this.elements.gmOpenInTab.checked = !!script.gmOpenInTab;
-      if (this.elements.gmNotification)
-        this.elements.gmNotification.checked = !!script.gmNotification;
-      if (this.elements.gmGetResourceText)
-        this.elements.gmGetResourceText.checked = !!script.gmGetResourceText;
-      if (this.elements.gmGetResourceURL)
-        this.elements.gmGetResourceURL.checked = !!script.gmGetResourceURL;
-      if (this.elements.gmSetClipboard)
-        this.elements.gmSetClipboard.checked = !!script.gmSetClipboard;
-      if (this.elements.gmAddStyle)
-        this.elements.gmAddStyle.checked = !!script.gmAddStyle;
-      if (this.elements.gmAddElement)
-        this.elements.gmAddElement.checked = !!script.gmAddElement;
-      if (this.elements.gmRegisterMenuCommand)
-        this.elements.gmRegisterMenuCommand.checked = !!script.gmRegisterMenuCommand;
-      if (this.elements.gmXmlhttpRequest)
-        this.elements.gmXmlhttpRequest.checked = !!script.gmXmlhttpRequest;
-      if (this.elements.unsafeWindow)
-        this.elements.unsafeWindow.checked = !!script.unsafeWindow;
-      if (script.gmGetResourceText || script.gmGetResourceURL) {
-        this.toggleResourcesSection(true);
-      }
-      if (this.elements.resourceList && script.resources && Array.isArray(script.resources)) {
+    populateFormWithScript(e) {
+      this.elements.scriptName.value = e.name || "";
+      this.elements.scriptAuthor.value = e.author || "";
+      this.elements.runAt.value = e.runAt || "document_idle";
+      this.elements.scriptVersion.value = e.version || this.config.DEFAULT_VERSION;
+      this.elements.scriptDescription.value = e.description || "";
+      this.elements.scriptLicense.value = e.license || "";
+      this.elements.scriptIcon.value = e.icon || "";
+      this.codeEditorManager.setValue(e.code || "");
+      this.elements.urlList && (this.elements.urlList.innerHTML = "");
+      e.targetUrls?.forEach((e2) => this.ui.addUrlToList(e2));
+      this.elements.gmSetValue && (this.elements.gmSetValue.checked = !!e.gmSetValue);
+      this.elements.gmGetValue && (this.elements.gmGetValue.checked = !!e.gmGetValue);
+      this.elements.gmDeleteValue && (this.elements.gmDeleteValue.checked = !!e.gmDeleteValue);
+      this.elements.gmListValues && (this.elements.gmListValues.checked = !!e.gmListValues);
+      this.elements.gmOpenInTab && (this.elements.gmOpenInTab.checked = !!e.gmOpenInTab);
+      this.elements.gmNotification && (this.elements.gmNotification.checked = !!e.gmNotification);
+      this.elements.gmGetResourceText && (this.elements.gmGetResourceText.checked = !!e.gmGetResourceText);
+      this.elements.gmGetResourceURL && (this.elements.gmGetResourceURL.checked = !!e.gmGetResourceURL);
+      this.elements.gmSetClipboard && (this.elements.gmSetClipboard.checked = !!e.gmSetClipboard);
+      this.elements.gmAddStyle && (this.elements.gmAddStyle.checked = !!e.gmAddStyle);
+      this.elements.gmAddElement && (this.elements.gmAddElement.checked = !!e.gmAddElement);
+      this.elements.gmRegisterMenuCommand && (this.elements.gmRegisterMenuCommand.checked = !!e.gmRegisterMenuCommand);
+      this.elements.gmXmlhttpRequest && (this.elements.gmXmlhttpRequest.checked = !!e.gmXmlhttpRequest);
+      this.elements.unsafeWindow && (this.elements.unsafeWindow.checked = !!e.unsafeWindow);
+      this.updateSectionVisibility();
+      if (this.elements.resourceList && e.resources && Array.isArray(e.resources)) {
         this.elements.resourceList.innerHTML = "";
-        script.resources.forEach(
-          (res) => this.ui.addResourceToList(res.name, res.url)
-        );
-      } else if (this.elements.resourceList) {
-        this.elements.resourceList.innerHTML = "";
-      }
-      if (this.elements.requireList && Array.isArray(script.requires)) {
+        e.resources.forEach((e2) => this.ui.addResourceToList(e2.name, e2.url));
+      } else
+        this.elements.resourceList && (this.elements.resourceList.innerHTML = "");
+      if (this.elements.requireList && Array.isArray(e.requires)) {
         this.elements.requireList.innerHTML = "";
-        script.requires.forEach((url) => this.ui.addRequireToList(url));
-      } else if (this.elements.requireList) {
-        this.elements.requireList.innerHTML = "";
-      }
+        e.requires.forEach((e2) => this.ui.addRequireToList(e2));
+      } else
+        this.elements.requireList && (this.elements.requireList.innerHTML = "");
     }
-    // get script data from our sidebar form
     gatherScriptData() {
-      const urlList = Array.from(document.querySelectorAll(".url-item")).map(
-        (item) => item.dataset.url
-      );
-      const currentUrl = this.elements.targetUrl.value.trim();
-      if (currentUrl && !urlList.includes(currentUrl)) {
-        urlList.push(currentUrl);
-      }
-      const scriptData = {
+      const e = Array.from(document.querySelectorAll(".url-item")).map((e2) => e2.dataset.url), t2 = this.elements.targetUrl.value.trim();
+      t2 && !e.includes(t2) && e.push(t2);
+      const s = {
         name: this.elements.scriptName.value.trim(),
         author: this.elements.scriptAuthor.value.trim() || "Anonymous",
-        targetUrls: urlList,
+        targetUrls: e,
         runAt: this.elements.runAt.value,
         version: this.elements.scriptVersion.value.trim() || this.config.DEFAULT_VERSION,
         description: this.elements.scriptDescription.value.trim(),
@@ -35401,252 +30583,190 @@
         enabled: true,
         updatedAt: (/* @__PURE__ */ new Date()).toISOString()
       };
-      scriptData.gmSetValue = this.elements.gmSetValue?.checked || false;
-      scriptData.gmGetValue = this.elements.gmGetValue?.checked || false;
-      scriptData.gmDeleteValue = this.elements.gmDeleteValue?.checked || false;
-      scriptData.gmListValues = this.elements.gmListValues?.checked || false;
-      scriptData.gmOpenInTab = this.elements.gmOpenInTab?.checked || false;
-      scriptData.gmNotification = this.elements.gmNotification?.checked || false;
-      scriptData.gmGetResourceText = this.elements.gmGetResourceText?.checked || false;
-      scriptData.gmGetResourceURL = this.elements.gmGetResourceURL?.checked || false;
-      scriptData.gmSetClipboard = this.elements.gmSetClipboard?.checked || false;
-      scriptData.gmAddStyle = this.elements.gmAddStyle?.checked || false;
-      scriptData.gmAddElement = this.elements.gmAddElement?.checked || false;
-      scriptData.gmRegisterMenuCommand = this.elements.gmRegisterMenuCommand?.checked || false;
-      scriptData.gmXmlhttpRequest = this.elements.gmXmlhttpRequest?.checked || false;
-      scriptData.unsafeWindow = this.elements.unsafeWindow?.checked || false;
-      scriptData.resources = [];
+      s.gmSetValue = this.elements.gmSetValue?.checked || false;
+      s.gmGetValue = this.elements.gmGetValue?.checked || false;
+      s.gmDeleteValue = this.elements.gmDeleteValue?.checked || false;
+      s.gmListValues = this.elements.gmListValues?.checked || false;
+      s.gmOpenInTab = this.elements.gmOpenInTab?.checked || false;
+      s.gmNotification = this.elements.gmNotification?.checked || false;
+      s.gmGetResourceText = this.elements.gmGetResourceText?.checked || false;
+      s.gmGetResourceURL = this.elements.gmGetResourceURL?.checked || false;
+      s.gmSetClipboard = this.elements.gmSetClipboard?.checked || false;
+      s.gmAddStyle = this.elements.gmAddStyle?.checked || false;
+      s.gmAddElement = this.elements.gmAddElement?.checked || false;
+      s.gmRegisterMenuCommand = this.elements.gmRegisterMenuCommand?.checked || false;
+      s.gmXmlhttpRequest = this.elements.gmXmlhttpRequest?.checked || false;
+      s.unsafeWindow = this.elements.unsafeWindow?.checked || false;
+      s.resources = [];
       if (this.elements.resourceList) {
-        const items = Array.from(
-          this.elements.resourceList.querySelectorAll(".resource-item")
-        );
-        items.forEach((item) => {
-          scriptData.resources.push({
-            name: item.dataset.name,
-            url: item.dataset.url
+        Array.from(this.elements.resourceList.querySelectorAll(".resource-item")).forEach((e2) => {
+          s.resources.push({
+            name: e2.dataset.name,
+            url: e2.dataset.url
           });
         });
       }
-      scriptData.requires = [];
+      s.requires = [];
       if (this.elements.requireList) {
-        const reqItems = Array.from(
-          this.elements.requireList.querySelectorAll(".require-item")
-        );
-        reqItems.forEach((item) => {
-          scriptData.requires.push(item.dataset.url);
+        Array.from(this.elements.requireList.querySelectorAll(".require-item")).forEach((e2) => {
+          s.requires.push(e2.dataset.url);
         });
       }
-      return scriptData;
+      return s;
     }
-    // Save script to storage
-    async saveScript(quiet = false) {
+    async saveScript(e = false) {
       try {
         if (!this.validator.validateForm())
           return null;
-        const scriptData = this.gatherScriptData();
-        if (!scriptData.name || scriptData.name.trim() === "") {
-          scriptData.name = `Untitled Script ${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}`;
-        }
-        const isNewScript = !this.state.scriptId;
-        if (!this.state.hasUnsavedChanges && !isNewScript) {
+        const t2 = this.gatherScriptData();
+        (!t2.name || t2.name.trim() === "") && (t2.name = `Untitled Script ${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}`);
+        const s = !this.state.scriptId;
+        if (!this.state.hasUnsavedChanges && !s)
           return null;
+        if (t2.resources && t2.resources.length > 0) {
+          t2.resourceContents = {};
+          await Promise.all(t2.resources.map(async (e2) => {
+            try {
+              const s2 = await fetch(e2.url);
+              s2.ok ? t2.resourceContents[e2.name] = await s2.text() : (console.error(`Failed to fetch resource '${e2.name}' from ${e2.url}: ${s2.status} ${s2.statusText}`), t2.resourceContents[e2.name] = null);
+            } catch (s2) {
+              console.error(`Error fetching resource '${e2.name}':`, s2);
+              t2.resourceContents[e2.name] = null;
+            }
+          }));
         }
-        if (scriptData.resources && scriptData.resources.length > 0) {
-          scriptData.resourceContents = {};
-          await Promise.all(
-            scriptData.resources.map(async (resource) => {
-              try {
-                const response = await fetch(resource.url);
-                if (response.ok) {
-                  scriptData.resourceContents[resource.name] = await response.text();
-                } else {
-                  console.error(
-                    `Failed to fetch resource '${resource.name}' from ${resource.url}: ${response.status} ${response.statusText}`
-                  );
-                  scriptData.resourceContents[resource.name] = null;
-                }
-              } catch (error) {
-                console.error(
-                  `Error fetching resource '${resource.name}':`,
-                  error
-                );
-                scriptData.resourceContents[resource.name] = null;
-              }
-            })
-          );
-        }
-        const savedScript = await this.storage.saveScript(
-          scriptData,
-          this.state.scriptId,
-          this.state.isEditMode
-        );
-        this.state.scriptId = savedScript.id;
+        const i = await this.storage.saveScript(t2, this.state.scriptId, this.state.isEditMode);
+        this.state.scriptId = i.id;
         this.state.hasUnsavedChanges = false;
         this.ui.updateScriptStatus(false);
-        if (isNewScript) {
-          const newUrl = new URL(window.location);
-          newUrl.searchParams.set("id", savedScript.id);
-          window.history.pushState({}, "", newUrl);
+        if (s) {
+          const e2 = new URL(window.location);
+          e2.searchParams.set("id", i.id);
+          window.history.pushState({}, "", e2);
           this.state.isEditMode = true;
         }
         this.notifyBackgroundScript();
-        if (!quiet) {
-          this.ui.showStatusMessage(
-            `Script ${isNewScript ? "created" : "saved"} successfully`,
-            "success"
-          );
-          setTimeout(() => {
-            if (!this.state.hasUnsavedChanges) {
-              this.ui.clearStatusMessage();
-            }
-          }, 3e3);
-        }
-        return savedScript;
-      } catch (error) {
-        console.error("Error saving script:", error);
-        const errorMessage = error.message || "Unknown error occurred";
-        this.ui.showStatusMessage(
-          `Failed to save script: ${errorMessage}`,
-          "error"
-        );
+        e || this.ui.showStatusMessage(`Script ${s ? "created" : "saved"} successfully`, "success");
         setTimeout(() => {
-          if (this.state.hasUnsavedChanges) {
-            this.ui.showStatusMessage("Unsaved changes", "warning");
-          } else {
-            this.ui.clearStatusMessage();
-          }
+          this.state.hasUnsavedChanges || this.ui.clearStatusMessage();
+        }, 3e3);
+        return i;
+      } catch (t2) {
+        console.error("Error saving script:", t2);
+        const s = t2.message || "Unknown error occurred";
+        this.ui.showStatusMessage(`Failed to save script: ${s}`, "error");
+        setTimeout(() => {
+          this.state.hasUnsavedChanges ? this.ui.showStatusMessage("Unsaved changes", "warning") : this.ui.clearStatusMessage();
         }, 5e3);
-        throw error;
+        throw t2;
       }
     }
-    updateEditorStateAfterSave(savedScript) {
+    updateEditorStateAfterSave(e) {
       if (!this.state.isEditMode) {
         this.state.isEditMode = true;
-        this.state.scriptId = savedScript.id;
-        window.history.replaceState({}, "", `../editor/editor.html?id=${savedScript.id}`);
+        this.state.scriptId = e.id;
+        window.history.replaceState({}, "", `../editor/editor.html?id=${e.id}`);
       }
     }
-    // Notif background for script update changes
     async notifyBackgroundScript() {
       try {
-        await new Promise((resolve) => {
-          chrome.runtime.sendMessage({ action: "scriptsUpdated" }, () => {
-            if (chrome.runtime.lastError) {
-              console.warn("Background sync warning:", chrome.runtime.lastError);
-            }
-            resolve();
+        await new Promise((e) => {
+          chrome.runtime.sendMessage({
+            action: "scriptsUpdated"
+          }, () => {
+            chrome.runtime.lastError && console.warn("Background sync warning:", chrome.runtime.lastError);
+            e();
           });
         });
-      } catch (error) {
-        console.warn("Background sync warning:", error);
+      } catch (e) {
+        console.warn("Background sync warning:", e);
       }
     }
-    // Connect to backround.js
     setupBackgroundConnection() {
       try {
-        const port = chrome.runtime.connect({ name: "CodeTweak" });
-        port.onDisconnect.addListener(() => {
+        const e = chrome.runtime.connect({
+          name: "CodeTweak"
+        });
+        e.onDisconnect.addListener(() => {
           console.log("Background connection closed, will reconnect when needed");
         });
-      } catch (error) {
-        console.warn("Initial background connection failed:", error);
+      } catch (e) {
+        console.warn("Initial background connection failed:", e);
       }
     }
     updateApiCount() {
-      const apiCheckboxes = Object.values(this.gmApiDefinitions).map((api) => this.elements[api.el]);
-      const checkedCount = apiCheckboxes.filter((checkbox) => checkbox && checkbox.checked).length;
-      if (this.elements.apiCountBadge) {
-        this.elements.apiCountBadge.textContent = checkedCount;
-        this.elements.apiCountBadge.style.display = checkedCount > 0 ? "inline" : "none";
-      }
+      const e = Object.values(this.gmApiDefinitions).map((e2) => this.elements[e2.el]).filter((e2) => e2 && e2.checked).length;
+      this.elements.apiCountBadge && (this.elements.apiCountBadge.textContent = e, this.elements.apiCountBadge.style.display = e > 0 ? "inline" : "none");
     }
-    /**
-     * Export current script in classic Tampermonkey format (.user.js)
-     */
     exportScript() {
       try {
-        const scriptData = this.gatherScriptData();
-        const metadata = buildTampermonkeyMetadata(scriptData);
-        const content2 = `${metadata}
+        const e = this.gatherScriptData(), t2 = buildTampermonkeyMetadata(e), s = `${t2}
 
-${scriptData.code}`;
-        const fileNameSafe = (scriptData.name || "script").replace(/[^a-z0-9_-]+/gi, "_").replace(/_{2,}/g, "_").replace(/^_|_$/g, "") || "script";
-        const blob = new Blob([content2], { type: "text/javascript;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${fileNameSafe}.user.js`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+${e.code}`, i = (e.name || "script").replace(/[^a-z0-9_-]+/gi, "_").replace(/_{2,}/g, "_").replace(/^_|_$/g, "") || "script", a = new Blob([s], {
+          type: "text/javascript;charset=utf-8"
+        }), r = URL.createObjectURL(a), l = document.createElement("a");
+        l.href = r;
+        l.download = `${i}.user.js`;
+        document.body.appendChild(l);
+        l.click();
+        document.body.removeChild(l);
+        URL.revokeObjectURL(r);
         this.ui.showStatusMessage("Script exported", "success");
-      } catch (err) {
-        console.error("Export failed:", err);
+      } catch (e) {
+        console.error("Export failed:", e);
         this.ui.showStatusMessage("Export failed", "error");
       }
     }
-    /**
-     * Generate Tampermonkey-style header and insert at top of code editor
-     */
     generateTampermonkeyHeader() {
       try {
-        const scriptData = this.gatherScriptData();
-        const metadata = buildTampermonkeyMetadata(scriptData);
-        const currentCode = this.codeEditorManager.getValue();
-        const existingHeaderMatch = currentCode.match(/\/\/ ==UserScript==[\s\S]*?\/\/ ==\/UserScript==/);
-        let newCode;
-        if (existingHeaderMatch) {
-          newCode = currentCode.replace(existingHeaderMatch[0], metadata);
+        const e = this.gatherScriptData(), t2 = buildTampermonkeyMetadata(e), s = this.codeEditorManager.getValue(), i = s.match(/\/\/ ==UserScript==[\s\S]*?\/\/ ==\/UserScript==/);
+        let a;
+        if (i) {
+          a = s.replace(i[0], t2);
           this.ui.showStatusMessage("Metadata updated", "success");
         } else {
-          newCode = metadata + "\n\n" + currentCode;
+          a = t2 + "\n\n" + s;
           this.ui.showStatusMessage("Metadata generated", "success");
         }
-        this.codeEditorManager.setValue(newCode);
+        this.codeEditorManager.setValue(a);
         this.markAsDirty();
-      } catch (err) {
-        console.error("Generate header failed:", err);
+      } catch (e) {
+        console.error("Generate header failed:", e);
         this.ui.showStatusMessage("Failed to generate header", "error");
       }
     }
   };
   document.addEventListener("DOMContentLoaded", () => {
     applyThemeFromSettings().then(() => {
-      const editor = new ScriptEditor();
-      editor.init().catch((error) => {
-        console.error("Failed to initialize script editor:", error);
+      new ScriptEditor().init().catch((e) => {
+        console.error("Failed to initialize script editor:", e);
       });
     });
-    chrome.runtime.onMessage.addListener((msg) => {
-      if (msg.action === "settingsUpdated") {
-        applyThemeFromSettings();
-      }
+    chrome.runtime.onMessage.addListener((e) => {
+      e.action === "settingsUpdated" && applyThemeFromSettings();
     });
   });
   async function applyThemeFromSettings() {
     try {
-      const { settings = {} } = await chrome.storage.local.get("settings");
-      const isDark = settings.darkMode !== false;
-      document.body.classList.toggle("light-theme", !isDark);
-    } catch (err) {
-      console.error("Error applying theme:", err);
+      const {
+        settings: e = {}
+      } = await chrome.storage.local.get("settings"), t2 = e.darkMode !== false;
+      document.body.classList.toggle("light-theme", !t2);
+    } catch (e) {
+      console.error("Error applying theme:", e);
     }
   }
   function setupHelpModalTabs() {
-    const tabButtons = document.querySelectorAll(".help-tab");
-    const tabContents = document.querySelectorAll(".help-tab-content");
-    if (!tabButtons.length || !tabContents.length)
+    const e = document.querySelectorAll(".help-tab"), t2 = document.querySelectorAll(".help-tab-content");
+    if (!e.length || !t2.length)
       return;
-    tabButtons.forEach((btn) => {
-      btn.addEventListener("click", function() {
-        tabButtons.forEach((b) => b.classList.remove("active"));
-        tabContents.forEach((c) => c.classList.remove("active"));
-        btn.classList.add("active");
-        const tab = btn.getAttribute("data-tab");
-        const content2 = document.getElementById("help-tab-" + tab);
-        if (content2)
-          content2.classList.add("active");
+    e.forEach((s) => {
+      s.addEventListener("click", function() {
+        e.forEach((e2) => e2.classList.remove("active"));
+        t2.forEach((e2) => e2.classList.remove("active"));
+        s.classList.add("active");
+        const i = s.getAttribute("data-tab"), a = document.getElementById("help-tab-" + i);
+        a && a.classList.add("active");
       });
     });
   }
