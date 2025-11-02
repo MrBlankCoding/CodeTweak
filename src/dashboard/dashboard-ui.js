@@ -3,13 +3,12 @@ import feather from 'feather-icons';
 // Global functions available from dashboard-logic.js via window object
 /* global toggleScript, editScript, checkForUpdates, deleteScript */
 
-function setupTabs(tabsContainer, tabContents) {
-  if (!tabsContainer) return;
+function setupTabs(navItems, tabContents) {
+  if (!navItems) return;
 
-  const tabs = tabsContainer.querySelectorAll(".tab");
-  tabs.forEach((tab) => {
+  navItems.forEach((tab) => {
     tab.addEventListener("click", () => {
-      tabs.forEach((t) => {
+      navItems.forEach((t) => {
         t.classList.remove("active");
         t.setAttribute("aria-selected", "false");
       });
@@ -69,6 +68,7 @@ function updateScriptsList(scripts, elements) {
   if (scripts.length === 0) {
     if (elements.scriptsTable) elements.scriptsTable.style.display = "none";
     if (elements.emptyState) elements.emptyState.style.display = "block";
+    updateScriptCount(0);
     return;
   }
 
@@ -77,57 +77,75 @@ function updateScriptsList(scripts, elements) {
 
   const fragment = document.createDocumentFragment();
   scripts.forEach((script) => {
-    fragment.appendChild(createScriptRow(script));
+    fragment.appendChild(createScriptListItem(script));
   });
 
   elements.scriptsList.appendChild(fragment);
   feather.replace();
-
-
+  updateScriptCount(scripts.length);
 }
 
-function createScriptRow(script) {
-  const row = document.createElement("tr");
-  row.dataset.scriptId = script.id;
+function updateScriptCount(count) {
+  const scriptCountElement = document.getElementById("scriptCount");
+  if (scriptCountElement) {
+    scriptCountElement.textContent = count;
+  }
+}
 
-  // Status toggle cell
-  row.appendChild(createStatusToggleCell(script));
+function createScriptListItem(script) {
+  const item = document.createElement("div");
+  item.className = "script-list-item";
+  item.dataset.scriptId = script.id;
 
-  // Name cell
-  const nameCell = document.createElement("td");
-  nameCell.textContent = script.name;
-  row.appendChild(nameCell);
+  const info = document.createElement("div");
+  info.className = "script-info";
 
-  // Author cell
-  const authorCell = document.createElement("td");
-  authorCell.textContent = script.author || "Anonymous";
-  authorCell.className = "script-author";
-  row.appendChild(authorCell);
+  const name = document.createElement("h3");
+  name.className = "script-name";
+  name.textContent = script.name;
 
-  // Icon cell
-  row.appendChild(createIconCell(script));
+  const description = document.createElement("p");
+  description.className = "script-description";
+  description.textContent = script.description || "No description provided.";
 
-  // Run At cell
-  const runAtCell = document.createElement("td");
-  const timingInfo = document.createElement("div");
-  timingInfo.className = "timing-info";
+  const version = document.createElement("span");
+  version.className = "script-version";
+  version.textContent = `v${script.version || "1.0.0"}`;
 
-  const timingSpan = document.createElement("span");
-  timingSpan.textContent = formatRunAt(script.runAt);
+  const actions = document.createElement("div");
+  actions.className = "script-actions";
 
-  timingInfo.appendChild(timingSpan);
-  runAtCell.appendChild(timingInfo);
-  row.appendChild(runAtCell);
+  const editButton = document.createElement("button");
+  editButton.className = "btn-action btn-edit";
+  editButton.innerHTML = `<i data-feather="edit-2"></i>`;
+  editButton.title = "Edit Script";
+  editButton.addEventListener("click", () => editScript(script.id));
 
-  // Version cell
-  const versionCell = document.createElement("td");
-  versionCell.textContent = script.version || "1.0.0";
-  row.appendChild(versionCell);
+  const deleteButton = document.createElement("button");
+  deleteButton.className = "btn-action btn-delete";
+  deleteButton.innerHTML = `<i data-feather="trash-2"></i>`;
+  deleteButton.title = "Delete Script";
+  deleteButton.addEventListener("click", () => deleteScript(script.id));
 
-  // Actions cell
-  row.appendChild(createActionsCell(script));
+  const toggleSwitch = document.createElement("label");
+  toggleSwitch.className = "toggle-switch";
 
-  return row;
+  const toggleInput = document.createElement("input");
+  toggleInput.type = "checkbox";
+  toggleInput.checked = script.enabled;
+  toggleInput.addEventListener("change", () =>
+    toggleScript(script.id, toggleInput.checked)
+  );
+
+  const toggleSlider = document.createElement("span");
+  toggleSlider.className = "toggle-slider";
+
+  toggleSwitch.append(toggleInput, toggleSlider);
+  info.append(name, version, description);
+  actions.append(editButton, deleteButton);
+  item.append(toggleSwitch, info, actions);
+
+  return item;
 }
 
 function createStatusToggleCell(script) {
@@ -275,36 +293,7 @@ function escapeHtml(unsafe) {
     .replace(/'/g, "&#039;");
 }
 
-function setupAboutNav(aboutContainer) {
-  if (!aboutContainer) return;
 
-  const navButtons = aboutContainer.querySelectorAll(".about-nav");
-  const sections = aboutContainer.querySelectorAll(".about-section");
-
-  const contentEl = aboutContainer.querySelector(".about-content");
-  if (contentEl && !contentEl.querySelector("#exporting")) {
-    contentEl.insertAdjacentHTML(
-      "beforeend",
-      `<div class="about-section" id="exporting">
-         <h2>Exporting Scripts</h2>
-         <p>Select the export icon in the <em>Scripts</em> table to download a script as a standalone <code>.user.js</code> file for sharing or backups.</p>
-       </div>`
-    );
-  }
-
-  navButtons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      navButtons.forEach((b) => {
-        b.classList.remove("active");
-      });
-      sections.forEach((s) => s.classList.remove("active"));
-
-      btn.classList.add("active");
-      const targetId = btn.dataset.section;
-      aboutContainer.querySelector(`#${targetId}`)?.classList.add("active");
-    });
-  });
-}
 
 window.updateWebsiteFilterOptions = updateWebsiteFilterOptions;
 window.updateScriptsList = updateScriptsList;
@@ -313,7 +302,6 @@ window.escapeHtml = escapeHtml;
 
 export {
   setupTabs,
-  setupAboutNav,
   updateWebsiteFilterOptions,
   updateScriptsList,
   showNotification,

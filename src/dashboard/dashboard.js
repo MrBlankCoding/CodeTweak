@@ -7,7 +7,7 @@ import {
   saveSettings,
   filterScripts,
 } from "./dashboard-logic.js";
-import { setupTabs, setupAboutNav } from "./dashboard-ui.js";
+import { setupTabs } from "./dashboard-ui.js";
 import { parseUserScriptMetadata } from "../utils/metadataParser.js";
 
 function initDashboard() {
@@ -19,7 +19,7 @@ function initDashboard() {
     saveSettingsBtn: document.getElementById("saveSettingsBtn"),
     resetSettingsBtn: document.getElementById("resetSettingsBtn"),
     exportAllBtn: document.getElementById("exportAllBtn"),
-    tabs: document.querySelector(".tabs"),
+    navItems: document.querySelectorAll(".nav-item"),
     tabContents: document.querySelectorAll(".tab-content"),
     emptyStateCreateBtn: document.getElementById("emptyStateCreateBtn"),
     filters: {
@@ -51,9 +51,7 @@ function initDashboard() {
   setupEventListeners(elements, state);
   loadScripts(elements, state);
   loadSettings(elements.settings);
-  setupTabs(elements.tabs, elements.tabContents);
-  // about tab sidebar
-  setupAboutNav(document.querySelector("#about-tab .about-container"));
+  setupTabs(elements.navItems, elements.tabContents);
   setupGreasyfork(elements.greasyfork);
   setupFileDragAndDrop();
 

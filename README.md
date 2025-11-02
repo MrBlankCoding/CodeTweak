@@ -29,3 +29,6 @@ CodeTweak is fully open source and provides support for manifest v3. The code ed
 
 ## Contributing
 Anyone is welcome
+
+
+AI + CUSTOM APIS
