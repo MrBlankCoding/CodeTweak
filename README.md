@@ -1,27 +1,47 @@
 # CodeTweak
 
-**CodeTweak** is a modern user script manager and JS editor designed as a modern alternative to Tampermonkey.
+**CodeTweak** is a modern user script manager and JavaScript editor, designed as a modern alternative to Tampermonkey. It is fully open source and built with privacy in mind.
 
 ---
 
 ## Description
-CodeTweak is fully open source and provides support for manifest v3. The code editor offers features like linting, formatting, basic autocomplete, and syntax highlighting. CodeTweak supports all the safe GM APIs, and url matching. Users can also install scripts directly from Greasy Fork and manage them on the dashboard. The extension is also privacy focused and we do not track, collect or sell user data. All permissions are implemented for GM API support.
+
+CodeTweak provides full support for **Manifest V3**, offering a modern code editor with linting, formatting, basic autocomplete, and syntax highlighting. It supports all safe GM APIs and URL matching. Users can install scripts directly from **Greasy Fork** and manage them via the dashboard.
+
+We prioritize privacy: **no tracking, no analytics, no selling of user data**. All permissions are only requested for GM API support.
 
 ---
 
 ## Features
 
-- **Code Editor** — Edit scripts in a custimisable editor with built in linting, formatting, autocomplete and syntax highlighting. 
-- **GM API support** — Supports all safe GM API's
-- **Regrex URLS** — Supports modern regexing for URL's
-- **Greasy Fork** — Install greasyfork scripts from inside CodeTweak or from the website itself.
-- **Privacy** — No tracking, no analytics, no unnecessary permissions.
+* **Code Editor** — Customizable editor with linting, formatting, autocomplete, and syntax highlighting.
+* **GM API Support** — Supports all safe GM APIs.
+* **Regex URLs** — Modern regex support for URL matching.
+* **Greasy Fork Integration** — Install scripts directly from CodeTweak or the Greasy Fork website.
+* **Privacy First** — No tracking, no analytics, only necessary permissions.
+
 ---
 
-
 ## Contributing
-Anyone is welcome
 
+We welcome contributions from the community! Whether fixing bugs, adding features, or improving documentation, your help is appreciated.
+
+### Development
+
+#### Prerequisites
+
+* Node.js 16+
+* npm
+* Chrome/Chromium browser
+
+#### Build
+
+```bash
+npm install
+node build.js
+```
+
+---
 
 ## TODO List
 
@@ -31,9 +51,7 @@ Anyone is welcome
 
   * [ ] `GM_download`
   * [ ] `GM_confirm`
-  * [ ] (Add others as needed)
-
----
+  * [ ] Additional APIs as needed
 
 ### Security & Permissions
 
@@ -42,48 +60,53 @@ Anyone is welcome
   * [ ] Allow scripts to load external resources
   * [ ] Enable loading of third-party libraries and external scripts
   * [ ] Ask for confirmation when a script runs on a website for the first time
-* [ ] Create a centralized file for checking script access permissions on pages
-
----
+* [ ] Centralize script access permission checks
 
 ### Core Improvements
 
 * [ ] Fix version checking logic
-* [ ] Clean and improve `ExternalScriptLoader`
-* [ ] Improve `getScriptDescription` function
+* [ ] Improve `ExternalScriptLoader`
+* [ ] Refine `getScriptDescription` function
 * [ ] Deduplicate logic between `background.js`, `inject.js`, and `GM_core.js`
 * [ ] Unify or reuse declarations between `GM_core` and `inject`
 
----
-
 ### Editor & UI
 
-* [ ] Reduce editor bundle size (currently ~1.4 MB)
+* [ ] Reduce editor bundle size (~1.4 MB currently)
 * [ ] Split large editor manager files into smaller modules
-* [ ] Create a more sophisticated extension management system for CodeMirror
+* [ ] Enhance extension management for CodeMirror
 * [ ] Link CodeMirror minimap toggle
-* [ ] Move `exportScript` function to a helper file
-* [ ] Move `generateTamperMonkeyHeader` to a helper file
-* [ ] Move script import management logic to its own file
-* [ ] Add setting to toggle whether scripts run in main world or isolated world
-* [ ] Display execution world (main/isolated) in the editor
-* [ ] Display run-at time on dashboard
+* [ ] Move helper functions (`exportScript`, `generateTamperMonkeyHeader`) to separate files
+* [ ] Modularize script import logic
+* [ ] Add option to toggle execution in main world or isolated world
+* [ ] Display execution world and run-at time in editor/dashboard
 * [ ] Improve URL display formatting
-* [ ] Clean up and refine CSS for menu commands and import UI
+* [ ] Refine CSS for menu commands and import UI
+* [ ] Log script errors and display in editor
+* [ ] Add iframe preview with live refresh
 
----
 
 ### Debugging & Notifications
 
-* [ ] Add feature to show script errors directly on the page (no console needed)
-* [ ] Add "Debug Mode" setting to enable the above feature
-* [ ] Separate "Show Script Notification" into its own file
-
----
+* [ ] Display script errors directly on page (without console)
+* [ ] Add "Debug Mode" to enable in-page error display
+* [ ] Separate script notification logic into its own file
 
 ### Communication & Helpers
 
-* [ ] Simplify or remove redundant communication between content scripts and background scripts (consider centralizing in helper file)
-* [ ] Provide optional Trusted Types helpers
+* [ ] Simplify or centralize communication between content scripts and background scripts
+* [ ] Optional Trusted Types helpers
 
 ---
+
+## Acknowledgments
+
+* Built with [CodeMirror](https://codemirror.net/)
+* Inspired by [Tampermonkey](https://www.tampermonkey.net/) and [Greasemonkey](https://www.greasespot.net/)
+* Icons from [Feather](https://feathericons.com/)
+
+---
+
+## License
+
+This project is licensed under the **MIT License**. See the [LICENSE](LICENSE.txt) file for details.
