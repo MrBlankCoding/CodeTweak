@@ -4,7 +4,7 @@
   display: grid;
   grid-template-rows: var(--header-height) 1fr;
   height: 100vh;
-  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  background: var(--bg-primary);
 }
 .main-content.sidebar-hidden { grid-template-columns: 0 1fr; }
 

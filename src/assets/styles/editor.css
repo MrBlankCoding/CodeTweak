@@ -30,12 +30,14 @@ html, body {
   display: flex;
   flex: 1;
   overflow: hidden;
-  position: relative;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  min-height: 0;
-  flex-direction: row; /* added this line */
+}
+
+.editor-area {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-primary);
 }
 
 .editor-container {
@@ -44,71 +46,17 @@ html, body {
   flex-direction: column;
   overflow: hidden;
   position: relative;
+  border-left: 1px solid var(--border-primary);
 }
 
-/* CodeMirror 6 */
-.cm-editor {
-  flex: 1;
-  height: 100%;
-  font-family: var(--font-mono);
-  font-size: var(--editor-font-size);
-  line-height: var(--editor-line-height);
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  outline: none;
-}
-
-.cm-editor.cm-focused {
-  outline: none;
-}
-
-.cm-scroller {
-  flex: 1;
-  height: 100%;
-  overflow: auto;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
-}
-
-.cm-scroller::-webkit-scrollbar {
+::-webkit-scrollbar {
   display: none;
-  width: 0;
-  height: 0;
+}
+html {
+  -ms-overflow-style: none;  
+  scrollbar-width: none;     
 }
 
-.cm-content {
-  padding: var(--space-md) 0;
-  min-height: 100%;
-}
-
-.cm-gutters {
-  background: var(--bg-secondary);
-  border-right: 1px solid var(--border-primary);
-}
-
-.cm-lineNumbers .cm-gutterElement {
-  color: var(--text-muted);
-  padding: 0 var(--space-sm);
-  font-size: var(--text-sm);
-}
-
-
-
-/* ===== EDITOR AREA ===== */
-.editor-area {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  background: var(--bg-primary);
-  position: relative;
-  overflow: hidden;
-}
 
 .editor-toolbar {
   display: flex;
@@ -228,25 +176,7 @@ html, body {
   display: block;
 }
 
-/* ===== CUSTOM SCROLLBAR ===== */
-::-webkit-scrollbar {
-  width: var(--scrollbar-width);
-  height: var(--scrollbar-width);
-}
 
-::-webkit-scrollbar-track {
-  background: var(--scrollbar-track);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  border-radius: var(--radius-full);
-  transition: var(--transition-colors);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover);
-}
 
 .help-tabs {
   display: flex;

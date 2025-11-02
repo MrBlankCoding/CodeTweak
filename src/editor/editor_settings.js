@@ -5,7 +5,7 @@ import { javascript } from "@codemirror/lang-javascript";
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
 import { parseUserScriptMetadata } from '../utils/metadataParser.js';
 import { autocompletion, closeBrackets } from "@codemirror/autocomplete";
-import { bracketMatching, foldGutter } from "@codemirror/language";
+import { bracketMatching } from "@codemirror/language";
 import { linter, lintGutter } from "@codemirror/lint";
 import { showMinimap } from '@replit/codemirror-minimap';
 import { oneDark } from '@codemirror/theme-one-dark';
@@ -72,7 +72,7 @@ export class CodeEditorManager {
         
         // Settings compartments
         this.tabSize.of(EditorState.tabSize.of(this.currentSettings.tabSize)),
-        this.lineNumbers.of(this.currentSettings.lineNumbers ? [lineNumbers(), foldGutter(), gutter({class: "cm-gutters"})] : []),
+        this.lineNumbers.of(this.currentSettings.lineNumbers ? [lineNumbers()] : []),
         this.lineWrapping.of(this.currentSettings.lineWrapping ? EditorView.lineWrapping : []),
         this.matchBrackets.of(this.currentSettings.matchBrackets ? bracketMatching() : []),
         this.minimap.of(this.currentSettings.minimap ? showMinimap.compute(['doc'], () => {
@@ -232,10 +232,6 @@ export class CodeEditorManager {
 
     if (settings.tabSize) {
         effects.push(this.tabSize.reconfigure(EditorState.tabSize.of(settings.tabSize)));
-    }
-
-    if (settings.lineNumbers !== undefined) {
-        effects.push(this.lineNumbers.reconfigure(settings.lineNumbers ? [lineNumbers(), foldGutter(), gutter({class: "cm-gutters"})] : []));
     }
     
     if (settings.lineWrapping !== undefined) {
