@@ -1123,15 +1123,27 @@ export class FormValidator {
   validateIconUrl() {
     const icon = this.elements.scriptIcon?.value?.trim();
     if (!icon) return { isValid: true };
+    
+    // Allow data URLs (starts with data:image/)
+    if (icon.startsWith('data:image/')) {
+      // Basic validation for data URL format
+      if (!/^data:image\/[a-z+]+;base64,/.test(icon)) {
+        this.showValidationError("Invalid data URL format for icon. Must be a valid base64-encoded image.");
+        return { isValid: false };
+      }
+      return { isValid: true };
+    }
+    
+    // Otherwise validate as regular HTTP/HTTPS URL
     try {
       const u = new URL(icon);
       if (u.protocol !== "http:" && u.protocol !== "https:") {
-        this.showValidationError("Icon URL must start with http:// or https://");
+        this.showValidationError("Icon URL must be a valid http:// or https:// URL, or a data:image/ URL");
         return { isValid: false };
       }
       return { isValid: true };
     } catch {
-      this.showValidationError("Icon URL is not a valid URL.");
+      this.showValidationError("Invalid icon URL. Must be a valid http://, https://, or data:image/ URL");
       return { isValid: false };
     }
   }

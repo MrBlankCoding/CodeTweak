@@ -56,21 +56,23 @@ node build.js
 ### Security & Permissions
 
 * [ ] Add new security settings
-
-  * [ ] Allow scripts to load external resources
-  * [ ] Enable loading of third-party libraries and external scripts
-  * [ ] Ask for confirmation when a script runs on a website for the first time
+* [ ] Allow scripts to load external resources
+* [ ] Enable loading of third-party libraries and external scripts
+* [ ] Ask for confirmation when a script runs on a website for the first time
 * [ ] Centralize script access permission checks
+* [ ] Add better trusted type managment
 
 ### Core Improvements
 
 * [ ] Fix version checking logic
+* [ ] Add script version checking
+* [ ] Add script update functionality
 * [ ] Improve `ExternalScriptLoader`
 * [ ] Refine `getScriptDescription` function
 * [ ] Deduplicate logic between `background.js`, `inject.js`, and `GM_core.js`
 * [ ] Unify or reuse declarations between `GM_core` and `inject`
 
-### Editor & UI
+### Editor
 
 * [ ] Reduce editor bundle size (~1.4 MB currently)
 * [ ] Split large editor manager files into smaller modules
@@ -80,10 +82,17 @@ node build.js
 * [ ] Modularize script import logic
 * [ ] Add option to toggle execution in main world or isolated world
 * [ ] Display execution world and run-at time in editor/dashboard
+* [ ] Log script errors and display in editor
+* [ ] Add a cap to how long text can be in the editor
+
+### UI
+
 * [ ] Improve URL display formatting
 * [ ] Refine CSS for menu commands and import UI
-* [ ] Log script errors and display in editor
 * [ ] Add iframe preview with live refresh
+* [ ] Fix editor optimizations
+* [ ] Add a cap to how long text can be in the dashboard
+
 
 
 ### Debugging & Notifications
