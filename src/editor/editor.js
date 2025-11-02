@@ -477,7 +477,7 @@ class ScriptEditor {
   /**
    * Update visibility of script resources section and sidebar icon
    */
-  toggleResourcesSection(show) {
+  toggleResourcesSection() {
     const resourcesPanel = document.getElementById('resources-panel');
     const resourcesIconBtn = document.querySelector('[data-section="resources"]');
     
@@ -1111,31 +1111,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Initialize Feather icons
   feather.replace();
   
-  // Apply theme and initialize editor
-  await applyThemeFromSettings();
-  
   const editor = new ScriptEditor();
   editor.init().catch((error) => {
     console.error("Failed to initialize script editor:", error);
   });
-
-  // Listen for runtime theme changes
-  chrome.runtime.onMessage.addListener((msg) => {
-    if (msg.action === "settingsUpdated") {
-      applyThemeFromSettings();
-    }
-  });
 });
 
-async function applyThemeFromSettings() {
-  try {
-    const { settings = {} } = await chrome.storage.local.get("settings");
-    const isDark = settings.darkMode !== false; // default dark mode true
-    document.body.classList.toggle("light-theme", !isDark);
-  } catch (err) {
-    console.error("Error applying theme:", err);
-  }
-}
+
 
 function setupHelpModalTabs() {
   const tabButtons = document.querySelectorAll('.help-tab');

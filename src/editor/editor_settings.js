@@ -1,5 +1,5 @@
 import { EditorState, Compartment } from "@codemirror/state";
-import { EditorView, keymap, lineNumbers, gutter } from "@codemirror/view";
+import { EditorView, keymap, lineNumbers } from "@codemirror/view";
 import { basicSetup } from "codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";

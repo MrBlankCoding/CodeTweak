@@ -2,8 +2,7 @@ import feather from 'feather-icons';
 import { urlMatchesPattern } from "../utils/urlMatchPattern.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
-  // Apply theme first
-  await applyThemeFromSettings();
+  
   feather.replace();
 
   const scriptList = document.getElementById("scriptList");
@@ -48,9 +47,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Listen for settings changes
   chrome.runtime.onMessage.addListener((msg) => {
-    if (msg.action === "settingsUpdated") {
-      applyThemeFromSettings();
-    }
     if (msg.action === "scriptsUpdated") {
       loadMenuCommands();
     }
@@ -210,18 +206,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     return `${features.join(" + ")} • ${siteText}`;
   }
 
-  /**
-   * Retrieves darkMode from storage and toggles body class.
-   */
-  async function applyThemeFromSettings() {
-    try {
-      const { settings = {} } = await chrome.storage.local.get("settings");
-      const isDark = settings.darkMode !== false; // default dark mode true
-      document.body.classList.toggle("light-theme", !isDark);
-    } catch (err) {
-      console.error("Error applying theme:", err);
-    }
-  }
+  
 
   async function loadMenuCommands() {
     const menuContainer = document.getElementById("menuCommandList");

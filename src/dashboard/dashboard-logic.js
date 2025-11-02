@@ -118,8 +118,7 @@ async function loadSettings(settingsElements) {
       enableAllScripts: true,
       showNotifications: true,
       confirmBeforeRunning: false,
-      // follow system theme by default
-      darkMode: window.matchMedia("(prefers-color-scheme: dark)").matches,
+
     };
 
     // Apply defaults and update storage if needed
@@ -140,8 +139,7 @@ async function loadSettings(settingsElements) {
       await chrome.storage.local.set({ settings });
     }
 
-    // Apply theme based on darkMode setting
-    applyTheme(settings.darkMode);
+    
   } catch (error) {
     console.error("Error loading settings:", error);
     showNotification("Error loading settings", "error");
@@ -164,7 +162,7 @@ async function saveSettings(settingsElements) {
     showNotification("Settings saved successfully", "success");
     chrome.runtime.sendMessage({ action: "settingsUpdated" });
 
-    applyTheme(settings.darkMode);
+    
   } catch (error) {
     console.error("Error saving settings:", error);
     showNotification("Failed to save settings: " + error.message, "error");
@@ -257,14 +255,7 @@ async function refreshDashboard() {
   filterScripts(elements, state);
 }
 
-function applyTheme(isDark) {
-  const body = document.body;
-  if (isDark) {
-    body.classList.remove("light-theme");
-  } else {
-    body.classList.add("light-theme");
-  }
-}
+
 
 function exportScript(script) {
   try {
@@ -314,6 +305,5 @@ export {
   saveSettings,
   checkForUpdates,
   refreshDashboard,
-  applyTheme,
   exportScript,
 };
