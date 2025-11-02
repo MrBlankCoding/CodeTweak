@@ -112,6 +112,16 @@ function createScriptListItem(script) {
   version.className = "script-version";
   version.textContent = `v${script.version || "1.0.0"}`;
 
+  const urls = document.createElement("div");
+  urls.className = "script-urls";
+  const targetUrls = script.targetUrls || [];
+  if (targetUrls.length > 0) {
+    urls.textContent = "Runs on: " + targetUrls.map(formatUrlPattern).join(", ");
+  } else {
+    urls.textContent = "Runs on: All sites";
+  }
+
+
   const actions = document.createElement("div");
   actions.className = "script-actions";
 
@@ -141,7 +151,7 @@ function createScriptListItem(script) {
   toggleSlider.className = "toggle-slider";
 
   toggleSwitch.append(toggleInput, toggleSlider);
-  info.append(name, version, description);
+  info.append(name, version, description, urls);
   actions.append(editButton, deleteButton);
   item.append(toggleSwitch, info, actions);
 
@@ -294,6 +304,24 @@ function escapeHtml(unsafe) {
 }
 
 
+
+function formatUrlPattern(pattern) {
+    if (!pattern) return "All sites";
+    
+    // Remove protocol
+    let display = pattern.replace(/^https?:\/\//, "");
+    
+    // Clean up wildcards for better display
+    display = display.replace(/^\*\./, ""); // Remove leading wildcard subdomain
+    display = display.replace(/\/\*$/, ""); // Remove trailing wildcard path
+    
+    // Truncate long URLs
+    if (display.length > 20) {
+      display = display.substring(0, 17) + "...";
+    }
+    
+    return display;
+  }
 
 window.updateWebsiteFilterOptions = updateWebsiteFilterOptions;
 window.updateScriptsList = updateScriptsList;

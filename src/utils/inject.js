@@ -867,7 +867,7 @@ class ScriptInjector {
       target: { tabId },
       world,
       files: [
-        "utils/gm_core.js",
+        "GM/gm_core.js",
       ],
     });
 

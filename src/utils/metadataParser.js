@@ -1,4 +1,4 @@
-import { GM_API_DEFINITIONS } from './gmApiDefinitions.js';
+import { GM_API_DEFINITIONS } from '../GM/gmApiDefinitions.js';
 
 // Build mapping from Tampermonkey @grant names to element IDs
 function buildGrantToApiMapping() {

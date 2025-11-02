@@ -1,8 +1,7 @@
 import feather from 'feather-icons';
-import { urlMatchesPattern } from "../utils/urlMatchPattern.js";
+import { urlMatchesPattern, formatRunAt, getScriptDescription } from "../utils/urls.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
-  
   feather.replace();
 
   const scriptList = document.getElementById("scriptList");
@@ -14,21 +13,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   let currentTabUrl = "";
 
   try {
-    const [tab] = await chrome.tabs.query({
-      active: true,
-      currentWindow: true,
-    });
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     currentTabUrl = tab?.url || "";
   } catch (err) {
     console.error("Error getting current tab:", err);
   }
 
   createScriptBtn.addEventListener("click", () => {
-    chrome.tabs.create({
-      url: chrome.runtime.getURL(
-        `editor/editor.html`
-      ),
-    });
+    chrome.tabs.create({ url: chrome.runtime.getURL("editor/editor.html") });
   });
 
   openDashboardBtn.addEventListener("click", () => {
@@ -37,15 +29,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   reportIssueLink.addEventListener("click", (e) => {
     e.preventDefault();
-    chrome.tabs.create({
-      url: "https://github.com/MrBlankCoding/CodeTweak/issues/new",
-    });
+    chrome.tabs.create({ url: "https://github.com/MrBlankCoding/CodeTweak/issues/new" });
   });
 
   await loadScripts(currentTabUrl);
   await loadMenuCommands();
 
-  // Listen for settings changes
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg.action === "scriptsUpdated") {
       loadMenuCommands();
@@ -59,35 +48,33 @@ document.addEventListener("DOMContentLoaded", async () => {
       return targets.some((pattern) => urlMatchesPattern(url, pattern));
     });
 
-    // Hide empty state by default
     emptyState.style.display = "none";
 
     if (matchingScripts.length === 0) {
-      // Only show empty state if there are no scripts at all
+      emptyState.style.display = "flex";
+      
       if (scripts.length === 0) {
-        emptyState.style.display = "flex";
         emptyState.innerHTML = `
-        <div class="empty-icon">
-          <i data-feather="file-text"></i>
-        </div>
-        <p><br>Create your first script to get started.</p>
-      `;
+          <div class="empty-icon">
+            <i data-feather="file-text"></i>
+          </div>
+          <p><br>Create your first script to get started.</p>
+        `;
       } else {
-        // Show minimal message when scripts exist but don't match current page
-        emptyState.style.display = "flex";
         emptyState.innerHTML = `
-        <p>No scripts for this page.<br>Create a new script or visit a different page.</p>
-      `;
+          <p>No scripts for this page.<br>Create a new script or visit a different page.</p>
+        `;
       }
       return;
     }
 
     matchingScripts.sort((a, b) => a.name.localeCompare(b.name));
 
-    for (const script of matchingScripts) {
+    matchingScripts.forEach((script) => {
       const index = scripts.findIndex((s) => s.id === script.id);
       scriptList.appendChild(createScriptElement(script, index));
-    }
+    });
+    
     feather.replace();
   }
 
@@ -95,6 +82,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     const item = document.createElement("div");
     item.className = "script-item";
     item.dataset.id = index;
+
+    if (script.enabled === false) {
+      item.classList.add("script-disabled");
+    }
 
     // Icon
     if (script.icon) {
@@ -106,6 +97,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       item.appendChild(iconImg);
     }
 
+    // Toggle switch
     const toggleContainer = document.createElement("div");
     toggleContainer.className = "script-toggle";
 
@@ -122,16 +114,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     const slider = document.createElement("span");
-    slider.className = "slider";
+    slider.className = "toggle-slider";
 
     label.appendChild(checkbox);
     label.appendChild(slider);
     toggleContainer.appendChild(label);
-
     item.appendChild(toggleContainer);
 
+    // Script info
     const info = document.createElement("div");
     info.className = "script-info";
+    info.addEventListener("click", () => {
+      chrome.tabs.create({ url: chrome.runtime.getURL(`editor/editor.html?id=${script.id}`) });
+    });
 
     const name = document.createElement("div");
     name.className = "script-name";
@@ -140,7 +135,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     const target = document.createElement("div");
     target.className = "script-target";
 
-    // Instead of innerHTML, create and append spans safely:
     const runAtSpan = document.createElement("span");
     runAtSpan.className = "script-type";
     runAtSpan.textContent = formatRunAt(script.runAt);
@@ -151,18 +145,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     target.appendChild(runAtSpan);
     target.appendChild(descSpan);
-
     info.appendChild(name);
     info.appendChild(target);
-    info.addEventListener("click", () => {
-      chrome.tabs.create({ url: chrome.runtime.getURL(`editor/editor.html?id=${script.id}`) });
-    });
-
     item.appendChild(info);
-
-    if (script.enabled === false) {
-      item.classList.add("script-disabled");
-    }
 
     return item;
   }
@@ -188,25 +173,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  function formatRunAt(runAt) {
-    const map = {
-      document_start: "Start",
-      document_end: "DOM",
-      document_idle: "Load",
-    };
-    return map[runAt] || runAt || "Load";
-  }
 
-  function getScriptDescription(script) {
-    const urls = script.targetUrls || [script.targetUrl];
-    const features = [];
-    if (script.css?.trim()) features.push("styles");
-    if (script.js?.trim()) features.push("scripts");
-    const siteText = urls.length > 1 ? `${urls.length} sites` : "Current site";
-    return `${features.join(" + ")} • ${siteText}`;
-  }
-
-  
 
   async function loadMenuCommands() {
     const menuContainer = document.getElementById("menuCommandList");
@@ -214,15 +181,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     menuContainer.innerHTML = "";
 
     try {
-      const [tab] = await chrome.tabs.query({
-        active: true,
-        currentWindow: true,
-      });
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!tab?.id) return;
 
       // Skip execution on browser pages and extension pages
       const restrictedPatterns = /^(chrome|edge|about):\/\//i;
       const isExtensionPage = tab.url?.startsWith("chrome-extension://");
+      
       if (restrictedPatterns.test(tab.url || "") || isExtensionPage) {
         menuSection.style.display = "none";
         return;
@@ -239,19 +204,21 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
 
-      const unique = [];
+      // Remove duplicates
+      const uniqueCommands = [];
       const seen = new Set();
-      commands.forEach((c) => {
-        const key = `${c.commandId}|${c.caption}`;
+      
+      commands.forEach((cmd) => {
+        const key = `${cmd.commandId}|${cmd.caption}`;
         if (!seen.has(key)) {
           seen.add(key);
-          unique.push(c);
+          uniqueCommands.push(cmd);
         }
       });
 
       menuSection.style.display = "block";
 
-      unique.forEach((cmd) => {
+      uniqueCommands.forEach((cmd) => {
         const btn = document.createElement("button");
         btn.className = "menu-command-btn primary";
         btn.textContent = cmd.caption;
@@ -260,15 +227,13 @@ document.addEventListener("DOMContentLoaded", async () => {
           chrome.scripting.executeScript({
             target: { tabId: tab.id },
             world: "MAIN",
-            func: (id) => {
-              const cmd = (window.__gmMenuCommands || []).find(
-                (c) => c.commandId === id
-              );
-              if (cmd) {
+            func: (commandId) => {
+              const command = (window.__gmMenuCommands || []).find((c) => c.commandId === commandId);
+              if (command) {
                 try {
-                  cmd.onClick();
-                } catch (e) {
-                  console.error("Menu command error", e);
+                  command.onClick();
+                } catch (error) {
+                  console.error("Menu command error:", error);
                 }
               }
             },
@@ -280,8 +245,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
 
       feather.replace();
-    } catch (e) {
-      console.error("Error loading menu commands", e);
+    } catch (error) {
+      console.error("Error loading menu commands:", error);
     }
   }
 });

@@ -6,7 +6,7 @@ import {
 } from "./editor_managers.js";
 import { CodeEditorManager } from "./editor_settings.js";
 import { buildTampermonkeyMetadata, parseUserScriptMetadata } from "../utils/metadataParser.js";
-import { GM_API_DEFINITIONS, getApiElementIds } from "../utils/gmApiDefinitions.js";
+import { GM_API_DEFINITIONS, getApiElementIds } from "../GM/gmApiDefinitions.js";
 
 class ScriptEditor {
   constructor() {

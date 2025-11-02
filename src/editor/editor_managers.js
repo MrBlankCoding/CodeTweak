@@ -1,5 +1,5 @@
 import feather from 'feather-icons';
-import { generateUrlMatchPattern } from "../utils/urlMatchPattern.js";
+import { generateUrlMatchPattern } from "../utils/urls.js";
 
 class BaseUIComponent {
   constructor(elements, eventBus) {

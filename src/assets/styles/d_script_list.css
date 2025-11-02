@@ -38,6 +38,12 @@
   text-overflow: ellipsis;
 }
 
+.script-urls {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
 .script-actions {
   display: flex;
   align-items: center;

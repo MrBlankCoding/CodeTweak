@@ -1,4 +1,4 @@
-import { urlMatchesPattern } from "../utils/urlMatchPattern.js";
+import { urlMatchesPattern } from "../utils/urls.js";
 import { injectScriptsForStage, INJECTION_TYPES } from "../utils/inject.js";
 
 // State management

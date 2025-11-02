@@ -56,7 +56,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["utils/*"],
+      "resources": ["utils/*", "GM/*"],
       "matches": ["<all_urls>"]
     }
   ]

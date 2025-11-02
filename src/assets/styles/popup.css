@@ -173,6 +173,10 @@ header .buttons button span:not(.btn-icon) {
   flex: 1;
   min-width: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 4px 0;
 }
 
 .script-name {
@@ -182,14 +186,29 @@ header .buttons button span:not(.btn-icon) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.2;
 }
 
 .script-target {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: 10px;
   color: var(--text-secondary);
+  width: 100%;
+  min-height: 16px;
+  line-height: 1.2;
+}
+
+.script-description {
+  color: var(--text-secondary);
+  font-size: 10px;
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  display: inline;
 }
 
 .script-type {
@@ -204,14 +223,11 @@ header .buttons button span:not(.btn-icon) {
 }
 
 /* Toggle Switch */
-.script-toggle {
-  flex-shrink: 0;
-}
-
 .toggle-switch {
   position: relative;
-  width: 36px;
+  width: 38px;
   height: 20px;
+  flex-shrink: 0;
 }
 
 .toggle-switch input {
@@ -220,36 +236,36 @@ header .buttons button span:not(.btn-icon) {
   height: 0;
 }
 
-.slider {
+.toggle-slider {
   position: absolute;
+  cursor: pointer;
   inset: 0;
   background: var(--bg-tertiary);
+  border-radius: var(--radius-full);
+  transition: var(--transition-all);
   border: 1px solid var(--border-primary);
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.2s;
 }
 
-.slider:before {
-  content: "";
+.toggle-slider:before {
   position: absolute;
-  width: 14px;
+  content: "";
   height: 14px;
+  width: 14px;
   left: 2px;
   bottom: 2px;
-  background: white;
+  background: var(--text-secondary);
   border-radius: 50%;
-  transition: all 0.2s;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: var(--transition-transform);
 }
 
-input:checked + .slider {
-  background: var(--success);
-  border-color: var(--success);
+.toggle-switch input:checked + .toggle-slider {
+  background: var(--primary);
+  border-color: var(--primary);
 }
 
-input:checked + .slider:before {
-  transform: translateX(16px);
+.toggle-switch input:checked + .toggle-slider:before {
+  background: white;
+  transform: translateX(18px);
 }
 
 /* Dropdowns */

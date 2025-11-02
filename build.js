@@ -17,6 +17,7 @@ cpSync('src/dashboard', join(outdir, 'dashboard'), { recursive: true });
 cpSync('src/editor', join(outdir, 'editor'), { recursive: true });
 cpSync('src/offscreen', join(outdir, 'offscreen'), { recursive: true });
 cpSync('src/popup', join(outdir, 'popup'), { recursive: true });
+cpSync('src/GM', join(outdir, 'GM'), { recursive: true });
 
 cpSync('src/manifest.json', join(outdir, 'manifest.json'));
 
@@ -33,10 +34,10 @@ build({
     'src/background/background.js',
     'src/utils/content_bridge.js',
     'src/utils/elementSelector.js',
-    'src/utils/gm_core.js',
+    'src/GM/gm_core.js',
     'src/utils/greasyfork_interceptor.js',
     'src/utils/inject.js',
-    'src/utils/urlMatchPattern.js',
+    'src/utils/urls.js',
     'src/popup/popup.js',
     'src/editor/editor.js',
     'src/dashboard/dashboard.js',
