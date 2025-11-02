@@ -684,9 +684,21 @@ export class ResourceManager extends BaseUIComponent {
     resourceItem.className = 'resource-item';
     resourceItem.dataset.name = name;
     resourceItem.dataset.url = url;
+    // Truncate URL for display (keep first 30 and last 20 chars for long URLs)
+    const displayUrl = url.length > 60 
+      ? `${url.substring(0, 30)}...${url.substring(url.length - 20)}`
+      : url;
+      
     resourceItem.innerHTML = `
-      <span>${this.escapeHtml(name)} (${this.escapeHtml(url)})</span>
-      <button class="remove-resource" title="Remove Resource">×</button>
+      <div class="resource-item-content">
+        <div class="resource-name" title="${this.escapeHtml(name)}">${this.escapeHtml(name)}</div>
+        <a href="${this.escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="resource-url" title="${this.escapeHtml(url)}">
+          ${this.escapeHtml(displayUrl)}
+        </a>
+      </div>
+      <button class="remove-resource" title="Remove Resource">
+        <i data-feather="x" width="16" height="16"></i>
+      </button>
     `;
 
     this.elements.resourceList.appendChild(resourceItem);

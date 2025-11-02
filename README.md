@@ -86,9 +86,7 @@ node build.js
 * [ ] Add a cap to how long text can be in the editor
 
 ### UI
-
-* [ ] Improve URL display formatting
-* [ ] Refine CSS for menu commands and import UI
+* [ ] Refine CSS for menu commands 
 * [ ] Add iframe preview with live refresh
 * [ ] Fix editor optimizations
 * [ ] Add a cap to how long text can be in the dashboard

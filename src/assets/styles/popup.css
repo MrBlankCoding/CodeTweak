@@ -374,9 +374,21 @@ a:hover {
 
 /* Menu Commands */
 .menu-command-section {
-  margin-top: 12px;
-  padding-top: 8px;
+  margin: 16px -8px 0;
+  padding: 12px 8px 0;
   border-top: 1px solid var(--border-primary);
+  position: relative;
+}
+
+.menu-command-section::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 8px;
+  right: 8px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-primary), transparent);
+  opacity: 0.6;
 }
 
 .menu-command-title {
@@ -385,43 +397,99 @@ a:hover {
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  margin-bottom: 6px;
+  margin: 0 0 8px 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.menu-command-title::before {
+  content: '';
+  display: block;
+  width: 12px;
+  height: 1px;
+  background: var(--border-primary);
 }
 
 .menu-command-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .menu-command-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 4px 8px;
+  padding: 8px 10px;
+  margin: 0 -2px;
+  border-radius: 6px;
+  border: 1px solid transparent;
   background: var(--bg-secondary);
-  border: 1px solid var(--border-primary);
-  border-radius: 3px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.menu-command-item::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--primary);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 0;
 }
 
 .menu-command-item:hover {
-  background: var(--bg-hover);
-  border-color: var(--border-secondary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  background: var(--bg-tertiary);
+  border-color: var(--border-accent);
+}
+
+.menu-command-item:active {
+  transform: translateY(0);
+  transition-duration: 0.1s;
 }
 
 .menu-command-name {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
+  color: var(--text-primary);
+  position: relative;
+  z-index: 1;
+  transition: color 0.2s ease;
+}
+
+.menu-command-item:hover .menu-command-name {
+  color: var(--primary);
 }
 
 .menu-command-key {
-  font-size: 9px;
-  color: var(--text-secondary);
-  background: var(--bg-tertiary);
-  padding: 1px 4px;
-  border: 1px solid var(--border-primary);
-  border-radius: 2px;
+  font-size: 10px;
   font-family: var(--font-mono);
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border-primary);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 1;
+  transition: all 0.2s ease;
+}
+
+.menu-command-item:hover .menu-command-key {
+  background: var(--bg-primary);
+  border-color: var(--border-accent);
+  color: var(--primary);
+  transform: translateX(2px);
 }

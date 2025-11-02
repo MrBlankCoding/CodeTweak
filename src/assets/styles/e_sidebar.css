@@ -331,13 +331,64 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-sm);
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md);
-  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  gap: var(--space-md);
   transition: var(--transition-all);
+  border-radius: var(--radius-sm);
 }
+
+.resource-item-content {
+  flex: 1;
+  min-width: 0; /* Allows text truncation */
+}
+
+.resource-name {
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: var(--space-xxs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.resource-url {
+  display: block;
+  font-size: 0.85em;
+  color: var(--text-secondary);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.2s ease;
+}
+
+.resource-url:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+.remove-resource {
+  color: var(--text-secondary);
+  opacity: 0.7;
+  transition: var(--transition-all);
+  background: none;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.remove-resource:hover {
+  color: var(--danger);
+  background: var(--danger-bg);
+  opacity: 1;
+}
+
 .url-item:hover,
 .resource-item:hover {
   background: var(--bg-hover);
