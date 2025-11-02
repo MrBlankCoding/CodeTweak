@@ -1,14 +1,14 @@
 import { GM_API_DEFINITIONS } from '../GM/gmApiDefinitions.js';
 
-// Build mapping from Tampermonkey @grant names to element IDs
+// Map tampermonkey style to ours
 function buildGrantToApiMapping() {
   const grantToGmApi = {};
   
   Object.values(GM_API_DEFINITIONS).forEach(api => {
-    // Traditional GM_ style
+    // Original GM style
     grantToGmApi[api.tmName] = api.el;
     
-    // Modern GM. style (except unsafeWindow)
+    // Modern GM 
     if (api.tmName !== 'unsafeWindow') {
       const modernName = api.tmName.replace('GM_', 'GM.');
       grantToGmApi[modernName] = api.el;
@@ -23,7 +23,6 @@ function parseUserScriptMetadata(content) {
     gmApis: {},
   };
 
-  // Map @grant names to our element IDs
   const grantToGmApi = buildGrantToApiMapping();
 
   const metaMatch = content.match(/==UserScript==([\s\S]*?)==\/UserScript==/);
@@ -99,7 +98,6 @@ function extractMetadataBlock(content) {
   return match ? match[0] : null;
 }
 
-// Build reverse mapping from element IDs to Tampermonkey @grant names
 function buildApiToGrantMapping() {
   const apiToGrant = {};
   
@@ -125,7 +123,7 @@ function buildTampermonkeyMetadata(script, useModernStyle = false) {
   };
 
   push("name", script.name || "Untitled Script");
-  push("namespace", script.namespace || "https://codetweak.local");
+  push("namespace", script.namespace || "https://codetweak.local"); // Need this domain
   push("version", script.version || "1.0.0");
   push("description", script.description || "");
   push("author", script.author || "Anonymous");

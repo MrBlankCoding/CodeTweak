@@ -111,11 +111,7 @@ export function formatRunAt(runAt) {
     return map[runAt] || runAt || "Load";
   }
 
-/**
- * Returns a description of the script's features (styles/scripts)
- * @param {Object} script - The script object
- * @returns {string} Description of script features or empty string if none
- */
+// Work in progress
 export function getScriptDescription(script) {
     const features = [];
     

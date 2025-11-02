@@ -140,18 +140,11 @@ export const GM_API_DEFINITIONS = {
   }
 };
 
-/**
- * Get all API element IDs for caching
- * @returns {string[]} Array of element IDs
- */
 export function getApiElementIds() {
   return Object.values(GM_API_DEFINITIONS).map(api => api.el);
 }
 
-/**
- * Get APIs grouped by category
- * @returns {Object} APIs organized by category
- */
+
 export function getApisByCategory() {
   const grouped = {};
   
@@ -165,20 +158,10 @@ export function getApisByCategory() {
   return grouped;
 }
 
-/**
- * Get API definition by element ID
- * @param {string} elementId - The element ID to search for
- * @returns {Object|null} API definition or null if not found
- */
 export function getApiByElementId(elementId) {
   return Object.values(GM_API_DEFINITIONS).find(api => api.el === elementId) || null;
 }
 
-/**
- * Get all Tampermonkey grant names for enabled APIs
- * @param {Object} enabledApis - Object with API element IDs as keys and boolean values
- * @returns {string[]} Array of @grant names
- */
 export function getGrantNames(enabledApis) {
   const grantNames = [];
   
@@ -194,11 +177,6 @@ export function getGrantNames(enabledApis) {
   return grantNames;
 }
 
-/**
- * Get TypeScript signatures for enabled APIs
- * @param {Object} enabledApis - Object with API element IDs as keys and boolean values
- * @returns {string[]} Array of TypeScript signatures
- */
 export function getTypeScriptSignatures(enabledApis) {
   const signatures = [];
   

@@ -11,13 +11,13 @@ const EXECUTION_WORLDS = Object.freeze({
 });
 
 
+// Communitcation between content script and background
 class GMBridge {
   constructor(scriptId, extensionId) {
     this.scriptId = scriptId;
     this.extensionId = extensionId;
     this.messageIdCounter = 0;
     this.pendingPromises = new Map();
-
     this.setupMessageListener();
   }
 
@@ -68,6 +68,7 @@ class GMBridge {
   }
 }
 
+// Managees GM API values
 class GMValueManager {
   constructor(bridge) {
     this.bridge = bridge;
@@ -111,6 +112,35 @@ class GMValueManager {
   }
 }
 
+// Manages resouces -> Urls
+class ResourceManager {
+  constructor(resourceContents = {}, resourceURLs = {}) {
+    this.contents = new Map(Object.entries(resourceContents));
+    this.urls = new Map(Object.entries(resourceURLs));
+  }
+
+  getText(resourceName) {
+    return this.contents.get(resourceName) || null;
+  }
+
+  getURL(resourceName) {
+    return this.urls.get(resourceName) || null;
+  }
+
+  static fromScript(script) {
+    const resourceURLs = {};
+
+    if (Array.isArray(script.resources)) {
+      script.resources.forEach((resource) => {
+        resourceURLs[resource.name] = resource.url;
+      });
+    }
+
+    return new ResourceManager(script.resourceContents || {}, resourceURLs);
+  }
+}
+
+// Registers APIs to window so we can use them
 class GMAPIRegistry {
   constructor(bridge, valueManager, resourceManager) {
     this.bridge = bridge;
@@ -185,9 +215,8 @@ class GMAPIRegistry {
     }
 
     if (enabledApis.gmRegisterMenuCommand) {
-      const registerMenuCommand = (caption, onClick, accessKey) => {
-        return this.registerMenuCommand(caption, onClick, accessKey);
-      };
+      const registerMenuCommand = (caption, onClick, accessKey) =>
+        this.registerMenuCommand(caption, onClick, accessKey);
       window.GM_registerMenuCommand = registerMenuCommand;
       window.GM.registerMenuCommand = registerMenuCommand;
     }
@@ -217,108 +246,15 @@ class GMAPIRegistry {
     }
 
     if (enabledApis.gmAddElement) {
-      const addElement = (parent, tag, attributes = {}) => this.addElementToDocument(parent, tag, attributes);
+      const addElement = (parent, tag, attributes = {}) =>
+        this.addElementToDocument(parent, tag, attributes);
       window.GM_addElement = addElement;
       window.GM.addElement = addElement;
     }
 
     // Always provide Trusted Types helpers for user scripts
+    // Could change this later? 
     this.setupTrustedTypesHelpers();
-  }
-
-  setupTrustedTypesHelpers() {
-    // Create a comprehensive Trusted Types policy for user scripts
-    if (window.trustedTypes && window.trustedTypes.createPolicy) {
-      try {
-        if (!window.__ctUserScriptPolicy) {
-          window.__ctUserScriptPolicy = window.trustedTypes.createPolicy("codetweak-userscript", {
-            createHTML: (input) => {
-              // Basic sanitization - remove script tags and dangerous attributes
-              if (typeof input !== 'string') return '';
-              return input
-                .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-                .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
-                .replace(/javascript:/gi, '');
-            },
-            createScript: (input) => input,
-            createScriptURL: (input) => input,
-          });
-        }
-
-        // Provide helper functions for user scripts
-        window.GM_setInnerHTML = (element, html) => {
-          if (!element || typeof html !== 'string') return false;
-          try {
-            const trustedHTML = window.__ctUserScriptPolicy.createHTML(html);
-            element.innerHTML = trustedHTML;
-            return true;
-          } catch (error) {
-            console.warn('CodeTweak: Failed to set innerHTML with Trusted Types:', error);
-            // Fallback for non-Trusted Types environments
-            try {
-              element.innerHTML = html;
-              return true;
-            } catch (fallbackError) {
-              console.error('CodeTweak: innerHTML fallback also failed:', fallbackError);
-              return false;
-            }
-          }
-        };
-
-        window.GM_createHTML = (html) => {
-          try {
-            return window.__ctUserScriptPolicy.createHTML(html);
-          } catch (error) {
-            console.warn('CodeTweak: Failed to create TrustedHTML:', error);
-            return html; // Fallback
-          }
-        };
-
-        // Make these available in GM namespace too
-        window.GM = window.GM || {};
-        window.GM.setInnerHTML = window.GM_setInnerHTML;
-        window.GM.createHTML = window.GM_createHTML;
-
-      } catch (error) {
-        console.warn('CodeTweak: Failed to create Trusted Types policy:', error);
-        
-        // Provide fallback functions that work without Trusted Types
-        window.GM_setInnerHTML = (element, html) => {
-          if (!element || typeof html !== 'string') return false;
-          try {
-            element.innerHTML = html;
-            return true;
-          } catch (error) {
-            console.error('CodeTweak: innerHTML assignment failed:', error);
-            return false;
-          }
-        };
-
-        window.GM_createHTML = (html) => html;
-        
-        window.GM = window.GM || {};
-        window.GM.setInnerHTML = window.GM_setInnerHTML;
-        window.GM.createHTML = window.GM_createHTML;
-      }
-    } else {
-      // No Trusted Types support - provide basic fallbacks
-      window.GM_setInnerHTML = (element, html) => {
-        if (!element || typeof html !== 'string') return false;
-        try {
-          element.innerHTML = html;
-          return true;
-        } catch (error) {
-          console.error('CodeTweak: innerHTML assignment failed:', error);
-          return false;
-        }
-      };
-
-      window.GM_createHTML = (html) => html;
-      
-      window.GM = window.GM || {};
-      window.GM.setInnerHTML = window.GM_setInnerHTML;
-      window.GM.createHTML = window.GM_createHTML;
-    }
   }
 
   registerUnsafeWindow(enabledApis) {
@@ -348,6 +284,97 @@ class GMAPIRegistry {
         this.resourceManager.getURL(resourceName);
       window.GM_getResourceURL = getResourceURL;
       window.GM.getResourceURL = getResourceURL;
+    }
+  }
+
+  setupTrustedTypesHelpers() {
+    const createFallbackHelpers = () => {
+      window.GM_setInnerHTML = (element, html) => {
+        if (!element || typeof html !== "string") return false;
+        try {
+          element.innerHTML = html;
+          return true;
+        } catch (error) {
+          console.error("CodeTweak: innerHTML assignment failed:", error);
+          return false;
+        }
+      };
+
+      window.GM_createHTML = (html) => html;
+
+      window.GM = window.GM || {};
+      window.GM.setInnerHTML = window.GM_setInnerHTML;
+      window.GM.createHTML = window.GM_createHTML;
+    };
+
+    // No Trusted Types support
+    if (!window.trustedTypes?.createPolicy) {
+      createFallbackHelpers();
+      return;
+    }
+
+    try {
+      if (!window.__ctUserScriptPolicy) {
+        window.__ctUserScriptPolicy = window.trustedTypes.createPolicy(
+          "codetweak-userscript",
+          {
+            createHTML: (input) => {
+              if (typeof input !== "string") return "";
+              // Basic sanitization
+              return input
+                .replace(
+                  /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+                  ""
+                )
+                .replace(/on\w+\s*=\s*["'][^"']*["']/gi, "")
+                .replace(/javascript:/gi, "");
+            },
+            createScript: (input) => input,
+            createScriptURL: (input) => input,
+          }
+        );
+      }
+
+      window.GM_setInnerHTML = (element, html) => {
+        if (!element || typeof html !== "string") return false;
+        try {
+          const trustedHTML = window.__ctUserScriptPolicy.createHTML(html);
+          element.innerHTML = trustedHTML;
+          return true;
+        } catch (error) {
+          console.warn(
+            "CodeTweak: Failed to set innerHTML with Trusted Types:",
+            error
+          );
+          // Fallback for non-Trusted Types environments
+          try {
+            element.innerHTML = html;
+            return true;
+          } catch (fallbackError) {
+            console.error(
+              "CodeTweak: innerHTML fallback also failed:",
+              fallbackError
+            );
+            return false;
+          }
+        }
+      };
+
+      window.GM_createHTML = (html) => {
+        try {
+          return window.__ctUserScriptPolicy.createHTML(html);
+        } catch (error) {
+          console.warn("CodeTweak: Failed to create TrustedHTML:", error);
+          return html;
+        }
+      };
+
+      window.GM = window.GM || {};
+      window.GM.setInnerHTML = window.GM_setInnerHTML;
+      window.GM.createHTML = window.GM_createHTML;
+    } catch (error) {
+      console.warn("CodeTweak: Failed to create Trusted Types policy:", error);
+      createFallbackHelpers();
     }
   }
 
@@ -418,26 +445,7 @@ class GMAPIRegistry {
     if (typeof css !== "string") return null;
 
     const style = document.createElement("style");
-    
-    // Handle Trusted Types for textContent
-    let trustedCSS = css;
-    if (window.trustedTypes && window.trustedTypes.createPolicy) {
-      try {
-        if (!window.__ctTrustedHTMLPolicy) {
-          window.__ctTrustedHTMLPolicy = window.trustedTypes.createPolicy("codetweak-html", {
-            createHTML: (input) => input,
-            createScript: (input) => input,
-            createScriptURL: (input) => input,
-          });
-        }
-        // For CSS, we can use textContent directly, but let's be safe
-        trustedCSS = css; // textContent doesn't require TrustedHTML
-      } catch (e) {
-        console.warn("CodeTweak: Failed to create trusted types policy for CSS:", e);
-      }
-    }
-    
-    style.textContent = trustedCSS;
+    style.textContent = css;
 
     const target = document.head || document.documentElement || document.body;
     if (target) {
@@ -449,14 +457,15 @@ class GMAPIRegistry {
 
   addElementToDocument(parent, tag, attributes = {}) {
     if (!parent || typeof tag !== "string") {
-      console.warn("GM_addElement: parent must be a valid DOM node and tag must be a string");
+      console.warn(
+        "GM_addElement: parent must be a valid DOM node and tag must be a string"
+      );
       return null;
     }
 
     try {
       const element = document.createElement(tag);
 
-      // Set attributes if provided
       if (attributes && typeof attributes === "object") {
         Object.entries(attributes).forEach(([key, value]) => {
           if (typeof key === "string" && value != null) {
@@ -468,7 +477,10 @@ class GMAPIRegistry {
       parent.appendChild(element);
       return element;
     } catch (error) {
-      console.error("GM_addElement: Failed to create or append element:", error);
+      console.error(
+        "GM_addElement: Failed to create or append element:",
+        error
+      );
       return null;
     }
   }
@@ -481,7 +493,9 @@ class GMAPIRegistry {
       return null;
     }
 
-    const commandId = this.generateCommandId();
+    const commandId = `gm_menu_${Date.now()}_${Math.random()
+      .toString(36)
+      .substring(2, 8)}`;
     const command = { commandId, caption, onClick, accessKey };
 
     this.menuCommands.push(command);
@@ -493,51 +507,13 @@ class GMAPIRegistry {
     return commandId;
   }
 
-  generateCommandId() {
-    return `gm_menu_${Date.now()}_${Math.random()
-      .toString(36)
-      .substring(2, 8)}`;
-  }
-
   exposeMenuCommand(command) {
     window.__gmMenuCommands = window.__gmMenuCommands || [];
     window.__gmMenuCommands.push(command);
   }
 }
 
-/**
- * Manages script resources (text content and URLs)
- */
-class ResourceManager {
-  constructor(resourceContents = {}, resourceURLs = {}) {
-    this.contents = new Map(Object.entries(resourceContents));
-    this.urls = new Map(Object.entries(resourceURLs));
-  }
-
-  getText(resourceName) {
-    return this.contents.get(resourceName) || null;
-  }
-
-  getURL(resourceName) {
-    return this.urls.get(resourceName) || null;
-  }
-
-  static fromScript(script) {
-    const resourceURLs = {};
-
-    if (Array.isArray(script.resources)) {
-      script.resources.forEach((resource) => {
-        resourceURLs[resource.name] = resource.url;
-      });
-    }
-
-    return new ResourceManager(script.resourceContents || {}, resourceURLs);
-  }
-}
-
-/**
- * Handles external script loading with fallback strategies
- */
+// Load external scripts -> Being a bit problamatic righ now, might need some changes
 class ExternalScriptLoader {
   constructor() {
     this.loadedScripts = new Set();
@@ -573,7 +549,7 @@ class ExternalScriptLoader {
 
       // Trusted Types compliance
       let trustedSrc = url;
-      if (window.trustedTypes && window.trustedTypes.createPolicy) {
+      if (window.trustedTypes?.createPolicy) {
         try {
           if (!window.__ctTrustedScriptURLPolicy) {
             window.__ctTrustedScriptURLPolicy =
@@ -582,11 +558,9 @@ class ExternalScriptLoader {
               });
           }
           trustedSrc = window.__ctTrustedScriptURLPolicy.createScriptURL(url);
-        } catch (_e) {
-          console.error("Failed to create trusted script URL:", _e);
+        } catch (e) {
+          console.error("Failed to create trusted script URL:", e);
           console.warn("Falling back to raw URL.");
-          // ignore, fall back to raw URL
-          trustedSrc = url;
         }
       }
 
@@ -595,17 +569,61 @@ class ExternalScriptLoader {
       script.onload = resolve;
       script.onerror = () =>
         reject(new Error(`Failed to load external script: ${url}`));
-      (document.head || document.documentElement || document.body).appendChild(
-        script
-      );
+
+      const target = document.head || document.documentElement || document.body;
+      target.appendChild(script);
     });
   }
 }
 
-// ==================================================
-// SCRIPT EXECUTORS
-// ==================================================
 
+// WHY DO WE EVEN USE INFOOOOOOOOO
+function exposeGMInfo(gmInfo) {
+  try {
+    Object.defineProperty(window, "GM_info", {
+      value: Object.freeze(gmInfo || {}),
+      writable: false,
+      configurable: false,
+    });
+    window.GM = window.GM || {};
+    window.GM.info = window.GM_info;
+  } catch (e) {
+    console.warn("CodeTweak: Unable to define GM_info", e);
+  }
+}
+
+// load dependencies then exec
+async function executeUserScriptWithDependencies(
+  userCode,
+  scriptId,
+  requiredUrls,
+  scriptLoader
+) {
+  try {
+    await scriptLoader.loadScripts(requiredUrls);
+
+    const wrappedCode = `
+      try {
+        ${userCode}
+      } catch (error) {
+        console.error('CodeTweak: User script execution error in ${scriptId}:', error);
+        throw error;
+      }
+    `;
+
+    const userFunction = new Function(wrappedCode);
+    userFunction();
+
+    console.log(`CodeTweak: Successfully executed script ${scriptId}`);
+  } catch (error) {
+    console.error(
+      `CodeTweak: Error executing user script ${scriptId}:`,
+      error
+    );
+  }
+}
+
+// In the name
 function createMainWorldExecutor(
   userCode,
   scriptId,
@@ -617,6 +635,28 @@ function createMainWorldExecutor(
   requiredUrls,
   gmInfo
 ) {
+  // Define bindNativeFunctions inside the main world context
+  function bindNativeFunctions() {
+    // Bind common native functions to prevent "Illegal invocation" errors
+    const nativeFunctions = [
+      'fetch',
+      'setTimeout',
+      'clearTimeout',
+      'setInterval',
+      'clearInterval',
+      'requestAnimationFrame',
+      'cancelAnimationFrame',
+      'requestIdleCallback',
+      'cancelIdleCallback'
+    ];
+
+    nativeFunctions.forEach(fnName => {
+      if (window[fnName]) {
+        window[fnName] = window[fnName].bind(window);
+      }
+    });
+  }
+
   // Prevent re-execution
   window._executedScriptIds = window._executedScriptIds || new Set();
   if (window._executedScriptIds.has(scriptId)) {
@@ -637,32 +677,9 @@ function createMainWorldExecutor(
   // Setup
   valueManager.initializeCache(initialValues);
   apiRegistry.registerAll(enabledApis);
+  bindNativeFunctions();
 
-  // Ensure native functions are bound to the correct receiver to prevent Illegal invocation
-  try {
-    window.setTimeout = window.setTimeout.bind(window);
-    window.clearTimeout = window.clearTimeout.bind(window);
-    window.setInterval = window.setInterval.bind(window);
-    window.clearInterval = window.clearInterval.bind(window);
-    if (typeof window.postMessage === 'function') {
-      window.postMessage = window.postMessage.bind(window);
-    }
-  } catch (e) {
-    console.warn('CodeTweak: Failed to bind timers/postMessage:', e);
-  }
-
-  // Expose GM_info (read-only)
-  try {
-    Object.defineProperty(window, "GM_info", {
-      value: Object.freeze(gmInfo || {}),
-      writable: false,
-      configurable: false,
-    });
-    window.GM = window.GM || {};
-    window.GM.info = window.GM_info;
-  } catch (e) {
-    console.warn("CodeTweak: Unable to define GM_info", e);
-  }
+  exposeGMInfo(gmInfo);
 
   // Execute user script
   executeUserScriptWithDependencies(
@@ -673,9 +690,7 @@ function createMainWorldExecutor(
   );
 }
 
-/**
- * Executes user scripts in the isolated world context
- */
+// oooh isolated world... sneaky sneaky
 function createIsolatedWorldExecutor(
   userCode,
   scriptId,
@@ -736,32 +751,7 @@ function createIsolatedWorldExecutor(
   // Setup
   valueManager.initializeCache(initialValues);
   apiRegistry.registerAll(enabledApis);
-
-  // Ensure native functions are bound to the correct receiver to prevent Illegal invocation
-  try {
-    window.setTimeout = window.setTimeout.bind(window);
-    window.clearTimeout = window.clearTimeout.bind(window);
-    window.setInterval = window.setInterval.bind(window);
-    window.clearInterval = window.clearInterval.bind(window);
-    if (typeof window.postMessage === 'function') {
-      window.postMessage = window.postMessage.bind(window);
-    }
-  } catch (e) {
-    console.warn('CodeTweak: Failed to bind timers/postMessage (isolated):', e);
-  }
-
-  // Expose GM_info (read-only)
-  try {
-    Object.defineProperty(window, "GM_info", {
-      value: Object.freeze(gmInfo || {}),
-      writable: false,
-      configurable: false,
-    });
-    window.GM = window.GM || {};
-    window.GM.info = window.GM_info;
-  } catch (e) {
-    console.warn("CodeTweak: Unable to define GM_info", e);
-  }
+  exposeGMInfo(gmInfo);
 
   // Execute user script
   executeUserScriptWithDependencies(
@@ -772,41 +762,7 @@ function createIsolatedWorldExecutor(
   );
 }
 
-// Dependinces -> Lodash etc
-async function executeUserScriptWithDependencies(
-  userCode,
-  scriptId,
-  requiredUrls,
-  scriptLoader
-) {
-  try {
-    await scriptLoader.loadScripts(requiredUrls);
-    try {
-      // Create a wrapper for error
-      const wrappedCode = `
-        try {
-          ${userCode}
-        } catch (error) {
-          console.error('CodeTweak: User script execution error in ${scriptId}:', error);
-          throw error;
-        }
-      `;
-      
-      // New function
-      const userFunction = new Function(wrappedCode);
-      userFunction();
-      
-      console.log(`CodeTweak: Successfully executed script ${scriptId}`);
-    } catch (error) {
-      console.error(`CodeTweak: Error executing user script ${scriptId}:`, error);
-      throw error;
-    }
-  } catch (error) {
-    console.error(`CodeTweak: Error in executeUserScriptWithDependencies for ${scriptId}:`, error);
-  }
-}
-
-// !!!!! MAIN INJECT
+// The actual injector. Could move all of the other logic into another file
 class ScriptInjector {
   constructor() {
     this.executedScripts = new Map();
@@ -862,13 +818,11 @@ class ScriptInjector {
   }
 
   async injectInWorld(tabId, config, world) {
-    // Ensure core GM classes are available in the target execution world first
+    // Inject core GM classes first
     await chrome.scripting.executeScript({
       target: { tabId },
       world,
-      files: [
-        "GM/gm_core.js",
-      ],
+      files: ["GM/gm_core.js"],
     });
 
     const executor =
@@ -990,43 +944,39 @@ class ScriptInjector {
       await this.injectScript(tabId, script, settings);
     }
   }
-
+  // No thanks
   showNotification(tabId, scriptName) {
     chrome.scripting
       .executeScript({
         target: { tabId },
         world: EXECUTION_WORLDS.MAIN,
-        func: this.createNotificationFunction(),
+        func: (name) => {
+          const notification = document.createElement("div");
+          notification.textContent = `✓ ${name}`;
+
+          Object.assign(notification.style, {
+            position: "fixed",
+            bottom: "16px",
+            right: "16px",
+            zIndex: "999999",
+            background: "rgba(33, 150, 243, 0.95)",
+            color: "white",
+            padding: "6px 12px",
+            borderRadius: "8px",
+            fontSize: "12px",
+            fontFamily: "system-ui, sans-serif",
+            pointerEvents: "none",
+            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+          });
+
+          document.body.appendChild(notification);
+          setTimeout(() => notification.remove(), 2000);
+        },
         args: [scriptName || "Unknown script"],
       })
       .catch((error) => {
-        console.warn("CodeTweak: showNotification failed:", error);
+        console.error("CodeTweak: showNotification failed:", error);
       });
-  }
-
-  createNotificationFunction() {
-    return function (scriptName) {
-      const notification = document.createElement("div");
-      notification.textContent = `✓ ${scriptName}`;
-
-      Object.assign(notification.style, {
-        position: "fixed",
-        bottom: "16px",
-        right: "16px",
-        zIndex: "999999",
-        background: "rgba(33, 150, 243, 0.95)",
-        color: "white",
-        padding: "6px 12px",
-        borderRadius: "8px",
-        fontSize: "12px",
-        fontFamily: "system-ui, sans-serif",
-        pointerEvents: "none",
-        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
-      });
-
-      document.body.appendChild(notification);
-      setTimeout(() => notification.remove(), 2000);
-    };
   }
 }
 
