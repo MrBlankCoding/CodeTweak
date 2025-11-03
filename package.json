@@ -4,10 +4,13 @@
     "@eslint/js": "^9.28.0",
     "esbuild": "^0.20.2",
     "eslint": "^9.28.0",
-    "globals": "^16.2.0"
+    "globals": "^16.2.0",
+    "archiver": "^7.0.1"
   },
   "scripts": {
-    "build": "node build.js"
+    "build": "npm run build:chrome",
+    "build:chrome": "node build.js --browser=chrome",
+    "build:firefox": "node build.js --browser=firefox --production"
   },
   "dependencies": {
     "@babel/runtime": "^7.28.4",

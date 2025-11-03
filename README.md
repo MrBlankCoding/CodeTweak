@@ -46,11 +46,9 @@ node build.js
 ## TODO List
 
 ### Custom API Additions
-
-* [ ] Implement new custom APIs
-
-  * [ ] `GM_download`
-  * [ ] `GM_confirm`
+* [ ] `GM_download`
+* [ ] `GM_addValueChangeListener`
+* [ ] `GM_getResourceURL `
   * [ ] Additional APIs as needed
 
 ### Editor
@@ -64,12 +62,13 @@ node build.js
 * [ ] Display execution world and run-at time in editor/dashboard
 
 ### UI
-* [ ] Add iframe preview with live refresh
+* [ ] Make it so you choose where the modifcation goes on pages with mutiple scripts running
+* [ ] Change highlight theme color
 * [ ] Fix editor optimizations
 * [ ] Can you make it so if you have mutiple scripts running at once on the same page the notifications will expand verticlly and not all overlap
 
-### Communication & Helpers
-* [ ] Fix script loading other scripts against CORS
+### Helpers
+* [ ] Fix regrex
 ---
 
 ## Acknowledgments
