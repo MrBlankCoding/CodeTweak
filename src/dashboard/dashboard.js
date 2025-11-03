@@ -16,6 +16,7 @@ function initDashboard() {
     scriptsTable: document.getElementById("scriptsTable"),
     scriptsList: document.getElementById("scriptsList"),
     emptyState: document.getElementById("emptyState"),
+    settingsForm: document.getElementById("settingsForm"),
     saveSettingsBtn: document.getElementById("saveSettingsBtn"),
     resetSettingsBtn: document.getElementById("resetSettingsBtn"),
     exportAllBtn: document.getElementById("exportAllBtn"),
@@ -32,6 +33,8 @@ function initDashboard() {
       enableAllScripts: document.getElementById("enableAllScripts"),
       showNotifications: document.getElementById("showNotifications"),
       darkMode: document.getElementById("darkMode"),
+      allowExternalResources: document.getElementById("allowExternalResources"),
+      confirmFirstRun: document.getElementById("confirmFirstRun"),
     },
     greasyfork: {
       button: document.getElementById("greasyforkBtn"),
@@ -76,9 +79,10 @@ function setupEventListeners(elements, state) {
     window.location.href = chrome.runtime.getURL("editor/editor.html");
   });
 
-  elements.saveSettingsBtn?.addEventListener("click", () =>
-    saveSettings(elements.settings)
-  );
+  elements.settingsForm?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    saveSettings(elements.settings);
+  });
 
   elements.resetSettingsBtn?.addEventListener("click", () => {
     showNotification("Settings reset to defaults", "success");

@@ -118,7 +118,8 @@ async function loadSettings(settingsElements) {
       enableAllScripts: true,
       showNotifications: true,
       confirmBeforeRunning: false,
-
+      allowExternalResources: true,
+      confirmFirstRun: false,
     };
 
     // Apply defaults and update storage if needed

@@ -388,10 +388,142 @@ class ScriptInjector {
     const newScripts = matchingScripts.filter(
       (script) => !tabScripts.has(script.id)
     );
-    for (const script of newScripts) {
-      tabScripts.add(script.id);
-      await this.injectScript(tabId, script, settings);
+
+    if (settings.confirmFirstRun) {
+      const { scriptPermissions = {} } = await chrome.storage.local.get(
+        "scriptPermissions"
+      );
+      const domain = new URL(url).hostname;
+
+      for (const script of newScripts) {
+        const allowedDomains = scriptPermissions[script.id] || [];
+        if (allowedDomains.includes(domain)) {
+          tabScripts.add(script.id);
+          await this.injectScript(tabId, script, settings);
+        } else {
+          const confirmed = await this.askForConfirmation(
+            tabId,
+            script.name,
+            domain
+          );
+          if (confirmed) {
+            allowedDomains.push(domain);
+            scriptPermissions[script.id] = allowedDomains;
+            await chrome.storage.local.set({ scriptPermissions });
+            tabScripts.add(script.id);
+            await this.injectScript(tabId, script, settings);
+          }
+        }
+      }
+    } else {
+      for (const script of newScripts) {
+        tabScripts.add(script.id);
+        await this.injectScript(tabId, script, settings);
+      }
     }
+  }
+
+  async askForConfirmation(tabId, scriptName, domain) {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      world: "MAIN",
+      func: (scriptName, domain) => {
+        return new Promise((resolve) => {
+          const container = document.createElement("div");
+          container.id = "codetweak-confirm-container";
+
+          const shadow = container.attachShadow({ mode: "open" });
+
+          const style = document.createElement("style");
+          style.textContent = `
+            :host {
+              position: fixed;
+              top: 0;
+              left: 0;
+              width: 100%;
+              height: 100%;
+              background-color: rgba(0, 0, 0, 0.5);
+              z-index: 2147483647;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              font-family: sans-serif;
+            }
+            .modal {
+              background: white;
+              padding: 20px;
+              border-radius: 8px;
+              box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+              width: 400px;
+              max-width: 90%;
+            }
+            h3 {
+              margin-top: 0;
+              color: #333;
+            }
+            p {
+              color: #555;
+            }
+            .buttons {
+              text-align: right;
+              margin-top: 20px;
+            }
+            button {
+              padding: 10px 20px;
+              border: none;
+              border-radius: 5px;
+              cursor: pointer;
+              margin-left: 10px;
+            }
+            #allow-btn {
+              background-color: #28a745;
+              color: white;
+            }
+            #deny-btn {
+              background-color: #dc3545;
+              color: white;
+            }
+          `;
+
+          const modal = document.createElement("div");
+          modal.className = "modal";
+          modal.innerHTML = `
+            <h3>CodeTweak Script Confirmation</h3>
+            <p>Allow "<strong></strong>" to run on <strong></strong>?</p>
+            <div class="buttons">
+              <button id="deny-btn">Deny</button>
+              <button id="allow-btn">Allow</button>
+            </div>
+          `;
+          const strongs = modal.querySelectorAll("strong");
+          strongs[0].textContent = scriptName;
+          strongs[1].textContent = domain;
+
+          shadow.appendChild(style);
+          shadow.appendChild(modal);
+
+          document.body.appendChild(container);
+
+          const cleanup = () => {
+            if (container.parentNode) {
+              container.parentNode.removeChild(container);
+            }
+          };
+
+          shadow.getElementById("allow-btn").addEventListener("click", () => {
+            cleanup();
+            resolve(true);
+          });
+
+          shadow.getElementById("deny-btn").addEventListener("click", () => {
+            cleanup();
+            resolve(false);
+          });
+        });
+      },
+      args: [scriptName, domain],
+    });
+    return results[0].result;
   }
 
   showNotification(tabId, scriptName) {

@@ -53,12 +53,6 @@ node build.js
   * [ ] `GM_confirm`
   * [ ] Additional APIs as needed
 
-### Security & Permissions
-
-* [ ] Add new security settings
-* [ ] Allow scripts to load external resources
-* [ ] Ask for confirmation when a script runs on a website for the first time
-
 ### Editor
 
 * [ ] Reduce editor bundle size (~1.4 MB currently)

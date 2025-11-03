@@ -194,6 +194,12 @@ async function handleGreasyForkInstall(url) {
 }
 
 async function handleCrossOriginXmlhttpRequest(details, tabId, sendResponse) {
+  const { settings = {} } = await chrome.storage.local.get("settings");
+  if (!settings.allowExternalResources) {
+    sendResponse({ error: "Cross-origin requests are disabled by a security setting." });
+    return;
+  }
+
   const { url, method = "GET", headers, data } = details;
 
   if (!url) {
@@ -333,7 +339,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
     const { action, ...payload } = message.payload;
 
-    if (action === "xmlhttpRequest") {
+    if (action === "getSettings") {
+      chrome.storage.local.get("settings").then(({ settings = {} }) => {
+        sendResponse({ result: settings });
+      });
+      return true;
+    } else if (action === "xmlhttpRequest") {
       // Still not working properly....
       handleCrossOriginXmlhttpRequest(payload.details, sender.tab.id, sendResponse);
       return true;

@@ -546,7 +546,12 @@
       });
     }
     // NEEDS HELP!
-    _handleCrossOriginXmlhttpRequest(details) {
+    async _handleCrossOriginXmlhttpRequest(details) {
+      const settings = await this.bridge.call("getSettings");
+      if (!settings.allowExternalResources) {
+        throw new Error("GM_xmlhttpRequest: Cross-origin requests are disabled by a security setting.");
+      }
+
       const callbacks = {};
       const cloneableDetails = {};
       
@@ -559,7 +564,17 @@
       });
 
       return this.bridge.call("xmlhttpRequest", { details: cloneableDetails })
-        .then((response) => {
+        .then(async (response) => {
+          if (response && cloneableDetails.responseType === 'blob' && response.response && typeof response.response === 'string' && response.response.startsWith('data:')) {
+            try {
+              const res = await fetch(response.response);
+              const blob = await res.blob();
+              response.response = blob;
+            } catch (e) {
+              console.error("CodeTweak: Failed to reconstruct blob from data URL.", e);
+            }
+          }
+
           if (callbacks.onload) {
             try {
               callbacks.onload(response);
@@ -596,7 +611,6 @@
     }
   }
 
-  // I feel like we could move this to its own independent file
   async function executeUserScriptWithDependencies(userCode, scriptId, requireUrls, loader) {
     // Set up error collection
     const errorHandler = (event) => {
