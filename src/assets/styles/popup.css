@@ -223,11 +223,12 @@ header .buttons button span:not(.btn-icon) {
 }
 
 /* Toggle Switch */
+/* Toggle Switch Styles */
 .toggle-switch {
   position: relative;
-  width: 38px;
+  display: inline-block;
+  width: 40px;
   height: 20px;
-  flex-shrink: 0;
 }
 
 .toggle-switch input {
@@ -239,11 +240,14 @@ header .buttons button span:not(.btn-icon) {
 .toggle-slider {
   position: absolute;
   cursor: pointer;
-  inset: 0;
-  background: var(--bg-tertiary);
-  border-radius: var(--radius-full);
-  transition: var(--transition-all);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--bg-secondary);
   border: 1px solid var(--border-primary);
+  border-radius: 34px;
+  transition: .4s;
 }
 
 .toggle-slider:before {
@@ -251,21 +255,83 @@ header .buttons button span:not(.btn-icon) {
   content: "";
   height: 14px;
   width: 14px;
-  left: 2px;
+  left: 3px;
   bottom: 2px;
-  background: var(--text-secondary);
+  background-color: var(--text-primary);
+  transition: .4s;
   border-radius: 50%;
-  transition: var(--transition-transform);
 }
 
-.toggle-switch input:checked + .toggle-slider {
-  background: var(--primary);
+input:checked + .toggle-slider {
+  background-color: var(--primary);
   border-color: var(--primary);
 }
 
-.toggle-switch input:checked + .toggle-slider:before {
-  background: white;
-  transform: translateX(18px);
+input:checked + .toggle-slider:before {
+  transform: translateX(20px);
+  background-color: white;
+}
+
+/* Script Item Styles */
+.script-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  transition: background-color 0.2s;
+  gap: 12px;
+}
+
+.script-item:hover {
+  background-color: var(--bg-secondary);
+}
+
+.script-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+.script-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.script-name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.script-target {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.script-type {
+  color: white;
+  background-color: var(--primary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.script-description {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+  display: inline-block;
+}
+
+.script-disabled {
+  opacity: 0.6;
 }
 
 /* Dropdowns */
@@ -374,8 +440,8 @@ a:hover {
 
 /* Menu Commands */
 .menu-command-section {
-  margin: 16px -8px 0;
-  padding: 12px 8px 0;
+  margin: 16px 0 0;
+  padding: 12px 8px 8px;
   border-top: 1px solid var(--border-primary);
   position: relative;
 }
@@ -412,12 +478,40 @@ a:hover {
 }
 
 .menu-command-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.menu-command-btn {
+  width: 100%;
+  padding: 8px 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.menu-command-btn:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-accent);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.menu-command-btn:active {
+  transform: translateY(0);
+  transition-duration: 0.1s;
 }
 
 .menu-command-item {
@@ -433,6 +527,7 @@ a:hover {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+  grid-column: span 1;
 }
 
 .menu-command-item::after {

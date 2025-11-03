@@ -111,18 +111,56 @@ export function formatRunAt(runAt) {
     return map[runAt] || runAt || "Load";
   }
 
-// Work in progress
+/**
+ * Analyzes a script and returns a description of its features
+ * Detects: GM APIs, CSS, JS code, resources, and execution timing
+ */
 export function getScriptDescription(script) {
     const features = [];
     
-    if (script.css?.trim()) features.push("styles");
-    if (script.js?.trim()) features.push("scripts");
+    // Check for CSS styles
+    if (script.css?.trim()) {
+      features.push("CSS");
+    }
+    
+    // Check for JavaScript code
+    if (script.js?.trim()) {
+      features.push("JS");
+    }
+    
+    // Count enabled GM APIs
+    let gmApiCount = 0;
+    const gmApiKeys = [
+      'gmSetValue', 'gmGetValue', 'gmDeleteValue', 'gmListValues',
+      'gmOpenInTab', 'gmNotification', 'gmAddStyle', 'gmAddElement',
+      'gmRegisterMenuCommand', 'gmUnregisterMenuCommand',
+      'gmGetResourceText', 'gmGetResourceURL', 'gmXmlhttpRequest',
+      'gmSetClipboard', 'unsafeWindow'
+    ];
+    
+    gmApiKeys.forEach(key => {
+      if (script[key]) gmApiCount++;
+    });
+    
+    if (gmApiCount > 0) {
+      features.push(`${gmApiCount} GM API${gmApiCount > 1 ? 's' : ''}`);
+    }
+    
+    // Check for resources
+    if (script.resources && script.resources.length > 0) {
+      features.push(`${script.resources.length} Resource${script.resources.length > 1 ? 's' : ''}`);
+    }
+    
+    // Check for required scripts
+    if (script.requiredScripts && script.requiredScripts.length > 0) {
+      features.push(`${script.requiredScripts.length} Lib${script.requiredScripts.length > 1 ? 's' : ''}`);
+    }
     
     // Return empty string if no features are present
-    if (features.length === 0) return '';
+    if (features.length === 0) return 'Basic';
     
-    // Return just the feature list without URL information
-    return features.join(" + ");
+    // Return feature list
+    return features.join(" • ");
   }
 
 export function formatUrlPattern(pattern) {

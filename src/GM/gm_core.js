@@ -242,6 +242,26 @@
         };
         window.GM_registerMenuCommand = window.GM.registerMenuCommand = fn;
       }
+
+      if (e.gmUnregisterMenuCommand) {
+        const fn = (commandId) => {
+          if (typeof commandId !== "string") {
+            console.warn(
+              "GM_unregisterMenuCommand: Expected string commandId"
+            );
+            return;
+          }
+          if (window.__gmMenuCommands) {
+            const index = window.__gmMenuCommands.findIndex(
+              (cmd) => cmd.commandId === commandId
+            );
+            if (index !== -1) {
+              window.__gmMenuCommands.splice(index, 1);
+            }
+          }
+        };
+        window.GM_unregisterMenuCommand = window.GM.unregisterMenuCommand = fn;
+      }
     }
 
     // ---- RESOURCES ----
@@ -391,8 +411,61 @@
 
   // Helper to execute user code after ensuring @require dependencies are loaded.
   async function executeUserScriptWithDependencies(userCode, scriptId, requireUrls, loader) {
+    // Setup error capturing for this script
+    const errorHandler = (event) => {
+      // Check if error is from our script by checking the error stack
+      const stack = event.error?.stack || event.reason?.stack || '';
+      const message = event.error?.message || event.reason?.message || event.message || 'Unknown error';
+      
+      // Report error to editor
+      try {
+        const errorData = {
+          type: 'SCRIPT_ERROR',
+          scriptId: scriptId,
+          error: {
+            message: message,
+            stack: stack,
+            timestamp: new Date().toISOString(),
+            type: 'error'
+          }
+        };
+        window.postMessage(errorData, '*');
+      } catch (e) {
+        console.error('[CodeTweak Error Capture] Failed to report script error:', e);
+      }
+    };
+
+    const rejectionHandler = (event) => {
+      const message = event.reason?.message || String(event.reason) || 'Unhandled promise rejection';
+      const stack = event.reason?.stack || '';
+      
+      // Report error to editor
+      try {
+        const errorData = {
+          type: 'SCRIPT_ERROR',
+          scriptId: scriptId,
+          error: {
+            message: message,
+            stack: stack,
+            timestamp: new Date().toISOString(),
+            type: 'error'
+          }
+        };
+        window.postMessage(errorData, '*');
+      } catch (e) {
+        console.error('[CodeTweak Error Capture] Failed to report script error:', e);
+      }
+    };
+
+    // Add error listeners
+    window.addEventListener('error', errorHandler);
+    window.addEventListener('unhandledrejection', rejectionHandler);
+
     try {
       await loader.loadScripts(requireUrls);
+      
+      // Don't wrap user code in try-catch - let errors bubble to global handlers
+      // This ensures we catch ALL errors, including those in user's try-catch blocks
       const blob = new Blob([userCode], { type: "text/javascript" });
       const blobUrl = URL.createObjectURL(blob);
 
@@ -422,17 +495,34 @@
 
         scriptEl.src = trustedSrc;
         scriptEl.async = false; // maintain order
+        scriptEl.setAttribute('data-script-id', scriptId);
         scriptEl.onload = () => {
           URL.revokeObjectURL(blobUrl);
           resolve();
         };
         scriptEl.onerror = (event) => {
           URL.revokeObjectURL(blobUrl);
-          reject(
-            new Error(
-              `Failed to execute user script ${scriptId}: ${event?.message || "unknown error"}`
-            )
+          const error = new Error(
+            `Failed to execute user script ${scriptId}: ${event?.message || "unknown error"}`
           );
+          
+          // Report load error
+          try {
+            window.postMessage({
+              type: 'SCRIPT_ERROR',
+              scriptId: scriptId,
+              error: {
+                message: error.message,
+                stack: error.stack || '',
+                timestamp: new Date().toISOString(),
+                type: 'error'
+              }
+            }, '*');
+          } catch (e) {
+            console.error('Failed to report script load error:', e);
+          }
+          
+          reject(error);
         };
         (document.head || document.documentElement || document.body).appendChild(
           scriptEl
@@ -440,6 +530,22 @@
       });
     } catch (err) {
       console.error(`CodeTweak: Error executing user script ${scriptId}:`, err);
+      
+      // Report execution error
+      try {
+        window.postMessage({
+          type: 'SCRIPT_ERROR',
+          scriptId: scriptId,
+          error: {
+            message: err.message || 'Script execution failed',
+            stack: err.stack || '',
+            timestamp: new Date().toISOString(),
+            type: 'error'
+          }
+        }, '*');
+      } catch (e) {
+        console.error('Failed to report script execution error:', e);
+      }
     }
   }
 

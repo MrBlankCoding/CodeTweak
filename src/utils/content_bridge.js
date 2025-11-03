@@ -4,13 +4,27 @@
 const extensionId = chrome.runtime.id;
 
 window.addEventListener('message', (event) => {
-  // Only accept messages from OUR api
-  if (
-    event.source !== window || 
-    !event.data || 
-    event.data.type !== 'GM_API_REQUEST' || 
-    event.data.extensionId !== extensionId
-  ) {
+  // Only accept messages from our extension
+  if (event.source !== window || !event.data) {
+    return;
+  }
+
+  // Handle script error messages
+  if (event.data.type === 'SCRIPT_ERROR') {
+    chrome.runtime.sendMessage({
+      type: 'SCRIPT_ERROR',
+      scriptId: event.data.scriptId,
+      error: event.data.error
+    }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error('[CodeTweak Content Bridge] Error forwarding SCRIPT_ERROR:', chrome.runtime.lastError);
+      }
+    });
+    return;
+  }
+
+  // Handle GM API requests
+  if (event.data.type !== 'GM_API_REQUEST' || event.data.extensionId !== extensionId) {
     return;
   }
 

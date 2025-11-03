@@ -220,6 +220,13 @@ class GMAPIRegistry {
       window.GM_registerMenuCommand = registerMenuCommand;
       window.GM.registerMenuCommand = registerMenuCommand;
     }
+
+    if (enabledApis.gmUnregisterMenuCommand) {
+      const unregisterMenuCommand = (commandId) =>
+        this.unregisterMenuCommand(commandId);
+      window.GM_unregisterMenuCommand = unregisterMenuCommand;
+      window.GM.unregisterMenuCommand = unregisterMenuCommand;
+    }
   }
 
   registerNetworkAPIs(enabledApis) {
@@ -507,6 +514,36 @@ class GMAPIRegistry {
     return commandId;
   }
 
+  unregisterMenuCommand(commandId) {
+    if (typeof commandId !== "string") {
+      console.warn(
+        "GM_unregisterMenuCommand: Expected string commandId"
+      );
+      return;
+    }
+
+    // Remove from internal array
+    const index = this.menuCommands.findIndex(
+      (cmd) => cmd.commandId === commandId
+    );
+    if (index !== -1) {
+      const removedCommand = this.menuCommands.splice(index, 1)[0];
+      console.log(
+        `CodeTweak: Unregistered GM menu command '${removedCommand.caption}' (id: ${commandId})`
+      );
+    }
+
+    // Remove from window.__gmMenuCommands
+    if (window.__gmMenuCommands) {
+      const windowIndex = window.__gmMenuCommands.findIndex(
+        (cmd) => cmd.commandId === commandId
+      );
+      if (windowIndex !== -1) {
+        window.__gmMenuCommands.splice(windowIndex, 1);
+      }
+    }
+  }
+
   exposeMenuCommand(command) {
     window.__gmMenuCommands = window.__gmMenuCommands || [];
     window.__gmMenuCommands.push(command);
@@ -577,21 +614,6 @@ class ExternalScriptLoader {
 }
 
 
-// WHY DO WE EVEN USE INFOOOOOOOOO
-function exposeGMInfo(gmInfo) {
-  try {
-    Object.defineProperty(window, "GM_info", {
-      value: Object.freeze(gmInfo || {}),
-      writable: false,
-      configurable: false,
-    });
-    window.GM = window.GM || {};
-    window.GM.info = window.GM_info;
-  } catch (e) {
-    console.warn("CodeTweak: Unable to define GM_info", e);
-  }
-}
-
 // load dependencies then exec
 async function executeUserScriptWithDependencies(
   userCode,
@@ -635,6 +657,27 @@ function createMainWorldExecutor(
   requiredUrls,
   gmInfo
 ) {
+  // Define exposeGMInfo inside the main world context
+  function exposeGMInfo(gmInfo) {
+    try {
+      // Check if GM_info already exists
+      if (!window.hasOwnProperty('GM_info')) {
+        Object.defineProperty(window, "GM_info", {
+          value: Object.freeze(gmInfo || {}),
+          writable: false,
+          configurable: false,
+        });
+      }
+      // Always ensure GM.info is set
+      window.GM = window.GM || {};
+      if (!window.GM.info) {
+        window.GM.info = window.GM_info;
+      }
+    } catch (e) {
+      console.warn("CodeTweak: Unable to define GM_info", e);
+    }
+  }
+
   // Define bindNativeFunctions inside the main world context
   function bindNativeFunctions() {
     // Bind common native functions to prevent "Illegal invocation" errors
@@ -701,6 +744,27 @@ function createIsolatedWorldExecutor(
   requiredUrls,
   gmInfo
 ) {
+  // Define exposeGMInfo inside the isolated world context
+  function exposeGMInfo(gmInfo) {
+    try {
+      // Check if GM_info already exists
+      if (!window.hasOwnProperty('GM_info')) {
+        Object.defineProperty(window, "GM_info", {
+          value: Object.freeze(gmInfo || {}),
+          writable: false,
+          configurable: false,
+        });
+      }
+      // Always ensure GM.info is set
+      window.GM = window.GM || {};
+      if (!window.GM.info) {
+        window.GM.info = window.GM_info;
+      }
+    } catch (e) {
+      console.warn("CodeTweak: Unable to define GM_info", e);
+    }
+  }
+
   // Prevent re-execution
   window._executedScriptIds = window._executedScriptIds || new Set();
   if (window._executedScriptIds.has(scriptId)) {
@@ -865,6 +929,7 @@ class ScriptInjector {
       gmAddStyle: Boolean(script.gmAddStyle),
       gmAddElement: Boolean(script.gmAddElement),
       gmRegisterMenuCommand: Boolean(script.gmRegisterMenuCommand),
+      gmUnregisterMenuCommand: Boolean(script.gmUnregisterMenuCommand),
       gmXmlhttpRequest: Boolean(script.gmXmlhttpRequest),
       unsafeWindow: Boolean(script.unsafeWindow),
     };

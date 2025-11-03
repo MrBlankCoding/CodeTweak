@@ -1,7 +1,8 @@
 import feather from 'feather-icons';
+import { getScriptDescription } from '../utils/urls.js';
 
 // Global functions available from dashboard-logic.js via window object
-/* global toggleScript, editScript, checkForUpdates, deleteScript */
+/* global toggleScript, editScript, deleteScript */
 
 function setupTabs(navItems, tabContents) {
   if (!navItems) return;
@@ -97,8 +98,25 @@ function createScriptListItem(script) {
   item.className = "script-list-item";
   item.dataset.scriptId = script.id;
 
-  const info = document.createElement("div");
-  info.className = "script-info";
+  // Toggle switch column
+  const toggleSwitch = document.createElement("label");
+  toggleSwitch.className = "toggle-switch";
+
+  const toggleInput = document.createElement("input");
+  toggleInput.type = "checkbox";
+  toggleInput.checked = script.enabled;
+  toggleInput.addEventListener("change", () =>
+    toggleScript(script.id, toggleInput.checked)
+  );
+
+  const toggleSlider = document.createElement("span");
+  toggleSlider.className = "toggle-slider";
+
+  toggleSwitch.append(toggleInput, toggleSlider);
+
+  // Name & Description column
+  const nameCol = document.createElement("div");
+  nameCol.className = "script-name-col";
 
   const name = document.createElement("h3");
   name.className = "script-name";
@@ -108,20 +126,44 @@ function createScriptListItem(script) {
   description.className = "script-description";
   description.textContent = script.description || "No description provided.";
 
-  const version = document.createElement("span");
-  version.className = "script-version";
-  version.textContent = `v${script.version || "1.0.0"}`;
+  nameCol.append(name, description);
 
-  const urls = document.createElement("div");
-  urls.className = "script-urls";
+  // Version column
+  const versionCol = document.createElement("div");
+  versionCol.className = "script-version-col";
+  versionCol.textContent = script.version || "1.0.0";
+
+  // Sites column
+  const sitesCol = document.createElement("div");
+  sitesCol.className = "script-sites-col";
   const targetUrls = script.targetUrls || [];
   if (targetUrls.length > 0) {
-    urls.textContent = "Runs on: " + targetUrls.map(formatUrlPattern).join(", ");
+    if (targetUrls.length === 1) {
+      sitesCol.textContent = formatUrlPattern(targetUrls[0]);
+    } else {
+      sitesCol.innerHTML = `${formatUrlPattern(targetUrls[0])} <span class="site-count">+${targetUrls.length - 1}</span>`;
+    }
+    sitesCol.title = targetUrls.map(formatUrlPattern).join("\n");
   } else {
-    urls.textContent = "Runs on: All sites";
+    sitesCol.textContent = "All sites";
   }
 
+  // Features column
+  const featuresCol = document.createElement("div");
+  featuresCol.className = "script-features-col";
+  featuresCol.textContent = getScriptDescription(script);
 
+  // Run At column
+  const runAtCol = document.createElement("div");
+  runAtCol.className = "script-runat-col";
+  const runAtFormats = {
+    document_start: "Page Start",
+    document_end: "DOM Ready",
+    document_idle: "Page Load",
+  };
+  runAtCol.textContent = runAtFormats[script.runAt] || script.runAt || "Page Load";
+
+  // Actions column
   const actions = document.createElement("div");
   actions.className = "script-actions";
 
@@ -137,125 +179,13 @@ function createScriptListItem(script) {
   deleteButton.title = "Delete Script";
   deleteButton.addEventListener("click", () => deleteScript(script.id));
 
-  const toggleSwitch = document.createElement("label");
-  toggleSwitch.className = "toggle-switch";
-
-  const toggleInput = document.createElement("input");
-  toggleInput.type = "checkbox";
-  toggleInput.checked = script.enabled;
-  toggleInput.addEventListener("change", () =>
-    toggleScript(script.id, toggleInput.checked)
-  );
-
-  const toggleSlider = document.createElement("span");
-  toggleSlider.className = "toggle-slider";
-
-  toggleSwitch.append(toggleInput, toggleSlider);
-  info.append(name, version, description, urls);
   actions.append(editButton, deleteButton);
-  item.append(toggleSwitch, info, actions);
+
+  item.append(toggleSwitch, nameCol, versionCol, sitesCol, featuresCol, runAtCol, actions);
 
   return item;
 }
 
-function createStatusToggleCell(script) {
-  const statusCell = document.createElement("td");
-  const toggleLabel = document.createElement("label");
-  toggleLabel.className = "toggle-switch";
-
-  const toggleInput = document.createElement("input");
-  toggleInput.type = "checkbox";
-  toggleInput.checked = script.enabled;
-  toggleInput.addEventListener("change", () =>
-    toggleScript(script.id, toggleInput.checked)
-  );
-
-  const slider = document.createElement("span");
-  slider.className = "slider";
-
-  toggleLabel.append(toggleInput, slider);
-  statusCell.appendChild(toggleLabel);
-
-  return statusCell;
-}
-
-function createIconCell(script) {
-  const iconCell = document.createElement("td");
-  const container = document.createElement("div");
-  container.className = "icon-container";
-
-  if (script.icon) {
-    const img = document.createElement("img");
-    img.src = script.icon;
-    img.alt = "";
-    img.className = "script-icon";
-    img.onerror = () => {
-      img.remove();
-      container.textContent = "N/A";
-    };
-    container.appendChild(img);
-  } else {
-    container.textContent = "-";
-  }
-
-  iconCell.appendChild(container);
-  return iconCell;
-}
-
-function createActionsCell(script) {
-  const actionsCell = document.createElement("td");
-  actionsCell.className = "script-actions";
-
-  const actions = [
-    {
-      icon: `<i data-feather="edit-2" class="action-icon"></i>`,
-      title: "Edit Script",
-      handler: () => editScript(script.id),
-    },
-  ];
-
-  // check for update button
-  if (script.updateInfo?.source === "greasyfork") {
-    actions.push({
-      icon: `<i data-feather="refresh-cw" class="action-icon"></i>`,
-      title: "Check for Updates",
-      handler: () => checkForUpdates(script),
-    });
-  }
-
-  actions.push({
-    icon: `<i data-feather="download" class="action-icon"></i>`,
-    title: "Export Script",
-    handler: () => window.exportScript && window.exportScript(script),
-  });
-
-  actions.push({
-    icon: `<i data-feather="trash-2" class="action-icon"></i>`,
-    title: "Delete Script",
-    handler: () => deleteScript(script.id),
-  });
-
-  actions.forEach(({ icon, title, handler }) => {
-    const button = document.createElement("button");
-    button.className = "icon-button";
-    button.innerHTML = icon;
-    button.title = title;
-    button.addEventListener("click", handler);
-    actionsCell.appendChild(button);
-  });
-
-  return actionsCell;
-}
-
-function formatRunAt(runAt) {
-  const formats = {
-    document_start: "Page Start",
-    document_end: "DOM Ready",
-    document_idle: "Page Load",
-  };
-
-  return formats[runAt] || runAt;
-}
 
 function showNotification(message, type = "info") {
   let notificationContainer = document.querySelector(".notification-container");

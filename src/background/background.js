@@ -418,12 +418,97 @@ async function handleGreasyForkInstall(url) {
   }
 }
 
+// Helper function to normalize stack trace for comparison
+function normalizeStackTrace(stack) {
+  if (!stack) return '';
+  // Remove blob URLs, line numbers, and column numbers to compare structure only
+  return stack
+    .replace(/blob:[^\s)]+/g, 'blob:URL') // Replace blob URLs
+    .replace(/:\d+:\d+/g, '') // Remove line:column numbers
+    .replace(/at\s+blob:URL/g, 'at blob:URL') // Normalize blob references
+    .trim();
+}
+
+// Error storage management
+async function storeScriptError(scriptId, error) {
+  try {
+    const storageKey = `scriptErrors_${scriptId}`;
+    const { [storageKey]: existingErrors = [] } = await chrome.storage.local.get(storageKey);
+    
+    // Normalize stack traces for comparison
+    const normalizedNewStack = normalizeStackTrace(error.stack);
+    
+    // Check for duplicate errors (same message and normalized stack)
+    const isDuplicate = existingErrors.some(existingError => {
+      const normalizedExistingStack = normalizeStackTrace(existingError.stack);
+      return existingError.message === error.message && 
+             normalizedExistingStack === normalizedNewStack;
+    });
+    
+    if (isDuplicate) {
+      return; // Skip duplicate
+    }
+    
+    // Add new error at the beginning
+    const updatedErrors = [error, ...existingErrors];
+    
+    // Keep only the last 50 errors
+    if (updatedErrors.length > 50) {
+      updatedErrors.splice(50);
+    }
+    
+    await chrome.storage.local.set({ [storageKey]: updatedErrors });
+    
+    // Notify editor if it's open
+    chrome.runtime.sendMessage({
+      type: 'SCRIPT_ERROR_UPDATE',
+      scriptId: scriptId,
+      error: error
+    }).catch(() => {
+      // Editor might not be open, ignore
+    });
+  } catch (err) {
+    console.error('[CodeTweak Error Storage] Failed to store script error:', err);
+  }
+}
+
+async function clearScriptErrors(scriptId) {
+  try {
+    const storageKey = `scriptErrors_${scriptId}`;
+    await chrome.storage.local.remove(storageKey);
+  } catch (err) {
+    console.error('Failed to clear script errors:', err);
+  }
+}
+
 // Message handling
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log("[CodeTweak] Message received:", message.type || message.action);
 
   if (message.type === "GM_API_REQUEST") {
     handleGmApiRequest(message.payload, sender, sendResponse);
+    return true; // Async response
+  }
+
+  if (message.type === "SCRIPT_ERROR") {
+    storeScriptError(message.scriptId, message.error);
+    sendResponse({ success: true });
+    return false;
+  }
+
+  if (message.type === "CLEAR_SCRIPT_ERRORS") {
+    clearScriptErrors(message.scriptId).then(() => {
+      sendResponse({ success: true });
+    });
+    return true; // Async response
+  }
+
+  if (message.type === "GET_SCRIPT_ERRORS") {
+    const storageKey = `scriptErrors_${message.scriptId}`;
+    chrome.storage.local.get(storageKey).then((result) => {
+      const errors = result[storageKey] || [];
+      sendResponse({ errors });
+    });
     return true; // Async response
   }
 

@@ -95,9 +95,32 @@
   border: 2px solid var(--bg-tertiary);
 }
 
+.sidebar-icon-btn .error-count-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background: var(--error);
+  color: white;
+  font-size: 10px;
+  font-weight: var(--font-medium);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--bg-tertiary);
+}
+
+.sidebar-icon-btn .error-count-badge.hidden {
+  display: none;
+}
+
 /* Content Area */
 .sidebar-content-area {
   flex: 1;
+  overflow: hidden;
   background: var(--bg-primary);
   display: none;
   width: 0;
@@ -116,8 +139,19 @@
 }
 
 /* Panels */
-.sidebar-panel { display: none; flex-direction: column; height: 100%; overflow: hidden; }
+.sidebar-panel { 
+  display: none; 
+  flex-direction: column; 
+  height: 100%; 
+  overflow-y: auto;
+  overflow-x: hidden;
+}
 .sidebar-panel.active { display: flex; }
+
+/* Errors panel should have scrolling in its container, not the panel */
+.sidebar-panel#errors-panel {
+  overflow-y: hidden;
+}
 
 .panel-header {
   padding: var(--space-md) var(--space-sm) var(--space-sm);
@@ -462,3 +496,217 @@
 }
 
 .hidden { display: none; }
+
+/* Error Log Panel */
+.error-log-controls {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-sm);
+  padding: 0 var(--space-xs);
+}
+
+.error-log-controls .btn-secondary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 11px;
+  cursor: pointer;
+  transition: var(--transition-colors);
+}
+
+.error-log-controls .btn-secondary:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-secondary);
+}
+
+.error-log-controls .btn-secondary svg {
+  width: 12px;
+  height: 12px;
+}
+
+.error-log-container {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  height: calc(100vh - 180px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--space-sm);
+}
+
+.error-log-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg) var(--space-sm);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.error-log-empty svg {
+  width: 32px;
+  height: 32px;
+  margin-bottom: var(--space-sm);
+  color: var(--success);
+}
+
+.error-log-empty p {
+  margin: 0 0 4px 0;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+}
+
+.error-log-empty small {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.error-log-item {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-left: 2px solid var(--error);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  position: relative;
+}
+
+.error-log-item:last-child {
+  margin-bottom: 0;
+}
+
+.error-log-item.error {
+  border-left-color: var(--error);
+}
+
+.error-log-item.warning {
+  border-left-color: var(--warning);
+}
+
+.error-log-item.info {
+  border-left-color: var(--info);
+}
+
+.error-log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+  gap: 6px;
+}
+
+.error-log-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  background: var(--error);
+  color: white;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: var(--font-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  line-height: 1.4;
+}
+
+.error-log-item.warning .error-log-type {
+  background: var(--warning);
+}
+
+.error-log-item.info .error-log-type {
+  background: var(--info);
+}
+
+.error-log-timestamp {
+  font-size: 9px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.error-log-message {
+  color: var(--text-primary);
+  line-height: 1.4;
+  word-break: break-word;
+  margin-bottom: 4px;
+  font-size: 11px;
+}
+
+.error-log-stack {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-secondary);
+  border-radius: 3px;
+  padding: 4px 6px;
+  font-size: 9px;
+  color: var(--text-muted);
+  line-height: 1.3;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 80px;
+  overflow-y: auto;
+}
+
+.error-log-location {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+.error-log-location svg {
+  width: 10px;
+  height: 10px;
+}
+
+/* Checkbox for marking errors as resolved */
+.error-log-item input[type="checkbox"] {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+}
+
+.error-log-item input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.error-log-item.resolved {
+  animation: dismissError 0.3s ease-out forwards;
+}
+
+@keyframes dismissError {
+  0% {
+    opacity: 1;
+    transform: translateX(0);
+    max-height: 200px;
+    margin-bottom: 6px;
+  }
+  50% {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(20px);
+    max-height: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-width: 0;
+  }
+}

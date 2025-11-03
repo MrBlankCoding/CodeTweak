@@ -94,6 +94,14 @@ export const GM_API_DEFINITIONS = {
     category: GM_API_CATEGORIES.BROWSER_UI,
     description: "Adds a custom command to the userscript menu"
   },
+  GM_unregisterMenuCommand: {
+    signature: "declare function GM_unregisterMenuCommand(commandId: string): void;",
+    name: "GM_unregisterMenuCommand",
+    el: "gmUnregisterMenuCommand",
+    tmName: "GM_unregisterMenuCommand",
+    category: GM_API_CATEGORIES.BROWSER_UI,
+    description: "Removes a previously registered menu command"
+  },
 
   // Resources & Network APIs
   GM_getResourceText: {

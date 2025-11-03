@@ -51,15 +51,14 @@ node build.js
 
   * [ ] `GM_download`
   * [ ] `GM_confirm`
+  * [ ] `GM_unregisterMenuCommand`
   * [ ] Additional APIs as needed
 
 ### Security & Permissions
 
 * [ ] Add new security settings
 * [ ] Allow scripts to load external resources
-* [ ] Enable loading of third-party libraries and external scripts
 * [ ] Ask for confirmation when a script runs on a website for the first time
-* [ ] Centralize script access permission checks
 * [ ] Add better trusted type managment
 
 ### Core Improvements
@@ -71,6 +70,7 @@ node build.js
 * [ ] Refine `getScriptDescription` function
 * [ ] Deduplicate logic between `background.js`, `inject.js`, and `GM_core.js`
 * [ ] Unify or reuse declarations between `GM_core` and `inject`
+* [ ] Make menu commands reactive 
 
 ### Editor
 
@@ -86,7 +86,6 @@ node build.js
 * [ ] Add a cap to how long text can be in the editor
 
 ### UI
-* [ ] Refine CSS for menu commands 
 * [ ] Add iframe preview with live refresh
 * [ ] Fix editor optimizations
 * [ ] Add a cap to how long text can be in the dashboard

@@ -62,6 +62,10 @@
                   <button class="sidebar-icon-btn" data-section="resources" title="Script Resources">
                      <i data-feather="database"></i>
                   </button>
+                  <button class="sidebar-icon-btn" data-section="errors" title="Script Errors">
+                     <i data-feather="alert-circle"></i>
+                     <div class="error-count-badge hidden" id="errorCountBadge">0</div>
+                  </button>
                   <div class="sidebar-divider"></div>
                   <button class="sidebar-icon-btn" id="generateHeaderBtn" title="Generate Metadata header">
                      <i data-feather="file-plus"></i>
@@ -225,6 +229,10 @@
                                     <input type="checkbox" id="gmRegisterMenuCommand" class="form-checkbox">
                                     <label for="gmRegisterMenuCommand">GM_registerMenuCommand</label>
                                  </div>
+                                 <div class="form-group-checkbox">
+                                    <input type="checkbox" id="gmUnregisterMenuCommand" class="form-checkbox">
+                                    <label for="gmUnregisterMenuCommand">GM_unregisterMenuCommand</label>
+                                 </div>
                               </div>
                            </div>
                            
@@ -302,6 +310,29 @@
                               </button>
                            </div>
                            <div id="resourceList" class="resource-list" role="list" aria-label="Script resources"></div>
+                        </div>
+                     </div>
+                  </div>
+
+                  <!-- Script Errors Panel -->
+                  <div class="sidebar-panel" id="errors-panel">
+                     <div class="panel-header">
+                        <h3 class="panel-title">Script Errors</h3>
+                        <p class="panel-subtitle">Runtime errors from your userscript</p>
+                     </div>
+                     <div class="panel-content">
+                        <div class="error-log-controls">
+                           <button type="button" id="clearErrorsBtn" class="btn-secondary" title="Clear all errors">
+                              <i data-feather="trash-2"></i>
+                              Clear Errors
+                           </button>
+                        </div>
+                        <div id="errorLogContainer" class="error-log-container">
+                           <div class="error-log-empty">
+                              <i data-feather="check-circle"></i>
+                              <p>No errors detected</p>
+                              <small>Errors will appear here when your script runs</small>
+                           </div>
                         </div>
                      </div>
                   </div>

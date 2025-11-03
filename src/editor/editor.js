@@ -253,7 +253,10 @@ class ScriptEditor {
       "requireURL",
       "requireList",
       "helpButton",
-      "generateHeaderBtn"
+      "generateHeaderBtn",
+      "errorLogContainer",
+      "clearErrorsBtn",
+      "errorCountBadge"
     ];
 
     const elements = {};
@@ -286,6 +289,8 @@ class ScriptEditor {
       this.state.lintingEnabled =
         localStorage.getItem("lintingEnabled") !== "false";
       
+      // Setup error logging
+      this.setupErrorLog();
 
       await this.codeEditorManager.initializeCodeEditor();
       this.codeEditorManager.toggleLinting(this.state.lintingEnabled);
@@ -812,6 +817,11 @@ class ScriptEditor {
         script.requires.forEach((url) => this.ui.addRequireToList(url));
       }
     }
+    
+    // Load errors for this script
+    if (script.id) {
+      this.loadScriptErrors();
+    }
   }
 
   // get script data from our sidebar form
@@ -1032,6 +1042,208 @@ class ScriptEditor {
       this.elements.apiCountBadge.textContent = checkedCount;
       this.elements.apiCountBadge.style.display = checkedCount > 0 ? 'inline' : 'none';
     }
+  }
+
+  /**
+   * Setup error logging system
+   */
+  setupErrorLog() {
+    // Listen for error updates from background
+    chrome.runtime.onMessage.addListener((message) => {
+      if (message.type === 'SCRIPT_ERROR_UPDATE' && message.scriptId === this.state.scriptId) {
+        this.loadScriptErrors();
+      }
+    });
+
+    // Setup clear errors button
+    if (this.elements.clearErrorsBtn) {
+      this.elements.clearErrorsBtn.addEventListener('click', () => {
+        this.clearScriptErrors();
+      });
+    }
+
+    // Load errors if in edit mode
+    if (this.state.scriptId) {
+      this.loadScriptErrors();
+    }
+  }
+
+  /**
+   * Load script errors from storage
+   */
+  async loadScriptErrors() {
+    if (!this.state.scriptId) {
+      return;
+    }
+
+    try {
+      const response = await new Promise((resolve) => {
+        chrome.runtime.sendMessage(
+          { type: 'GET_SCRIPT_ERRORS', scriptId: this.state.scriptId },
+          resolve
+        );
+      });
+
+      const errors = response?.errors || [];
+      this.displayErrors(errors);
+    } catch (error) {
+      console.error('[CodeTweak Error Log] Failed to load script errors:', error);
+    }
+  }
+
+  /**
+   * Display errors in the error log panel
+   */
+  displayErrors(errors) {
+    const container = this.elements.errorLogContainer;
+    const badge = this.elements.errorCountBadge;
+
+    if (!container) {
+      console.error('[CodeTweak Error Log] Error log container not found!');
+      return;
+    }
+
+    // Update badge
+    if (badge) {
+      if (errors.length > 0) {
+        badge.textContent = errors.length;
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+
+    // Clear container
+    container.innerHTML = '';
+
+    if (errors.length === 0) {
+      // Show empty state
+      container.innerHTML = `
+        <div class="error-log-empty">
+          <i data-feather="check-circle"></i>
+          <p>No errors detected</p>
+          <small>Errors will appear here when your script runs</small>
+        </div>
+      `;
+      feather.replace();
+      return;
+    }
+
+    // Display errors
+    errors.forEach((error, index) => {
+      const errorItem = document.createElement('div');
+      errorItem.className = `error-log-item ${error.type || 'error'}`;
+      if (error.resolved) {
+        errorItem.classList.add('resolved');
+      }
+
+      const timestamp = new Date(error.timestamp).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      const stack = error.stack ? `<div class="error-log-stack">${this.escapeHtml(error.stack)}</div>` : '';
+
+      errorItem.innerHTML = `
+        <input type="checkbox" ${error.resolved ? 'checked' : ''} data-error-index="${index}" title="Mark as resolved">
+        <div class="error-log-header">
+          <span class="error-log-type">${error.type || 'error'}</span>
+          <span class="error-log-timestamp">${timestamp}</span>
+        </div>
+        <div class="error-log-message">${this.escapeHtml(error.message)}</div>
+        ${stack}
+      `;
+
+      // Add checkbox event listener
+      const checkbox = errorItem.querySelector('input[type="checkbox"]');
+      checkbox.addEventListener('change', (e) => {
+        // Only allow checking, not unchecking (since we dismiss on check)
+        if (e.target.checked) {
+          // Disable checkbox to prevent multiple clicks
+          e.target.disabled = true;
+          this.toggleErrorResolved(index);
+        } else {
+          // Prevent unchecking
+          e.target.checked = true;
+        }
+      });
+
+      container.appendChild(errorItem);
+    });
+
+    feather.replace();
+  }
+
+  /**
+   * Clear all errors for the current script
+   */
+  async clearScriptErrors() {
+    if (!this.state.scriptId) return;
+
+    try {
+      await new Promise((resolve) => {
+        chrome.runtime.sendMessage(
+          { type: 'CLEAR_SCRIPT_ERRORS', scriptId: this.state.scriptId },
+          resolve
+        );
+      });
+
+      this.displayErrors([]);
+      this.ui.showStatusMessage('Errors cleared', 'success');
+    } catch (error) {
+      console.error('[CodeTweak Error Log] Failed to clear script errors:', error);
+      this.ui.showStatusMessage('Failed to clear errors', 'error');
+    }
+  }
+
+  /**
+   * Dismiss error with animation
+   */
+  async toggleErrorResolved(errorIndex) {
+    if (!this.state.scriptId) return;
+
+    try {
+      // Get current errors
+      const response = await new Promise((resolve) => {
+        chrome.runtime.sendMessage(
+          { type: 'GET_SCRIPT_ERRORS', scriptId: this.state.scriptId },
+          resolve
+        );
+      });
+
+      const errors = response?.errors || [];
+      if (errors[errorIndex]) {
+        // Mark as resolved and trigger animation
+        errors[errorIndex].resolved = true;
+        
+        // Temporarily save to trigger animation
+        const storageKey = `scriptErrors_${this.state.scriptId}`;
+        await chrome.storage.local.set({ [storageKey]: errors });
+        
+        // Refresh display to show animation
+        this.displayErrors(errors);
+        
+        // After animation completes, remove the error
+        setTimeout(async () => {
+          // Remove the error from array
+          errors.splice(errorIndex, 1);
+          await chrome.storage.local.set({ [storageKey]: errors });
+          this.displayErrors(errors);
+        }, 300); // Match animation duration
+      }
+    } catch (error) {
+      console.error('[CodeTweak Error Log] Failed to dismiss error:', error);
+    }
+  }
+
+  /**
+   * Escape HTML to prevent XSS
+   */
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   /**
