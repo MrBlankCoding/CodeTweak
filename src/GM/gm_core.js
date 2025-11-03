@@ -6,10 +6,8 @@
     return;
   }
 
-  // ============================================================================
-  // TRUSTED TYPES POLICY
-  // ============================================================================
-  
+  // Lets start with trusted types
+  // Is this allowed on the web store?
   let ctTrustedTypesPolicy = null;
 
   function getTrustedTypesPolicy() {
@@ -24,7 +22,6 @@
           {
             createHTML: (input) => {
               if (typeof input !== "string") return "";
-              // Basic sanitization for HTML content
               return input
                 .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
                 .replace(/on\w+\s*=\s*["'][^"']*["']/gi, "")
@@ -42,18 +39,46 @@
     return null;
   }
 
-  // ============================================================================
-  // GM BRIDGE - Message passing between content script and extension
-  // ============================================================================
-
+  // Very important
+  // Optamised from last version where there was 2 dif bridges
   class GMBridge {
-    constructor(scriptId, extensionId) {
+    static ResourceManager = class ResourceManager {
+      constructor(resourceContents = {}, resourceURLs = {}) {
+        this.contents = new Map(Object.entries(resourceContents));
+        this.urls = new Map(Object.entries(resourceURLs));
+      }
+  
+      getText(resourceName) {
+        return this.contents.get(resourceName) || null;
+      }
+  
+      getURL(resourceName) {
+        return this.urls.get(resourceName) || null;
+      }
+  
+      static fromScript(script) {
+        const resourceURLs = {};
+    
+        if (Array.isArray(script.resources)) {
+          script.resources.forEach((resource) => {
+            resourceURLs[resource.name] = resource.url;
+          });
+        }
+    
+        return new ResourceManager(script.resourceContents || {}, resourceURLs);
+      }
+    }
+
+    constructor(scriptId, extensionId, worldType = 'MAIN') {
       this.scriptId = scriptId;
       this.extensionId = extensionId;
+      this.worldType = worldType;
       this.messageIdCounter = 0;
       this.pendingPromises = new Map();
 
-      this.setupMessageListener();
+      if (this.worldType === 'MAIN') {
+        this.setupMessageListener();
+      }
     }
 
     setupMessageListener() {
@@ -84,6 +109,15 @@
     }
 
     call(action, payload = {}) {
+      // If in the ISOLATED world, use the direct chrome.runtime.sendMessage
+      if (this.worldType === 'ISOLATED' && typeof chrome?.runtime?.sendMessage === 'function') {
+        return this.callIsolated(action, payload);
+      }
+      // Otherwise, fallback to the MAIN world postMessage mechanism
+      return this.callMain(action, payload);
+    }
+
+    callMain(action, payload = {}) {
       return new Promise((resolve, reject) => {
         const messageId = `gm_${this.scriptId}_${this.messageIdCounter++}`;
         this.pendingPromises.set(messageId, { resolve, reject });
@@ -100,50 +134,44 @@
         );
       });
     }
-  }
 
-  // ============================================================================
-  // RESOURCE MANAGER - Handles @resource directives
-  // ============================================================================
-
-  class ResourceManager {
-    constructor(resourceContents = {}, resourceURLs = {}) {
-      this.contents = new Map(Object.entries(resourceContents));
-      this.urls = new Map(Object.entries(resourceURLs));
-    }
-
-    getText(resourceName) {
-      return this.contents.get(resourceName) || null;
-    }
-
-    getURL(resourceName) {
-      return this.urls.get(resourceName) || null;
-    }
-
-    static fromScript(script) {
-      const resourceURLs = {};
-  
-      if (Array.isArray(script.resources)) {
-        script.resources.forEach((resource) => {
-          resourceURLs[resource.name] = resource.url;
-        });
-      }
-  
-      return new ResourceManager(script.resourceContents || {}, resourceURLs);
+    callIsolated(action, payload = {}) {
+      return new Promise((resolve, reject) => {
+        try {
+          chrome.runtime.sendMessage(
+            {
+              type: "GM_API_REQUEST",
+              payload: { action, ...payload },
+            },
+            (response) => {
+              if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+              } else if (response?.error) {
+                reject(new Error(response.error));
+              } else {
+                resolve(response?.result);
+              }
+            }
+          );
+        } catch (error) {
+          reject(error);
+        }
+      });
     }
   }
 
-  // ============================================================================
-  // EXTERNAL SCRIPT LOADER - Handles @require directives
-  // ============================================================================
+  window.GMBridge = GMBridge;
 
+  // Needs work, extenal script loading is getting blocked by CORS
   class ExternalScriptLoader {
     constructor() {
       this.loadedScripts = new Set();
     }
 
     async loadScript(url) {
-      if (this.loadedScripts.has(url)) return;
+      if (this.loadedScripts.has(url)) {
+        return;
+      }
       await this.injectScriptTag(url);
       this.loadedScripts.add(url);
     }
@@ -173,26 +201,22 @@
         el.src = trustedSrc;
         el.async = false; // preserve execution order
         el.onload = resolve;
-        el.onerror = () => reject(new Error(`Failed to load script ${src}`));
+        el.onerror = () => {
+          console.error(`CodeTweak: Failed to load script ${src}`);
+          reject(new Error(`Failed to load script ${src}`));
+        }
         (document.head || document.documentElement).appendChild(el);
       });
     }
   }
 
-  // ============================================================================
-  // GM API REGISTRY - Main class for registering all GM APIs
-  // ============================================================================
-
+  // Handeling GM APIS
   class GMAPIRegistry {
     constructor(bridge, resourceManager) {
       this.bridge = bridge;
       this.resourceManager = resourceManager;
       this.cache = new Map();
     }
-
-    // ------------------------------------------------------------------------
-    // Storage Methods
-    // ------------------------------------------------------------------------
 
     async setValue(name, value) {
       const resolvedValue = value instanceof Promise ? await value : value;
@@ -228,10 +252,8 @@
       Object.entries(initialValues).forEach(([k, v]) => this.cache.set(k, v));
     }
 
-    // ------------------------------------------------------------------------
-    // Main Registration Method
-    // ------------------------------------------------------------------------
-
+    // Main registraction
+    // As a whole the GM system could be a bit nicer
     registerAll(enabled) {
       this._ensureGMNamespace();
       this._registerStorage(enabled);
@@ -247,10 +269,6 @@
         window.GM = {};
       }
     }
-
-    // ------------------------------------------------------------------------
-    // Storage API Registration
-    // ------------------------------------------------------------------------
 
     _registerStorage(enabled) {
       if (enabled.gmSetValue) {
@@ -274,10 +292,6 @@
       }
     }
 
-    // ------------------------------------------------------------------------
-    // UI API Registration
-    // ------------------------------------------------------------------------
-
     _registerUI(enabled) {
       // GM_openInTab
       if (enabled.gmOpenInTab) {
@@ -294,7 +308,7 @@
             ? { ...textOrDetails } 
             : { text: textOrDetails, title: titleOrOnDone, image };
           
-          // Filter out non-cloneable properties (functions)
+          // Filter out functions
           const cloneable = Object.fromEntries(
             Object.entries(details).filter(([, v]) => typeof v !== "function")
           );
@@ -349,10 +363,6 @@
       }
     }
 
-    // ------------------------------------------------------------------------
-    // Resources API Registration
-    // ------------------------------------------------------------------------
-
     _registerResources(enabled) {
       if (enabled.gmGetResourceText) {
         const fn = (name) => this.resourceManager.getText(name);
@@ -364,10 +374,6 @@
         window.GM_getResourceURL = window.GM.getResourceURL = fn;
       }
     }
-
-    // ------------------------------------------------------------------------
-    // Utilities API Registration
-    // ------------------------------------------------------------------------
 
     _registerUtilities(enabled) {
       // GM_addStyle
@@ -427,7 +433,6 @@
                   el.setAttribute(k, String(v));
                 }
               } catch {
-                // Fallback to attribute if direct assignment fails
                 try { 
                   el.setAttribute(k, String(v)); 
                 } catch {
@@ -446,10 +451,6 @@
         window.GM_addElement = window.GM.addElement = fn;
       }
     }
-
-    // ------------------------------------------------------------------------
-    // Network API Registration
-    // ------------------------------------------------------------------------
 
     _registerNetwork(enabled) {
       // GM_setClipboard
@@ -480,6 +481,8 @@
       }
     }
 
+    // Duplicate from inject...
+    // Ill fix it later
     _handleSameOriginXmlhttpRequest(details) {
       return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
@@ -542,9 +545,8 @@
         xhr.send(details.data);
       });
     }
-
+    // NEEDS HELP!
     _handleCrossOriginXmlhttpRequest(details) {
-      // Separate callbacks from cloneable details for cross-origin requests
       const callbacks = {};
       const cloneableDetails = {};
       
@@ -579,10 +581,6 @@
         });
     }
 
-    // ------------------------------------------------------------------------
-    // Advanced API Registration
-    // ------------------------------------------------------------------------
-
     _registerAdvanced(enabled) {
       if (enabled.unsafeWindow) {
         try {
@@ -591,25 +589,22 @@
             writable: false,
             configurable: false,
           });
-        } catch (err) {
-          // Fallback if property already exists or can't be defined
+        } catch (e) {
           window.unsafeWindow = window;
         }
       }
     }
   }
 
-  // ============================================================================
-  // USER SCRIPT EXECUTOR - Handles loading and executing user scripts
-  // ============================================================================
-
+  // I feel like we could move this to its own independent file
   async function executeUserScriptWithDependencies(userCode, scriptId, requireUrls, loader) {
-    // Setup error capturing for this script
+    // Set up error collection
     const errorHandler = (event) => {
       const stack = event.error?.stack || event.reason?.stack || '';
       const message = event.error?.message || event.reason?.message || event.message || 'Unknown error';
       
-      // Report error to editor
+      console.error(`CodeTweak: Error in script ${scriptId}:`, message, stack);
+      // Send to editor
       try {
         window.postMessage({
           type: 'SCRIPT_ERROR',
@@ -630,7 +625,7 @@
       const message = event.reason?.message || String(event.reason) || 'Unhandled promise rejection';
       const stack = event.reason?.stack || '';
       
-      // Report error to editor
+      console.error(`CodeTweak: Unhandled promise rejection in script ${scriptId}:`, message, stack);
       try {
         window.postMessage({
           type: 'SCRIPT_ERROR',
@@ -647,19 +642,15 @@
       }
     };
 
-    // Add error listeners
     window.addEventListener('error', errorHandler);
     window.addEventListener('unhandledrejection', rejectionHandler);
 
     try {
-      // Load all required external scripts first
       await loader.loadScripts(requireUrls);
       
-      // Create a blob URL for the user code
       const blob = new Blob([userCode], { type: "text/javascript" });
       const blobUrl = URL.createObjectURL(blob);
 
-      // Execute the user script
       await new Promise((resolve, reject) => {
         const scriptEl = document.createElement("script");
 
@@ -689,6 +680,7 @@
             `Failed to execute user script ${scriptId}: ${event?.message || "unknown error"}`
           );
           
+          console.error(`CodeTweak: Failed to execute user script ${scriptId}:`, event);
           // Report load error
           try {
             window.postMessage({
@@ -731,13 +723,11 @@
     }
   }
 
-  // ============================================================================
-  // EXPORTS - Make classes and helpers available globally
-  // ============================================================================
-
-  window.GMBridge = GMBridge;
-  window.GMBridge.ResourceManager = ResourceManager;
   window.GMBridge.ExternalScriptLoader = ExternalScriptLoader;
   window.GMBridge.GMAPIRegistry = GMAPIRegistry;
   window.GMBridge.executeUserScriptWithDependencies = executeUserScriptWithDependencies;
+
+  window.postMessage({ type: "GM_CORE_EXECUTED" }, "*");
 })();
+
+// Crazy !

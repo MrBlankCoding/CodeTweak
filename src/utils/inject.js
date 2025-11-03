@@ -1,39 +1,65 @@
-// Constants
 const INJECTION_TYPES = Object.freeze({
   DOCUMENT_START: "document_start",
   DOCUMENT_END: "document_end",
   DOCUMENT_IDLE: "document_idle",
 });
 
+// Maybe add a feature where the user can pick execution world
 const EXECUTION_WORLDS = Object.freeze({
   MAIN: "MAIN",
   ISOLATED: "ISOLATED",
 });
 
-// In the name
 function createMainWorldExecutor(
   userCode,
   scriptId,
   enabledApis,
-  resourceContents,
-  resourceURLs,
+  script,
   extensionId,
   initialValues,
   requiredUrls,
   gmInfo
 ) {
-  // Define exposeGMInfo inside the main world context
-  function exposeGMInfo(gmInfo) {
+  const MAX_RETRIES = 10;
+  const RETRY_INTERVAL = 100;
+
+  function waitForGMBridge(worldType, callback) {
+    let retries = 0;
+
+    function check() {
+      const hasRequiredObjects = 
+        window.GMBridge?.ResourceManager &&
+        window.GMBridge?.GMAPIRegistry &&
+        window.GMBridge?.ExternalScriptLoader &&
+        window.GMBridge?.executeUserScriptWithDependencies;
+
+      if (hasRequiredObjects) {
+        callback();
+        return;
+      }
+
+      if (retries < MAX_RETRIES) {
+        retries++;
+        setTimeout(check, RETRY_INTERVAL);
+      } else {
+        console.error(
+          `CodeTweak: Timed out waiting for core script to load for script '${scriptId}'${worldType ? ` in ${worldType} world` : ''}.`
+        );
+      }
+    }
+
+    check();
+  }
+
+  function exposeGMInfo(info) {
     try {
-      // Check if GM_info already exists
       if (!Object.prototype.hasOwnProperty.call(window, "GM_info")) {
         Object.defineProperty(window, "GM_info", {
-          value: Object.freeze(gmInfo || {}),
+          value: Object.freeze(info || {}),
           writable: false,
           configurable: false,
         });
       }
-      // Always ensure GM.info is set
       window.GM = window.GM || {};
       if (!window.GM.info) {
         window.GM.info = window.GM_info;
@@ -43,9 +69,7 @@ function createMainWorldExecutor(
     }
   }
 
-  // Define bindNativeFunctions inside the main world context
   function bindNativeFunctions() {
-    // Bind common native functions to prevent "Illegal invocation" errors
     const nativeFunctions = [
       'fetch',
       'setTimeout',
@@ -65,62 +89,91 @@ function createMainWorldExecutor(
     });
   }
 
-  // Prevent re-execution
-  window._executedScriptIds = window._executedScriptIds || new Set();
-  if (window._executedScriptIds.has(scriptId)) {
-    console.log(`CodeTweak: Script ${scriptId} already executed`);
-    return;
+  function preventReExecution() {
+    window._executedScriptIds = window._executedScriptIds || new Set();
+    
+    if (window._executedScriptIds.has(scriptId)) {
+      console.log(`CodeTweak: Script ${scriptId} already executed`);
+      return true;
+    }
+    
+    window._executedScriptIds.add(scriptId);
+    return false;
   }
-  window._executedScriptIds.add(scriptId);
 
-  console.log(`CodeTweak: Executing script ${scriptId} in main world`);
+  waitForGMBridge('MAIN', () => {
+    if (preventReExecution()) return;
 
-  // Initialize components
-  const bridge = new window.GMBridge(scriptId, extensionId);
-  const resourceManager = new window.ResourceManager(resourceContents, resourceURLs);
-  const apiRegistry = new window.GMAPIRegistry(bridge, resourceManager);
-  const scriptLoader = new window.ExternalScriptLoader();
+  
 
-  // Setup
-  apiRegistry.initializeCache(initialValues);
-  apiRegistry.registerAll(enabledApis);
-  bindNativeFunctions();
+    const bridge = new window.GMBridge(scriptId, extensionId, 'MAIN');
+    const resourceManager = window.GMBridge.ResourceManager.fromScript(script);
+    const apiRegistry = new window.GMBridge.GMAPIRegistry(bridge, resourceManager);
+    const scriptLoader = new window.GMBridge.ExternalScriptLoader();
 
-  exposeGMInfo(gmInfo);
+    apiRegistry.initializeCache(initialValues);
+    apiRegistry.registerAll(enabledApis);
+    bindNativeFunctions();
+    exposeGMInfo(gmInfo);
 
-  // Execute user script
-  window.executeUserScriptWithDependencies(
-    userCode,
-    scriptId,
-    requiredUrls,
-    scriptLoader
-  );
+    window.GMBridge.executeUserScriptWithDependencies(
+      userCode,
+      scriptId,
+      requiredUrls,
+      scriptLoader
+    );
+  });
 }
 
-// oooh isolated world... sneaky sneaky
 function createIsolatedWorldExecutor(
   userCode,
   scriptId,
   enabledApis,
-  resourceContents,
-  resourceURLs,
+  script,
   initialValues,
   requiredUrls,
   gmInfo
 ) {
-  // Define exposeGMInfo inside the isolated world context
-  function exposeGMInfo(gmInfo) {
+  const MAX_RETRIES = 10;
+  const RETRY_INTERVAL = 100;
+
+  function waitForGMBridge(worldType, callback) {
+    let retries = 0;
+
+    function check() {
+      const hasRequiredObjects = 
+        window.GMBridge?.ResourceManager &&
+        window.GMBridge?.GMAPIRegistry &&
+        window.GMBridge?.ExternalScriptLoader &&
+        window.GMBridge?.executeUserScriptWithDependencies;
+
+      if (hasRequiredObjects) {
+        callback();
+        return;
+      }
+
+      if (retries < MAX_RETRIES) {
+        retries++;
+        setTimeout(check, RETRY_INTERVAL);
+      } else {
+        console.error(
+          `CodeTweak: Timed out waiting for core script to load for script '${scriptId}'${worldType ? ` in ${worldType} world` : ''}.`
+        );
+      }
+    }
+
+    check();
+  }
+
+  function exposeGMInfo(info) {
     try {
-      // Use Object.prototype.hasOwnProperty.call to avoid shadowing issues
       if (!Object.prototype.hasOwnProperty.call(window, "GM_info")) {
         Object.defineProperty(window, "GM_info", {
-          value: Object.freeze(gmInfo || {}),
+          value: Object.freeze(info || {}),
           writable: false,
           configurable: false,
         });
       }
-
-      // Always ensure GM.info is set
       window.GM = window.GM || {};
       if (!window.GM.info) {
         window.GM.info = window.GM_info;
@@ -130,70 +183,45 @@ function createIsolatedWorldExecutor(
     }
   }
 
-  // Prevent re-execution
-  window._executedScriptIds = window._executedScriptIds || new Set();
-  if (window._executedScriptIds.has(scriptId)) {
-    console.log(`CodeTweak: Script ${scriptId} already executed (isolated)`);
-    return;
+  function preventReExecution() {
+    window._executedScriptIds = window._executedScriptIds || new Set();
+    
+    if (window._executedScriptIds.has(scriptId)) {
+      console.log(`CodeTweak: Script ${scriptId} already executed`);
+      return true;
+    }
+    
+    window._executedScriptIds.add(scriptId);
+    return false;
   }
-  window._executedScriptIds.add(scriptId);
 
-  console.log(`CodeTweak: Executing script ${scriptId} in ISOLATED world`);
+  waitForGMBridge('ISOLATED', () => {
+    if (preventReExecution()) return;
+    const bridge = new window.GMBridge(scriptId, chrome.runtime.id, 'ISOLATED');
+    const resourceManager = window.GMBridge.ResourceManager.fromScript(script);
+    const apiRegistry = new window.GMBridge.GMAPIRegistry(
+      bridge,
+      resourceManager
+    );
+    const scriptLoader = new window.GMBridge.ExternalScriptLoader();
 
-  // Create direct background bridge
-  const backgroundBridge = {
-    call: (action, payload = {}) => {
-      return new Promise((resolve, reject) => {
-        try {
-          chrome.runtime.sendMessage(
-            {
-              type: "GM_API_REQUEST",
-              payload: { action, ...payload },
-            },
-            (response) => {
-              if (chrome.runtime.lastError) {
-                reject(new Error(chrome.runtime.lastError.message));
-              } else if (response?.error) {
-                reject(new Error(response.error));
-              } else {
-                resolve(response?.result);
-              }
-            }
-          );
-        } catch (error) {
-          reject(error);
-        }
-      });
-    },
-  };
+    apiRegistry.initializeCache(initialValues);
+    apiRegistry.registerAll(enabledApis);
+    exposeGMInfo(gmInfo);
 
-  // Initialize components
-  const resourceManager = new window.ResourceManager(resourceContents, resourceURLs);
-  const apiRegistry = new window.GMAPIRegistry(
-    backgroundBridge,
-    resourceManager
-  );
-  const scriptLoader = new window.ExternalScriptLoader();
-
-  // Setup
-  apiRegistry.initializeCache(initialValues);
-  apiRegistry.registerAll(enabledApis);
-  exposeGMInfo(gmInfo);
-
-  // Execute user script
-  window.executeUserScriptWithDependencies(
-    userCode,
-    scriptId,
-    requiredUrls,
-    scriptLoader
-  );
+    window.GMBridge.executeUserScriptWithDependencies(
+      userCode,
+      scriptId,
+      requiredUrls,
+      scriptLoader
+    );
+  });
 }
 
-// The actual injector. Could move all of the other logic into another file
 class ScriptInjector {
   constructor() {
     this.executedScripts = new Map();
-    this.injectedCoreScripts = new Map(); // Map<tabId, Set<world>>
+    this.injectedCoreScripts = new Map();
   }
 
   async injectScript(tabId, script, settings = {}) {
@@ -215,41 +243,36 @@ class ScriptInjector {
 
       return injected;
     } catch (error) {
-      console.warn(
-        `CodeTweak: Failed to inject script ${script?.name}:`,
-        error
-      );
+      console.warn(`CodeTweak: Failed to inject script ${script?.name}:`, error);
       return false;
     }
   }
 
   async tryInjectInBothWorlds(tabId, config) {
-    // Try MAIN world first (preferred)
     try {
       await this.injectInWorld(tabId, config, EXECUTION_WORLDS.MAIN);
       return true;
     } catch (error) {
       console.warn(
-        `CodeTweak: MAIN world injection failed, trying ISOLATED world:`,
+        `CodeTweak: MAIN world injection failed for script '${config.id}', trying ISOLATED world:`,
         error?.message
       );
     }
 
-    // Fallback to ISOLATED world
     try {
       await this.injectInWorld(tabId, config, EXECUTION_WORLDS.ISOLATED);
       return true;
     } catch (error) {
-      console.error(`CodeTweak: ISOLATED world injection also failed:`, error);
+      console.error(`CodeTweak: ISOLATED world injection also failed for script '${config.id}':`, error);
       return false;
     }
   }
 
   async injectInWorld(tabId, config, world) {
-    // Ensure gm_core.js is injected only once per tab and world
     if (!this.injectedCoreScripts.has(tabId)) {
       this.injectedCoreScripts.set(tabId, new Set());
     }
+    
     const tabCoreScripts = this.injectedCoreScripts.get(tabId);
 
     if (!tabCoreScripts.has(world)) {
@@ -261,11 +284,11 @@ class ScriptInjector {
       tabCoreScripts.add(world);
     }
 
-    const executor =
-      world === EXECUTION_WORLDS.MAIN
-        ? createMainWorldExecutor
-        : createIsolatedWorldExecutor;
+    const executor = world === EXECUTION_WORLDS.MAIN
+      ? createMainWorldExecutor
+      : createIsolatedWorldExecutor;
 
+    console.log(`CodeTweak: Executing script '${config.id}' in ${world} world.`);
     await chrome.scripting.executeScript({
       target: { tabId },
       world,
@@ -274,8 +297,7 @@ class ScriptInjector {
         config.code,
         config.id,
         config.enabledApis,
-        config.resourceContents,
-        config.resourceURLs,
+        config.script,
         chrome.runtime.id,
         config.initialValues,
         config.requires,
@@ -285,8 +307,7 @@ class ScriptInjector {
   }
 
   prepareScriptConfig(script) {
-    const scriptId =
-      script.id || script.name || `anonymous_script_${Date.now()}`;
+    const scriptId = script.id || script.name || `anonymous_script_${Date.now()}`;
 
     const enabledApis = {
       gmSetValue: Boolean(script.gmSetValue),
@@ -306,14 +327,11 @@ class ScriptInjector {
       unsafeWindow: Boolean(script.unsafeWindow),
     };
 
-    const resourceManager = new window.ResourceManager.fromScript(script);
-
     return {
       code: script.code,
       id: scriptId,
       enabledApis,
-      resourceContents: Object.fromEntries(resourceManager.contents),
-      resourceURLs: Object.fromEntries(resourceManager.urls),
+      script: script,
       initialValues: script.initialValues || {},
       requires: Array.isArray(script.requires) ? script.requires : [],
       gmInfo: {
@@ -332,20 +350,18 @@ class ScriptInjector {
   }
 
   async injectScriptsForStage(details, runAt, getFilteredScripts) {
-    // Only inject in top frame
     if (details.frameId !== 0) return;
 
     try {
       const { settings = {} } = await chrome.storage.local.get("settings");
       const { url, tabId } = details;
 
-      // Initialize or get executed scripts for this tab
       if (!this.executedScripts.has(tabId)) {
         this.executedScripts.set(tabId, new Set());
       }
+      
       const tabScripts = this.executedScripts.get(tabId);
 
-      // Clear executed scripts on navigation start
       if (runAt === INJECTION_TYPES.DOCUMENT_START) {
         tabScripts.clear();
       }
@@ -375,13 +391,12 @@ class ScriptInjector {
     const newScripts = matchingScripts.filter(
       (script) => !tabScripts.has(script.id)
     );
-
     for (const script of newScripts) {
-      tabScripts.add(script.id); // Prevent race conditions
+      tabScripts.add(script.id);
       await this.injectScript(tabId, script, settings);
     }
   }
-  // No thanks
+
   showNotification(tabId, scriptName) {
     chrome.scripting
       .executeScript({
@@ -415,6 +430,7 @@ class ScriptInjector {
         console.error("CodeTweak: showNotification failed:", error);
       });
   }
+
   clearInjectedCoreScriptsForTab(tabId) {
     this.injectedCoreScripts.delete(tabId);
   }
@@ -422,17 +438,8 @@ class ScriptInjector {
 
 const scriptInjector = new ScriptInjector();
 
-
-export async function injectScriptsForStage(
-  details,
-  runAt,
-  getFilteredScripts
-) {
-  return scriptInjector.injectScriptsForStage(
-    details,
-    runAt,
-    getFilteredScripts
-  );
+export async function injectScriptsForStage(details, runAt, getFilteredScripts) {
+  return scriptInjector.injectScriptsForStage(details, runAt, getFilteredScripts);
 }
 
 export function showNotification(tabId, scriptName) {

@@ -58,11 +58,6 @@ node build.js
 * [ ] Add new security settings
 * [ ] Allow scripts to load external resources
 * [ ] Ask for confirmation when a script runs on a website for the first time
-* [ ] Add better trusted type managment
-
-### Core Improvements
-* [ ] Deduplicate logic between `background.js`, `inject.js`, and `GM_core.js`
-* [ ] Unify or reuse declarations between `GM_core` and `inject`
 
 ### Editor
 
@@ -77,15 +72,10 @@ node build.js
 ### UI
 * [ ] Add iframe preview with live refresh
 * [ ] Fix editor optimizations
+* [ ] Can you make it so if you have mutiple scripts running at once on the same page the notifications will expand verticlly and not all overlap
 
 ### Communication & Helpers
-
-* [ ] Simplify or centralize communication between content scripts and background scripts
-* [ ] Optional Trusted Types helpers
 * [ ] Fix script loading other scripts against CORS
-
-
-* [ ]. Can you make it so if you have mutiple scripts running at once on the same page the notifications will expand verticlly and not all overlap
 ---
 
 ## Acknowledgments

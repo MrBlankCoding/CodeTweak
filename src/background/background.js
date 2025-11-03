@@ -66,16 +66,20 @@ function notifyPorts(action) {
 
 // Script management
 async function getFilteredScripts(url, runAt = null) {
+  if (!url?.startsWith("http")) {
+    return [];
+  }
   if (!state.isCacheValid()) {
     await refreshScriptCache();
   }
 
-  return state.scriptCache.filter(
+  const filteredScripts = state.scriptCache.filter(
     (script) =>
       script.enabled &&
       (!runAt || script.runAt === runAt) &&
       script.targetUrls.some((target) => urlMatchesPattern(url, target))
   );
+  return filteredScripts;
 }
 
 async function refreshScriptCache() {
@@ -170,7 +174,7 @@ async function handleScriptCreation(url, template) {
     console.error("Script creation error:", error);
   }
 }
-
+// Capture the greasyfork script
 async function handleGreasyForkInstall(url) {
   try {
     const response = await fetch(url);
@@ -189,27 +193,78 @@ async function handleGreasyForkInstall(url) {
   }
 }
 
-// Helper function to normalize stack trace for comparison
+async function handleCrossOriginXmlhttpRequest(details, tabId, sendResponse) {
+  try {
+    const response = await fetch(details.url, {
+      method: details.method || "GET",
+      headers: details.headers,
+      body: details.data,
+    });
+
+    const responseHeaders = {};
+    response.headers.forEach((value, name) => {
+      responseHeaders[name] = value;
+    });
+
+    const responseType = details.responseType;
+    let responseData;
+    
+    // Clone the response to be able to read the body twice
+    const responseForText = response.clone();
+    const responseText = await responseForText.text();
+
+    if (responseType === "blob") {
+      const blob = await response.blob();
+      const reader = new FileReader();
+      reader.readAsDataURL(blob);
+      responseData = await new Promise(resolve => {
+        reader.onloadend = () => {
+          resolve(reader.result);
+        };
+      });
+    } else if (responseType === "arraybuffer") {
+      responseData = await response.arrayBuffer();
+    } else if (responseType === "json") {
+      responseData = JSON.parse(responseText);
+    } else { // text
+      responseData = responseText;
+    }
+
+    const result = {
+      readyState: 4,
+      responseHeaders: Object.entries(responseHeaders).map(([name, value]) => `${name}: ${value}`).join("\n"),
+      responseText: responseText,
+      response: responseData,
+      status: response.status,
+      statusText: response.statusText,
+      finalUrl: response.url,
+      context: details.context,
+    };
+    sendResponse({ result });
+  } catch (error) {
+    console.error("CodeTweak: Cross-origin XMLHttprequest failed:", error);
+    sendResponse({ error: error.message });
+  }
+}
+// hi.
 function normalizeStackTrace(stack) {
   if (!stack) return '';
-  // Remove blob URLs, line numbers, and column numbers to compare structure only
   return stack
-    .replace(/blob:[^\s)]+/g, 'blob:URL') // Replace blob URLs
-    .replace(/:\d+:\d+/g, '') // Remove line:column numbers
-    .replace(/at\s+blob:URL/g, 'at blob:URL') // Normalize blob references
+    .replace(/blob:[^\s)]+/g, 'blob:URL')
+    .replace(/:\d+:\d+/g, '')
+    .replace(/at\s+blob:URL/g, 'at blob:URL')
     .trim();
 }
 
-// Error storage management
+// Script error handeling
+// Needs a rework
 async function storeScriptError(scriptId, error) {
   try {
     const storageKey = `scriptErrors_${scriptId}`;
     const { [storageKey]: existingErrors = [] } = await chrome.storage.local.get(storageKey);
-    
-    // Normalize stack traces for comparison
     const normalizedNewStack = normalizeStackTrace(error.stack);
     
-    // Check for duplicate errors (same message and normalized stack)
+    // Check for dupes
     const isDuplicate = existingErrors.some(existingError => {
       const normalizedExistingStack = normalizeStackTrace(existingError.stack);
       return existingError.message === error.message && 
@@ -217,20 +272,15 @@ async function storeScriptError(scriptId, error) {
     });
     
     if (isDuplicate) {
-      return; // Skip duplicate
+      return; 
     }
     
-    // Add new error at the beginning
     const updatedErrors = [error, ...existingErrors];
-    
-    // Keep only the last 50 errors
     if (updatedErrors.length > 50) {
       updatedErrors.splice(50);
     }
     
     await chrome.storage.local.set({ [storageKey]: updatedErrors });
-    
-    // Notify editor if it's open
     chrome.runtime.sendMessage({
       type: 'SCRIPT_ERROR_UPDATE',
       scriptId: scriptId,
@@ -257,11 +307,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log("[CodeTweak] Message received:", message.type || message.action);
 
   if (message.type === "GM_API_REQUEST") {
-    // Forward to the content script
-    chrome.tabs.sendMessage(sender.tab.id, message, sendResponse);
-    return true; // Async response
-  }
+    const { action, payload } = message.payload;
 
+    if (action === "xmlhttpRequest") {
+      // Still not working properly....
+      handleCrossOriginXmlhttpRequest(payload.details, sender.tab.id, sendResponse);
+      return true;
+    } else {
+      chrome.tabs.sendMessage(sender.tab.id, message, sendResponse);
+      return true; // Async response
+    }
+  }
+  // Some errors around here.... not all errors being captured 
   if (message.type === "SCRIPT_ERROR") {
     storeScriptError(message.scriptId, message.error);
     sendResponse({ success: true });
@@ -272,7 +329,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     clearScriptErrors(message.scriptId).then(() => {
       sendResponse({ success: true });
     });
-    return true; // Async response
+    return true;
   }
 
   if (message.type === "GET_SCRIPT_ERRORS") {
@@ -281,7 +338,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const errors = result[storageKey] || [];
       sendResponse({ errors });
     });
-    return true; // Async response
+    return true;
   }
 
   if (message.type === "offscreen-clipboard-response") {
@@ -348,17 +405,18 @@ chrome.runtime.onConnect.addListener((port) => {
 // Web navigation injection
 const navigationEvents = ["onCommitted", "onDOMContentLoaded", "onCompleted"];
 navigationEvents.forEach((event, index) => {
-  chrome.webNavigation[event].addListener((details) =>
+  chrome.webNavigation[event].addListener((details) => {
+    console.log(`CodeTweak: webNavigation.${event} event fired for tab ${details.tabId}`, details);
     injectScriptsForStage(
       details,
       Object.values(INJECTION_TYPES)[index],
       getFilteredScripts,
       state.executedScripts
     )
-  );
+  });
 });
 
-// Tab event listeners
+// Event listners for tab actions
 chrome.tabs.onRemoved.addListener((tabId) => {
   state.executedScripts.delete(tabId);
   clearInjectedCoreScriptsForTab(tabId);
@@ -375,13 +433,13 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
     const tab = await chrome.tabs.get(activeInfo.tabId);
     updateBadgeForTab(tab.id, tab.url);
   } catch (error) {
-    // Tab may have been closed
+    // Tab could of been closed
     if (!isIgnorableTabError(error)) {
       console.warn("Error getting activated tab:", error);
     }
   }
 });
 
-// Extension lifecycle
+// Lifecycle stuff
 chrome.runtime.onInstalled.addListener(updateAllTabBadges);
 chrome.runtime.onStartup.addListener(updateAllTabBadges);
