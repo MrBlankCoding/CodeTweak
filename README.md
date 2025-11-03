@@ -84,6 +84,8 @@ node build.js
 * [ ] Optional Trusted Types helpers
 * [ ] Fix script loading other scripts against CORS
 
+
+* [ ]. Can you make it so if you have mutiple scripts running at once on the same page the notifications will expand verticlly and not all overlap
 ---
 
 ## Acknowledgments

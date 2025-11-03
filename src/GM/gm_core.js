@@ -1,7 +1,50 @@
 (function () {
+  'use strict';
+
+  // Prevent multiple initializations
   if (typeof window.GMBridge !== "undefined") {
     return;
   }
+
+  // ============================================================================
+  // TRUSTED TYPES POLICY
+  // ============================================================================
+  
+  let ctTrustedTypesPolicy = null;
+
+  function getTrustedTypesPolicy() {
+    if (ctTrustedTypesPolicy) {
+      return ctTrustedTypesPolicy;
+    }
+
+    if (window.trustedTypes && window.trustedTypes.createPolicy) {
+      try {
+        ctTrustedTypesPolicy = window.trustedTypes.createPolicy(
+          "codetweak-gm-apis",
+          {
+            createHTML: (input) => {
+              if (typeof input !== "string") return "";
+              // Basic sanitization for HTML content
+              return input
+                .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+                .replace(/on\w+\s*=\s*["'][^"']*["']/gi, "")
+                .replace(/javascript:/gi, "");
+            },
+            createScript: (input) => input,
+            createScriptURL: (input) => input,
+          }
+        );
+        return ctTrustedTypesPolicy;
+      } catch (e) {
+        console.error("Failed to create Trusted Types policy:", e);
+      }
+    }
+    return null;
+  }
+
+  // ============================================================================
+  // GM BRIDGE - Message passing between content script and extension
+  // ============================================================================
 
   class GMBridge {
     constructor(scriptId, extensionId) {
@@ -59,11 +102,97 @@
     }
   }
 
-  class GMValueManager {
-    constructor(bridge) {
+  // ============================================================================
+  // RESOURCE MANAGER - Handles @resource directives
+  // ============================================================================
+
+  class ResourceManager {
+    constructor(resourceContents = {}, resourceURLs = {}) {
+      this.contents = new Map(Object.entries(resourceContents));
+      this.urls = new Map(Object.entries(resourceURLs));
+    }
+
+    getText(resourceName) {
+      return this.contents.get(resourceName) || null;
+    }
+
+    getURL(resourceName) {
+      return this.urls.get(resourceName) || null;
+    }
+
+    static fromScript(script) {
+      const resourceURLs = {};
+  
+      if (Array.isArray(script.resources)) {
+        script.resources.forEach((resource) => {
+          resourceURLs[resource.name] = resource.url;
+        });
+      }
+  
+      return new ResourceManager(script.resourceContents || {}, resourceURLs);
+    }
+  }
+
+  // ============================================================================
+  // EXTERNAL SCRIPT LOADER - Handles @require directives
+  // ============================================================================
+
+  class ExternalScriptLoader {
+    constructor() {
+      this.loadedScripts = new Set();
+    }
+
+    async loadScript(url) {
+      if (this.loadedScripts.has(url)) return;
+      await this.injectScriptTag(url);
+      this.loadedScripts.add(url);
+    }
+
+    async loadScripts(urls) {
+      if (!Array.isArray(urls)) return;
+      for (const url of urls) {
+        await this.loadScript(url);
+      }
+    }
+
+    injectScriptTag(src) {
+      return new Promise((resolve, reject) => {
+        const el = document.createElement("script");
+
+        const policy = getTrustedTypesPolicy();
+        let trustedSrc = src;
+        if (policy) {
+          try {
+            trustedSrc = policy.createScriptURL(src);
+          } catch (e) {
+            console.error("Failed to create trusted script URL:", e);
+            console.warn("Falling back to raw URL.");
+          }
+        }
+
+        el.src = trustedSrc;
+        el.async = false; // preserve execution order
+        el.onload = resolve;
+        el.onerror = () => reject(new Error(`Failed to load script ${src}`));
+        (document.head || document.documentElement).appendChild(el);
+      });
+    }
+  }
+
+  // ============================================================================
+  // GM API REGISTRY - Main class for registering all GM APIs
+  // ============================================================================
+
+  class GMAPIRegistry {
+    constructor(bridge, resourceManager) {
       this.bridge = bridge;
+      this.resourceManager = resourceManager;
       this.cache = new Map();
     }
+
+    // ------------------------------------------------------------------------
+    // Storage Methods
+    // ------------------------------------------------------------------------
 
     async setValue(name, value) {
       const resolvedValue = value instanceof Promise ? await value : value;
@@ -98,81 +227,10 @@
       this.cache.clear();
       Object.entries(initialValues).forEach(([k, v]) => this.cache.set(k, v));
     }
-  }
 
-  class ResourceManager {
-    constructor(resourceContents = {}, resourceURLs = {}) {
-      this.contents = new Map(Object.entries(resourceContents));
-      this.urls = new Map(Object.entries(resourceURLs));
-    }
-
-    getText(resourceName) {
-      return this.contents.get(resourceName) || null;
-    }
-
-    getURL(resourceName) {
-      return this.urls.get(resourceName) || null;
-    }
-  }
-
-  class ExternalScriptLoader {
-    constructor() {
-      this.loadedScripts = new Set();
-    }
-
-    async loadScript(url) {
-      if (this.loadedScripts.has(url)) return;
-      await this.injectScriptTag(url);
-      this.loadedScripts.add(url);
-    }
-
-    async loadScripts(urls) {
-      if (!Array.isArray(urls)) return;
-      for (const u of urls) {
-        await this.loadScript(u);
-      }
-    }
-
-    injectScriptTag(src) {
-      return new Promise((resolve, reject) => {
-        const el = document.createElement("script");
-
-        // Handle Trusted Types enforcement for script URLs
-        let trustedSrc = src;
-        if (window.trustedTypes && window.trustedTypes.createPolicy) {
-          try {
-            if (!window.__ctTrustedScriptURLPolicy) {
-              window.__ctTrustedScriptURLPolicy = window.trustedTypes.createPolicy(
-                "codetweak",
-                {
-                  createScriptURL: (input) => input,
-                }
-              );
-            }
-            trustedSrc = window.__ctTrustedScriptURLPolicy.createScriptURL(src);
-          } catch (e) {
-            console.error("Failed to create trusted script URL:", e);
-            console.warn("Falling back to raw URL.");
-            // If policy creation failed (likely already exists), fall back to raw URL.
-            trustedSrc = src;
-          }
-        }
-
-        el.src = trustedSrc;
-        el.async = false; // preserve execution order
-        el.onload = resolve;
-        el.onerror = () => reject(new Error(`Failed to load script ${src}`));
-        (document.head || document.documentElement).appendChild(el);
-      });
-    }
-  }
-
-  class GMAPIRegistry {
-    constructor(bridge, valueManager, resourceManager) {
-      this.bridge = bridge;
-      this.valueManager = valueManager;
-      this.resourceManager = resourceManager;
-    }
+    // ------------------------------------------------------------------------
+    // Main Registration Method
+    // ------------------------------------------------------------------------
 
     registerAll(enabled) {
       this._ensureGMNamespace();
@@ -185,46 +243,69 @@
     }
 
     _ensureGMNamespace() {
-      if (typeof window.GM === "undefined") window.GM = {};
+      if (typeof window.GM === "undefined") {
+        window.GM = {};
+      }
     }
 
-    // ---- STORAGE ----
-    _registerStorage(e) {
-      if (e.gmSetValue) {
-        const fn = (n, v) => this.valueManager.setValue(n, v);
+    // ------------------------------------------------------------------------
+    // Storage API Registration
+    // ------------------------------------------------------------------------
+
+    _registerStorage(enabled) {
+      if (enabled.gmSetValue) {
+        const fn = (name, value) => this.setValue(name, value);
         window.GM_setValue = window.GM.setValue = fn;
       }
-      if (e.gmGetValue) {
-        const fn = (n, d) => this.valueManager.getValue(n, d);
+      
+      if (enabled.gmGetValue) {
+        const fn = (name, defaultValue) => this.getValue(name, defaultValue);
         window.GM_getValue = window.GM.getValue = fn;
       }
-      if (e.gmDeleteValue) {
-        const fn = (n) => this.valueManager.deleteValue(n);
+      
+      if (enabled.gmDeleteValue) {
+        const fn = (name) => this.deleteValue(name);
         window.GM_deleteValue = window.GM.deleteValue = fn;
       }
-      if (e.gmListValues) {
-        const fn = () => this.valueManager.listValues();
+      
+      if (enabled.gmListValues) {
+        const fn = () => this.listValues();
         window.GM_listValues = window.GM.listValues = fn;
       }
     }
 
-    // ---- UI ----
-    _registerUI(e) {
-      if (e.gmOpenInTab) {
-        const fn = (url, opts = {}) => this.bridge.call("openInTab", { url, options: opts });
+    // ------------------------------------------------------------------------
+    // UI API Registration
+    // ------------------------------------------------------------------------
+
+    _registerUI(enabled) {
+      // GM_openInTab
+      if (enabled.gmOpenInTab) {
+        const fn = (url, opts = {}) => {
+          return this.bridge.call("openInTab", { url, options: opts });
+        };
         window.GM_openInTab = window.GM.openInTab = fn;
       }
-      if (e.gmNotification) {
+
+      // GM_notification
+      if (enabled.gmNotification) {
         const fn = (textOrDetails, titleOrOnDone, image) => {
-          const details = typeof textOrDetails === "object" ? { ...textOrDetails } : { text: textOrDetails, title: titleOrOnDone, image };
-          const cloneable = Object.fromEntries(Object.entries(details).filter(([,v]) => typeof v !== "function"));
+          const details = typeof textOrDetails === "object" 
+            ? { ...textOrDetails } 
+            : { text: textOrDetails, title: titleOrOnDone, image };
+          
+          // Filter out non-cloneable properties (functions)
+          const cloneable = Object.fromEntries(
+            Object.entries(details).filter(([, v]) => typeof v !== "function")
+          );
+          
           return this.bridge.call("notification", { details: cloneable });
         };
         window.GM_notification = window.GM.notification = fn;
       }
 
-      // ---- MENU COMMAND ----
-      if (e.gmRegisterMenuCommand) {
+      // GM_registerMenuCommand
+      if (enabled.gmRegisterMenuCommand) {
         const fn = (caption, onClick, accessKey) => {
           if (typeof caption !== "string" || typeof onClick !== "function") {
             console.warn(
@@ -232,25 +313,29 @@
             );
             return null;
           }
+          
           const commandId = `gm_menu_${Date.now()}_${Math.random()
             .toString(36)
             .substring(2, 8)}`;
+          
           const command = { commandId, caption, onClick, accessKey };
+          
           window.__gmMenuCommands = window.__gmMenuCommands || [];
           window.__gmMenuCommands.push(command);
+          
           return commandId;
         };
         window.GM_registerMenuCommand = window.GM.registerMenuCommand = fn;
       }
 
-      if (e.gmUnregisterMenuCommand) {
+      // GM_unregisterMenuCommand
+      if (enabled.gmUnregisterMenuCommand) {
         const fn = (commandId) => {
           if (typeof commandId !== "string") {
-            console.warn(
-              "GM_unregisterMenuCommand: Expected string commandId"
-            );
+            console.warn("GM_unregisterMenuCommand: Expected string commandId");
             return;
           }
+          
           if (window.__gmMenuCommands) {
             const index = window.__gmMenuCommands.findIndex(
               (cmd) => cmd.commandId === commandId
@@ -264,21 +349,29 @@
       }
     }
 
-    // ---- RESOURCES ----
-    _registerResources(e) {
-      if (e.gmGetResourceText) {
+    // ------------------------------------------------------------------------
+    // Resources API Registration
+    // ------------------------------------------------------------------------
+
+    _registerResources(enabled) {
+      if (enabled.gmGetResourceText) {
         const fn = (name) => this.resourceManager.getText(name);
         window.GM_getResourceText = window.GM.getResourceText = fn;
       }
-      if (e.gmGetResourceURL) {
+      
+      if (enabled.gmGetResourceURL) {
         const fn = (name) => this.resourceManager.getURL(name);
         window.GM_getResourceURL = window.GM.getResourceURL = fn;
       }
     }
 
-    // ---- UTILITIES ----
-    _registerUtilities(e) {
-      if (e.gmAddStyle) {
+    // ------------------------------------------------------------------------
+    // Utilities API Registration
+    // ------------------------------------------------------------------------
+
+    _registerUtilities(enabled) {
+      // GM_addStyle
+      if (enabled.gmAddStyle) {
         const fn = (css) => {
           const style = document.createElement("style");
           style.textContent = css;
@@ -287,7 +380,9 @@
         };
         window.GM_addStyle = window.GM.addStyle = fn;
       }
-      if (e.gmAddElement) {
+
+      // GM_addElement
+      if (enabled.gmAddElement) {
         const fn = (arg1, arg2, arg3 = {}) => {
           try {
             let parent;
@@ -300,6 +395,7 @@
             if (typeof arg1 === 'string') {
               tag = arg1;
               attributes = (arg2 && typeof arg2 === 'object') ? arg2 : {};
+              
               // Default parent by tag
               const lower = tag.toLowerCase();
               parent = (lower === 'style' || lower === 'script' || lower === 'link')
@@ -321,6 +417,7 @@
             // Apply attributes and direct properties
             Object.entries(attributes).forEach(([k, v]) => {
               if (v == null) return;
+              
               try {
                 if (k === 'style' && typeof v === 'string') {
                   el.style.cssText = v;
@@ -329,9 +426,13 @@
                 } else {
                   el.setAttribute(k, String(v));
                 }
-              } catch (_e) {
+              } catch {
                 // Fallback to attribute if direct assignment fails
-                try { el.setAttribute(k, String(v)); } catch (_e2) {}
+                try { 
+                  el.setAttribute(k, String(v)); 
+                } catch {
+                  // Ignore errors
+                }
               }
             });
 
@@ -346,55 +447,144 @@
       }
     }
 
-    // ---- NETWORK ----
-    _registerNetwork(e) {
-      if (e.gmSetClipboard) {
-        const fn = (data, type) => this.bridge.call("setClipboard", { data, type });
+    // ------------------------------------------------------------------------
+    // Network API Registration
+    // ------------------------------------------------------------------------
+
+    _registerNetwork(enabled) {
+      // GM_setClipboard
+      if (enabled.gmSetClipboard) {
+        const fn = (data, type) => {
+          return this.bridge.call("setClipboard", { data, type });
+        };
         window.GM_setClipboard = window.GM.setClipboard = fn;
       }
-      if (e.gmXmlhttpRequest) {
-        const fn = (details = {}) => {
-          // Separate callbacks from cloneable details
-          const callbacks = {};
-          const cloneableDetails = {};
-          
-          Object.entries(details).forEach(([key, value]) => {
-            if (typeof value === 'function') {
-              callbacks[key] = value;
-            } else {
-              cloneableDetails[key] = value;
-            }
-          });
 
-          return this.bridge.call("xmlhttpRequest", { details: cloneableDetails })
-            .then((response) => {
-              if (callbacks.onload) {
-                try {
-                  callbacks.onload(response);
-                } catch (error) {
-                  console.error("GM_xmlhttpRequest onload error:", error);
-                }
-              }
-              return response;
-            })
-            .catch((error) => {
-              if (callbacks.onerror) {
-                try {
-                  callbacks.onerror(error);
-                } catch (callbackError) {
-                  console.error("GM_xmlhttpRequest onerror callback failed:", callbackError);
-                }
-              }
-              throw error;
-            });
+      // GM_xmlhttpRequest
+      if (enabled.gmXmlhttpRequest) {
+        const fn = (details = {}) => {
+          if (!details.url) {
+            throw new Error("GM_xmlhttpRequest: 'url' is required");
+          }
+
+          const currentOrigin = window.location.origin;
+          const requestOrigin = new URL(details.url, window.location.href).origin;
+
+          if (requestOrigin === currentOrigin) {
+            return this._handleSameOriginXmlhttpRequest(details);
+          } else {
+            return this._handleCrossOriginXmlhttpRequest(details);
+          }
         };
         window.GM_xmlhttpRequest = window.GM.xmlhttpRequest = fn;
       }
     }
 
-    // ---- ADVANCED ----
-    _registerAdvanced(e) {
-      if (e.unsafeWindow) {
+    _handleSameOriginXmlhttpRequest(details) {
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open(details.method || "GET", details.url);
+
+        // Set headers
+        if (details.headers) {
+          for (const header in details.headers) {
+            xhr.setRequestHeader(header, details.headers[header]);
+          }
+        }
+
+        // Set responseType
+        if (details.responseType) {
+          xhr.responseType = details.responseType;
+        }
+
+        // Set timeout
+        if (details.timeout) {
+          xhr.timeout = details.timeout;
+        }
+
+        // Event listeners
+        xhr.onload = () => {
+          const response = {
+            readyState: xhr.readyState,
+            responseHeaders: xhr.getAllResponseHeaders(),
+            responseText: xhr.responseText,
+            response: xhr.response,
+            status: xhr.status,
+            statusText: xhr.statusText,
+            finalUrl: xhr.responseURL,
+            context: details.context,
+          };
+          
+          if (details.onload) {
+            details.onload(response);
+          }
+          
+          resolve(response);
+        };
+
+        xhr.onerror = () => {
+          const error = new Error("Network error");
+          if (details.onerror) {
+            details.onerror(error);
+          }
+          reject(error);
+        };
+
+        xhr.ontimeout = () => {
+          const error = new Error("Timeout");
+          if (details.ontimeout) {
+            details.ontimeout(error);
+          }
+          reject(error);
+        };
+
+        // Send request
+        xhr.send(details.data);
+      });
+    }
+
+    _handleCrossOriginXmlhttpRequest(details) {
+      // Separate callbacks from cloneable details for cross-origin requests
+      const callbacks = {};
+      const cloneableDetails = {};
+      
+      Object.entries(details).forEach(([key, value]) => {
+        if (typeof value === 'function') {
+          callbacks[key] = value;
+        } else {
+          cloneableDetails[key] = value;
+        }
+      });
+
+      return this.bridge.call("xmlhttpRequest", { details: cloneableDetails })
+        .then((response) => {
+          if (callbacks.onload) {
+            try {
+              callbacks.onload(response);
+            } catch (error) {
+              console.error("GM_xmlhttpRequest onload error:", error);
+            }
+          }
+          return response;
+        })
+        .catch((error) => {
+          if (callbacks.onerror) {
+            try {
+              callbacks.onerror(error);
+            } catch (callbackError) {
+              console.error("GM_xmlhttpRequest onerror callback failed:", callbackError);
+            }
+          }
+          throw error;
+        });
+    }
+
+    // ------------------------------------------------------------------------
+    // Advanced API Registration
+    // ------------------------------------------------------------------------
+
+    _registerAdvanced(enabled) {
+      if (enabled.unsafeWindow) {
         try {
           Object.defineProperty(window, "unsafeWindow", {
             value: window,
@@ -409,17 +599,19 @@
     }
   }
 
-  // Helper to execute user code after ensuring @require dependencies are loaded.
+  // ============================================================================
+  // USER SCRIPT EXECUTOR - Handles loading and executing user scripts
+  // ============================================================================
+
   async function executeUserScriptWithDependencies(userCode, scriptId, requireUrls, loader) {
     // Setup error capturing for this script
     const errorHandler = (event) => {
-      // Check if error is from our script by checking the error stack
       const stack = event.error?.stack || event.reason?.stack || '';
       const message = event.error?.message || event.reason?.message || event.message || 'Unknown error';
       
       // Report error to editor
       try {
-        const errorData = {
+        window.postMessage({
           type: 'SCRIPT_ERROR',
           scriptId: scriptId,
           error: {
@@ -428,8 +620,7 @@
             timestamp: new Date().toISOString(),
             type: 'error'
           }
-        };
-        window.postMessage(errorData, '*');
+        }, '*');
       } catch (e) {
         console.error('[CodeTweak Error Capture] Failed to report script error:', e);
       }
@@ -441,7 +632,7 @@
       
       // Report error to editor
       try {
-        const errorData = {
+        window.postMessage({
           type: 'SCRIPT_ERROR',
           scriptId: scriptId,
           error: {
@@ -450,8 +641,7 @@
             timestamp: new Date().toISOString(),
             type: 'error'
           }
-        };
-        window.postMessage(errorData, '*');
+        }, '*');
       } catch (e) {
         console.error('[CodeTweak Error Capture] Failed to report script error:', e);
       }
@@ -462,44 +652,37 @@
     window.addEventListener('unhandledrejection', rejectionHandler);
 
     try {
+      // Load all required external scripts first
       await loader.loadScripts(requireUrls);
       
-      // Don't wrap user code in try-catch - let errors bubble to global handlers
-      // This ensures we catch ALL errors, including those in user's try-catch blocks
+      // Create a blob URL for the user code
       const blob = new Blob([userCode], { type: "text/javascript" });
       const blobUrl = URL.createObjectURL(blob);
 
+      // Execute the user script
       await new Promise((resolve, reject) => {
         const scriptEl = document.createElement("script");
 
-        // Handle Trusted Types enforcement for script URLs
+        const policy = getTrustedTypesPolicy();
         let trustedSrc = blobUrl;
-        if (window.trustedTypes && window.trustedTypes.createPolicy) {
+        if (policy) {
           try {
-            if (!window.__ctTrustedScriptURLPolicy) {
-              window.__ctTrustedScriptURLPolicy = window.trustedTypes.createPolicy(
-                "codetweak",
-                {
-                  createScriptURL: (input) => input,
-                }
-              );
-            }
-            trustedSrc = window.__ctTrustedScriptURLPolicy.createScriptURL(blobUrl);
+            trustedSrc = policy.createScriptURL(blobUrl);
           } catch (e) {
             console.error("Failed to create trusted script URL:", e);
             console.warn("Falling back to raw URL.");
-            // If policy creation failed (likely already exists), fall back to raw URL.
-            trustedSrc = blobUrl;
           }
         }
 
         scriptEl.src = trustedSrc;
-        scriptEl.async = false; // maintain order
+        scriptEl.async = false; // maintain execution order
         scriptEl.setAttribute('data-script-id', scriptId);
+        
         scriptEl.onload = () => {
           URL.revokeObjectURL(blobUrl);
           resolve();
         };
+        
         scriptEl.onerror = (event) => {
           URL.revokeObjectURL(blobUrl);
           const error = new Error(
@@ -524,9 +707,8 @@
           
           reject(error);
         };
-        (document.head || document.documentElement || document.body).appendChild(
-          scriptEl
-        );
+        
+        (document.head || document.documentElement || document.body).appendChild(scriptEl);
       });
     } catch (err) {
       console.error(`CodeTweak: Error executing user script ${scriptId}:`, err);
@@ -549,10 +731,13 @@
     }
   }
 
+  // ============================================================================
+  // EXPORTS - Make classes and helpers available globally
+  // ============================================================================
+
   window.GMBridge = GMBridge;
-  window.GMValueManager = GMValueManager;
-  window.GMAPIRegistry = GMAPIRegistry;
-  window.ResourceManager = ResourceManager;
-  window.ExternalScriptLoader = ExternalScriptLoader;
-  window.executeUserScriptWithDependencies = executeUserScriptWithDependencies;
+  window.GMBridge.ResourceManager = ResourceManager;
+  window.GMBridge.ExternalScriptLoader = ExternalScriptLoader;
+  window.GMBridge.GMAPIRegistry = GMAPIRegistry;
+  window.GMBridge.executeUserScriptWithDependencies = executeUserScriptWithDependencies;
 })();
