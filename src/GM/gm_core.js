@@ -648,7 +648,8 @@
     try {
       await loader.loadScripts(requireUrls);
       
-      const blob = new Blob([userCode], { type: "text/javascript" });
+      const wrappedCode = `(function() {\n'use strict';\n${userCode}\n})();`;
+      const blob = new Blob([wrappedCode], { type: "text/javascript" });
       const blobUrl = URL.createObjectURL(blob);
 
       await new Promise((resolve, reject) => {
