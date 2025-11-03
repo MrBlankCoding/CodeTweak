@@ -93,7 +93,6 @@ function createMainWorldExecutor(
     window._executedScriptIds = window._executedScriptIds || new Set();
     
     if (window._executedScriptIds.has(scriptId)) {
-      console.log(`CodeTweak: Script ${scriptId} already executed`);
       return true;
     }
     
@@ -187,7 +186,6 @@ function createIsolatedWorldExecutor(
     window._executedScriptIds = window._executedScriptIds || new Set();
     
     if (window._executedScriptIds.has(scriptId)) {
-      console.log(`CodeTweak: Script ${scriptId} already executed`);
       return true;
     }
     
@@ -288,7 +286,6 @@ class ScriptInjector {
       ? createMainWorldExecutor
       : createIsolatedWorldExecutor;
 
-    console.log(`CodeTweak: Executing script '${config.id}' in ${world} world.`);
     await chrome.scripting.executeScript({
       target: { tabId },
       world,

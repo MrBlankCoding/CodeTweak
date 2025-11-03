@@ -605,7 +605,6 @@ if (target) {
   async copyToClipboard(text) {
     try {
       await navigator.clipboard.writeText(text);
-      console.log('CodeTweak: Selector copied to clipboard');
     } catch (error) {
       console.debug('CodeTweak: Clipboard write failed', error);
       this.fallbackCopyToClipboard(text);
@@ -623,7 +622,6 @@ if (target) {
     
     try {
       document.execCommand('copy');
-      console.log('CodeTweak: Selector copied to clipboard (fallback)');
     } catch (error) {
       console.debug('CodeTweak: Fallback copy failed', error);
     }

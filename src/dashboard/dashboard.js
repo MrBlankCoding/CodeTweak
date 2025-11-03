@@ -183,7 +183,6 @@ function setupFileDragAndDrop() {
 }
 
 async function exportAllScripts() {
-  console.log("Exporting all scripts");
   try {
     const { scripts = [] } = await chrome.storage.local.get("scripts");
     if (!scripts.length) {

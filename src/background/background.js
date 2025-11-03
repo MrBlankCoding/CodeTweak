@@ -194,12 +194,26 @@ async function handleGreasyForkInstall(url) {
 }
 
 async function handleCrossOriginXmlhttpRequest(details, tabId, sendResponse) {
+  const { url, method = "GET", headers, data } = details;
+
+  if (!url) {
+    console.error("CodeTweak: Cross-origin XMLHttprequest failed: No URL provided.");
+    sendResponse({ error: "No URL provided." });
+    return;
+  }
+
+  const requestOptions = {
+    method,
+    headers,
+  };
+
+  // Only add body for methods that support it
+  if (data && !["GET", "HEAD"].includes(method.toUpperCase())) {
+    requestOptions.body = data;
+  }
+
   try {
-    const response = await fetch(details.url, {
-      method: details.method || "GET",
-      headers: details.headers,
-      body: details.data,
-    });
+    const response = await fetch(url, requestOptions);
 
     const responseHeaders = {};
     response.headers.forEach((value, name) => {
@@ -242,7 +256,12 @@ async function handleCrossOriginXmlhttpRequest(details, tabId, sendResponse) {
     };
     sendResponse({ result });
   } catch (error) {
-    console.error("CodeTweak: Cross-origin XMLHttprequest failed:", error);
+    console.error("CodeTweak: Cross-origin XMLHttprequest failed:", {
+      error: error,
+      url: url,
+      method: method,
+      headers: headers
+    });
     sendResponse({ error: error.message });
   }
 }
@@ -307,7 +326,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log("[CodeTweak] Message received:", message.type || message.action);
 
   if (message.type === "GM_API_REQUEST") {
-    const { action, payload } = message.payload;
+    if (!message.payload) {
+      console.error("[CodeTweak] GM_API_REQUEST received with no payload.");
+      sendResponse({ error: "Request payload is missing." });
+      return true;
+    }
+    const { action, ...payload } = message.payload;
 
     if (action === "xmlhttpRequest") {
       // Still not working properly....
@@ -406,7 +430,9 @@ chrome.runtime.onConnect.addListener((port) => {
 const navigationEvents = ["onCommitted", "onDOMContentLoaded", "onCompleted"];
 navigationEvents.forEach((event, index) => {
   chrome.webNavigation[event].addListener((details) => {
-    console.log(`CodeTweak: webNavigation.${event} event fired for tab ${details.tabId}`, details);
+    if (event === "onCommitted" && details.frameId === 0) {
+      clearInjectedCoreScriptsForTab(details.tabId);
+    }
     injectScriptsForStage(
       details,
       Object.values(INJECTION_TYPES)[index],
