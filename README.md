@@ -51,7 +51,6 @@ node build.js
 
   * [ ] `GM_download`
   * [ ] `GM_confirm`
-  * [ ] `GM_unregisterMenuCommand`
   * [ ] Additional APIs as needed
 
 ### Security & Permissions
@@ -62,15 +61,8 @@ node build.js
 * [ ] Add better trusted type managment
 
 ### Core Improvements
-
-* [ ] Fix version checking logic
-* [ ] Add script version checking
-* [ ] Add script update functionality
-* [ ] Improve `ExternalScriptLoader`
-* [ ] Refine `getScriptDescription` function
 * [ ] Deduplicate logic between `background.js`, `inject.js`, and `GM_core.js`
 * [ ] Unify or reuse declarations between `GM_core` and `inject`
-* [ ] Make menu commands reactive 
 
 ### Editor
 
@@ -79,29 +71,18 @@ node build.js
 * [ ] Enhance extension management for CodeMirror
 * [ ] Link CodeMirror minimap toggle
 * [ ] Move helper functions (`exportScript`, `generateTamperMonkeyHeader`) to separate files
-* [ ] Modularize script import logic
 * [ ] Add option to toggle execution in main world or isolated world
 * [ ] Display execution world and run-at time in editor/dashboard
-* [ ] Log script errors and display in editor
-* [ ] Add a cap to how long text can be in the editor
 
 ### UI
 * [ ] Add iframe preview with live refresh
 * [ ] Fix editor optimizations
-* [ ] Add a cap to how long text can be in the dashboard
-
-
-
-### Debugging & Notifications
-
-* [ ] Display script errors directly on page (without console)
-* [ ] Add "Debug Mode" to enable in-page error display
-* [ ] Separate script notification logic into its own file
 
 ### Communication & Helpers
 
 * [ ] Simplify or centralize communication between content scripts and background scripts
 * [ ] Optional Trusted Types helpers
+* [ ] Fix script loading other scripts against CORS
 
 ---
 

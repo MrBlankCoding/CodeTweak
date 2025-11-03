@@ -1076,7 +1076,6 @@ export class FormValidator {
     const validations = [
       // Name is optional (auto-generated on save if empty)
       this.validateTargetUrls(),
-      this.validateVersion(),
       this.validateRunAt(),
       this.validateIconUrl(),
       this.validateRequireUrls(),
@@ -1104,20 +1103,6 @@ export class FormValidator {
         this.showValidationError("The target URL must be a valid http(s) URL.");
         return { isValid: false };
       }
-    }
-    return { isValid: true };
-  }
-
-  validateVersion() {
-    const versionEl = this.elements.scriptVersion;
-    const version = (versionEl?.value || "").trim();
-    if (!version) return { isValid: true };
-
-    // Accept X.Y or X.Y.Z (with numeric parts). Allow additional patch labels like -beta.1? Keep it simple: X.Y.Z
-    const semverLike = /^\d+\.\d+\.\d+$/;
-    if (!semverLike.test(version)) {
-      this.showValidationError("Version must be in the format X.Y.Z (e.g., 1.0.0).");
-      return { isValid: false };
     }
     return { isValid: true };
   }

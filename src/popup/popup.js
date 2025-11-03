@@ -233,7 +233,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 try {
                   command.onClick();
                 } catch (error) {
-                  console.error("Menu command error:", error);
+                  console.error("CodeTweak: Menu command failed. Please ensure the menu command API is enabled in the editor settings.", error);
                 }
               }
             },

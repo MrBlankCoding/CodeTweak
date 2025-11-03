@@ -865,6 +865,7 @@ class ScriptEditor {
     scriptData.gmAddStyle = this.elements.gmAddStyle?.checked || false;
     scriptData.gmAddElement = this.elements.gmAddElement?.checked || false;
     scriptData.gmRegisterMenuCommand = this.elements.gmRegisterMenuCommand?.checked || false;
+    scriptData.gmUnregisterMenuCommand = this.elements.gmUnregisterMenuCommand?.checked || false;
     scriptData.gmXmlhttpRequest = this.elements.gmXmlhttpRequest?.checked || false;
     scriptData.unsafeWindow = this.elements.unsafeWindow?.checked || false;
 
