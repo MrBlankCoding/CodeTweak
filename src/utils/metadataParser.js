@@ -51,9 +51,17 @@ function parseUserScriptMetadata(content) {
 
       case "resource": {
         if (!metadata.resources) metadata.resources = [];
-        const [name, url] = value.split(/\s+/);
-        if (name && url) {
-          metadata.resources.push({ name, url });
+        const urlMatch = value.match(/(https?:\/\/[^)\s]+)/);
+        if (urlMatch) {
+          const url = urlMatch[0];
+          const name = value.substring(0, urlMatch.index).trim().split(/\s+/)[0];
+          if (name) {
+            metadata.resources.push({ name, url });
+          } else {
+            console.warn(`CodeTweak: Could not parse @resource, no name found for URL: ${url}`);
+          }
+        } else {
+          console.warn(`CodeTweak: Could not parse @resource, no valid URL found in: "${value}"`);
         }
         break;
       }

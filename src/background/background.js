@@ -286,7 +286,11 @@ async function handleCrossOriginXmlhttpRequest(details, tabId, sendResponse) {
       method: method,
       headers: headers
     });
-    sendResponse({ error: error.message });
+    let errorMessage = error.message;
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        errorMessage = `Network request failed. This could be due to a CORS issue, a network error, or an invalid URL. URL: ${url}`;
+    }
+    sendResponse({ error: errorMessage });
   }
 }
 // hi.
@@ -446,7 +450,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           message: details.text || ''
         };
         chrome.notifications.create(notificationOptions, () => {
-          sendResponse({ result: null });
+          if (chrome.runtime.lastError) {
+            sendResponse({ error: chrome.runtime.lastError.message });
+          } else {
+            sendResponse({ result: null });
+          }
         });
         return true;
       },
@@ -461,7 +469,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       },
       download(details) {
         chrome.downloads.download({ url: details.url, filename: details.name }, (downloadId) => {
-          sendResponse({ result: { downloadId } });
+          if (chrome.runtime.lastError) {
+            sendResponse({ error: chrome.runtime.lastError.message });
+          } else {
+            sendResponse({ result: { downloadId } });
+          }
         });
         return true;
       },
