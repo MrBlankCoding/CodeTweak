@@ -138,10 +138,14 @@ function createScriptListItem(script) {
   sitesCol.className = "script-sites-col";
   const targetUrls = script.targetUrls || [];
   if (targetUrls.length > 0) {
-    if (targetUrls.length === 1) {
-      sitesCol.textContent = formatUrlPattern(targetUrls[0]);
-    } else {
-      sitesCol.innerHTML = `${formatUrlPattern(targetUrls[0])} <span class="site-count">+${targetUrls.length - 1}</span>`;
+  if (targetUrls.length === 1) {
+  sitesCol.textContent = formatUrlPattern(targetUrls[0]);
+  } else {
+  sitesCol.textContent = formatUrlPattern(targetUrls[0]);
+    const span = document.createElement('span');
+      span.className = 'site-count';
+      span.textContent = `+${targetUrls.length - 1}`;
+      sitesCol.appendChild(span);
     }
     sitesCol.title = targetUrls.map(formatUrlPattern).join("\n");
   } else {

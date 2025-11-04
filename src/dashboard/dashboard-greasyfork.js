@@ -110,11 +110,15 @@ function createScriptCard(script) {
 
   const meta = document.createElement("div");
   meta.className = "script-card-meta";
-  meta.innerHTML = `
-    <span>👤 ${formatNumber(script.total_installs)}</span>
-    <span>👍 ${formatNumber(script.good_ratings)}</span>
-    <span>v${script.version || "1.0.0"}</span>
-  `;
+  const span1 = document.createElement('span');
+  span1.textContent = `👤 ${formatNumber(script.total_installs)}`;
+  const span2 = document.createElement('span');
+  span2.textContent = `👍 ${formatNumber(script.good_ratings)}`;
+  const span3 = document.createElement('span');
+  span3.textContent = `v${script.version || "1.0.0"}`;
+  meta.appendChild(span1);
+  meta.appendChild(span2);
+  meta.appendChild(span3);
   card.appendChild(meta);
 
   const description = document.createElement("p");

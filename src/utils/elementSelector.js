@@ -383,11 +383,18 @@ if (target) {
   }
 
   createMenuItem(icon, text, action) {
-    const item = document.createElement('div');
-    item.className = 'ctwk-menu-item';
-    item.tabIndex = 0;
-    const svg = this.iconSvg(action);
-    item.innerHTML = `<span class="i">${svg}</span><span>${text}</span>`;
+  const item = document.createElement('div');
+  item.className = 'ctwk-menu-item';
+  item.tabIndex = 0;
+  const spanI = document.createElement('span');
+  spanI.className = 'i';
+  const i = document.createElement('i');
+  i.setAttribute('data-feather', this.iconName(action));
+  spanI.appendChild(i);
+    const spanText = document.createElement('span');
+    spanText.textContent = text;
+    item.appendChild(spanI);
+    item.appendChild(spanText);
     
     const handleAction = (e) => {
       e.stopPropagation();
@@ -408,26 +415,28 @@ if (target) {
   createMenuFooter() {
     const footer = document.createElement('div');
     footer.className = 'ctwk-menu-footer';
-    footer.innerHTML = '<span>Click item to execute · Esc: cancel</span>';
+    const span = document.createElement('span');
+    span.textContent = 'Click item to execute · Esc: cancel';
+    footer.appendChild(span);
     return footer;
   }
 
-  // Inline SVG icons for actions (monochrome, currentColor)
-  iconSvg(action) {
-    switch (action) {
-      case 'copy':
-        return '<i data-feather="copy"></i>';
-      case 'hide':
-        return '<i data-feather="eye-off"></i>';
-      case 'remove':
-        return '<i data-feather="trash-2"></i>';
-      case 'click':
-        return '<i data-feather="mouse-pointer"></i>';
-      case 'observe':
-        return '<i data-feather="watch"></i>';
-      default:
-        return '<i data-feather="circle"></i>';
-    }
+  // Feather icon names for actions
+  iconName(action) {
+  switch (action) {
+  case 'copy':
+  return 'copy';
+  case 'hide':
+  return 'eye-off';
+  case 'remove':
+  return 'trash-2';
+  case 'click':
+  return 'mouse-pointer';
+  case 'observe':
+  return 'watch';
+  default:
+  return 'circle';
+  }
   }
 
   positionMenu() {

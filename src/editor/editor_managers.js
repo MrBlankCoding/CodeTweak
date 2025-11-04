@@ -519,15 +519,20 @@ export class URLManager extends BaseUIComponent {
     }
 
     try {
-      const urlItem = document.createElement('div');
-      urlItem.className = 'url-item';
-      urlItem.dataset.url = url;
-      urlItem.innerHTML = `
-        <span>${this.escapeHtml(url)}</span>
-        <button type="button" class="remove-btn" title="Remove URL">
-          <i data-feather="x"></i>
-        </button>
-      `;
+    const urlItem = document.createElement('div');
+    urlItem.className = 'url-item';
+    urlItem.dataset.url = url;
+    const span = document.createElement('span');
+    span.textContent = url;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'remove-btn';
+    button.title = 'Remove URL';
+      const icon = document.createElement('i');
+    icon.setAttribute('data-feather', 'x');
+      button.appendChild(icon);
+      urlItem.appendChild(span);
+      urlItem.appendChild(button);
 
       if (this.elements.urlList) {
         this.elements.urlList.appendChild(urlItem);
@@ -535,7 +540,7 @@ export class URLManager extends BaseUIComponent {
         feather.replace();
         return true;
       }
-    } catch (e) {
+    } catch {
       // Silently fail - feather icons might not be ready yet
     }
     return false;
@@ -615,14 +620,18 @@ export class RequireManager extends BaseUIComponent {
   }
 
   addRequireToList(url) {
-    if (!url) return;
-    const item = document.createElement('li');
-    item.className = 'require-item';
-    item.dataset.url = url;
-    item.innerHTML = `
-      <span>${this.escapeHtml(url)}</span>
-      <button class="remove-require-btn" title="Remove Required Script">×</button>
-    `;
+  if (!url) return;
+  const item = document.createElement('li');
+  item.className = 'require-item';
+  item.dataset.url = url;
+  const span = document.createElement('span');
+  span.textContent = url;
+  const button = document.createElement('button');
+  button.className = 'remove-require-btn';
+  button.title = 'Remove Required Script';
+    button.textContent = '×';
+    item.appendChild(span);
+    item.appendChild(button);
     this.elements.requireList.appendChild(item);
     this.emit('requireAdded', { url });
     this.emit('sidebarChanged');
@@ -679,27 +688,41 @@ export class ResourceManager extends BaseUIComponent {
 
   addResourceToList(name, url) {
     if (!name || !url) return;
-    
+
     const resourceItem = document.createElement('li');
     resourceItem.className = 'resource-item';
     resourceItem.dataset.name = name;
     resourceItem.dataset.url = url;
     // Truncate URL for display (keep first 30 and last 20 chars for long URLs)
-    const displayUrl = url.length > 60 
+    const displayUrl = url.length > 60
       ? `${url.substring(0, 30)}...${url.substring(url.length - 20)}`
       : url;
-      
-    resourceItem.innerHTML = `
-      <div class="resource-item-content">
-        <div class="resource-name" title="${this.escapeHtml(name)}">${this.escapeHtml(name)}</div>
-        <a href="${this.escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="resource-url" title="${this.escapeHtml(url)}">
-          ${this.escapeHtml(displayUrl)}
-        </a>
-      </div>
-      <button class="remove-resource" title="Remove Resource">
-        <i data-feather="x" width="16" height="16"></i>
-      </button>
-    `;
+
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'resource-item-content';
+    const nameDiv = document.createElement('div');
+    nameDiv.className = 'resource-name';
+    nameDiv.title = name;
+    nameDiv.textContent = name;
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.className = 'resource-url';
+    link.title = url;
+    link.textContent = displayUrl;
+    contentDiv.appendChild(nameDiv);
+    contentDiv.appendChild(link);
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'remove-resource';
+    removeBtn.title = 'Remove Resource';
+    const icon = document.createElement('i');
+    icon.setAttribute('data-feather', 'x');
+    icon.setAttribute('width', '16');
+    icon.setAttribute('height', '16');
+    removeBtn.appendChild(icon);
+    resourceItem.appendChild(contentDiv);
+    resourceItem.appendChild(removeBtn);
 
     this.elements.resourceList.appendChild(resourceItem);
     this.emit('resourceAdded', { name, url });

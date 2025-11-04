@@ -38,7 +38,7 @@ We welcome contributions from the community! Whether fixing bugs, adding feature
 
 ```bash
 npm install
-node build.js
+npm build.js
 ```
 
 ---
