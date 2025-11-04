@@ -45,12 +45,6 @@ npm build.js
 
 ## TODO List
 
-### Custom API Additions
-* [ ] `GM_download`
-* [ ] `GM_addValueChangeListener`
-* [ ] `GM_getResourceURL `
-* [ ] `GM_log`
-
 ### Editor
 
 * [ ] Reduce editor bundle size (~1.4 MB currently)
