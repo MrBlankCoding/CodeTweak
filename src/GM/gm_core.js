@@ -49,12 +49,12 @@
       }
   
       getText(resourceName) {
-      return Promise.resolve(this.contents.get(resourceName) || null);
-      }
+         return this.contents.get(resourceName) || null;
+       }
 
-      getURL(resourceName) {
-      return Promise.resolve(this.urls.get(resourceName) || null);
-      }
+       getURL(resourceName) {
+         return this.urls.get(resourceName) || null;
+       }
   
       static fromScript(script) {
         const resourceURLs = {};
@@ -219,12 +219,20 @@
     }
 
     async setValue(name, value) {
+      if (typeof name !== 'string' || name === '') {
+        console.warn('GM_setValue: name must be a non-empty string');
+        return;
+      }
       const resolvedValue = value instanceof Promise ? await value : value;
       this.cache.set(name, resolvedValue);
       return this.bridge.call("setValue", { name, value: resolvedValue });
     }
 
     getValue(name, defaultValue) {
+      if (typeof name !== 'string' || name === '') {
+        console.warn('GM_getValue: name must be a non-empty string');
+        return defaultValue;
+      }
       if (this.cache.has(name)) {
         return this.cache.get(name);
       }
@@ -238,18 +246,43 @@
       return defaultValue;
     }
 
+    async getValueAsync(name, defaultValue) {
+      if (typeof name !== 'string' || name === '') {
+        console.warn('GM.getValue: name must be a non-empty string');
+        return defaultValue;
+      }
+      if (this.cache.has(name)) {
+        return this.cache.get(name);
+      }
+      try {
+        const value = await this.bridge.call("getValue", { name, defaultValue });
+        this.cache.set(name, value);
+        return value;
+      } catch {
+        return defaultValue;
+      }
+    }
+
     async deleteValue(name) {
+      if (typeof name !== 'string' || name === '') {
+        console.warn('GM_deleteValue: name must be a non-empty string');
+        return;
+      }
       this.cache.delete(name);
       return this.bridge.call("deleteValue", { name });
     }
 
     listValues() {
-      return Array.from(this.cache.keys());
+      return Array.from(this.cache.keys()).filter(key => typeof key === 'string' && key !== '');
     }
 
     initializeCache(initialValues = {}) {
       this.cache.clear();
-      Object.entries(initialValues).forEach(([k, v]) => this.cache.set(k, v));
+      Object.entries(initialValues).forEach(([k, v]) => {
+        if (typeof k === 'string' && k !== '') {
+          this.cache.set(k, v);
+        }
+      });
     }
 
     // Main registraction
@@ -275,20 +308,30 @@
         const fn = (name, value) => this.setValue(name, value);
         window.GM_setValue = window.GM.setValue = fn;
       }
-      
+
       if (enabled.gmGetValue) {
-        const fn = (name, defaultValue) => this.getValue(name, defaultValue);
-        window.GM_getValue = window.GM.getValue = fn;
+        const syncFn = (name, defaultValue) => this.getValue(name, defaultValue);
+        const asyncFn = (name, defaultValue) => this.getValueAsync(name, defaultValue);
+        window.GM_getValue = syncFn;
+        window.GM.getValue = asyncFn;
       }
-      
+
       if (enabled.gmDeleteValue) {
         const fn = (name) => this.deleteValue(name);
         window.GM_deleteValue = window.GM.deleteValue = fn;
       }
-      
+
       if (enabled.gmListValues) {
         const fn = () => this.listValues();
         window.GM_listValues = window.GM.listValues = fn;
+      }
+
+      if (enabled.gmAddValueChangeListener) {
+        const fn = (name, callback, options) => {
+          // Placeholder: implement value change listener
+          return this.bridge.call("addValueChangeListener", { name, options });
+        };
+        window.GM_addValueChangeListener = window.GM.addValueChangeListener = fn;
       }
     }
 
@@ -368,7 +411,7 @@
         const fn = (name) => this.resourceManager.getText(name);
         window.GM_getResourceText = window.GM.getResourceText = fn;
       }
-      
+
       if (enabled.gmGetResourceURL) {
         const fn = (name) => this.resourceManager.getURL(name);
         window.GM_getResourceURL = window.GM.getResourceURL = fn;
@@ -484,77 +527,79 @@
     // Duplicate from inject...
     // Ill fix it later
     _handleSameOriginXmlhttpRequest(details) {
-      return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open(details.method || "GET", details.url);
+      const xhr = new XMLHttpRequest();
+      xhr.open(details.method || "GET", details.url);
 
-        // Set headers
-        if (details.headers) {
-          for (const header in details.headers) {
-            xhr.setRequestHeader(header, details.headers[header]);
-          }
+      // Set headers
+      if (details.headers) {
+        for (const header in details.headers) {
+          xhr.setRequestHeader(header, details.headers[header]);
         }
-
-        // Set responseType
-        if (details.responseType) {
-          xhr.responseType = details.responseType;
-        }
-
-        // Set timeout
-        if (details.timeout) {
-          xhr.timeout = details.timeout;
-        }
-
-        // Event listeners
-        xhr.onload = () => {
-          const response = {
-            readyState: xhr.readyState,
-            responseHeaders: xhr.getAllResponseHeaders(),
-            responseText: xhr.responseText,
-            response: xhr.response,
-            status: xhr.status,
-            statusText: xhr.statusText,
-            finalUrl: xhr.responseURL,
-            context: details.context,
-          };
-          
-          if (details.onload) {
-            details.onload(response);
-          }
-          
-          resolve(response);
-        };
-
-        xhr.onerror = () => {
-          const error = new Error("Network error");
-          if (details.onerror) {
-            details.onerror(error);
-          }
-          reject(error);
-        };
-
-        xhr.ontimeout = () => {
-          const error = new Error("Timeout");
-          if (details.ontimeout) {
-            details.ontimeout(error);
-          }
-          reject(error);
-        };
-
-        // Send request
-        xhr.send(details.data);
-      });
-    }
-    // NEEDS HELP!
-    async _handleCrossOriginXmlhttpRequest(details) {
-      const settings = await this.bridge.call("getSettings");
-      if (!settings.allowExternalResources) {
-        throw new Error("GM_xmlhttpRequest: Cross-origin requests are disabled by a security setting.");
       }
 
+      // Set responseType
+      if (details.responseType) {
+        xhr.responseType = details.responseType;
+      }
+
+      // Set timeout
+      if (details.timeout) {
+      xhr.timeout = details.timeout;
+      }
+
+      // Event listeners
+      if (details.onreadystatechange) {
+         xhr.onreadystatechange = details.onreadystatechange;
+       }
+
+       if (details.onprogress) {
+         xhr.onprogress = details.onprogress;
+       }
+
+       xhr.onload = () => {
+        const response = {
+          readyState: xhr.readyState,
+          responseHeaders: xhr.getAllResponseHeaders(),
+          responseText: xhr.responseText,
+          response: xhr.response,
+          status: xhr.status,
+          statusText: xhr.statusText,
+          finalUrl: xhr.responseURL,
+          context: details.context,
+        };
+
+        if (details.onload) {
+          details.onload(response);
+        }
+      };
+
+      xhr.onerror = () => {
+        const error = new Error("Network error");
+        if (details.onerror) {
+          details.onerror(error);
+        }
+      };
+
+      xhr.ontimeout = () => {
+        const error = new Error("Timeout");
+        if (details.ontimeout) {
+          details.ontimeout(error);
+        }
+      };
+
+      // Send request
+      xhr.send(details.data);
+
+      return {
+        abort: () => xhr.abort()
+      };
+    }
+    // NEEDS HELP!
+    _handleCrossOriginXmlhttpRequest(details) {
+      // Assume cross-origin requests are allowed (settings check handled by bridge)
       const callbacks = {};
       const cloneableDetails = {};
-      
+
       Object.entries(details).forEach(([key, value]) => {
         if (typeof value === 'function') {
           callbacks[key] = value;
@@ -563,8 +608,32 @@
         }
       });
 
-      return this.bridge.call("xmlhttpRequest", { details: cloneableDetails })
+      let timeoutId;
+      let onloadCalled = false;
+      let aborted = false;
+
+      if (details.timeout) {
+        timeoutId = setTimeout(() => {
+          if (!onloadCalled && !aborted) {
+            onloadCalled = true;
+            if (callbacks.ontimeout) {
+              try {
+                callbacks.ontimeout(new Error("Timeout"));
+              } catch (error) {
+                console.error("GM_xmlhttpRequest ontimeout error:", error);
+              }
+            }
+          }
+        }, details.timeout);
+      }
+
+      // Start the request asynchronously
+      this.bridge.call("xmlhttpRequest", { details: cloneableDetails })
         .then(async (response) => {
+          if (onloadCalled || aborted) return;
+          onloadCalled = true;
+          clearTimeout(timeoutId);
+
           if (response && cloneableDetails.responseType === 'blob' && response.response && typeof response.response === 'string' && response.response.startsWith('data:')) {
             try {
               const res = await fetch(response.response);
@@ -575,6 +644,71 @@
             }
           }
 
+          if (response && cloneableDetails.responseType === 'arraybuffer' && response.response && typeof response.response === 'string' && response.response.startsWith('data:')) {
+            try {
+              const res = await fetch(response.response);
+              const arrayBuffer = await res.arrayBuffer();
+              response.response = arrayBuffer;
+            } catch (e) {
+              console.error("CodeTweak: Failed to reconstruct arraybuffer from data URL.", e);
+            }
+          }
+
+          // Handle responseType conversion if not properly set
+          if (response && cloneableDetails.responseType === 'arraybuffer' && !(response.response instanceof ArrayBuffer)) {
+            if (typeof response.response === 'string') {
+              const encoder = new TextEncoder();
+              response.response = encoder.encode(response.response).buffer;
+            } else if (typeof response.response === 'object') {
+              const str = JSON.stringify(response.response);
+              const encoder = new TextEncoder();
+              response.response = encoder.encode(str).buffer;
+            }
+          }
+
+          if (response && cloneableDetails.responseType === 'blob' && !(response.response instanceof Blob)) {
+            if (typeof response.response === 'string') {
+              try {
+                const res = await fetch('data:text/plain;base64,' + btoa(response.response));
+                response.response = await res.blob();
+              } catch (e) {
+                console.error("CodeTweak: Failed to convert string to blob.", e);
+              }
+            }
+          }
+
+          // Call onreadystatechange with readyState 4
+          if (callbacks.onreadystatechange) {
+            try {
+              callbacks.onreadystatechange({
+                readyState: 4,
+                responseHeaders: response.responseHeaders,
+                responseText: response.responseText,
+                response: response.response,
+                status: response.status,
+                statusText: response.statusText,
+                finalUrl: response.finalUrl,
+                context: details.context,
+              });
+            } catch (error) {
+              console.error("GM_xmlhttpRequest onreadystatechange error:", error);
+            }
+          }
+
+          // Call onprogress with some progress info
+          if (callbacks.onprogress) {
+            try {
+              callbacks.onprogress({
+                loaded: response.responseText ? response.responseText.length : 0,
+                total: 0,
+                lengthComputable: false,
+                context: details.context,
+              });
+            } catch (error) {
+              console.error("GM_xmlhttpRequest onprogress error:", error);
+            }
+          }
+
           if (callbacks.onload) {
             try {
               callbacks.onload(response);
@@ -582,9 +716,11 @@
               console.error("GM_xmlhttpRequest onload error:", error);
             }
           }
-          return response;
         })
         .catch((error) => {
+          if (onloadCalled || aborted) return;
+          onloadCalled = true;
+          clearTimeout(timeoutId);
           if (callbacks.onerror) {
             try {
               callbacks.onerror(error);
@@ -592,8 +728,15 @@
               console.error("GM_xmlhttpRequest onerror callback failed:", callbackError);
             }
           }
-          throw error;
         });
+
+      return {
+        abort: () => {
+          aborted = true;
+          onloadCalled = true; // Prevent any further callbacks
+          clearTimeout(timeoutId);
+        }
+      };
     }
 
     _registerAdvanced(enabled) {
@@ -604,7 +747,7 @@
             writable: false,
             configurable: false,
           });
-        } catch (e) {
+        } catch {
           window.unsafeWindow = window;
         }
       }
@@ -662,7 +805,7 @@
     try {
       await loader.loadScripts(requireUrls);
       
-      const wrappedCode = `(function() {\n'use strict';\n${userCode}\n})();`;
+      const wrappedCode = `(async function() {\n'use strict';\n${userCode}\n})();`;
       const blob = new Blob([wrappedCode], { type: "text/javascript" });
       const blobUrl = URL.createObjectURL(blob);
 
