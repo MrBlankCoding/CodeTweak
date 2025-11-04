@@ -105,7 +105,7 @@ export const GM_API_DEFINITIONS = {
 
   // Resources & Network APIs
   GM_getResourceText: {
-    signature: "declare function GM_getResourceText(name: string): string;",
+    signature: "declare function GM_getResourceText(name: string): Promise<string>;",
     name: "GM_getResourceText",
     el: "gmGetResourceText",
     tmName: "GM_getResourceText",
@@ -113,7 +113,7 @@ export const GM_API_DEFINITIONS = {
     description: "Gets the content of a resource as text"
   },
   GM_getResourceURL: {
-    signature: "declare function GM_getResourceURL(name: string): string;",
+    signature: "declare function GM_getResourceURL(name: string): Promise<string>;",
     name: "GM_getResourceURL",
     el: "gmGetResourceURL",
     tmName: "GM_getResourceURL",

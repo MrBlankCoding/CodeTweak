@@ -49,7 +49,7 @@ npm build.js
 * [ ] `GM_download`
 * [ ] `GM_addValueChangeListener`
 * [ ] `GM_getResourceURL `
-  * [ ] Additional APIs as needed
+* [ ] `GM_log`
 
 ### Editor
 

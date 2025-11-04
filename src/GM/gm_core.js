@@ -49,11 +49,11 @@
       }
   
       getText(resourceName) {
-        return this.contents.get(resourceName) || null;
+      return Promise.resolve(this.contents.get(resourceName) || null);
       }
-  
+
       getURL(resourceName) {
-        return this.urls.get(resourceName) || null;
+      return Promise.resolve(this.urls.get(resourceName) || null);
       }
   
       static fromScript(script) {
