@@ -10,6 +10,7 @@ class BackgroundState {
     this.ports = new Set();
     this.executedScripts = new Map();
     this.creatingOffscreenDocument = null;
+    this.valueChangeListeners = new Map();
   }
 
   clearCache() {
@@ -62,6 +63,23 @@ function notifyPorts(action) {
   }
 
   disconnectedPorts.forEach((port) => state.ports.delete(port));
+}
+
+async function setupOffscreenDocument() {
+  if (await chrome.offscreen.hasDocument()) {
+    return;
+  }
+  if (state.creatingOffscreenDocument) {
+    await state.creatingOffscreenDocument;
+    return;
+  }
+  state.creatingOffscreenDocument = chrome.offscreen.createDocument({
+    url: 'offscreen/offscreen.html',
+    reasons: ['CLIPBOARD'],
+    justification: 'Clipboard access',
+  });
+  await state.creatingOffscreenDocument;
+  state.creatingOffscreenDocument = null;
 }
 
 // Script management
@@ -337,21 +355,125 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ error: "Request payload is missing." });
       return true;
     }
-    const { action, ...payload } = message.payload;
+    const { action, scriptId, ...payload } = message.payload;
 
-    if (action === "getSettings") {
-      chrome.storage.local.get("settings").then(({ settings = {} }) => {
-        sendResponse({ result: settings });
-      });
+    const getStorage = async () => {
+      const key = `script-values-${scriptId}`;
+      const result = await chrome.storage.local.get(key);
+      return result[key] || {};
+    };
+
+    const setStorage = async (values) => {
+      const key = `script-values-${scriptId}`;
+      await chrome.storage.local.set({ [key]: values });
+    };
+
+    const actionHandlers = {
+      async setValue({ name, value }) {
+        const values = await getStorage();
+        const oldValue = values[name];
+        values[name] = value;
+        await setStorage(values);
+
+        const listeners = state.valueChangeListeners.get(name);
+        if (listeners) {
+          for (const tabId of listeners) {
+            if (tabId !== sender.tab.id) { // Don't notify the tab that made the change
+              chrome.tabs.sendMessage(tabId, {
+                type: "GM_VALUE_CHANGED",
+                payload: { name, oldValue, newValue: value, remote: true },
+              }).catch(() => {}); // Ignore errors if tab is closed
+            }
+          }
+        }
+        sendResponse({ result: null });
+      },
+      async getValue({ name, defaultValue }) {
+        const values = await getStorage();
+        sendResponse({ result: values[name] ?? defaultValue });
+      },
+      async deleteValue({ name }) {
+        const values = await getStorage();
+        const oldValue = values[name];
+        delete values[name];
+        await setStorage(values);
+
+        const listeners = state.valueChangeListeners.get(name);
+        if (listeners) {
+          for (const tabId of listeners) {
+            chrome.tabs.sendMessage(tabId, {
+              type: "GM_VALUE_CHANGED",
+              payload: { name, oldValue, newValue: undefined, remote: tabId !== sender.tab.id },
+            }).catch(() => {});
+          }
+        }
+        sendResponse({ result: null });
+      },
+      async listValues() {
+        const values = await getStorage();
+        sendResponse({ result: Object.keys(values) });
+      },
+      addValueChangeListener({ name }) {
+        if (!state.valueChangeListeners.has(name)) {
+          state.valueChangeListeners.set(name, new Set());
+        }
+        state.valueChangeListeners.get(name).add(sender.tab.id);
+        sendResponse({ result: null });
+      },
+      removeValueChangeListener({ name }) {
+        const listeners = state.valueChangeListeners.get(name);
+        if (listeners) {
+          listeners.delete(sender.tab.id);
+          if (listeners.size === 0) {
+            state.valueChangeListeners.delete(name);
+          }
+        }
+        sendResponse({ result: null });
+      },
+      getSettings() {
+        chrome.storage.local.get("settings").then(({ settings = {} }) => {
+          sendResponse({ result: settings });
+        });
+      },
+      xmlhttpRequest() {
+        handleCrossOriginXmlhttpRequest(payload.details, sender.tab.id, sendResponse);
+      },
+      notification({ details }) {
+        const notificationOptions = {
+          type: 'basic',
+          iconUrl: details.image || 'assets/icons/icon128.png',
+          title: details.title || 'CodeTweak Notification',
+          message: details.text || ''
+        };
+        chrome.notifications.create(notificationOptions, () => {
+          sendResponse({ result: null });
+        });
+        return true;
+      },
+      async setClipboard({ data, type }) {
+        await setupOffscreenDocument();
+        chrome.runtime.sendMessage({
+          target: 'offscreen',
+          type: 'copy-to-clipboard',
+          data: data
+        });
+        sendResponse({ result: null });
+      },
+      download(details) {
+        chrome.downloads.download({ url: details.url, filename: details.name }, (downloadId) => {
+          sendResponse({ result: { downloadId } });
+        });
+        return true;
+      },
+    };
+
+    if (actionHandlers[action]) {
+      actionHandlers[action](payload);
       return true;
-    } else if (action === "xmlhttpRequest") {
-      // Still not working properly....
-      handleCrossOriginXmlhttpRequest(payload.details, sender.tab.id, sendResponse);
-      return true;
-    } else {
-      chrome.tabs.sendMessage(sender.tab.id, message, sendResponse);
-      return true; // Async response
     }
+
+    sendResponse({ error: `Unknown GM API action: ${action}` });
+    return true;
   }
   // Some errors around here.... not all errors being captured 
   if (message.type === "SCRIPT_ERROR") {
@@ -457,6 +579,10 @@ navigationEvents.forEach((event, index) => {
 chrome.tabs.onRemoved.addListener((tabId) => {
   state.executedScripts.delete(tabId);
   clearInjectedCoreScriptsForTab(tabId);
+
+  for (const listeners of state.valueChangeListeners.values()) {
+    listeners.delete(tabId);
+  }
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {

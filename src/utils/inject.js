@@ -311,17 +311,21 @@ class ScriptInjector {
       gmGetValue: Boolean(script.gmGetValue),
       gmDeleteValue: Boolean(script.gmDeleteValue),
       gmListValues: Boolean(script.gmListValues),
+      gmAddValueChangeListener: Boolean(script.gmAddValueChangeListener),
+      gmRemoveValueChangeListener: Boolean(script.gmRemoveValueChangeListener),
       gmOpenInTab: Boolean(script.gmOpenInTab),
       gmNotification: Boolean(script.gmNotification),
       gmGetResourceText: Boolean(script.gmGetResourceText),
       gmGetResourceURL: Boolean(script.gmGetResourceURL),
       gmSetClipboard: Boolean(script.gmSetClipboard),
+      gmDownload: Boolean(script.gmDownload),
       gmAddStyle: Boolean(script.gmAddStyle),
       gmAddElement: Boolean(script.gmAddElement),
       gmRegisterMenuCommand: Boolean(script.gmRegisterMenuCommand),
       gmUnregisterMenuCommand: Boolean(script.gmUnregisterMenuCommand),
       gmXmlhttpRequest: Boolean(script.gmXmlhttpRequest),
       unsafeWindow: Boolean(script.unsafeWindow),
+      gmLog: Boolean(script.gmLog),
     };
 
     return {

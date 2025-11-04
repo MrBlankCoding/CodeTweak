@@ -855,6 +855,8 @@ class ScriptEditor {
     scriptData.gmGetValue = this.elements.gmGetValue?.checked || false;
     scriptData.gmDeleteValue = this.elements.gmDeleteValue?.checked || false;
     scriptData.gmListValues = this.elements.gmListValues?.checked || false;
+    scriptData.gmAddValueChangeListener = this.elements.gmAddValueChangeListener?.checked || false;
+    scriptData.gmRemoveValueChangeListener = this.elements.gmRemoveValueChangeListener?.checked || false;
     scriptData.gmOpenInTab = this.elements.gmOpenInTab?.checked || false;
     scriptData.gmNotification = this.elements.gmNotification?.checked || false;
     scriptData.gmGetResourceText =
@@ -862,12 +864,14 @@ class ScriptEditor {
     scriptData.gmGetResourceURL =
       this.elements.gmGetResourceURL?.checked || false;
     scriptData.gmSetClipboard = this.elements.gmSetClipboard?.checked || false;
+    scriptData.gmDownload = this.elements.gmDownload?.checked || false;
     scriptData.gmAddStyle = this.elements.gmAddStyle?.checked || false;
     scriptData.gmAddElement = this.elements.gmAddElement?.checked || false;
     scriptData.gmRegisterMenuCommand = this.elements.gmRegisterMenuCommand?.checked || false;
     scriptData.gmUnregisterMenuCommand = this.elements.gmUnregisterMenuCommand?.checked || false;
     scriptData.gmXmlhttpRequest = this.elements.gmXmlhttpRequest?.checked || false;
     scriptData.unsafeWindow = this.elements.unsafeWindow?.checked || false;
+    scriptData.gmLog = this.elements.gmLog?.checked || false;
 
     // Parse resource items
     scriptData.resources = [];

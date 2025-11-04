@@ -132,6 +132,7 @@ export function getScriptDescription(script) {
     let gmApiCount = 0;
     const gmApiKeys = [
       'gmSetValue', 'gmGetValue', 'gmDeleteValue', 'gmListValues',
+      'gmAddValueChangeListener', 'gmRemoveValueChangeListener',
       'gmOpenInTab', 'gmNotification', 'gmAddStyle', 'gmAddElement',
       'gmRegisterMenuCommand', 'gmUnregisterMenuCommand',
       'gmGetResourceText', 'gmGetResourceURL', 'gmXmlhttpRequest',

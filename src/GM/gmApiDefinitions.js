@@ -52,6 +52,22 @@ export const GM_API_DEFINITIONS = {
     category: GM_API_CATEGORIES.STORAGE,
     description: "Lists all keys stored with GM_setValue"
   },
+  GM_addValueChangeListener: {
+    signature: "declare function GM_addValueChangeListener(name: string, callback: (name: string, oldValue: any, newValue: any, remote: boolean) => void): number;",
+    name: "GM_addValueChangeListener",
+    el: "gmAddValueChangeListener",
+    tmName: "GM_addValueChangeListener",
+    category: GM_API_CATEGORIES.STORAGE,
+    description: "Adds a listener to watch for changes to a stored value."
+  },
+  GM_removeValueChangeListener: {
+    signature: "declare function GM_removeValueChangeListener(listenerId: number): void;",
+    name: "GM_removeValueChangeListener",
+    el: "gmRemoveValueChangeListener",
+    tmName: "GM_removeValueChangeListener",
+    category: GM_API_CATEGORIES.STORAGE,
+    description: "Removes a previously added value change listener."
+  },
 
   // Browser & UI APIs
   GM_openInTab: {
@@ -136,6 +152,14 @@ export const GM_API_DEFINITIONS = {
     category: GM_API_CATEGORIES.RESOURCES_NETWORK,
     description: "Copies data to the clipboard"
   },
+  GM_download: {
+    signature: "declare function GM_download(url: string, name?: string): Promise<void>;",
+    name: "GM_download",
+    el: "gmDownload",
+    tmName: "GM_download",
+    category: GM_API_CATEGORIES.RESOURCES_NETWORK,
+    description: "Downloads a file from a URL."
+  },
 
   // Advanced APIs
   unsafeWindow: {
@@ -145,6 +169,14 @@ export const GM_API_DEFINITIONS = {
     tmName: "unsafeWindow",
     category: GM_API_CATEGORIES.ADVANCED,
     description: "Direct access to the page's window object"
+  },
+  GM_log: {
+    signature: "declare function GM_log(...args: any[]): void;",
+    name: "GM_log",
+    el: "gmLog",
+    tmName: "GM_log",
+    category: GM_API_CATEGORIES.ADVANCED,
+    description: "Logs messages to the console."
   }
 };
 

@@ -109,12 +109,13 @@
     }
 
     call(action, payload = {}) {
+      const newPayload = { ...payload, scriptId: this.scriptId };
       // If in the ISOLATED world, use the direct chrome.runtime.sendMessage
       if (this.worldType === 'ISOLATED' && typeof chrome?.runtime?.sendMessage === 'function') {
-        return this.callIsolated(action, payload);
+        return this.callIsolated(action, newPayload);
       }
       // Otherwise, fallback to the MAIN world postMessage mechanism
-      return this.callMain(action, payload);
+      return this.callMain(action, newPayload);
     }
 
     callMain(action, payload = {}) {
@@ -216,6 +217,24 @@
       this.bridge = bridge;
       this.resourceManager = resourceManager;
       this.cache = new Map();
+      this.valueChangeListeners = new Map();
+      this.listenerIdCounter = 0;
+
+      window.addEventListener("message", (event) => {
+        if (event.source === window && event.data?.type === "GM_VALUE_CHANGED") {
+          const { name, oldValue, newValue, remote } = event.data.payload;
+          const listeners = this.valueChangeListeners.get(name);
+          if (listeners) {
+            for (const listener of listeners.values()) {
+              try {
+                listener(name, oldValue, newValue, remote);
+              } catch (e) {
+                console.error("Error in value change listener:", e);
+              }
+            }
+          }
+        }
+      });
     }
 
     async setValue(name, value) {
@@ -327,11 +346,31 @@
       }
 
       if (enabled.gmAddValueChangeListener) {
-        const fn = (name, callback, options) => {
-          // Placeholder: implement value change listener
-          return this.bridge.call("addValueChangeListener", { name, options });
+        const addFn = (name, callback) => {
+          if (typeof name !== 'string' || typeof callback !== 'function') return;
+          const listenerId = this.listenerIdCounter++;
+          if (!this.valueChangeListeners.has(name)) {
+            this.valueChangeListeners.set(name, new Map());
+          }
+          this.valueChangeListeners.get(name).set(listenerId, callback);
+          this.bridge.call("addValueChangeListener", { name });
+          return listenerId;
         };
-        window.GM_addValueChangeListener = window.GM.addValueChangeListener = fn;
+        window.GM_addValueChangeListener = window.GM.addValueChangeListener = addFn;
+
+        const removeFn = (listenerId) => {
+          for (const [name, listeners] of this.valueChangeListeners.entries()) {
+            if (listeners.has(listenerId)) {
+              listeners.delete(listenerId);
+              if (listeners.size === 0) {
+                this.valueChangeListeners.delete(name);
+                this.bridge.call("removeValueChangeListener", { name });
+              }
+              break;
+            }
+          }
+        };
+        window.GM_removeValueChangeListener = window.GM.removeValueChangeListener = removeFn;
       }
     }
 
@@ -408,12 +447,18 @@
 
     _registerResources(enabled) {
       if (enabled.gmGetResourceText) {
-        const fn = (name) => this.resourceManager.getText(name);
+        const fn = (name) => new Promise(resolve => {
+          const text = this.resourceManager.getText(name);
+          resolve(text === null ? undefined : text);
+        });
         window.GM_getResourceText = window.GM.getResourceText = fn;
       }
 
       if (enabled.gmGetResourceURL) {
-        const fn = (name) => this.resourceManager.getURL(name);
+        const fn = (name) => new Promise(resolve => {
+          const url = this.resourceManager.getURL(name);
+          resolve(url === null ? undefined : url);
+        });
         window.GM_getResourceURL = window.GM.getResourceURL = fn;
       }
     }
@@ -502,6 +547,17 @@
           return this.bridge.call("setClipboard", { data, type });
         };
         window.GM_setClipboard = window.GM.setClipboard = fn;
+      }
+
+      if (enabled.gmDownload) {
+        const fn = (urlOrDetails, name) => {
+          const details = typeof urlOrDetails === 'object' ? urlOrDetails : { url: urlOrDetails, name: name };
+          const cloneableDetails = Object.fromEntries(
+            Object.entries(details).filter(([, v]) => typeof v !== 'function')
+          );
+          return this.bridge.call("download", cloneableDetails);
+        };
+        window.GM_download = window.GM.download = fn;
       }
 
       // GM_xmlhttpRequest
@@ -750,6 +806,11 @@
         } catch {
           window.unsafeWindow = window;
         }
+      }
+
+      if (enabled.gmLog) {
+        const fn = (...args) => console.log(...args);
+        window.GM_log = window.GM.log = fn;
       }
     }
   }
