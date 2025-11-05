@@ -135,8 +135,10 @@
       }
 
       if (enabled.gmListValues) {
-        const fn = () => this.listValues();
-        window.GM_listValues = window.GM.listValues = fn;
+        const syncFn = () => Array.from(this.cache.keys()).filter(key => typeof key === 'string' && key !== '');
+        const asyncFn = () => this.bridge.call("listValues");
+        window.GM_listValues = syncFn;
+        window.GM.listValues = asyncFn;
       }
 
       if (enabled.gmAddValueChangeListener) {
@@ -243,7 +245,7 @@
       if (enabled.gmGetResourceText) {
         const fn = (name) => new Promise(resolve => {
           const text = this.resourceManager.getText(name);
-          resolve(text === null ? undefined : text);
+          resolve(String(text || ''));
         });
         window.GM_getResourceText = window.GM.getResourceText = fn;
       }
@@ -251,7 +253,7 @@
       if (enabled.gmGetResourceURL) {
         const fn = (name) => new Promise(resolve => {
           const url = this.resourceManager.getURL(name);
-          resolve(url === null ? undefined : url);
+          resolve(String(url || ''));
         });
         window.GM_getResourceURL = window.GM.getResourceURL = fn;
       }

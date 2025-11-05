@@ -312,6 +312,10 @@
   window.GMBridge.executeUserScriptWithDependencies = executeUserScriptWithDependencies;
 
   window.postMessage({ type: "GM_CORE_EXECUTED" }, "*");
+
+  // Dispatch a custom event to signal that GMBridge is ready
+  const event = new CustomEvent('GMBridgeReady');
+  window.dispatchEvent(event);
 })();
 
 // Crazy !

@@ -20,44 +20,15 @@ function createMainWorldExecutor(
   requiredUrls,
   gmInfo
 ) {
-
-
-  const MAX_RETRIES = 30;
-  const RETRY_INTERVAL = 100;
-
   function waitForGMBridge(worldType, callback) {
-    let retries = 0;
-
-    function check() {
-      const hasRequiredObjects = 
-        window.GMBridge?.ResourceManager &&
-        window.GMBridge?.GMAPIRegistry &&
-        window.GMBridge?.ExternalScriptLoader &&
-        window.GMBridge?.executeUserScriptWithDependencies;
-
-      if (hasRequiredObjects) {
-        callback();
-        return;
-      }
-
-      if (retries < MAX_RETRIES) {
-        retries++;
-        setTimeout(check, RETRY_INTERVAL);
-      } else {
-        console.error(
-          `CodeTweak: Timed out waiting for core script to load for script '${scriptId}'${worldType ? ` in ${worldType} world` : ''}.`,
-          'Missing objects:', {
-            GMBridge: typeof window.GMBridge,
-            ResourceManager: typeof window.GMBridge?.ResourceManager,
-            GMAPIRegistry: typeof window.GMBridge?.GMAPIRegistry,
-            ExternalScriptLoader: typeof window.GMBridge?.ExternalScriptLoader,
-            executeUserScriptWithDependencies: typeof window.GMBridge?.executeUserScriptWithDependencies
-          }
-        );
-      }
+    if (window.GMBridge) {
+      callback();
+      return;
     }
 
-    check();
+    window.addEventListener('GMBridgeReady', () => {
+      callback();
+    }, { once: true });
   }
 
   function exposeGMInfo(info) {
@@ -140,42 +111,15 @@ function createIsolatedWorldExecutor(
   requiredUrls,
   gmInfo
 ) {
-  const MAX_RETRIES = 30;
-  const RETRY_INTERVAL = 100;
-
   function waitForGMBridge(worldType, callback) {
-    let retries = 0;
-
-    function check() {
-      const hasRequiredObjects = 
-        window.GMBridge?.ResourceManager &&
-        window.GMBridge?.GMAPIRegistry &&
-        window.GMBridge?.ExternalScriptLoader &&
-        window.GMBridge?.executeUserScriptWithDependencies;
-
-      if (hasRequiredObjects) {
-        callback();
-        return;
-      }
-
-      if (retries < MAX_RETRIES) {
-        retries++;
-        setTimeout(check, RETRY_INTERVAL);
-      } else {
-        console.error(
-          `CodeTweak: Timed out waiting for core script to load for script '${scriptId}'${worldType ? ` in ${worldType} world` : ''}.`,
-          'Missing objects:', {
-            GMBridge: typeof window.GMBridge,
-            ResourceManager: typeof window.GMBridge?.ResourceManager,
-            GMAPIRegistry: typeof window.GMBridge?.GMAPIRegistry,
-            ExternalScriptLoader: typeof window.GMBridge?.ExternalScriptLoader,
-            executeUserScriptWithDependencies: typeof window.GMBridge?.executeUserScriptWithDependencies
-          }
-        );
-      }
+    if (window.GMBridge) {
+      callback();
+      return;
     }
 
-    check();
+    window.addEventListener('GMBridgeReady', () => {
+      callback();
+    }, { once: true });
   }
 
   function exposeGMInfo(info) {
