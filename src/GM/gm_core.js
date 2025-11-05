@@ -5,7 +5,6 @@
   if (typeof window.GMBridge !== "undefined") {
     return;
   }
-
   // Lets start with trusted types
   // Is this allowed on the web store?
   let ctTrustedTypesPolicy = null;
@@ -266,71 +265,28 @@
     window.addEventListener('error', errorHandler);
     window.addEventListener('unhandledrejection', rejectionHandler);
 
-    // Ensure unsafeWindow is available globally before loading external scripts
-    // (jQuery and other libraries may try to attach to it)
-    if (!window.unsafeWindow) {
-      window.unsafeWindow = window;
-    }
-
     try {
       await loader.loadScripts(requireUrls);
       
-      const wrappedCode = `(async function() {\n'use strict';\nconst unsafeWindow = window.unsafeWindow || window;\n${userCode}\n})();`;
-      console.log('CodeTweak: Wrapped code preview (first 500 chars):', wrappedCode.substring(0, 500));
-      const blob = new Blob([wrappedCode], { type: "text/javascript" });
-      const blobUrl = URL.createObjectURL(blob);
+      const wrappedCode = `(function() {\n'use strict';\nconst unsafeWindow = this;\n${userCode}\n}).call(window);`;
+      
+      const scriptEl = document.createElement("script");
+      scriptEl.setAttribute('data-script-id', scriptId);
 
-      await new Promise((resolve, reject) => {
-        const scriptEl = document.createElement("script");
-
-        const policy = getTrustedTypesPolicy();
-        let trustedSrc = blobUrl;
-        if (policy) {
-          try {
-            trustedSrc = policy.createScriptURL(blobUrl);
-          } catch (e) {
-            console.error("Failed to create trusted script URL:", e);
-            console.warn("Falling back to raw URL.");
-          }
+      const policy = getTrustedTypesPolicy();
+      let trustedCode = wrappedCode;
+      if (policy) {
+        try {
+          trustedCode = policy.createScript(wrappedCode);
+        } catch (e) {
+          console.error("Failed to create trusted script:", e);
+          console.warn("Falling back to raw code.");
         }
+      }
 
-        scriptEl.src = trustedSrc;
-        scriptEl.async = false; // maintain execution order
-        scriptEl.setAttribute('data-script-id', scriptId);
-        
-        scriptEl.onload = () => {
-          URL.revokeObjectURL(blobUrl);
-          resolve();
-        };
-        
-        scriptEl.onerror = (event) => {
-          URL.revokeObjectURL(blobUrl);
-          const error = new Error(
-            `Failed to execute user script ${scriptId}: ${event?.message || "unknown error"}`
-          );
-          
-          console.error(`CodeTweak: Failed to execute user script ${scriptId}:`, event);
-          // Report load error
-          try {
-            window.postMessage({
-              type: 'SCRIPT_ERROR',
-              scriptId: scriptId,
-              error: {
-                message: error.message,
-                stack: error.stack || '',
-                timestamp: new Date().toISOString(),
-                type: 'error'
-              }
-            }, '*');
-          } catch (e) {
-            console.error('Failed to report script load error:', e);
-          }
-          
-          reject(error);
-        };
-        
-        (document.head || document.documentElement || document.body).appendChild(scriptEl);
-      });
+      scriptEl.textContent = trustedCode;
+      (document.head || document.documentElement || document.body).appendChild(scriptEl);
+
     } catch (err) {
       console.error(`CodeTweak: Error executing user script ${scriptId}:`, err);
       

@@ -20,23 +20,7 @@ function createMainWorldExecutor(
   requiredUrls,
   gmInfo
 ) {
-  // Always expose unsafeWindow in MAIN world FIRST (it's just the window object)
-  if (!window.unsafeWindow) {
-    try {
-      Object.defineProperty(window, "unsafeWindow", {
-        value: window,
-        writable: false,
-        configurable: false,
-      });
-      console.log('CodeTweak: unsafeWindow exposed via defineProperty');
-    } catch (e) {
-      window.unsafeWindow = window;
-      console.log('CodeTweak: unsafeWindow exposed via direct assignment');
-    }
-  } else {
-    console.log('CodeTweak: unsafeWindow already exists');
-  }
-  console.log('CodeTweak: unsafeWindow check:', typeof window.unsafeWindow, window.unsafeWindow === window);
+
 
   const MAX_RETRIES = 30;
   const RETRY_INTERVAL = 100;
@@ -304,6 +288,22 @@ class ScriptInjector {
     const tabCoreScripts = this.injectedCoreScripts.get(tabId);
 
     if (!tabCoreScripts.has(world)) {
+      if (world === EXECUTION_WORLDS.MAIN) {
+        await chrome.scripting.executeScript({
+          target: { tabId },
+          world: EXECUTION_WORLDS.MAIN,
+          func: () => {
+            if (typeof unsafeWindow === 'undefined') {
+              Object.defineProperty(window, 'unsafeWindow', {
+                value: window,
+                writable: false,
+                configurable: false
+              });
+            }
+          },
+        });
+      }
+
       await chrome.scripting.executeScript({
         target: { tabId },
         world,
