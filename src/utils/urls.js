@@ -27,8 +27,8 @@ export function urlMatchesPattern(url, pattern) {
 
     if (patternHost === "*") {
       // Any host
-    } else if (patternHost.startsWith("*.")) {
-      const domain = patternHost.slice(2);
+    } else if (patternHost.startsWith("*.") || patternHost.startsWith(".")) {
+      const domain = patternHost.startsWith("*.") ? patternHost.slice(2) : patternHost.slice(1);
       if (!(urlHost === domain || urlHost.endsWith("." + domain))) return false;
     } else if (patternHost.includes("*")) {
       const hostRegex = new RegExp(
@@ -46,21 +46,35 @@ export function urlMatchesPattern(url, pattern) {
     }
 
     const segments = patternPath.split("/").filter(Boolean);
+    
+    // If no segments (just /), match any path
+    if (segments.length === 0) return true;
+    
     const regexParts = ["^"];
 
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i];
       if (segment === "**") {
-        regexParts.push("(?:\/.*)?");
+        regexParts.push("(?:\\/.*)?" );
+      } else if (segment === "*") {
+        // Single * as entire segment matches one or more path segments
+        regexParts.push("(?:\\/[^/]+)+");
       } else {
         const segmentRegex = segment
           .replace(/\*/g, "[^/]*")
           .replace(/\./g, "\\.");
-        regexParts.push("\/" + segmentRegex);
+        regexParts.push("\\/" + segmentRegex);
       }
     }
 
-    regexParts.push("/?$");
+    // Allow optional trailing slash and anything after the last segment if it ends with *
+    const lastSegment = segments[segments.length - 1];
+    if (lastSegment === "*" || lastSegment.includes("*")) {
+      regexParts.push("(?:\\/.*)?$");
+    } else {
+      regexParts.push("/?$");
+    }
+    
     const pathRegex = new RegExp(regexParts.join(""));
     return pathRegex.test(urlPath);
   } catch (e) {

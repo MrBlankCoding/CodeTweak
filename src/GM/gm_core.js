@@ -173,7 +173,12 @@
       if (this.loadedScripts.has(url)) {
         return;
       }
-      await this.injectScriptTag(url);
+      // Auto-upgrade HTTP to HTTPS to prevent mixed content errors
+      const upgradedUrl = url.replace(/^http:\/\//i, 'https://');
+      if (upgradedUrl !== url) {
+        console.info(`CodeTweak: Auto-upgraded ${url} to HTTPS`);
+      }
+      await this.injectScriptTag(upgradedUrl);
       this.loadedScripts.add(url);
     }
 
@@ -261,10 +266,17 @@
     window.addEventListener('error', errorHandler);
     window.addEventListener('unhandledrejection', rejectionHandler);
 
+    // Ensure unsafeWindow is available globally before loading external scripts
+    // (jQuery and other libraries may try to attach to it)
+    if (!window.unsafeWindow) {
+      window.unsafeWindow = window;
+    }
+
     try {
       await loader.loadScripts(requireUrls);
       
-      const wrappedCode = `(async function() {\n'use strict';\n${userCode}\n})();`;
+      const wrappedCode = `(async function() {\n'use strict';\nconst unsafeWindow = window.unsafeWindow || window;\n${userCode}\n})();`;
+      console.log('CodeTweak: Wrapped code preview (first 500 chars):', wrappedCode.substring(0, 500));
       const blob = new Blob([wrappedCode], { type: "text/javascript" });
       const blobUrl = URL.createObjectURL(blob);
 

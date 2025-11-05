@@ -20,7 +20,25 @@ function createMainWorldExecutor(
   requiredUrls,
   gmInfo
 ) {
-  const MAX_RETRIES = 10;
+  // Always expose unsafeWindow in MAIN world FIRST (it's just the window object)
+  if (!window.unsafeWindow) {
+    try {
+      Object.defineProperty(window, "unsafeWindow", {
+        value: window,
+        writable: false,
+        configurable: false,
+      });
+      console.log('CodeTweak: unsafeWindow exposed via defineProperty');
+    } catch (e) {
+      window.unsafeWindow = window;
+      console.log('CodeTweak: unsafeWindow exposed via direct assignment');
+    }
+  } else {
+    console.log('CodeTweak: unsafeWindow already exists');
+  }
+  console.log('CodeTweak: unsafeWindow check:', typeof window.unsafeWindow, window.unsafeWindow === window);
+
+  const MAX_RETRIES = 30;
   const RETRY_INTERVAL = 100;
 
   function waitForGMBridge(worldType, callback) {
@@ -43,7 +61,14 @@ function createMainWorldExecutor(
         setTimeout(check, RETRY_INTERVAL);
       } else {
         console.error(
-          `CodeTweak: Timed out waiting for core script to load for script '${scriptId}'${worldType ? ` in ${worldType} world` : ''}.`
+          `CodeTweak: Timed out waiting for core script to load for script '${scriptId}'${worldType ? ` in ${worldType} world` : ''}.`,
+          'Missing objects:', {
+            GMBridge: typeof window.GMBridge,
+            ResourceManager: typeof window.GMBridge?.ResourceManager,
+            GMAPIRegistry: typeof window.GMBridge?.GMAPIRegistry,
+            ExternalScriptLoader: typeof window.GMBridge?.ExternalScriptLoader,
+            executeUserScriptWithDependencies: typeof window.GMBridge?.executeUserScriptWithDependencies
+          }
         );
       }
     }
@@ -103,8 +128,6 @@ function createMainWorldExecutor(
   waitForGMBridge('MAIN', () => {
     if (preventReExecution()) return;
 
-  
-
     const bridge = new window.GMBridge(scriptId, extensionId, 'MAIN');
     const resourceManager = window.GMBridge.ResourceManager.fromScript(script);
     const apiRegistry = new window.GMBridge.GMAPIRegistry(bridge, resourceManager);
@@ -133,7 +156,7 @@ function createIsolatedWorldExecutor(
   requiredUrls,
   gmInfo
 ) {
-  const MAX_RETRIES = 10;
+  const MAX_RETRIES = 30;
   const RETRY_INTERVAL = 100;
 
   function waitForGMBridge(worldType, callback) {
@@ -156,7 +179,14 @@ function createIsolatedWorldExecutor(
         setTimeout(check, RETRY_INTERVAL);
       } else {
         console.error(
-          `CodeTweak: Timed out waiting for core script to load for script '${scriptId}'${worldType ? ` in ${worldType} world` : ''}.`
+          `CodeTweak: Timed out waiting for core script to load for script '${scriptId}'${worldType ? ` in ${worldType} world` : ''}.`,
+          'Missing objects:', {
+            GMBridge: typeof window.GMBridge,
+            ResourceManager: typeof window.GMBridge?.ResourceManager,
+            GMAPIRegistry: typeof window.GMBridge?.GMAPIRegistry,
+            ExternalScriptLoader: typeof window.GMBridge?.ExternalScriptLoader,
+            executeUserScriptWithDependencies: typeof window.GMBridge?.executeUserScriptWithDependencies
+          }
         );
       }
     }
@@ -277,7 +307,7 @@ class ScriptInjector {
       await chrome.scripting.executeScript({
         target: { tabId },
         world,
-        files: ["GM/gm_core.js"],
+        files: ["GM/gm_core.js", "GM/gm_api_registry.js"],
       });
       tabCoreScripts.add(world);
     }
