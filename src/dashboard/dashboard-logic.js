@@ -117,9 +117,11 @@ async function loadSettings(settingsElements) {
     const defaultSettings = {
       enableAllScripts: true,
       showNotifications: true,
+      enhancedDebugging: false,
       confirmBeforeRunning: false,
       allowExternalResources: true,
       confirmFirstRun: false,
+      accentColor: "#61afef",
     };
 
     // Apply defaults and update storage if needed
@@ -131,7 +133,11 @@ async function loadSettings(settingsElements) {
           settings[key] = defaultValue;
           shouldSaveDefaults = true;
         }
-        element.checked = settings[key];
+        if (element.type === 'color') {
+          element.value = settings[key];
+        } else {
+          element.checked = settings[key];
+        }
       }
     });
 
@@ -139,8 +145,12 @@ async function loadSettings(settingsElements) {
     if (shouldSaveDefaults) {
       await chrome.storage.local.set({ settings });
     }
-
     
+    // Apply theme
+    if (settings.accentColor) {
+      document.documentElement.style.setProperty('--accent-color', settings.accentColor);
+    }
+
   } catch (error) {
     console.error("Error loading settings:", error);
     showNotification("Error loading settings", "error");
@@ -155,7 +165,11 @@ async function saveSettings(settingsElements) {
     Object.keys(settingsElements).forEach((key) => {
       const element = settingsElements[key];
       if (element) {
-        settings[key] = element.checked;
+        if (element.type === 'color') {
+          settings[key] = element.value;
+        } else {
+          settings[key] = element.checked;
+        }
       }
     });
 
@@ -163,6 +177,10 @@ async function saveSettings(settingsElements) {
     showNotification("Settings saved successfully", "success");
     chrome.runtime.sendMessage({ action: "settingsUpdated" });
 
+    // Apply theme
+    if (settings.accentColor) {
+      document.documentElement.style.setProperty('--accent-color', settings.accentColor);
+    }
     
   } catch (error) {
     console.error("Error saving settings:", error);

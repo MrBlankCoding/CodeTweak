@@ -52,17 +52,11 @@ npm build.js
 * [ ] Enhance extension management for CodeMirror
 * [ ] Link CodeMirror minimap toggle
 * [ ] Move helper functions (`exportScript`, `generateTamperMonkeyHeader`) to separate files
-* [ ] Add option to toggle execution in main world or isolated world
-* [ ] Display execution world and run-at time in editor/dashboard
 
 ### UI
-* [ ] Make it so you choose where the modifcation goes on pages with mutiple scripts running
-* [ ] Change highlight theme color
 * [ ] Fix editor optimizations
 * [ ] Can you make it so if you have mutiple scripts running at once on the same page the notifications will expand verticlly and not all overlap
 
-### Helpers
-* [ ] Fix regrex
 ---
 
 ## Acknowledgments

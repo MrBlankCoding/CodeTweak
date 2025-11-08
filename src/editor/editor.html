@@ -87,34 +87,29 @@
                                  <span>Script Name</span>
                                  <span class="label-required">*</span>
                               </label>
-                              <input type="text" id="scriptName" class="form-input" placeholder="My Awesome Script" required aria-describedby="scriptName-help">
-                              <small id="scriptName-help" class="form-help">A unique name for your script</small>
+                              <input type="text" id="scriptName" class="form-input" placeholder="My Awesome Script">
                            </div>
-                           
-                           <div class="form-row">
-                              <div class="form-group">
-                                 <label for="scriptAuthor" class="form-label">Author</label>
-                                 <input type="text" id="scriptAuthor" class="form-input" placeholder="Your Name">
-                              </div>
-                              <div class="form-group">
-                                 <label for="scriptVersion" class="form-label">Version</label>
-                                 <input type="text" id="scriptVersion" class="form-input" placeholder="1.0.0" pattern="[0-9]+\.[0-9]+\.[0-9]+">
-                              </div>
+                           <div class="form-group">
+                              <label for="scriptAuthor" class="form-label">Author</label>
+                              <input type="text" id="scriptAuthor" class="form-input" placeholder="Your Name">
                            </div>
-                           
+                           <div class="form-group">
+                              <label for="scriptVersion" class="form-label">Version</label>
+                              <input type="text" id="scriptVersion" class="form-input" placeholder="1.0.0" pattern="[0-9]+\.[0-9]+\.[0-9]+">
+                           </div>
                            <div class="form-group">
                               <label for="scriptDescription" class="form-label">Description</label>
                               <textarea id="scriptDescription" class="form-textarea" placeholder="Describe what your script does..." rows="3"></textarea>
                            </div>
-                           
-                           <div class="form-row">
-                              <div class="form-group">
-                                 <label for="scriptLicense" class="form-label">License</label>
-                                 <input type="text" id="scriptLicense" class="form-input" placeholder="e.g., MIT, GPL-3.0">
-                              </div>
-                              <div class="form-group">
-                                 <label for="scriptIcon" class="form-label">Icon URL</label>
+                           <div class="form-group">
+                              <label for="scriptLicense" class="form-label">License</label>
+                              <input type="text" id="scriptLicense" class="form-input" placeholder="e.g., MIT, GPL-3.0">
+                           </div>
+                           <div class="form-group">
+                              <label for="scriptIcon" class="form-label">Icon URL</label>
+                              <div class="icon-input-wrapper">
                                  <input type="url" id="scriptIcon" class="form-input" placeholder="https://... or data:image/png;base64,...">
+                                 <img id="iconPreview" class="icon-preview" src="" alt="Icon Preview">
                               </div>
                            </div>
                         </div>
@@ -166,6 +161,15 @@
                               <option value="document_start">Document Start</option>
                               <option value="document_end">Dom Loaded</option>
                               <option value="document_idle" selected>Page Loaded</option>
+                           </select>
+                        </div>
+
+                        <div class="form-group">
+                           <label for="injectInto" class="form-label">Execution Context</label>
+                           <select id="injectInto" class="form-select enhanced-select">
+                              <option value="default" selected>Default</option>
+                              <option value="isolated">Isolated World</option>
+                              <option value="main">Main World</option>
                            </select>
                         </div>
                      </div>

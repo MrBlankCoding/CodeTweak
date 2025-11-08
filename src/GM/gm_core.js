@@ -223,7 +223,9 @@
       const stack = event.error?.stack || event.reason?.stack || '';
       const message = event.error?.message || event.reason?.message || event.message || 'Unknown error';
       
-      console.error(`CodeTweak: Error in script ${scriptId}:`, message, stack);
+      console.error(`CodeTweak: Error in user script (ID: ${scriptId}). This is likely an issue with the script itself, not CodeTweak.`, `
+Message: ${message}`, `
+Stack: ${stack}`);
       // Send to editor
       try {
         window.postMessage({
@@ -245,7 +247,9 @@
       const message = event.reason?.message || String(event.reason) || 'Unhandled promise rejection';
       const stack = event.reason?.stack || '';
       
-      console.error(`CodeTweak: Unhandled promise rejection in script ${scriptId}:`, message, stack);
+      console.error(`CodeTweak: Unhandled promise rejection in user script (ID: ${scriptId}). This is likely an issue with the script itself, not CodeTweak.`, `
+Message: ${message}`, `
+Stack: ${stack}`);
       try {
         window.postMessage({
           type: 'SCRIPT_ERROR',
@@ -286,6 +290,7 @@
 
       scriptEl.textContent = trustedCode;
       (document.head || document.documentElement || document.body).appendChild(scriptEl);
+      scriptEl.remove();
 
     } catch (err) {
       console.error(`CodeTweak: Error executing user script ${scriptId}:`, err);
@@ -305,6 +310,10 @@
       } catch (e) {
         console.error('Failed to report script execution error:', e);
       }
+    } finally {
+      // Clean up the event listeners
+      window.removeEventListener('error', errorHandler);
+      window.removeEventListener('unhandledrejection', rejectionHandler);
     }
   }
 

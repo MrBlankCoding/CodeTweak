@@ -195,8 +195,6 @@
 
 /* Forms */
 .form-grid { display: flex; flex-direction: column; gap: var(--space-sm); }
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-xs); }
-#info-panel .form-row { gap: var(--space-sm); }
 .form-group { margin-bottom: 0; position: relative; }
 
 .form-label {
@@ -209,14 +207,6 @@
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.025em;
-}
-.label-required { color: var(--error); font-size: 10px; }
-.form-help {
-  display: block;
-  margin-top: var(--space-xs);
-  font-size: 10px;
-  color: var(--text-muted);
-  font-style: italic;
 }
 
 .form-input,
@@ -709,4 +699,20 @@
     padding-bottom: 0;
     border-width: 0;
   }
+}
+
+.icon-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.icon-preview {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  flex-shrink: 0;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
 }

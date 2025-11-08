@@ -218,8 +218,10 @@ class ScriptEditor {
       "scriptAuthor",
       "scriptLicense",
       "scriptIcon",
+      "iconPreview",
       "targetUrl",
       "runAt",
+      "injectInto",
       "scriptVersion",
       "scriptDescription",
       "saveBtn",
@@ -331,11 +333,19 @@ class ScriptEditor {
     }
       this.setupBackgroundConnection();
       this.codeEditorManager.updateEditorLintAndAutocomplete();
+      this.applyTheme();
 
       setTimeout(() => this.codeEditorManager.focus(), 100);
     } catch (error) {
       console.error("Failed to initialize editor:", error);
       this.ui.showStatusMessage("Failed to initialize editor", "error");
+    }
+  }
+
+  async applyTheme() {
+    const { settings } = await chrome.storage.local.get("settings");
+    if (settings && settings.accentColor) {
+      document.documentElement.style.setProperty('--accent-color', settings.accentColor);
     }
   }
 
@@ -656,6 +666,7 @@ class ScriptEditor {
       this.elements.scriptVersion,
       this.elements.scriptDescription,
       this.elements.runAt,
+      this.elements.injectInto,
       this.elements.targetUrl
     ];
 
@@ -665,6 +676,8 @@ class ScriptEditor {
         input.addEventListener('input', handleChange);
       }
     });
+
+    this.elements.scriptIcon?.addEventListener('input', () => this.updateIconPreview());
 
     // GM API checkboxes
     Object.values(this.gmApiDefinitions).forEach(api => {
@@ -694,6 +707,17 @@ class ScriptEditor {
           cb.style.display = shouldShow ? "flex" : "none";
         });
       });
+    }
+  }
+
+  updateIconPreview() {
+    const url = this.elements.scriptIcon.value;
+    const preview = this.elements.iconPreview;
+    if (url) {
+      preview.src = url;
+      preview.style.display = 'block';
+    } else {
+      preview.style.display = 'none';
     }
   }
 
@@ -776,6 +800,7 @@ class ScriptEditor {
     this.elements.scriptName.value = script.name || "";
     this.elements.scriptAuthor.value = script.author || "";
     this.elements.runAt.value = script.runAt || "document_idle";
+    this.elements.injectInto.value = script.injectInto || "default";
     this.elements.scriptVersion.value =
       script.version || this.config.DEFAULT_VERSION;
     this.elements.scriptDescription.value = script.description || "";
@@ -801,6 +826,7 @@ class ScriptEditor {
     // Update section visibility and API count based on loaded script
     this.updateApiCount();
     this.updateSectionVisibility();
+    this.updateIconPreview();
 
     // Populate resource list
     if (this.elements.resourceList) {
@@ -840,6 +866,7 @@ class ScriptEditor {
       author: this.elements.scriptAuthor.value.trim() || "Anonymous",
       targetUrls: urlList,
       runAt: this.elements.runAt.value,
+      injectInto: this.elements.injectInto.value,
       version:
         this.elements.scriptVersion.value.trim() || this.config.DEFAULT_VERSION,
       description: this.elements.scriptDescription.value.trim(),

@@ -32,11 +32,11 @@ export function urlMatchesPattern(url, pattern) {
       if (!(urlHost === domain || urlHost.endsWith("." + domain))) return false;
     } else if (patternHost.includes("*")) {
       const hostRegex = new RegExp(
-        "^" + patternHost.replace(/\./g, "\\.").replace(/\*/g, ".*") + "$"
+        "^" + patternHost.replace(/\./g, "\\.").replace(/\*/g, "[^.]+") + "$"
       );
       if (!hostRegex.test(urlHost)) return false;
     } else {
-      if (urlHost !== patternHost) return false;
+      if (urlHost !== patternHost && !urlHost.endsWith("." + patternHost)) return false;
     }
 
     if (["/", "/*"].includes(patternPath)) return true;

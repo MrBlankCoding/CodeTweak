@@ -29,14 +29,15 @@ function initDashboard() {
       statusFilter: document.getElementById("statusFilter"),
       runAtFilter: document.getElementById("runAtFilter"),
     },
-    settings: {
-      enableAllScripts: document.getElementById("enableAllScripts"),
-      showNotifications: document.getElementById("showNotifications"),
-      darkMode: document.getElementById("darkMode"),
-      allowExternalResources: document.getElementById("allowExternalResources"),
-      confirmFirstRun: document.getElementById("confirmFirstRun"),
-    },
-    greasyfork: {
+                            settings: {
+                            enableAllScripts: document.getElementById("enableAllScripts"),
+                            showNotifications: document.getElementById("showNotifications"),
+                            enhancedDebugging: document.getElementById("enhancedDebugging"),
+                            darkMode: document.getElementById("darkMode"),
+                            allowExternalResources: document.getElementById("allowExternalResources"),
+                            confirmFirstRun: document.getElementById("confirmFirstRun"),
+                            accentColor: document.getElementById("accentColor"),
+                          },    greasyfork: {
       button: document.getElementById("greasyforkBtn"),
       modal: document.getElementById("greasyforkModal"),
       closeBtn: document.querySelector(".modal-close"),

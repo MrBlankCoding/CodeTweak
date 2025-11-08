@@ -307,6 +307,11 @@ function normalizeStackTrace(stack) {
 // Needs a rework
 async function storeScriptError(scriptId, error) {
   try {
+    const { settings = {} } = await chrome.storage.local.get("settings");
+    if (!settings.enhancedDebugging) {
+      return;
+    }
+
     const storageKey = `scriptErrors_${scriptId}`;
     const { [storageKey]: existingErrors = [] } = await chrome.storage.local.get(storageKey);
     const normalizedNewStack = normalizeStackTrace(error.stack);

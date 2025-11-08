@@ -118,6 +118,14 @@ function createScriptListItem(script) {
   const nameCol = document.createElement("div");
   nameCol.className = "script-name-col";
 
+  if (script.icon) {
+    const icon = document.createElement("img");
+    icon.src = script.icon;
+    icon.className = "script-icon";
+    nameCol.appendChild(icon);
+  }
+
+  const nameAndDesc = document.createElement("div");
   const name = document.createElement("h3");
   name.className = "script-name";
   name.textContent = script.name;
@@ -126,7 +134,8 @@ function createScriptListItem(script) {
   description.className = "script-description";
   description.textContent = script.description || "No description provided.";
 
-  nameCol.append(name, description);
+  nameAndDesc.append(name, description);
+  nameCol.append(nameAndDesc);
 
   // Version column
   const versionCol = document.createElement("div");

@@ -1,6 +1,7 @@
 :root {
-  --primary: #61afef; 
-  --primary-hover: #528bff;
+  --accent-color: #61afef;
+  --primary: var(--accent-color); 
+  --primary-hover: var(--accent-color);
   --primary-light: rgba(97, 175, 239, 0.15);
   --secondary: #c678dd;
   --accent: #56b6c2;

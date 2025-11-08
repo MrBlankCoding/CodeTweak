@@ -32,6 +32,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     chrome.tabs.create({ url: "https://github.com/MrBlankCoding/CodeTweak/issues/new" });
   });
 
+  await applyTheme();
   await loadScripts(currentTabUrl);
   await loadMenuCommands();
 
@@ -40,6 +41,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       loadMenuCommands();
     }
   });
+
+  async function applyTheme() {
+    const { settings } = await chrome.storage.local.get("settings");
+    if (settings && settings.accentColor) {
+      document.documentElement.style.setProperty('--accent-color', settings.accentColor);
+    }
+  }
 
   async function loadScripts(url) {
     const { scripts = [] } = await chrome.storage.local.get("scripts");

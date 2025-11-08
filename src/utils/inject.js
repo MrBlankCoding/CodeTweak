@@ -18,8 +18,20 @@ function createMainWorldExecutor(
   extensionId,
   initialValues,
   requiredUrls,
-  gmInfo
+  gmInfo,
+  enhancedDebugging
 ) {
+  if (enhancedDebugging) {
+    console.group(`[CodeTweak] Injecting script: ${script.name}`);
+    console.log("  ID: ", scriptId);
+    console.log("  Run at: ", script.runAt);
+    console.log("  Inject into: Main World");
+    console.log("  Enabled APIs: ", Object.keys(enabledApis).filter(api => enabledApis[api]));
+    console.log("  Requires: ", requiredUrls || "none");
+    console.log("  Resources: ", script.resources || "none");
+    console.groupEnd();
+  }
+
   function waitForGMBridge(worldType, callback) {
     if (window.GMBridge) {
       callback();
@@ -109,8 +121,20 @@ function createIsolatedWorldExecutor(
   script,
   initialValues,
   requiredUrls,
-  gmInfo
+  gmInfo,
+  enhancedDebugging
 ) {
+  if (enhancedDebugging) {
+    console.group(`[CodeTweak] Injecting script: ${script.name}`);
+    console.log("  ID: ", scriptId);
+    console.log("  Run at: ", script.runAt);
+    console.log("  Inject into: Isolated World");
+    console.log("  Enabled APIs: ", Object.keys(enabledApis).filter(api => enabledApis[api]));
+    console.log("  Requires: ", requiredUrls || "none");
+    console.log("  Resources: ", script.resources || "none");
+    console.groupEnd();
+  }
+
   function waitForGMBridge(worldType, callback) {
     if (window.GMBridge) {
       callback();
@@ -190,8 +214,9 @@ class ScriptInjector {
         return false;
       }
 
-      const config = this.prepareScriptConfig(script);
-      const injected = await this.tryInjectInBothWorlds(tabId, config);
+      const { settings: storedSettings = {} } = await chrome.storage.local.get("settings");
+      const config = this.prepareScriptConfig(script, storedSettings.enhancedDebugging);
+      const injected = await this.tryInjectInBothWorlds(tabId, config, script.injectInto);
 
       if (injected && settings.showNotifications) {
         this.showNotification(tabId, script.name);
@@ -204,23 +229,33 @@ class ScriptInjector {
     }
   }
 
-  async tryInjectInBothWorlds(tabId, config) {
-    try {
-      await this.injectInWorld(tabId, config, EXECUTION_WORLDS.MAIN);
-      return true;
-    } catch (error) {
-      console.warn(
-        `CodeTweak: MAIN world injection failed for script '${config.id}', trying ISOLATED world:`,
-        error?.message
-      );
-    }
-
-    try {
-      await this.injectInWorld(tabId, config, EXECUTION_WORLDS.ISOLATED);
-      return true;
-    } catch (error) {
-      console.error(`CodeTweak: ISOLATED world injection also failed for script '${config.id}':`, error);
-      return false;
+  async tryInjectInBothWorlds(tabId, config, injectInto) {
+    if (injectInto === "default") {
+      try {
+        await this.injectInWorld(tabId, config, EXECUTION_WORLDS.MAIN);
+        return true;
+      } catch (error) {
+        console.warn(
+          `CodeTweak: MAIN world injection failed for script '${config.id}', trying ISOLATED world:`,
+          error?.message
+        );
+        try {
+          await this.injectInWorld(tabId, config, EXECUTION_WORLDS.ISOLATED);
+          return true;
+        } catch (error) {
+          console.error(`CodeTweak: ISOLATED world injection also failed for script '${config.id}':`, error);
+          return false;
+        }
+      }
+    } else {
+      const world = injectInto === "main" ? EXECUTION_WORLDS.MAIN : EXECUTION_WORLDS.ISOLATED;
+      try {
+        await this.injectInWorld(tabId, config, world);
+        return true;
+      } catch (error) {
+        console.error(`CodeTweak: ${world} world injection failed for script '${config.id}':`, error);
+        return false;
+      }
     }
   }
 
@@ -273,11 +308,12 @@ class ScriptInjector {
         config.initialValues,
         config.requires,
         config.gmInfo,
+        config.enhancedDebugging,
       ],
     });
   }
 
-  prepareScriptConfig(script) {
+  prepareScriptConfig(script, enhancedDebugging) {
     const scriptId = script.id || script.name || `anonymous_script_${Date.now()}`;
 
     const enabledApis = {
@@ -321,6 +357,7 @@ class ScriptInjector {
         scriptHandler: "CodeTweak",
         version: chrome.runtime?.getManifest?.().version || "",
       },
+      enhancedDebugging,
     };
   }
 
