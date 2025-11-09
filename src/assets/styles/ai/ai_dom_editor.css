@@ -26,26 +26,34 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
+  padding: 0.625rem 1rem;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-primary);
 }
 
+.header-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
 .header-actions {
   display: flex;
-  gap: 0.25rem;
+  gap: 0.375rem;
 }
 
 /* Model Selector & Buttons */
 .model-selector {
-  padding: 0.375rem 0.75rem;
+  padding: 0.5rem 0.75rem;
   background: var(--bg-tertiary);
   border: 1px solid var(--border-primary);
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   color: var(--text-primary);
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   cursor: pointer;
-  min-width: 130px;
+  width: 100%;
+  font-family: var(--font-sans);
 }
 
 .model-selector:hover {
@@ -55,6 +63,7 @@ body {
 .model-selector:focus {
   outline: none;
   border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 .tool-btn,
@@ -63,11 +72,12 @@ body {
   border: none;
   color: var(--text-secondary);
   cursor: pointer;
-  padding: 0.375rem;
+  padding: 0.5rem;
   border-radius: 0.375rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.15s ease;
 }
 
 .tool-btn:hover,
@@ -462,17 +472,15 @@ button svg {
   background: var(--bg-secondary);
 }
 
-.input-toolbar {
-  display: flex;
-  gap: 0.25rem;
-  padding: 0.5rem 0.75rem;
+.model-selector-row {
+  padding: 0.75rem 1rem 0.5rem;
   border-bottom: 1px solid var(--border-primary);
 }
 
 .input-wrapper {
   display: flex;
   align-items: flex-end;
-  gap: 0.5rem;
+  gap: 0.625rem;
   padding: 0.75rem 1rem;
 }
 
@@ -484,14 +492,17 @@ button svg {
   padding: 0.625rem 0.75rem;
   font-size: 0.875rem;
   color: var(--text-primary);
+  font-family: var(--font-sans);
   resize: none;
-  max-height: 100px;
-  line-height: 1.4;
+  max-height: 120px;
+  min-height: 38px;
+  line-height: 1.5;
 }
 
 #userInput:focus {
   outline: none;
   border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-light);
 }
 
 #userInput::placeholder {
@@ -504,13 +515,14 @@ button svg {
   color: white;
   cursor: pointer;
   padding: 0.5rem;
-  width: 34px;
-  height: 34px;
+  width: 38px;
+  height: 38px;
   border-radius: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  transition: filter 0.15s ease;
 }
 
 .send-btn:hover:not(:disabled) {
@@ -520,4 +532,11 @@ button svg {
 .send-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* Input area element selector button */
+.input-wrapper .tool-btn {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
 }

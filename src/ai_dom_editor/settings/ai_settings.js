@@ -61,14 +61,9 @@ class AISettings {
 
   async loadSettings() {
     try {
-      const { aiDomEditorConfigs, aiDomEditorConfig } = await chrome.storage.local.get(['aiDomEditorConfigs', 'aiDomEditorConfig']);
+      const { aiDomEditorConfigs } = await chrome.storage.local.get('aiDomEditorConfigs');
       
-      // Migrate old single config to new multi-config format
-      if (aiDomEditorConfig && !aiDomEditorConfigs) {
-        this.apiConfigs = [aiDomEditorConfig];
-        await chrome.storage.local.set({ aiDomEditorConfigs: this.apiConfigs });
-        await chrome.storage.local.remove('aiDomEditorConfig');
-      } else if (aiDomEditorConfigs && Array.isArray(aiDomEditorConfigs)) {
+      if (aiDomEditorConfigs && Array.isArray(aiDomEditorConfigs)) {
         this.apiConfigs = aiDomEditorConfigs;
       }
       
@@ -339,16 +334,30 @@ class AISettings {
       
       await chrome.storage.local.set({ aiDomEditorConfigs: this.apiConfigs });
       
-      // Also save the first config as default for backward compatibility
-      if (this.apiConfigs.length > 0) {
-        await chrome.storage.local.set({ aiDomEditorConfig: this.apiConfigs[0] });
-      }
-      
       this.renderAPIKeysList();
       this.showToast('Settings saved successfully! ✓', 'success');
       
       // Fetch and save all available models
-      await this.fetchAllModels();
+      const fetchedModels = await this.fetchAllModels();
+      
+      // If no models were fetched, create entries from provider fallback models
+      if (!fetchedModels || fetchedModels.length === 0) {
+        const basicModels = [];
+        this.apiConfigs.forEach(cfg => {
+          const modelsForProvider = this.providerModels[cfg.provider] || [];
+          modelsForProvider.forEach(modelId => {
+            if (!basicModels.find(m => m.id === modelId && m.provider === cfg.provider)) {
+              basicModels.push({
+                id: modelId,
+                provider: cfg.provider,
+                apiKey: cfg.apiKey,
+                endpoint: cfg.endpoint
+              });
+            }
+          });
+        });
+        await chrome.storage.local.set({ availableModels: basicModels });
+      }
       
       // Notify any open AI editor windows
       chrome.runtime.sendMessage({ action: 'aiSettingsUpdated' });
@@ -384,13 +393,6 @@ class AISettings {
     this.apiConfigs.splice(index, 1);
     await chrome.storage.local.set({ aiDomEditorConfigs: this.apiConfigs });
     
-    // Update default config
-    if (this.apiConfigs.length > 0) {
-      await chrome.storage.local.set({ aiDomEditorConfig: this.apiConfigs[0] });
-    } else {
-      await chrome.storage.local.remove('aiDomEditorConfig');
-    }
-    
     // Load first config or reset form
     if (this.apiConfigs.length > 0) {
       this.loadConfig(0);
@@ -401,7 +403,30 @@ class AISettings {
     }
     
     this.renderAPIKeysList();
-    await this.fetchAllModels();
+    
+    // Fetch all models or create entries from provider fallback models
+    const fetchedModels = await this.fetchAllModels();
+    if ((!fetchedModels || fetchedModels.length === 0) && this.apiConfigs.length > 0) {
+      const basicModels = [];
+      this.apiConfigs.forEach(cfg => {
+        const modelsForProvider = this.providerModels[cfg.provider] || [];
+        modelsForProvider.forEach(modelId => {
+          if (!basicModels.find(m => m.id === modelId && m.provider === cfg.provider)) {
+            basicModels.push({
+              id: modelId,
+              provider: cfg.provider,
+              apiKey: cfg.apiKey,
+              endpoint: cfg.endpoint
+            });
+          }
+        });
+      });
+      await chrome.storage.local.set({ availableModels: basicModels });
+    } else if (this.apiConfigs.length === 0) {
+      // Clear models if no configs left
+      await chrome.storage.local.set({ availableModels: [] });
+    }
+    
     this.showToast('API key configuration deleted', 'success');
     
     // Notify any open AI editor windows
@@ -416,7 +441,8 @@ class AISettings {
       this.toggleEndpointField();
       this.updateTemperatureValue();
       
-      chrome.storage.local.remove('aiDomEditorConfig');
+      chrome.storage.local.remove('aiDomEditorConfigs');
+      chrome.storage.local.remove('availableModels');
       this.showToast('Settings reset', 'success');
     }
   }

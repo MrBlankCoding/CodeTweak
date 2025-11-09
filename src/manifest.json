@@ -51,7 +51,7 @@
     },
     {
       "matches": ["http://*/*", "https://*/*"],
-      "js": ["ai_dom_editor/ai_dom_content.js", "ai_dom_editor/ai_dom_sidebar.js"],
+      "js": ["ai_dom_editor/editor/ai_dom_content.js", "ai_dom_editor/sidebar/ai_dom_sidebar.js"],
       "run_at": "document_idle"
     },
     {

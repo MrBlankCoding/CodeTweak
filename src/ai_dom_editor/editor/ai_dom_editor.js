@@ -67,8 +67,14 @@ class AIDOMEditor {
 
   async loadAPIConfig() {
     try {
-      const { aiDomEditorConfig } = await chrome.storage.local.get('aiDomEditorConfig');
-      this.apiConfig = aiDomEditorConfig || null;
+      const { aiDomEditorConfigs } = await chrome.storage.local.get('aiDomEditorConfigs');
+      
+      // Use first config from multi-config system
+      if (aiDomEditorConfigs && aiDomEditorConfigs.length > 0) {
+        this.apiConfig = aiDomEditorConfigs[0];
+      } else {
+        this.apiConfig = null;
+      }
       
       if (!this.apiConfig || !this.apiConfig.apiKey || !this.apiConfig.endpoint) {
         this.showConfigBanner();
@@ -83,8 +89,20 @@ class AIDOMEditor {
   
   async loadAvailableModels() {
     try {
-      const { availableModels, selectedModel } = await chrome.storage.local.get(['availableModels', 'selectedModel']);
+      const { availableModels, selectedModel, aiDomEditorConfigs } = 
+        await chrome.storage.local.get(['availableModels', 'selectedModel', 'aiDomEditorConfigs']);
+      
       this.availableModels = availableModels || [];
+      
+      // If no models but we have configs, create models from configs as fallback
+      if (this.availableModels.length === 0 && aiDomEditorConfigs && aiDomEditorConfigs.length > 0) {
+        this.availableModels = aiDomEditorConfigs.map(config => ({
+          id: config.model || 'default',
+          provider: config.provider || 'custom',
+          apiKey: config.apiKey,
+          endpoint: config.endpoint
+        }));
+      }
       
       // Populate model selector
       if (this.elements.modelSelector) {
@@ -728,7 +746,7 @@ ${scriptCode.split('\n').map(line => '    ' + line).join('\n')}
     if (confirm('Clear conversation history for this site?')) {
       this.messages = [];
       this.elements.messages.innerHTML = '';
-      this.elements.welcomeMessage.style.display = 'flex';
+      this.elements.welcomeMessage.style.display = 'block';
       
       // Clear from storage
       if (this.currentSiteUrl) {
