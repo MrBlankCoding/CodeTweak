@@ -1,5 +1,6 @@
 import feather from 'feather-icons';
 import { urlMatchesPattern, formatRunAt, getScriptDescription } from "../utils/urls.js";
+import { applyTranslations, getMessageSync } from "../utils/i18n.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
   feather.replace();
@@ -8,6 +9,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const emptyState = document.getElementById("emptyState");
   const createScriptBtn = document.getElementById("createScript");
   const openDashboardBtn = document.getElementById("openDashboard");
+  const aiEditorBtn = document.getElementById("aiEditorBtn");
   const reportIssueLink = document.getElementById("reportIssue");
 
   let currentTabUrl = "";
@@ -27,12 +29,44 @@ document.addEventListener("DOMContentLoaded", async () => {
     chrome.tabs.create({ url: chrome.runtime.getURL("dashboard/dashboard.html") });
   });
 
+  aiEditorBtn.addEventListener("click", async () => {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      chrome.tabs.sendMessage(tab.id, { action: 'openAIEditor' }, (response) => {
+        if (chrome.runtime.lastError || !response || response.success !== true) {
+          // Fallback: open standalone window
+          chrome.windows.create({
+            url: chrome.runtime.getURL("ai_dom_editor/ai_sidebar_window.html"),
+            type: "popup",
+            width: 440,
+            height: 800,
+            top: 80,
+            left: screen.availWidth - 460
+          });
+        }
+      });
+      window.close();
+    } catch {
+      // Fallback: open standalone window
+      chrome.windows.create({
+        url: chrome.runtime.getURL("ai_dom_editor/ai_sidebar_window.html"),
+        type: "popup",
+        width: 440,
+        height: 800,
+        top: 80,
+        left: screen.availWidth - 460
+      });
+      window.close();
+    }
+  });
+
   reportIssueLink.addEventListener("click", (e) => {
     e.preventDefault();
     chrome.tabs.create({ url: "https://github.com/MrBlankCoding/CodeTweak/issues/new" });
   });
 
   await applyTheme();
+  await applyTranslations();
   await loadScripts(currentTabUrl);
   await loadMenuCommands();
 
@@ -66,11 +100,11 @@ document.addEventListener("DOMContentLoaded", async () => {
           <div class="empty-icon">
             <i data-feather="file-text"></i>
           </div>
-          <p><br>Create your first script to get started.</p>
+          <p><br>${getMessageSync('popupCreateFirst')}</p>
         `;
       } else {
         emptyState.innerHTML = `
-          <p>No scripts for this page.<br>Create a new script or visit a different page.</p>
+          <p>${getMessageSync('popupNoScriptsForPage')}<br>${getMessageSync('popupCreateOrVisit')}</p>
         `;
       }
       return;
@@ -111,7 +145,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const label = document.createElement("label");
     label.className = "toggle-switch";
-    label.title = script.enabled !== false ? "Disable script" : "Enable script";
+    label.title = script.enabled !== false ? getMessageSync('popupDisableScript') : getMessageSync('popupEnableScript');
 
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
@@ -174,7 +208,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (item) {
         const label = item.querySelector(".toggle-switch");
         item.classList.toggle("script-disabled", !enabled);
-        label.title = enabled ? "Disable script" : "Enable script";
+        label.title = enabled ? getMessageSync('popupDisableScript') : getMessageSync('popupEnableScript');
       }
     } catch (err) {
       console.error("Error toggling script:", err);

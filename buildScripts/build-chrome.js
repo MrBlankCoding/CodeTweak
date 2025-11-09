@@ -27,6 +27,8 @@ const staticDirs = [
   "popup",
   "GM",
   "utils",
+  "ai_dom_editor",
+  "_locales",
 ];
 for (const dir of staticDirs) {
   cpSync(`src/${dir}`, join(outdir, dir), { recursive: true });
@@ -34,10 +36,10 @@ for (const dir of staticDirs) {
 
 const manifest = {
   manifest_version: 3,
-  name: "CodeTweak",
+  name: "__MSG_appName__",
   version: "1.0.0",
-  description:
-    "Inject custom JavaScript code into specific websites based on user-defined settings",
+  description: "__MSG_appDescription__",
+  default_locale: "en",
   permissions: [
     "storage",
     "tabs",
@@ -81,6 +83,11 @@ const manifest = {
       world: "ISOLATED",
     },
     {
+      matches: ["http://*/*", "https://*/*"],
+      js: ["ai_dom_editor/ai_dom_content.js", "ai_dom_editor/ai_dom_sidebar.js"],
+      run_at: "document_idle",
+    },
+    {
       matches: ["https://greasyfork.org/*"],
       js: ["utils/greasyfork_interceptor.js"],
       run_at: "document_start",
@@ -88,7 +95,7 @@ const manifest = {
   ],
   web_accessible_resources: [
     {
-      resources: ["utils/*", "GM/*"],
+      resources: ["utils/*", "GM/*", "ai_dom_editor/*"],
       matches: ["<all_urls>"],
     },
   ],
@@ -107,6 +114,10 @@ await build({
     "src/popup/popup.js",
     "src/editor/editor.js",
     "src/dashboard/dashboard.js",
+    "src/ai_dom_editor/ai_dom_content.js",
+    "src/ai_dom_editor/ai_dom_sidebar.js",
+    "src/ai_dom_editor/ai_dom_editor.js",
+    "src/ai_dom_editor/ai_settings.js",
   ],
   bundle: true,
   outdir,

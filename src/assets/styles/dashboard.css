@@ -231,6 +231,38 @@ body {
   font-size: var(--text-xs);
 }
 
+.language-selector {
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  outline: none;
+  transition: var(--transition-all);
+  min-width: 200px;
+}
+
+.language-selector:hover {
+  border-color: var(--primary);
+}
+
+.language-selector:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(97, 175, 239, 0.2);
+}
+
+.setting-item input[type="color"] {
+  width: 60px;
+  height: 40px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  padding: 4px;
+  background: var(--bg-secondary);
+}
+
 .settings-actions {
   display: flex;
   gap: var(--space-md);

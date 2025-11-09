@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "CodeTweak",
+  "name": "__MSG_appName__",
   "version": "1.0.0",
-  "description": "Inject custom JavaScript code into specific websites based on user-defined settings",
+  "description": "__MSG_appDescription__",
+  "default_locale": "en",
   "permissions": [
     "storage",
     "tabs",
@@ -49,6 +50,11 @@
       "world": "ISOLATED"
     },
     {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["ai_dom_editor/ai_dom_content.js", "ai_dom_editor/ai_dom_sidebar.js"],
+      "run_at": "document_idle"
+    },
+    {
       "matches": ["https://greasyfork.org/*"],
       "js": ["utils/greasyfork_interceptor.js"],
       "run_at": "document_start"
@@ -56,7 +62,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["utils/*", "GM/*"],
+      "resources": ["utils/*", "GM/*", "ai_dom_editor/*"],
       "matches": ["<all_urls>"]
     }
   ]

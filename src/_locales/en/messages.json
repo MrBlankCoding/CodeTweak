@@ -1,0 +1,336 @@
+{
+  "appName": {
+    "message": "CodeTweak"
+  },
+  "appDescription": {
+    "message": "Create and manage custom JavaScript scripts for any website"
+  },
+  
+  "sidebarScripts": {
+    "message": "Scripts"
+  },
+  "sidebarSettings": {
+    "message": "Settings"
+  },
+  "sidebarAbout": {
+    "message": "About"
+  },
+  "sidebarNewScript": {
+    "message": "New Script"
+  },
+  "sidebarBrowseScripts": {
+    "message": "Browse Scripts"
+  },
+  
+  "scriptsTitle": {
+    "message": "Your Scripts"
+  },
+  "scriptsSearch": {
+    "message": "Search scripts..."
+  },
+  "scriptsAllWebsites": {
+    "message": "All Websites"
+  },
+  "scriptsAllStatus": {
+    "message": "All Status"
+  },
+  "scriptsEnabled": {
+    "message": "Enabled"
+  },
+  "scriptsDisabled": {
+    "message": "Disabled"
+  },
+  "scriptsRunTiming": {
+    "message": "Run Timing"
+  },
+  "scriptsPageStart": {
+    "message": "Page Start"
+  },
+  "scriptsDomReady": {
+    "message": "DOM Ready"
+  },
+  "scriptsPageLoad": {
+    "message": "Page Load"
+  },
+  "scriptsName": {
+    "message": "Name"
+  },
+  "scriptsVersion": {
+    "message": "Version"
+  },
+  "scriptsSites": {
+    "message": "Sites"
+  },
+  "scriptsFeatures": {
+    "message": "Features"
+  },
+  "scriptsRunAt": {
+    "message": "Run At"
+  },
+  "scriptsActions": {
+    "message": "Actions"
+  },
+  "scriptsNoScripts": {
+    "message": "No Scripts Yet"
+  },
+  "scriptsNoScriptsDesc": {
+    "message": "Create your first script to get started"
+  },
+  "scriptsCreateNew": {
+    "message": "Create New Script"
+  },
+  
+  "settingsTitle": {
+    "message": "Settings"
+  },
+  "settingsGeneral": {
+    "message": "General"
+  },
+  "settingsEnableDefault": {
+    "message": "Enable scripts by default"
+  },
+  "settingsEnableDefaultDesc": {
+    "message": "New scripts will be automatically enabled"
+  },
+  "settingsShowNotifications": {
+    "message": "Show notifications"
+  },
+  "settingsShowNotificationsDesc": {
+    "message": "Display notifications when scripts run"
+  },
+  "settingsEnhancedDebugging": {
+    "message": "Enhanced Debugging"
+  },
+  "settingsEnhancedDebuggingDesc": {
+    "message": "Log detailed script information to the console"
+  },
+  "settingsLanguage": {
+    "message": "Language"
+  },
+  "settingsLanguageDesc": {
+    "message": "Choose your preferred interface language"
+  },
+  "languageBrowserDefault": {
+    "message": "Browser Default (Auto)"
+  },
+  "settingsSecurity": {
+    "message": "Security"
+  },
+  "settingsAllowExternal": {
+    "message": "Allow external resources"
+  },
+  "settingsAllowExternalDesc": {
+    "message": "Allow scripts to load resources from external URLs"
+  },
+  "settingsConfirmFirstRun": {
+    "message": "Confirm first run"
+  },
+  "settingsConfirmFirstRunDesc": {
+    "message": "Ask for confirmation before a script runs on a website for the first time"
+  },
+  "settingsTheme": {
+    "message": "Theme"
+  },
+  "settingsAccentColor": {
+    "message": "Accent Color"
+  },
+  "settingsAccentColorDesc": {
+    "message": "Choose the accent color for the UI"
+  },
+  "settingsSaveSettings": {
+    "message": "Save Settings"
+  },
+  "settingsResetDefaults": {
+    "message": "Reset Defaults"
+  },
+  "settingsExportAll": {
+    "message": "Export All"
+  },
+  
+  "aboutTitle": {
+    "message": "About CodeTweak"
+  },
+  "aboutDocsText": {
+    "message": "Documentation and guides available at:"
+  },
+  
+  "greasyForkTitle": {
+    "message": "Browse Greasy Fork Scripts"
+  },
+  "greasyForkSearch": {
+    "message": "Search Greasy Fork..."
+  },
+  "greasyForkSearchBtn": {
+    "message": "Search"
+  },
+  
+  "popupReportIssue": {
+    "message": "Report Issue"
+  },
+  "popupNoScriptsForPage": {
+    "message": "No scripts for this page."
+  },
+  "popupCreateOrVisit": {
+    "message": "Create a new script or visit a different page."
+  },
+  "popupCreateFirst": {
+    "message": "Create your first script to get started."
+  },
+  "popupMenuCommands": {
+    "message": "Menu Commands"
+  },
+  "popupEnableScript": {
+    "message": "Enable script"
+  },
+  "popupDisableScript": {
+    "message": "Disable script"
+  },
+  
+  "editorUnsavedChanges": {
+    "message": "Unsaved Changes"
+  },
+  "editorSaveScript": {
+    "message": "Save Script"
+  },
+  "editorScriptInfo": {
+    "message": "Script Information"
+  },
+  "editorScriptInfoDesc": {
+    "message": "Configure your userscript details"
+  },
+  "editorExecutionSettings": {
+    "message": "Execution Settings"
+  },
+  "editorExecutionSettingsDesc": {
+    "message": "Control when and where your script runs"
+  },
+  "editorGmApiAccess": {
+    "message": "GM API Access"
+  },
+  "editorGmApiAccessDesc": {
+    "message": "Enable powerful Greasemonkey APIs"
+  },
+  "editorRequiredScripts": {
+    "message": "Required Scripts"
+  },
+  "editorRequiredScriptsDesc": {
+    "message": "External libraries and dependencies"
+  },
+  "editorScriptResources": {
+    "message": "Script Resources"
+  },
+  "editorScriptResourcesDesc": {
+    "message": "Static resources your script needs"
+  },
+  "editorScriptErrors": {
+    "message": "Script Errors"
+  },
+  "editorGenerateHeader": {
+    "message": "Generate Metadata header"
+  },
+  "editorScriptName": {
+    "message": "Script Name"
+  },
+  "editorAuthor": {
+    "message": "Author"
+  },
+  "editorVersion": {
+    "message": "Version"
+  },
+  "editorDescription": {
+    "message": "Description"
+  },
+  "editorLicense": {
+    "message": "License"
+  },
+  "editorHomepage": {
+    "message": "Homepage URL"
+  },
+  "editorUpdateUrl": {
+    "message": "Update URL"
+  },
+  "editorDownloadUrl": {
+    "message": "Download URL"
+  },
+  "editorSupportUrl": {
+    "message": "Support URL"
+  },
+  "editorIcon": {
+    "message": "Icon URL"
+  },
+  "editorTargetUrls": {
+    "message": "Target URLs"
+  },
+  "editorAddUrl": {
+    "message": "Add"
+  },
+  "editorPatternBuilder": {
+    "message": "Pattern Builder"
+  },
+  "editorAnyPathOnDomain": {
+    "message": "Any path on domain"
+  },
+  "editorAnySubdomain": {
+    "message": "Any sub-domain"
+  },
+  "editorExactPage": {
+    "message": "Exact page"
+  },
+  "editorGenerate": {
+    "message": "Generate"
+  },
+  "editorRunTiming": {
+    "message": "Run Timing"
+  },
+  "editorDocumentStart": {
+    "message": "Document Start"
+  },
+  "editorDomLoaded": {
+    "message": "DOM Loaded"
+  },
+  "editorPageLoaded": {
+    "message": "Page Loaded"
+  },
+  "editorExecutionContext": {
+    "message": "Execution Context"
+  },
+  "editorSelectGmApis": {
+    "message": "Select the Greasemonkey APIs your script needs"
+  },
+  "editorRuntimeErrors": {
+    "message": "Runtime errors from your userscript"
+  },
+  "editorClearErrors": {
+    "message": "Clear Errors"
+  },
+  "editorSettingsTitle": {
+    "message": "Editor Settings"
+  },
+  "editorFontSize": {
+    "message": "Font Size"
+  },
+  "editorTabSize": {
+    "message": "Tab Size"
+  },
+  "editorPreferences": {
+    "message": "Preferences"
+  },
+  "editorShowLineNumbers": {
+    "message": "Show Line Numbers"
+  },
+  "editorLineWrapping": {
+    "message": "Line Wrapping"
+  },
+  "editorMatchBrackets": {
+    "message": "Match Brackets"
+  },
+  "editorShowMinimap": {
+    "message": "Show Minimap"
+  },
+  "editorEnableLinting": {
+    "message": "Enable Linting"
+  },
+  "editorEnableAutosave": {
+    "message": "Enable Autosave"
+  }
+}
