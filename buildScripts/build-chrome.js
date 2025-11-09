@@ -84,7 +84,7 @@ const manifest = {
     },
     {
       matches: ["http://*/*", "https://*/*"],
-      js: ["ai_dom_editor/ai_dom_content.js", "ai_dom_editor/ai_dom_sidebar.js"],
+      js: ["ai_dom_editor/editor/ai_dom_content.js", "ai_dom_editor/sidebar/ai_dom_sidebar.js"],
       run_at: "document_idle",
     },
     {
@@ -114,10 +114,10 @@ await build({
     "src/popup/popup.js",
     "src/editor/editor.js",
     "src/dashboard/dashboard.js",
-    "src/ai_dom_editor/ai_dom_content.js",
-    "src/ai_dom_editor/ai_dom_sidebar.js",
-    "src/ai_dom_editor/ai_dom_editor.js",
-    "src/ai_dom_editor/ai_settings.js",
+    "src/ai_dom_editor/editor/ai_dom_content.js",
+    "src/ai_dom_editor/sidebar/ai_dom_sidebar.js",
+    "src/ai_dom_editor/editor/ai_dom_editor.js",
+    "src/ai_dom_editor/settings/ai_settings.js",
   ],
   bundle: true,
   outdir,

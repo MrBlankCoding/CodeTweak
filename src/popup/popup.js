@@ -36,7 +36,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (chrome.runtime.lastError || !response || response.success !== true) {
           // Fallback: open standalone window
           chrome.windows.create({
-            url: chrome.runtime.getURL("ai_dom_editor/ai_sidebar_window.html"),
+            url: chrome.runtime.getURL("ai_dom_editor/sidebar/ai_sidebar_window.html"),
             type: "popup",
             width: 440,
             height: 800,

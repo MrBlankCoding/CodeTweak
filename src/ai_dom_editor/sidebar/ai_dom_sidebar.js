@@ -64,7 +64,7 @@ class AIDOMSidebar {
 
     // Create iframe
     this.iframe = document.createElement('iframe');
-    this.iframe.src = chrome.runtime.getURL('ai_dom_editor/ai_dom_editor.html');
+    this.iframe.src = chrome.runtime.getURL('ai_dom_editor/editor/ai_dom_editor.html');
     this.iframe.style.cssText = `
       width: 100%;
       height: 100%;

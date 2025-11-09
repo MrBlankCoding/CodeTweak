@@ -1,4 +1,4 @@
-@import './global_theme.css';
+@import '../global_theme.css';
 
 * {
   box-sizing: border-box;

@@ -6,6 +6,8 @@ class AIDOMEditor {
     this.selectedElement = null;
     this.appliedChanges = [];
     this.apiConfig = null;
+    this.availableModels = [];
+    this.selectedModel = null;
     this.currentSiteUrl = '';
     this.lastUserPrompt = '';
     
@@ -22,7 +24,8 @@ class AIDOMEditor {
       elementSelectorBtn: document.getElementById('elementSelectorBtn'),
       clearChatBtn: document.getElementById('clearChatBtn'),
       selectorActive: document.getElementById('selectorActive'),
-      cancelSelector: document.getElementById('cancelSelector')
+      cancelSelector: document.getElementById('cancelSelector'),
+      modelSelector: document.getElementById('modelSelector')
     };
     
     this.init();
@@ -56,6 +59,7 @@ class AIDOMEditor {
       console.error('Error setting language:', error);
     }
     await this.loadAPIConfig();
+    await this.loadAvailableModels();
     await this.loadChatHistory();
     this.setupEventListeners();
     this.setupMessageListener();
@@ -74,6 +78,65 @@ class AIDOMEditor {
     } catch (error) {
       console.error('Error loading API config:', error);
       this.showConfigBanner();
+    }
+  }
+  
+  async loadAvailableModels() {
+    try {
+      const { availableModels, selectedModel } = await chrome.storage.local.get(['availableModels', 'selectedModel']);
+      this.availableModels = availableModels || [];
+      
+      // Populate model selector
+      if (this.elements.modelSelector) {
+        this.elements.modelSelector.innerHTML = '';
+        
+        if (this.availableModels.length === 0) {
+          const option = document.createElement('option');
+          option.value = '';
+          option.textContent = 'No models available - Configure API keys';
+          this.elements.modelSelector.appendChild(option);
+          this.elements.modelSelector.disabled = true;
+        } else {
+          this.elements.modelSelector.disabled = false;
+          
+          // Group models by provider
+          const modelsByProvider = {};
+          this.availableModels.forEach(model => {
+            if (!modelsByProvider[model.provider]) {
+              modelsByProvider[model.provider] = [];
+            }
+            modelsByProvider[model.provider].push(model);
+          });
+          
+          // Add options grouped by provider
+          Object.keys(modelsByProvider).sort().forEach(provider => {
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = provider.toUpperCase();
+            
+            modelsByProvider[provider].forEach(model => {
+              const option = document.createElement('option');
+              option.value = JSON.stringify(model);
+              option.textContent = model.id;
+              if (selectedModel && selectedModel.id === model.id && selectedModel.provider === model.provider) {
+                option.selected = true;
+              }
+              optgroup.appendChild(option);
+            });
+            
+            this.elements.modelSelector.appendChild(optgroup);
+          });
+          
+          // Set selected model or default to first
+          if (selectedModel) {
+            this.selectedModel = selectedModel;
+          } else if (this.availableModels.length > 0) {
+            this.selectedModel = this.availableModels[0];
+            await chrome.storage.local.set({ selectedModel: this.selectedModel });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error loading available models:', error);
     }
   }
 
@@ -171,6 +234,10 @@ class AIDOMEditor {
     this.elements.cancelSelector.addEventListener('click', () => {
       this.deactivateElementSelector();
     });
+    
+    this.elements.modelSelector.addEventListener('change', (e) => {
+      this.handleModelChange(e);
+    });
 
     document.querySelectorAll('.example-prompt').forEach(prompt => {
       prompt.addEventListener('click', () => {
@@ -190,8 +257,19 @@ class AIDOMEditor {
         this.handleDOMSummary(message.summary);
       } else if (message.action === 'aiSettingsUpdated') {
         this.loadAPIConfig();
+        this.loadAvailableModels();
       }
     });
+  }
+  
+  async handleModelChange(e) {
+    try {
+      const modelData = JSON.parse(e.target.value);
+      this.selectedModel = modelData;
+      await chrome.storage.local.set({ selectedModel: modelData });
+    } catch (error) {
+      console.error('Error handling model change:', error);
+    }
   }
 
   autoResize(textarea) {
@@ -203,7 +281,11 @@ class AIDOMEditor {
     const message = this.elements.userInput.value.trim();
     if (!message) return;
 
-    if (!this.apiConfig || !this.apiConfig.apiKey || !this.apiConfig.endpoint) {
+    // Check if we have a selected model or fall back to apiConfig
+    const hasModel = this.selectedModel && this.selectedModel.apiKey && this.selectedModel.endpoint;
+    const hasConfig = this.apiConfig && this.apiConfig.apiKey && this.apiConfig.endpoint;
+    
+    if (!hasModel && !hasConfig) {
       this.addMessage('assistant', 'Please configure your AI API settings first.');
       return;
     }
@@ -298,27 +380,32 @@ ${domSummary}
 
 Generate ONLY the JavaScript code, no explanations or JSON.`;
 
+    // Use selected model or fall back to apiConfig
+    const modelConfig = this.selectedModel || this.apiConfig;
+    const modelId = this.selectedModel?.id || this.apiConfig?.model || 'gpt-4';
+    const endpoint = modelConfig.endpoint;
+    const apiKey = modelConfig.apiKey;
+    
     // Google models (Gemini/Gemma) don't support system messages
-    const isGoogleModel = this.apiConfig.model?.includes('gemini') || 
-                          this.apiConfig.model?.includes('gemma');
+    const isGoogleModel = modelId.includes('gemini') || modelId.includes('gemma');
     
     const requestBody = {
-      model: this.apiConfig.model || 'gpt-4',
+      model: modelId,
       messages: isGoogleModel ? [
         { role: 'user', content: `${systemPrompt}\n\nUser Request: ${userMessage}` }
       ] : [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userMessage }
       ],
-      temperature: this.apiConfig.temperature || 0.7,
-      max_tokens: this.apiConfig.maxTokens || 2000
+      temperature: this.apiConfig?.temperature || 0.7,
+      max_tokens: this.apiConfig?.maxTokens || 2000
     };
 
-    const response = await fetch(this.apiConfig.endpoint, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiConfig.apiKey}`
+        'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify(requestBody)
     });

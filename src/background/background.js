@@ -564,7 +564,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     },
 
     openAISettings: () => {
-      chrome.tabs.create({ url: chrome.runtime.getURL("ai_dom_editor/ai_settings.html") });
+      chrome.tabs.create({ url: chrome.runtime.getURL("ai_dom_editor/settings/ai_settings.html") });
       sendResponse({ success: true });
     },
 

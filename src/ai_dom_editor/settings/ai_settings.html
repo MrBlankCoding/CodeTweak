@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI DOM Editor Settings</title>
+  <link rel="stylesheet" href="../../assets/styles/ai/ai_settings.css">
+</head>
+<body>
+  <div class="settings-container">
+    <header class="settings-header">
+      <div class="header-content">
+        <h1>AI DOM Editor Settings</h1>
+      </div>
+    </header>
+
+    <main class="settings-main">
+      <!-- Left Column - Info & API Keys -->
+      <aside>
+        <!-- Info Cards -->
+        <div class="info-section">
+          <div class="info-card">
+            <div class="info-header">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              </svg>
+              <h3>Privacy & Security</h3>
+            </div>
+            <ul class="info-list">
+              <li>API keys are stored locally in your browser</li>
+              <li>No data is sent to CodeTweak servers</li>
+              <li>All requests go directly to your chosen AI provider</li>
+              <li>Generated code runs in an isolated sandbox</li>
+            </ul>
+          </div>
+
+          <div class="info-card">
+            <div class="info-header">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+              <h3>Getting Started</h3>
+            </div>
+            <ul class="info-list">
+              <li>Obtain an API key from your chosen provider</li>
+              <li>OpenAI: <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a></li>
+              <li>Anthropic: <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a></li>
+              <li>Google: <a href="https://makersuite.google.com/app/apikey" target="_blank">makersuite.google.com</a></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- API Keys List -->
+        <div class="settings-card" id="apiKeysCard" style="margin-top: 1.5rem;">
+          <div class="card-header">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <h2>Saved API Keys</h2>
+            <button type="button" class="btn-primary" id="addKeyBtn" style="margin-left: auto;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Add Key
+            </button>
+          </div>
+          <div class="card-body">
+            <div id="apiKeysList" class="api-keys-list"></div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Right Column - Configuration Form -->
+      <div>
+        <div class="settings-card">
+          <div class="card-header">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+              <path d="M2 17l10 5 10-5M2 12l10 5 10-5"></path>
+            </svg>
+            <h2>AI Provider Configuration</h2>
+          </div>
+
+          <div class="card-body">
+            <form id="settingsForm">
+              <!-- Provider Selection -->
+              <div class="form-group">
+                <label for="provider">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                  AI Provider
+                </label>
+                <select id="provider" required>
+                  <option value="">Select a provider...</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="anthropic">Anthropic (Claude)</option>
+                  <option value="google">Google (Gemini)</option>
+                  <option value="aimlapi">AIML API</option>
+                  <option value="custom">Custom Endpoint</option>
+                </select>
+                <span class="form-hint">Choose your AI provider</span>
+              </div>
+
+              <!-- API Key -->
+              <div class="form-group">
+                <label for="apiKey">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
+                  </svg>
+                  API Key
+                </label>
+                <div class="input-with-toggle">
+                  <input 
+                    type="password" 
+                    id="apiKey" 
+                    placeholder="sk-..." 
+                    required
+                  />
+                  <button type="button" class="toggle-visibility" id="toggleApiKey" title="Show/Hide API Key">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                  </button>
+                </div>
+                <span class="form-hint">Your API key is stored locally and never sent to external servers</span>
+              </div>
+
+              <!-- Endpoint (shown for custom provider) -->
+              <div class="form-group" id="endpointGroup" style="display: none;">
+                <label for="endpoint">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                  </svg>
+                  API Endpoint
+                </label>
+                <input 
+                  type="url" 
+                  id="endpoint" 
+                  placeholder="https://api.example.com/v1/chat/completions"
+                />
+                <span class="form-hint">Custom API endpoint URL</span>
+              </div>
+
+              <!-- Model -->
+              <div class="form-group" id="modelGroup">
+                <label for="model">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M12 1v6m0 6v6m5.657-13.657l-4.243 4.243m-2.828 2.828l-4.243 4.243m16.97 1.414l-4.242-4.243m-2.829-2.828l-4.242-4.243"></path>
+                  </svg>
+                  Model
+                </label>
+                <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                  <select id="model" required style="flex: 1;">
+                    <option value="">Select a model...</option>
+                  </select>
+                  <button type="button" class="btn-secondary" id="fetchModelsBtn" title="Fetch available models from your API">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="23 4 23 10 17 10"></polyline>
+                      <polyline points="1 20 1 14 7 14"></polyline>
+                      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    </svg>
+                    Fetch Models
+                  </button>
+                </div>
+                <span class="form-hint">AI model to use for code generation</span>
+              </div>
+
+              <!-- Advanced Settings -->
+              <details class="advanced-settings">
+                <summary>Advanced Settings</summary>
+                
+                <div class="form-group">
+                  <label for="temperature">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path>
+                    </svg>
+                    Temperature
+                  </label>
+                  <div class="slider-group">
+                    <input 
+                      type="range" 
+                      id="temperature" 
+                      min="0" 
+                      max="1" 
+                      step="0.1" 
+                      value="0.7"
+                    />
+                    <span class="slider-value" id="temperatureValue">0.7</span>
+                  </div>
+                  <span class="form-hint">Controls randomness (0 = deterministic, 1 = creative)</span>
+                </div>
+
+                <div class="form-group">
+                  <label for="maxTokens">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="12" y1="1" x2="12" y2="23"></line>
+                      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                    Max Tokens
+                  </label>
+                  <input 
+                    type="number" 
+                    id="maxTokens" 
+                    min="100" 
+                    max="4000" 
+                    value="2000"
+                  />
+                  <span class="form-hint">Maximum tokens in AI response</span>
+                </div>
+              </details>
+
+              <!-- Action Buttons -->
+              <div class="form-actions">
+                <button type="button" class="btn-secondary" id="testConnection">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                  </svg>
+                  Test Connection
+                </button>
+                <div class="button-group">
+                  <button type="button" class="btn-text" id="resetBtn">Reset</button>
+                  <button type="submit" class="btn-primary" id="saveBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                      <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                      <polyline points="7 3 7 8 15 8"></polyline>
+                    </svg>
+                    Save Settings
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Status Toast -->
+    <div class="toast" id="toast" style="display: none;">
+      <svg class="toast-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+      <span class="toast-message" id="toastMessage"></span>
+    </div>
+  </div>
+
+  <script type="module" src="ai_settings.js"></script>
+</body>
+</html>
