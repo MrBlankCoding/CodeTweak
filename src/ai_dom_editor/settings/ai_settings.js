@@ -1,4 +1,5 @@
 // AI Settings JavaScript
+import feather from 'feather-icons';
 
 class AISettings {
   constructor() {
@@ -57,6 +58,7 @@ class AISettings {
   async init() {
     await this.loadSettings();
     this.setupEventListeners();
+    feather.replace();
   }
 
   async loadSettings() {
@@ -115,21 +117,16 @@ class AISettings {
         </div>
         <div class="api-key-actions">
           <button type="button" class="btn-icon" onclick="aiSettings.loadConfig(${index})" title="Edit">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-            </svg>
+            <i data-feather="edit-2" width="14" height="14"></i>
           </button>
           <button type="button" class="btn-icon btn-danger" onclick="aiSettings.deleteConfig(${index})" title="Delete">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="3 6 5 6 21 6"></polyline>
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            </svg>
+            <i data-feather="trash-2" width="14" height="14"></i>
           </button>
         </div>
       `;
       this.elements.apiKeysList.appendChild(item);
     });
+    feather.replace();
   }
 
   setupEventListeners() {
@@ -288,11 +285,10 @@ class AISettings {
     } finally {
       this.elements.testConnection.disabled = false;
       this.elements.testConnection.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-        </svg>
+        <i data-feather="activity" width="16" height="16"></i>
         Test Connection
       `;
+      feather.replace();
     }
   }
 

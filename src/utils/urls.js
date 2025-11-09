@@ -195,3 +195,14 @@ export function formatUrlPattern(pattern) {
     
     return display;
   }
+
+// Checks if its a webpage
+export function isValidWebpage(url) {
+    if (!url) return false;
+    
+    const restrictedPatterns = /^(chrome|edge|about|file):\/\//i;
+    const isExtensionPage = url.startsWith("chrome-extension://");
+    const isNewTab = url === "about:blank" || url === "chrome://newtab/";
+    
+    return !restrictedPatterns.test(url) && !isExtensionPage && !isNewTab;
+  }

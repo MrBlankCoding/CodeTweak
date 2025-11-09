@@ -1,5 +1,5 @@
 import feather from 'feather-icons';
-import { urlMatchesPattern, formatRunAt, getScriptDescription } from "../utils/urls.js";
+import { urlMatchesPattern, formatRunAt, getScriptDescription, isValidWebpage } from "../utils/urls.js";
 import { applyTranslations, getMessageSync } from "../utils/i18n.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -32,6 +32,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   aiEditorBtn.addEventListener("click", async () => {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      
+      // Check if user is on a valid webpage
+      if (!isValidWebpage(tab.url)) {
+        alert("Please navigate to a webpage first to use the AI DOM Editor.");
+        return;
+      }
+      
       chrome.tabs.sendMessage(tab.id, { action: 'openAIEditor' }, (response) => {
         if (chrome.runtime.lastError || !response || response.success !== true) {
           // Fallback: open standalone window

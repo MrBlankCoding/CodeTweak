@@ -21,9 +21,7 @@
         <div class="info-section">
           <div class="info-card">
             <div class="info-header">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-              </svg>
+              <i data-feather="shield" width="18" height="18"></i>
               <h3>Privacy & Security</h3>
             </div>
             <ul class="info-list">
@@ -36,11 +34,7 @@
 
           <div class="info-card">
             <div class="info-header">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="16" x2="12" y2="12"></line>
-                <line x1="12" y1="8" x2="12.01" y2="8"></line>
-              </svg>
+              <i data-feather="info" width="18" height="18"></i>
               <h3>Getting Started</h3>
             </div>
             <ul class="info-list">
@@ -55,16 +49,10 @@
         <!-- API Keys List -->
         <div class="settings-card" id="apiKeysCard" style="margin-top: 1.5rem;">
           <div class="card-header">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-            </svg>
+            <i data-feather="lock" width="20" height="20"></i>
             <h2>Saved API Keys</h2>
             <button type="button" class="btn-primary" id="addKeyBtn" style="margin-left: auto;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
+              <i data-feather="plus" width="16" height="16"></i>
               Add Key
             </button>
           </div>
@@ -78,10 +66,7 @@
       <div>
         <div class="settings-card">
           <div class="card-header">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
-              <path d="M2 17l10 5 10-5M2 12l10 5 10-5"></path>
-            </svg>
+            <i data-feather="layers" width="20" height="20"></i>
             <h2>AI Provider Configuration</h2>
           </div>
 
@@ -90,10 +75,7 @@
               <!-- Provider Selection -->
               <div class="form-group">
                 <label for="provider">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <polyline points="12 6 12 12 16 14"></polyline>
-                  </svg>
+                  <i data-feather="cpu" width="14" height="14"></i>
                   AI Provider
                 </label>
                 <select id="provider" required>
@@ -110,9 +92,7 @@
               <!-- API Key -->
               <div class="form-group">
                 <label for="apiKey">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
-                  </svg>
+                  <i data-feather="key" width="14" height="14"></i>
                   API Key
                 </label>
                 <div class="input-with-toggle">
@@ -123,10 +103,7 @@
                     required
                   />
                   <button type="button" class="toggle-visibility" id="toggleApiKey" title="Show/Hide API Key">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                      <circle cx="12" cy="12" r="3"></circle>
-                    </svg>
+                    <i data-feather="eye" width="18" height="18"></i>
                   </button>
                 </div>
                 <span class="form-hint">Your API key is stored locally and never sent to external servers</span>
@@ -135,10 +112,7 @@
               <!-- Endpoint (shown for custom provider) -->
               <div class="form-group" id="endpointGroup" style="display: none;">
                 <label for="endpoint">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-                  </svg>
+                  <i data-feather="link" width="14" height="14"></i>
                   API Endpoint
                 </label>
                 <input 
@@ -152,10 +126,7 @@
               <!-- Model -->
               <div class="form-group" id="modelGroup">
                 <label for="model">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <path d="M12 1v6m0 6v6m5.657-13.657l-4.243 4.243m-2.828 2.828l-4.243 4.243m16.97 1.414l-4.242-4.243m-2.829-2.828l-4.242-4.243"></path>
-                  </svg>
+                  <i data-feather="cpu" width="14" height="14"></i>
                   Model
                 </label>
                 <div style="display: flex; gap: 8px; margin-bottom: 8px;">
@@ -163,11 +134,7 @@
                     <option value="">Select a model...</option>
                   </select>
                   <button type="button" class="btn-secondary" id="fetchModelsBtn" title="Fetch available models from your API">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <polyline points="23 4 23 10 17 10"></polyline>
-                      <polyline points="1 20 1 14 7 14"></polyline>
-                      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-                    </svg>
+                    <i data-feather="refresh-cw" width="16" height="16"></i>
                     Fetch Models
                   </button>
                 </div>
@@ -180,9 +147,7 @@
                 
                 <div class="form-group">
                   <label for="temperature">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path>
-                    </svg>
+                    <i data-feather="thermometer" width="14" height="14"></i>
                     Temperature
                   </label>
                   <div class="slider-group">
@@ -201,10 +166,7 @@
 
                 <div class="form-group">
                   <label for="maxTokens">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <line x1="12" y1="1" x2="12" y2="23"></line>
-                      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                    </svg>
+                    <i data-feather="type" width="14" height="14"></i>
                     Max Tokens
                   </label>
                   <input 
@@ -221,19 +183,13 @@
               <!-- Action Buttons -->
               <div class="form-actions">
                 <button type="button" class="btn-secondary" id="testConnection">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                  </svg>
+                  <i data-feather="activity" width="16" height="16"></i>
                   Test Connection
                 </button>
                 <div class="button-group">
                   <button type="button" class="btn-text" id="resetBtn">Reset</button>
                   <button type="submit" class="btn-primary" id="saveBtn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                      <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                      <polyline points="7 3 7 8 15 8"></polyline>
-                    </svg>
+                    <i data-feather="save" width="16" height="16"></i>
                     Save Settings
                   </button>
                 </div>
@@ -246,9 +202,7 @@
 
     <!-- Status Toast -->
     <div class="toast" id="toast" style="display: none;">
-      <svg class="toast-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="20 6 9 17 4 12"></polyline>
-      </svg>
+      <i class="toast-icon" data-feather="check" width="20" height="20"></i>
       <span class="toast-message" id="toastMessage"></span>
     </div>
   </div>
