@@ -9,6 +9,7 @@ import {
 } from "./dashboard-logic.js";
 import { setupTabs } from "./dashboard-ui.js";
 import { parseUserScriptMetadata } from "../utils/metadataParser.js";
+import { applyTranslations } from "../utils/i18n.js";
 
 function initDashboard() {
   const elements = {
@@ -37,6 +38,7 @@ function initDashboard() {
                             allowExternalResources: document.getElementById("allowExternalResources"),
                             confirmFirstRun: document.getElementById("confirmFirstRun"),
                             accentColor: document.getElementById("accentColor"),
+                            languageSelector: document.getElementById("languageSelector"),
                           },    greasyfork: {
       button: document.getElementById("greasyforkBtn"),
       modal: document.getElementById("greasyforkModal"),
@@ -58,6 +60,9 @@ function initDashboard() {
   setupTabs(elements.navItems, elements.tabContents);
   setupGreasyfork(elements.greasyfork);
   setupFileDragAndDrop();
+  
+  // Apply translations
+  initializeI18n();
 
   // Listen for runtime messages to reflect updates from other parts of the extension
   chrome.runtime.onMessage.addListener((message) => {
@@ -221,6 +226,14 @@ function debounce(func, delay) {
     clearTimeout(timeout);
     timeout = setTimeout(() => func.apply(context, args), delay);
   };
+}
+
+async function initializeI18n() {
+  try {
+    await applyTranslations();
+  } catch (error) {
+    console.error('Error initializing translations:', error);
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {

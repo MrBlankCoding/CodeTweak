@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI DOM Editor</title>
+  <link rel="stylesheet" href="../../assets/styles/ai/ai_dom_editor.css">
+</head>
+<body>
+  <div class="ai-editor-container">
+    <!-- Header -->
+    <div class="ai-editor-header">
+      <h2 class="header-title">AI DOM Editor</h2>
+      <div class="header-actions">
+        <button class="tool-btn" id="clearChatBtn" title="Clear conversation">
+          <i data-feather="trash-2" width="18" height="18"></i>
+        </button>
+        <button class="tool-btn" id="headerSettingsBtn" title="Settings">
+          <i data-feather="settings" width="18" height="18"></i>
+        </button>
+        <button class="close-btn" id="closeBtn" title="Close AI Editor">
+          <i data-feather="x" width="18" height="18"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Configuration Banner (shown if API not configured) -->
+    <div class="config-banner" id="configBanner" style="display: none;">
+      <div class="banner-content">
+        <i data-feather="alert-circle" width="20" height="20"></i>
+        <span>API not configured. Please configure your AI provider in settings.</span>
+      </div>
+      <button class="btn-primary" id="openSettingsBtn">Configure</button>
+    </div>
+
+    <!-- Chat Container -->
+    <div class="chat-container" id="chatContainer">
+      <div class="welcome-message" id="welcomeMessage">
+        <div class="welcome-icon">
+          <i data-feather="layers" width="48" height="48"></i>
+        </div>
+        <h2>Ai Editor</h2>
+        <p>Whats your idea?</p>
+        <div class="example-prompts">
+          <div class="example-prompt">Make the background pink and all headings blue</div>
+          <div class="example-prompt">Remove all Ad's</div>
+          <div class="example-prompt">Round the page</div>
+        </div>
+      </div>
+      <div class="messages" id="messages"></div>
+    </div>
+
+    <!-- Element Selector Indicator -->
+    <div class="selector-active" id="selectorActive" style="display: none;">
+      <i data-feather="target" width="16" height="16"></i>
+      <span>Click an element on the page</span>
+      <button class="btn-text" id="cancelSelector">Cancel</button>
+    </div>
+
+    <!-- Input Area -->
+    <div class="input-area">
+      <div class="model-selector-row">
+        <select id="modelSelector" class="model-selector" title="Select AI Model">
+          <option value="">Loading models...</option>
+        </select>
+      </div>
+      <div class="input-wrapper">
+        <button class="tool-btn" id="elementSelectorBtn" title="Select element on page">
+          <i data-feather="target" width="18" height="18"></i>
+        </button>
+        <textarea 
+          id="userInput" 
+          placeholder="Describe what you want to change on this page..."
+          rows="1"
+        ></textarea>
+        <button class="send-btn" id="sendBtn" disabled>
+          <i data-feather="send" width="20" height="20"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="ai_dom_editor.js"></script>
+</body>
+</html>

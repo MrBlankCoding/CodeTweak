@@ -7,6 +7,7 @@ import {
 import { CodeEditorManager } from "./editor_settings.js";
 import { buildTampermonkeyMetadata, parseUserScriptMetadata } from "../utils/metadataParser.js";
 import { GM_API_DEFINITIONS, getApiElementIds } from "../GM/gmApiDefinitions.js";
+import { applyTranslations } from "../utils/i18n.js";
 
 class ScriptEditor {
   constructor() {
@@ -361,23 +362,26 @@ class ScriptEditor {
     const initialTargetUrl = urlParams.get("targetUrl");
     const template = urlParams.get("template");
     const importId = urlParams.get("importId");
+    const aiScriptId = urlParams.get("aiScriptId");
     this.state.isEditMode = Boolean(this.state.scriptId);
 
     if (initialTargetUrl && this.elements.targetUrl) {
-      const decodedUrl = decodeURIComponent(initialTargetUrl);
-      this.elements.targetUrl.value = decodedUrl;
-      this.ui.addUrlToList(decodedUrl);
+      this.elements.targetUrl.value = initialTargetUrl;
     }
 
-    if (template) {
-      const decodedTemplate = decodeURIComponent(template);
-      this.codeEditorManager.insertTemplateCode(decodedTemplate);
-    } else if (!this.state.isEditMode && !this.codeEditorManager.getValue()) {
+    // Load existing script if editing
+    if (this.state.isEditMode) {
+      await this.loadScript(this.state.scriptId);
+    } else if (template) {
       this.codeEditorManager.insertDefaultTemplate();
     }
 
     if (importId) {
       await this.loadImportedScript(importId);
+    }
+    
+    if (aiScriptId) {
+      await this.loadAIScript(aiScriptId);
     }
   }
 
@@ -460,6 +464,33 @@ class ScriptEditor {
     } catch (err) {
       console.error('Error loading imported script:', err);
       this.ui.showStatusMessage('Failed to load imported script', 'error');
+    }
+  }
+
+  async loadAIScript(aiScriptId) {
+    try {
+      const key = `tempAIScript_${aiScriptId}`;
+      const data = await chrome.storage.local.get(key);
+      const aiData = data[key];
+      if (!aiData) return;
+      
+      const { code } = aiData;
+
+      // Parse metadata from the AI-generated userscript
+      const metadata = parseUserScriptMetadata(code);
+
+      // Populate form with AI script data
+      this.handleScriptImport({ code, ...metadata });
+
+      // Mark as unsaved so user can review and save
+      this.state.hasUnsavedChanges = true;
+      this.ui.updateScriptStatus(true);
+
+      // Clean up storage
+      await chrome.storage.local.remove(key);
+    } catch (err) {
+      console.error('Error loading AI script:', err);
+      this.ui.showStatusMessage('Failed to load AI-generated script', 'error');
     }
   }
 
@@ -1351,6 +1382,9 @@ class ScriptEditor {
 document.addEventListener("DOMContentLoaded", async () => {
   // Setup help modal tabs
   setupHelpModalTabs();
+  
+  // Apply translations
+  await applyTranslations();
   
   // Initialize Feather icons
   feather.replace();

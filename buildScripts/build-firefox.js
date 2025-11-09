@@ -29,6 +29,8 @@ const copyDirs = [
   "popup",
   "GM",
   "utils",
+  "ai_dom_editor",
+  "_locales",
 ];
 for (const dir of copyDirs) {
   cpSync(`src/${dir}`, join(outdir, dir), { recursive: true });
@@ -87,6 +89,10 @@ await build({
     "src/popup/popup.js",
     "src/editor/editor.js",
     "src/dashboard/dashboard.js",
+    "src/ai_dom_editor/ai_dom_content.js",
+    "src/ai_dom_editor/ai_dom_sidebar.js",
+    "src/ai_dom_editor/ai_dom_editor.js",
+    "src/ai_dom_editor/ai_settings.js",
   ],
   bundle: true,
   outdir,

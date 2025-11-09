@@ -7,6 +7,7 @@ import {
   updateScriptsList,
   showNotification,
 } from "./dashboard-ui.js";
+import { applyTranslations } from "../utils/i18n.js";
 
 async function loadScripts(elements, state) {
   try {
@@ -122,12 +123,14 @@ async function loadSettings(settingsElements) {
       allowExternalResources: true,
       confirmFirstRun: false,
       accentColor: "#61afef",
+      language: "auto",
     };
 
     // Apply defaults and update storage if needed
     let shouldSaveDefaults = false;
     Object.entries(defaultSettings).forEach(([key, defaultValue]) => {
-      const element = settingsElements[key];
+      const elementKey = key === 'language' ? 'languageSelector' : key;
+      const element = settingsElements[elementKey];
       if (element) {
         if (settings[key] === undefined) {
           settings[key] = defaultValue;
@@ -135,6 +138,8 @@ async function loadSettings(settingsElements) {
         }
         if (element.type === 'color') {
           element.value = settings[key];
+        } else if (element.tagName === 'SELECT') {
+          element.value = settings[key] || defaultValue;
         } else {
           element.checked = settings[key];
         }
@@ -167,6 +172,8 @@ async function saveSettings(settingsElements) {
       if (element) {
         if (element.type === 'color') {
           settings[key] = element.value;
+        } else if (element.tagName === 'SELECT') {
+          settings[key === 'languageSelector' ? 'language' : key] = element.value;
         } else {
           settings[key] = element.checked;
         }
@@ -181,6 +188,9 @@ async function saveSettings(settingsElements) {
     if (settings.accentColor) {
       document.documentElement.style.setProperty('--accent-color', settings.accentColor);
     }
+    
+    // Reapply translations if language changed
+    await applyTranslations();
     
   } catch (error) {
     console.error("Error saving settings:", error);

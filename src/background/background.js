@@ -192,7 +192,29 @@ async function handleScriptCreation(url, template) {
     console.error("Script creation error:", error);
   }
 }
-// Capture the greasyfork script
+
+async function handleAIScriptCreation(scriptContent, url) {
+  try {
+    // Store script in temporary storage (like Greasy Fork import)
+    const tempId = crypto.randomUUID();
+    const key = `tempAIScript_${tempId}`;
+    await chrome.storage.local.set({ 
+      [key]: { 
+        code: scriptContent, 
+        sourceUrl: url,
+        isAI: true 
+      } 
+    });
+
+    // Open editor with AI script
+    chrome.tabs.create({
+      url: `${chrome.runtime.getURL("editor/editor.html")}?aiScriptId=${tempId}`,
+    });
+  } catch (error) {
+    console.error("AI script creation error:", error);
+  }
+}
+
 async function handleGreasyForkInstall(url) {
   try {
     const response = await fetch(url);
@@ -539,6 +561,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     greasyForkInstall: () => {
       handleGreasyForkInstall(message.url);
+    },
+
+    openAISettings: () => {
+      chrome.tabs.create({ url: chrome.runtime.getURL("ai_dom_editor/settings/ai_settings.html") });
+      sendResponse({ success: true });
+    },
+
+    createScriptFromAI: () => {
+      handleAIScriptCreation(message.script, message.url);
+      sendResponse({ success: true });
+    },
+
+    aiSettingsUpdated: () => {
+      // Notify any open AI editors
+      chrome.runtime.sendMessage({ action: 'aiConfigUpdated' }).catch(() => {});
+      sendResponse({ success: true });
     },
   };
 

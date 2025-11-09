@@ -1,0 +1,336 @@
+{
+  "appName": {
+    "message": "CodeTweak"
+  },
+  "appDescription": {
+    "message": "Crea y administra scripts JavaScript personalizados para cualquier sitio web"
+  },
+  
+  "sidebarScripts": {
+    "message": "Scripts"
+  },
+  "sidebarSettings": {
+    "message": "Configuración"
+  },
+  "sidebarAbout": {
+    "message": "Acerca de"
+  },
+  "sidebarNewScript": {
+    "message": "Nuevo Script"
+  },
+  "sidebarBrowseScripts": {
+    "message": "Explorar Scripts"
+  },
+  
+  "scriptsTitle": {
+    "message": "Tus Scripts"
+  },
+  "scriptsSearch": {
+    "message": "Buscar scripts..."
+  },
+  "scriptsAllWebsites": {
+    "message": "Todos los Sitios"
+  },
+  "scriptsAllStatus": {
+    "message": "Todos los Estados"
+  },
+  "scriptsEnabled": {
+    "message": "Activado"
+  },
+  "scriptsDisabled": {
+    "message": "Desactivado"
+  },
+  "scriptsRunTiming": {
+    "message": "Momento de Ejecución"
+  },
+  "scriptsPageStart": {
+    "message": "Inicio de Página"
+  },
+  "scriptsDomReady": {
+    "message": "DOM Listo"
+  },
+  "scriptsPageLoad": {
+    "message": "Carga de Página"
+  },
+  "scriptsName": {
+    "message": "Nombre"
+  },
+  "scriptsVersion": {
+    "message": "Versión"
+  },
+  "scriptsSites": {
+    "message": "Sitios"
+  },
+  "scriptsFeatures": {
+    "message": "Características"
+  },
+  "scriptsRunAt": {
+    "message": "Ejecutar En"
+  },
+  "scriptsActions": {
+    "message": "Acciones"
+  },
+  "scriptsNoScripts": {
+    "message": "Aún No Hay Scripts"
+  },
+  "scriptsNoScriptsDesc": {
+    "message": "Crea tu primer script para comenzar"
+  },
+  "scriptsCreateNew": {
+    "message": "Crear Nuevo Script"
+  },
+  
+  "settingsTitle": {
+    "message": "Configuración"
+  },
+  "settingsGeneral": {
+    "message": "General"
+  },
+  "settingsEnableDefault": {
+    "message": "Activar scripts por defecto"
+  },
+  "settingsEnableDefaultDesc": {
+    "message": "Los nuevos scripts se activarán automáticamente"
+  },
+  "settingsShowNotifications": {
+    "message": "Mostrar notificaciones"
+  },
+  "settingsShowNotificationsDesc": {
+    "message": "Mostrar notificaciones cuando se ejecuten scripts"
+  },
+  "settingsEnhancedDebugging": {
+    "message": "Depuración Avanzada"
+  },
+  "settingsEnhancedDebuggingDesc": {
+    "message": "Registrar información detallada del script en la consola"
+  },
+  "settingsLanguage": {
+    "message": "Idioma"
+  },
+  "settingsLanguageDesc": {
+    "message": "Elige tu idioma de interfaz preferido"
+  },
+  "languageBrowserDefault": {
+    "message": "Predeterminado del Navegador (Auto)"
+  },
+  "settingsSecurity": {
+    "message": "Seguridad"
+  },
+  "settingsAllowExternal": {
+    "message": "Permitir recursos externos"
+  },
+  "settingsAllowExternalDesc": {
+    "message": "Permitir que los scripts carguen recursos de URLs externas"
+  },
+  "settingsConfirmFirstRun": {
+    "message": "Confirmar primera ejecución"
+  },
+  "settingsConfirmFirstRunDesc": {
+    "message": "Solicitar confirmación antes de que un script se ejecute en un sitio web por primera vez"
+  },
+  "settingsTheme": {
+    "message": "Tema"
+  },
+  "settingsAccentColor": {
+    "message": "Color de Acento"
+  },
+  "settingsAccentColorDesc": {
+    "message": "Elige el color de acento para la interfaz"
+  },
+  "settingsSaveSettings": {
+    "message": "Guardar Configuración"
+  },
+  "settingsResetDefaults": {
+    "message": "Restablecer Valores"
+  },
+  "settingsExportAll": {
+    "message": "Exportar Todo"
+  },
+  
+  "aboutTitle": {
+    "message": "Acerca de CodeTweak"
+  },
+  "aboutDocsText": {
+    "message": "Documentación y guías disponibles en:"
+  },
+  
+  "greasyForkTitle": {
+    "message": "Explorar Scripts de Greasy Fork"
+  },
+  "greasyForkSearch": {
+    "message": "Buscar en Greasy Fork..."
+  },
+  "greasyForkSearchBtn": {
+    "message": "Buscar"
+  },
+  
+  "popupReportIssue": {
+    "message": "Reportar Problema"
+  },
+  "popupNoScriptsForPage": {
+    "message": "No hay scripts para esta página."
+  },
+  "popupCreateOrVisit": {
+    "message": "Crea un nuevo script o visita una página diferente."
+  },
+  "popupCreateFirst": {
+    "message": "Crea tu primer script para comenzar."
+  },
+  "popupMenuCommands": {
+    "message": "Comandos de Menú"
+  },
+  "popupEnableScript": {
+    "message": "Activar script"
+  },
+  "popupDisableScript": {
+    "message": "Desactivar script"
+  },
+  
+  "editorUnsavedChanges": {
+    "message": "Cambios Sin Guardar"
+  },
+  "editorSaveScript": {
+    "message": "Guardar Script"
+  },
+  "editorScriptInfo": {
+    "message": "Información del Script"
+  },
+  "editorScriptInfoDesc": {
+    "message": "Configura los detalles de tu userscript"
+  },
+  "editorExecutionSettings": {
+    "message": "Configuración de Ejecución"
+  },
+  "editorExecutionSettingsDesc": {
+    "message": "Controla cuándo y dónde se ejecuta tu script"
+  },
+  "editorGmApiAccess": {
+    "message": "Acceso a API GM"
+  },
+  "editorGmApiAccessDesc": {
+    "message": "Habilita potentes APIs de Greasemonkey"
+  },
+  "editorRequiredScripts": {
+    "message": "Scripts Requeridos"
+  },
+  "editorRequiredScriptsDesc": {
+    "message": "Bibliotecas externas y dependencias"
+  },
+  "editorScriptResources": {
+    "message": "Recursos del Script"
+  },
+  "editorScriptResourcesDesc": {
+    "message": "Recursos estáticos que tu script necesita"
+  },
+  "editorScriptErrors": {
+    "message": "Errores del Script"
+  },
+  "editorGenerateHeader": {
+    "message": "Generar encabezado de metadatos"
+  },
+  "editorScriptName": {
+    "message": "Nombre del Script"
+  },
+  "editorAuthor": {
+    "message": "Autor"
+  },
+  "editorVersion": {
+    "message": "Versión"
+  },
+  "editorDescription": {
+    "message": "Descripción"
+  },
+  "editorLicense": {
+    "message": "Licencia"
+  },
+  "editorHomepage": {
+    "message": "URL de Página Principal"
+  },
+  "editorUpdateUrl": {
+    "message": "URL de Actualización"
+  },
+  "editorDownloadUrl": {
+    "message": "URL de Descarga"
+  },
+  "editorSupportUrl": {
+    "message": "URL de Soporte"
+  },
+  "editorIcon": {
+    "message": "URL del Icono"
+  },
+  "editorTargetUrls": {
+    "message": "URLs Objetivo"
+  },
+  "editorAddUrl": {
+    "message": "Agregar"
+  },
+  "editorPatternBuilder": {
+    "message": "Constructor de Patrones"
+  },
+  "editorAnyPathOnDomain": {
+    "message": "Cualquier ruta en el dominio"
+  },
+  "editorAnySubdomain": {
+    "message": "Cualquier subdominio"
+  },
+  "editorExactPage": {
+    "message": "Página exacta"
+  },
+  "editorGenerate": {
+    "message": "Generar"
+  },
+  "editorRunTiming": {
+    "message": "Momento de Ejecución"
+  },
+  "editorDocumentStart": {
+    "message": "Inicio del Documento"
+  },
+  "editorDomLoaded": {
+    "message": "DOM Cargado"
+  },
+  "editorPageLoaded": {
+    "message": "Página Cargada"
+  },
+  "editorExecutionContext": {
+    "message": "Contexto de Ejecución"
+  },
+  "editorSelectGmApis": {
+    "message": "Selecciona las APIs de Greasemonkey que necesita tu script"
+  },
+  "editorRuntimeErrors": {
+    "message": "Errores de ejecución de tu userscript"
+  },
+  "editorClearErrors": {
+    "message": "Limpiar Errores"
+  },
+  "editorSettingsTitle": {
+    "message": "Configuración del Editor"
+  },
+  "editorFontSize": {
+    "message": "Tamaño de Fuente"
+  },
+  "editorTabSize": {
+    "message": "Tamaño de Tabulación"
+  },
+  "editorPreferences": {
+    "message": "Preferencias"
+  },
+  "editorShowLineNumbers": {
+    "message": "Mostrar Números de Línea"
+  },
+  "editorLineWrapping": {
+    "message": "Ajuste de Línea"
+  },
+  "editorMatchBrackets": {
+    "message": "Coincidir Corchetes"
+  },
+  "editorShowMinimap": {
+    "message": "Mostrar Minimapa"
+  },
+  "editorEnableLinting": {
+    "message": "Habilitar Linting"
+  },
+  "editorEnableAutosave": {
+    "message": "Habilitar Guardado Automático"
+  }
+}

@@ -3,10 +3,10 @@
    <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <link rel="stylesheet" href="/assets/styles/editor.css">
-      <link rel="stylesheet" href="/assets/styles/e_settings_modal.css">
-      <link rel="stylesheet" href="/assets/styles/e_header_footer.css">
-      <link rel="stylesheet" href="/assets/styles/e_sidebar.css">
+      <link rel="stylesheet" href="/assets/styles/editor/editor.css">
+      <link rel="stylesheet" href="/assets/styles/editor/e_settings_modal.css">
+      <link rel="stylesheet" href="/assets/styles/editor/e_header_footer.css">
+      <link rel="stylesheet" href="/assets/styles/editor/e_sidebar.css">
       <script src="/assets/scripts/jshint.js"></script>
       <script type="module" src="editor.js"></script>
    </head>
@@ -30,12 +30,12 @@
                   <div class="status-info">
                      <div class="status-badge" id="scriptStatusBadge">
                         <div class="status-dot"></div>
-                        <span>Unsaved Changes</span>
+                        <span data-i18n="editorUnsavedChanges">Unsaved Changes</span>
                      </div>
                   </div>
                   <button type="button" id="saveBtn" class="save-btn">
                      <i data-feather="save"></i>
-                     Save Script
+                     <span data-i18n="editorSaveScript">Save Script</span>
                   </button>
                </div>
             </div>
@@ -46,28 +46,28 @@
             <aside id="sidebar" class="sidebar">
                <!-- Icon Bar -->
                <div class="sidebar-icon-bar">
-                  <button class="sidebar-icon-btn active" data-section="info" title="Script Information">
+                  <button class="sidebar-icon-btn active" data-section="info" title="Script Information" data-i18n-attr="title" data-i18n="editorScriptInfo">
                      <i data-feather="info"></i>
                   </button>
-                  <button class="sidebar-icon-btn" data-section="execution" title="Execution Settings">
+                  <button class="sidebar-icon-btn" data-section="execution" title="Execution Settings" data-i18n-attr="title" data-i18n="editorExecutionSettings">
                      <i data-feather="clock"></i>
                   </button>
-                  <button class="sidebar-icon-btn" data-section="api" title="GM API Access">
+                  <button class="sidebar-icon-btn" data-section="api" title="GM API Access" data-i18n-attr="title" data-i18n="editorGmApiAccess">
                      <i data-feather="code"></i>
                      <div class="api-count-badge" id="apiCountBadge">0</div>
                   </button>
-                  <button class="sidebar-icon-btn" data-section="requires" title="Required Scripts">
+                  <button class="sidebar-icon-btn" data-section="requires" title="Required Scripts" data-i18n-attr="title" data-i18n="editorRequiredScripts">
                      <i data-feather="package"></i>
                   </button>
-                  <button class="sidebar-icon-btn" data-section="resources" title="Script Resources">
+                  <button class="sidebar-icon-btn" data-section="resources" title="Script Resources" data-i18n-attr="title" data-i18n="editorScriptResources">
                      <i data-feather="database"></i>
                   </button>
-                  <button class="sidebar-icon-btn" data-section="errors" title="Script Errors">
+                  <button class="sidebar-icon-btn" data-section="errors" title="Script Errors" data-i18n-attr="title" data-i18n="editorScriptErrors">
                      <i data-feather="alert-circle"></i>
                      <div class="error-count-badge hidden" id="errorCountBadge">0</div>
                   </button>
                   <div class="sidebar-divider"></div>
-                  <button class="sidebar-icon-btn" id="generateHeaderBtn" title="Generate Metadata header">
+                  <button class="sidebar-icon-btn" id="generateHeaderBtn" title="Generate Metadata header" data-i18n-attr="title" data-i18n="editorGenerateHeader">
                      <i data-feather="file-plus"></i>
                   </button>
                </div>
@@ -77,36 +77,36 @@
                   <!-- Script Information Panel -->
                   <div class="sidebar-panel active" id="info-panel">
                      <div class="panel-header">
-                        <h3 class="panel-title">Script Information</h3>
-                        <p class="panel-subtitle">Configure your userscript details</p>
+                        <h3 class="panel-title" data-i18n="editorScriptInfo">Script Information</h3>
+                        <p class="panel-subtitle" data-i18n="editorScriptInfoDesc">Configure your userscript details</p>
                      </div>
                      <div class="panel-content">
                         <div class="form-grid">
                            <div class="form-group">
                               <label for="scriptName" class="form-label">
-                                 <span>Script Name</span>
+                                 <span data-i18n="editorScriptName">Script Name</span>
                                  <span class="label-required">*</span>
                               </label>
                               <input type="text" id="scriptName" class="form-input" placeholder="My Awesome Script">
                            </div>
                            <div class="form-group">
-                              <label for="scriptAuthor" class="form-label">Author</label>
+                              <label for="scriptAuthor" class="form-label" data-i18n="editorAuthor">Author</label>
                               <input type="text" id="scriptAuthor" class="form-input" placeholder="Your Name">
                            </div>
                            <div class="form-group">
-                              <label for="scriptVersion" class="form-label">Version</label>
+                              <label for="scriptVersion" class="form-label" data-i18n="editorVersion">Version</label>
                               <input type="text" id="scriptVersion" class="form-input" placeholder="1.0.0" pattern="[0-9]+\.[0-9]+\.[0-9]+">
                            </div>
                            <div class="form-group">
-                              <label for="scriptDescription" class="form-label">Description</label>
+                              <label for="scriptDescription" class="form-label" data-i18n="editorDescription">Description</label>
                               <textarea id="scriptDescription" class="form-textarea" placeholder="Describe what your script does..." rows="3"></textarea>
                            </div>
                            <div class="form-group">
-                              <label for="scriptLicense" class="form-label">License</label>
+                              <label for="scriptLicense" class="form-label" data-i18n="editorLicense">License</label>
                               <input type="text" id="scriptLicense" class="form-input" placeholder="e.g., MIT, GPL-3.0">
                            </div>
                            <div class="form-group">
-                              <label for="scriptIcon" class="form-label">Icon URL</label>
+                              <label for="scriptIcon" class="form-label" data-i18n="editorIcon">Icon URL</label>
                               <div class="icon-input-wrapper">
                                  <input type="url" id="scriptIcon" class="form-input" placeholder="https://... or data:image/png;base64,...">
                                  <img id="iconPreview" class="icon-preview" src="" alt="Icon Preview">
@@ -119,35 +119,35 @@
                   <!-- Execution Settings Panel -->
                   <div class="sidebar-panel" id="execution-panel">
                      <div class="panel-header">
-                        <h3 class="panel-title">Execution Settings</h3>
-                        <p class="panel-subtitle">Configure when and where your script runs</p>
+                        <h3 class="panel-title" data-i18n="editorExecutionSettings">Execution Settings</h3>
+                        <p class="panel-subtitle" data-i18n="editorExecutionSettingsDesc">Control when and where your script runs</p>
                      </div>
                      <div class="panel-content">
                         <div class="form-group">
                            <label for="targetUrl" class="form-label">
-                              <span>Target URLs</span>
+                              <span data-i18n="editorTargetUrls">Target URLs</span>
                               <span class="label-required">*</span>
                            </label>
                            <div class="url-input-group">
                               <input type="url" id="targetUrl" class="form-input" placeholder="https://example.com/*" required>
                               <button type="button" id="addUrlBtn" class="add-btn" title="Add URL pattern">
                                  <i data-feather="plus"></i>
-                                 Add
+                                 <span data-i18n="editorAddUrl">Add</span>
                               </button>
                            </div>
                            <div id="urlList" class="url-list" role="list" aria-label="Target URL patterns"></div>
                         </div>
                         
                         <div class="form-group">
-                           <label class="form-label">Pattern Builder</label>
+                           <label class="form-label" data-i18n="editorPatternBuilder">Pattern Builder</label>
                            <div class="pattern-builder">
                               <input type="url" id="patternBaseUrl" class="form-input" placeholder="https://example.com">
                               <select id="patternScope" class="form-select">
-                                 <option value="domain" selected>Any path on domain</option>
-                                 <option value="subdomain">Any sub-domain</option>
-                                 <option value="exact">Exact page</option>
+                                 <option value="domain" selected><span data-i18n="editorAnyPathOnDomain">Any path on domain</span></option>
+                                 <option value="subdomain"><span data-i18n="editorAnySubdomain">Any sub-domain</span></option>
+                                 <option value="exact"><span data-i18n="editorExactPage">Exact page</span></option>
                               </select>
-                              <button type="button" id="generatePatternBtn" class="add-btn">Generate</button>
+                              <button type="button" id="generatePatternBtn" class="add-btn"><span data-i18n="editorGenerate">Generate</span></button>
                            </div>
                            <div class="generated-pattern-group hidden" id="generatedPatternGroup">
                               <input type="text" id="generatedPattern" class="form-input" readonly>
@@ -158,9 +158,9 @@
                         <div class="form-group">
                            <label for="runAt" class="form-label">Run Timing</label>
                            <select id="runAt" class="form-select enhanced-select">
-                              <option value="document_start">Document Start</option>
-                              <option value="document_end">Dom Loaded</option>
-                              <option value="document_idle" selected>Page Loaded</option>
+                              <option value="document_start"><span data-i18n="editorDocumentStart">Document Start</span></option>
+                              <option value="document_end"><span data-i18n="editorDomLoaded">DOM Loaded</span></option>
+                              <option value="document_idle" selected><span data-i18n="editorPageLoaded">Page Loaded</span></option>
                            </select>
                         </div>
 
@@ -179,7 +179,7 @@
                   <div class="sidebar-panel" id="api-panel">
                      <div class="panel-header">
                         <h3 class="panel-title">GM API Access</h3>
-                        <p class="panel-subtitle">Select the Greasemonkey APIs your script needs</p>
+                        <p class="panel-subtitle"><span data-i18n="editorSelectGmApis">Select the Greasemonkey APIs your script needs</span></p>
                      </div>
                      <div class="panel-content">
                         <div class="form-group">
@@ -303,7 +303,7 @@
                               <input type="url" id="requireURL" class="form-input" placeholder="https://example.com/library.js">
                               <button type="button" id="addRequireBtn" class="add-btn" title="Add required script">
                                  <i data-feather="plus"></i>
-                                 Add
+                                 <span data-i18n="editorAddUrl">Add</span>
                               </button>
                            </div>
                            <div id="requireList" class="resource-list" role="list" aria-label="Required scripts"></div>
@@ -325,7 +325,7 @@
                               <input type="url" id="resourceURL" class="form-input" placeholder="https://example.com/resource.js">
                               <button type="button" id="addResourceBtn" class="add-btn" title="Add resource">
                                  <i data-feather="plus"></i>
-                                 Add
+                                 <span data-i18n="editorAddUrl">Add</span>
                               </button>
                            </div>
                            <div id="resourceList" class="resource-list" role="list" aria-label="Script resources"></div>
@@ -337,13 +337,13 @@
                   <div class="sidebar-panel" id="errors-panel">
                      <div class="panel-header">
                         <h3 class="panel-title">Script Errors</h3>
-                        <p class="panel-subtitle">Runtime errors from your userscript</p>
+                        <p class="panel-subtitle"><span data-i18n="editorRuntimeErrors">Runtime errors from your userscript</span></p>
                      </div>
                      <div class="panel-content">
                         <div class="error-log-controls">
                            <button type="button" id="clearErrorsBtn" class="btn-secondary" title="Clear all errors">
                               <i data-feather="trash-2"></i>
-                              Clear Errors
+                              <span data-i18n="editorClearErrors">Clear Errors</span>
                            </button>
                         </div>
                         <div id="errorLogContainer" class="error-log-container">
@@ -578,32 +578,32 @@
                <legend><h3>Preferences</h3></legend>
                <label class="setting-checkbox">
                   <input type="checkbox" id="lineNumbers" checked>
-                  <span>Show Line Numbers</span>
+                  <span><span data-i18n="editorShowLineNumbers">Show Line Numbers</span></span>
                </label>
       
                <label class="setting-checkbox">
                   <input type="checkbox" id="lineWrapping">
-                  <span>Line Wrapping</span>
+                  <span><span data-i18n="editorLineWrapping">Line Wrapping</span></span>
                </label>
       
                <label class="setting-checkbox">
                   <input type="checkbox" id="matchBrackets" checked>
-                  <span>Match Brackets</span>
+                  <span><span data-i18n="editorMatchBrackets">Match Brackets</span></span>
                </label>
       
                <label class="setting-checkbox">
                   <input type="checkbox" id="minimap" checked>
-                  <span>Show Minimap</span>
+                  <span><span data-i18n="editorShowMinimap">Show Minimap</span></span>
                </label>
       
                <label class="setting-checkbox">
                   <input type="checkbox" id="lintingEnabled">
-                  <span>Enable Linting</span>
+                  <span><span data-i18n="editorEnableLinting">Enable Linting</span></span>
                </label>
       
                <label class="setting-checkbox">
                   <input type="checkbox" id="autosaveEnabled">
-                  <span>Enable Autosave</span>
+                  <span><span data-i18n="editorEnableAutosave">Enable Autosave</span></span>
                </label>
                </fieldset>
             </form>

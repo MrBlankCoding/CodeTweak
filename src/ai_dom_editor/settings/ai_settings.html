@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI DOM Editor Settings</title>
+  <link rel="stylesheet" href="../../assets/styles/ai/ai_settings.css">
+</head>
+<body>
+  <div class="settings-container">
+    <header class="settings-header">
+      <div class="header-content">
+        <h1>AI DOM Editor Settings</h1>
+      </div>
+    </header>
+
+    <main class="settings-main">
+      <!-- Left Column - Info & API Keys -->
+      <aside>
+        <!-- Info Cards -->
+        <div class="info-section">
+          <div class="info-card">
+            <div class="info-header">
+              <i data-feather="shield" width="18" height="18"></i>
+              <h3>Privacy & Security</h3>
+            </div>
+            <ul class="info-list">
+              <li>API keys are stored locally in your browser</li>
+              <li>No data is sent to CodeTweak servers</li>
+              <li>All requests go directly to your chosen AI provider</li>
+              <li>Generated code runs in an isolated sandbox</li>
+            </ul>
+          </div>
+
+          <div class="info-card">
+            <div class="info-header">
+              <i data-feather="info" width="18" height="18"></i>
+              <h3>Getting Started</h3>
+            </div>
+            <ul class="info-list">
+              <li>Obtain an API key from your chosen provider</li>
+              <li>OpenAI: <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a></li>
+              <li>Anthropic: <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a></li>
+              <li>Google: <a href="https://makersuite.google.com/app/apikey" target="_blank">makersuite.google.com</a></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- API Keys List -->
+        <div class="settings-card" id="apiKeysCard" style="margin-top: 1.5rem;">
+          <div class="card-header">
+            <i data-feather="lock" width="20" height="20"></i>
+            <h2>Saved API Keys</h2>
+            <button type="button" class="btn-primary" id="addKeyBtn" style="margin-left: auto;">
+              <i data-feather="plus" width="16" height="16"></i>
+              Add Key
+            </button>
+          </div>
+          <div class="card-body">
+            <div id="apiKeysList" class="api-keys-list"></div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Right Column - Configuration Form -->
+      <div>
+        <div class="settings-card">
+          <div class="card-header">
+            <i data-feather="layers" width="20" height="20"></i>
+            <h2>AI Provider Configuration</h2>
+          </div>
+
+          <div class="card-body">
+            <form id="settingsForm">
+              <!-- Provider Selection -->
+              <div class="form-group">
+                <label for="provider">
+                  <i data-feather="cpu" width="14" height="14"></i>
+                  AI Provider
+                </label>
+                <select id="provider" required>
+                  <option value="">Select a provider...</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="anthropic">Anthropic (Claude)</option>
+                  <option value="google">Google (Gemini)</option>
+                  <option value="aimlapi">AIML API</option>
+                  <option value="custom">Custom Endpoint</option>
+                </select>
+                <span class="form-hint">Choose your AI provider</span>
+              </div>
+
+              <!-- API Key -->
+              <div class="form-group">
+                <label for="apiKey">
+                  <i data-feather="key" width="14" height="14"></i>
+                  API Key
+                </label>
+                <div class="input-with-toggle">
+                  <input 
+                    type="password" 
+                    id="apiKey" 
+                    placeholder="sk-..." 
+                    required
+                  />
+                  <button type="button" class="toggle-visibility" id="toggleApiKey" title="Show/Hide API Key">
+                    <i data-feather="eye" width="18" height="18"></i>
+                  </button>
+                </div>
+                <span class="form-hint">Your API key is stored locally and never sent to external servers</span>
+              </div>
+
+              <!-- Endpoint (shown for custom provider) -->
+              <div class="form-group" id="endpointGroup" style="display: none;">
+                <label for="endpoint">
+                  <i data-feather="link" width="14" height="14"></i>
+                  API Endpoint
+                </label>
+                <input 
+                  type="url" 
+                  id="endpoint" 
+                  placeholder="https://api.example.com/v1/chat/completions"
+                />
+                <span class="form-hint">Custom API endpoint URL</span>
+              </div>
+
+              <!-- Model -->
+              <div class="form-group" id="modelGroup">
+                <label for="model">
+                  <i data-feather="cpu" width="14" height="14"></i>
+                  Model
+                </label>
+                <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                  <select id="model" required style="flex: 1;">
+                    <option value="">Select a model...</option>
+                  </select>
+                  <button type="button" class="btn-secondary" id="fetchModelsBtn" title="Fetch available models from your API">
+                    <i data-feather="refresh-cw" width="16" height="16"></i>
+                    Fetch Models
+                  </button>
+                </div>
+                <span class="form-hint">AI model to use for code generation</span>
+              </div>
+
+              <!-- Advanced Settings -->
+              <details class="advanced-settings">
+                <summary>Advanced Settings</summary>
+                
+                <div class="form-group">
+                  <label for="temperature">
+                    <i data-feather="thermometer" width="14" height="14"></i>
+                    Temperature
+                  </label>
+                  <div class="slider-group">
+                    <input 
+                      type="range" 
+                      id="temperature" 
+                      min="0" 
+                      max="1" 
+                      step="0.1" 
+                      value="0.7"
+                    />
+                    <span class="slider-value" id="temperatureValue">0.7</span>
+                  </div>
+                  <span class="form-hint">Controls randomness (0 = deterministic, 1 = creative)</span>
+                </div>
+
+                <div class="form-group">
+                  <label for="maxTokens">
+                    <i data-feather="type" width="14" height="14"></i>
+                    Max Tokens
+                  </label>
+                  <input 
+                    type="number" 
+                    id="maxTokens" 
+                    min="100" 
+                    max="4000" 
+                    value="2000"
+                  />
+                  <span class="form-hint">Maximum tokens in AI response</span>
+                </div>
+              </details>
+
+              <!-- Action Buttons -->
+              <div class="form-actions">
+                <button type="button" class="btn-secondary" id="testConnection">
+                  <i data-feather="activity" width="16" height="16"></i>
+                  Test Connection
+                </button>
+                <div class="button-group">
+                  <button type="button" class="btn-text" id="resetBtn">Reset</button>
+                  <button type="submit" class="btn-primary" id="saveBtn">
+                    <i data-feather="save" width="16" height="16"></i>
+                    Save Settings
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Status Toast -->
+    <div class="toast" id="toast" style="display: none;">
+      <i class="toast-icon" data-feather="check" width="20" height="20"></i>
+      <span class="toast-message" id="toastMessage"></span>
+    </div>
+  </div>
+
+  <script type="module" src="ai_settings.js"></script>
+</body>
+</html>
