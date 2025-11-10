@@ -154,12 +154,18 @@ export class ApiHandler {
   _buildAuthHeaders(modelConfig) {
     const apiKey = modelConfig?.apiKey || modelConfig?.key;
     const provider = (modelConfig?.provider || '').toLowerCase();
+    const modelId = (modelConfig?.id || modelConfig?.model || '').toLowerCase();
 
     if (!apiKey) return {};
 
     // Allow explicit override
     if (modelConfig?.headerFormat === 'x-api-key') {
       return { 'X-API-Key': apiKey };
+    }
+
+    // Gemini API uses x-goog-api-key header
+    if (modelId.includes('gemini') || modelId.includes('gemma') || provider.includes('gemini')) {
+      return { 'x-goog-api-key': apiKey };
     }
 
     // common heuristics
@@ -179,6 +185,18 @@ export class ApiHandler {
 
   // Robust response content extractor for various provider shapes
   _extractContentFromResponse(data) {
+    // Gemini API format: { candidates: [{ content: { parts: [{ text: "..." }] } }] }
+    if (data?.candidates && Array.isArray(data.candidates) && data.candidates.length > 0) {
+      const candidate = data.candidates[0];
+      if (candidate?.content?.parts && Array.isArray(candidate.content.parts)) {
+        const textParts = candidate.content.parts
+          .filter(part => part.text)
+          .map(part => part.text)
+          .join('');
+        if (textParts) return textParts;
+      }
+    }
+
     // OpenAI Chat Completions
     if (data?.choices && Array.isArray(data.choices) && data.choices.length > 0) {
       const first = data.choices[0];
@@ -233,34 +251,68 @@ ${domSummary}
    - Combine selectors for precision (e.g., \`document.querySelector('div.container > h1.title')\`)
 
 3. **GREASEMONKEY APIs AVAILABLE:**
-   You have access to these powerful APIs - use them when appropriate:
-   - \`GM_addStyle(css)\` - Inject CSS (preferred for styling changes)
-   - \`GM_setValue(key, value)\` - Store persistent data
+   You have access to these powerful APIs - USE THEM when they make the code better:
+   
+   **STYLING (HIGHLY RECOMMENDED for CSS changes):**
+   - \`GM_addStyle(css)\` - Inject CSS (ALWAYS prefer this over inline styles for multiple elements)
+   
+   **STORAGE (for persistent data):**
+   - \`GM_setValue(key, value)\` - Store data across page loads
    - \`GM_getValue(key, defaultValue)\` - Retrieve stored data
-   - \`GM_xmlhttpRequest(details)\` - Make cross-origin requests
+   - \`GM_deleteValue(key)\` - Delete stored data
+   - \`GM_listValues()\` - List all stored keys
+   
+   **NETWORK (for API calls and cross-origin requests):**
+   - \`GM_xmlhttpRequest(details)\` - Make cross-origin HTTP requests
+   
+   **UI ENHANCEMENTS:**
    - \`GM_notification(options)\` - Show desktop notifications
-   - \`GM_addElement(parent, tag, attributes)\` - Create and insert elements
-   - \`GM_registerMenuCommand(name, callback)\` - Add menu commands
-   - And many more standard Tampermonkey APIs
+   - \`GM_addElement(parent, tag, attributes)\` - Create and insert DOM elements
+   - \`GM_registerMenuCommand(caption, callback)\` - Add custom menu commands
+   - \`GM_openInTab(url, options)\` - Open URLs in new tabs
+   
+   **UTILITIES:**
+   - \`GM_setClipboard(data, type)\` - Copy data to clipboard
+   - \`GM_download(url, name)\` - Download files
+   - \`GM_getResourceText(name)\` - Get text resources
+   - \`unsafeWindow\` - Direct access to page's window object (use cautiously)
 
 4. **CODE QUALITY REQUIREMENTS:**
-   - Write immediately executable code - no placeholders
-   - Check element existence before manipulation
-   - Use efficient selectors based on the actual DOM
-   - Handle edge cases gracefully
-   - Prefer GM_addStyle for CSS changes over inline styles
-   - Use modern JavaScript (ES6+)
+   - Write immediately executable code - no placeholders, no TODO comments
+   - Always check element existence before manipulation (e.g., \`if (element) { ... }\`)
+   - Use efficient selectors based on the actual DOM structure provided
+   - Handle edge cases gracefully with try-catch where appropriate
+   - Prefer GM_addStyle for ANY CSS changes affecting multiple elements
+   - Use modern JavaScript (ES6+) with arrow functions, const/let, template literals
+   - Add brief inline comments explaining complex logic
+   - Wait for DOM if needed (DOMContentLoaded or wait functions)
 
-5. **OUTPUT FORMAT:**
-   - Return ONLY the JavaScript code
-   - NO markdown code fences
-   - NO explanations or comments outside the code
-   - NO \`// ==UserScript==\` headers
+5. **CRITICAL - ZERO METADATA GENERATION:**
+   ⚠️ NEVER generate userscript metadata - this is handled automatically ⚠️
+   
+   **DO NOT INCLUDE:**
+   - \`// ==UserScript==\` headers
+   - \`// @name\`, \`@grant\`, \`@match\`, \`@run-at\`, etc.
+   - Markdown code fences (\`\`\`javascript)
+   - IIFE wrappers (function() {...})()
+   
+   **ONLY PROVIDE:**
+   - Pure JavaScript code that solves the problem
+   - Code starts immediately (no metadata, no wrappers)
+   
+   **WHY:** Our analyzer automatically:
+   - Detects which GM APIs you use
+   - Generates all @grant directives
+   - Creates optimal @match patterns
+   - Sets appropriate @run-at timing
+   - Wraps your code properly
+   
+   Your job: Write great code. Our job: Perfect metadata.
 
 **USER'S REQUEST:**
 ${userMessage}
 
-**YOUR RESPONSE:** Generate the complete, executable JavaScript code now.`;
+**YOUR RESPONSE:** Pure JavaScript code only (absolutely NO metadata, NO wrappers, NO fences).`;
 
     // Decide model config (selectedModel preferred, else global apiConfig)
     const modelConfig = this.selectedModel || this.apiConfig || {};
@@ -284,7 +336,6 @@ ${userMessage}
     const provider = (modelConfig.provider || '').toLowerCase();
     const isGoogleish = modelId.toLowerCase().includes('gemini') || modelId.toLowerCase().includes('gemma') || provider.includes('google') || provider.includes('vertex');
     const isAnthropic = provider.includes('anthropic') || modelId.toLowerCase().includes('claude');
-    const isGemma = modelId.toLowerCase().includes('gemma');
 
     // prefer settings on per-model config, fallback to global
     const temperature = (typeof modelConfig.temperature === 'number') ? modelConfig.temperature : (typeof this.apiConfig?.temperature === 'number' ? this.apiConfig.temperature : 0.7);
@@ -293,28 +344,22 @@ ${userMessage}
     // Construct request body for common Chat completions patterns (best-effort)
     let requestBody;
     if (isGoogleish) {
-      // Gemma models don't support system instructions, combine into user message
-      if (isGemma) {
-        requestBody = {
-          model: modelId,
-          messages: [
-            { role: 'user', content: `${systemPrompt}\n\n${userMessage}` }
-          ],
+      // Gemini uses a different API format than OpenAI
+      // Format: { contents: [{ parts: [{ text: "..." }] }] }
+      const combinedPrompt = `${systemPrompt}\n\n${userMessage}`;
+      requestBody = {
+        contents: [
+          {
+            parts: [
+              { text: combinedPrompt }
+            ]
+          }
+        ],
+        generationConfig: {
           temperature,
-          max_tokens
-        };
-      } else {
-        // Gemini and other Google models support system instructions
-        requestBody = {
-          model: modelId,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userMessage }
-          ],
-          temperature,
-          max_tokens
-        };
-      }
+          maxOutputTokens: max_tokens
+        }
+      };
     } else if (isAnthropic) {
       // Claude-like: use a single input field (this is heuristic)
       requestBody = {
@@ -340,8 +385,6 @@ ${userMessage}
     if (modelConfig?.extraRequestFields && typeof modelConfig.extraRequestFields === 'object') {
       Object.assign(requestBody, modelConfig.extraRequestFields);
     }
-    
-    console.log('Request', JSON.stringify(requestBody, null, 2));
 
     // Timeout handling
     const controller = new AbortController();
@@ -349,8 +392,6 @@ ${userMessage}
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
-      const startTime = Date.now();
-      
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: {

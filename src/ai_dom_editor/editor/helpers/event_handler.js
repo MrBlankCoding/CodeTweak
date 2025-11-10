@@ -80,19 +80,8 @@ export class EventHandler {
     const message = this.editor.elements.userInput.value.trim();
     if (!message) return;
 
-    console.log('📨 User Message Sent:', message);
-
     const hasModel = this.editor.apiHandler.selectedModel && this.editor.apiHandler.selectedModel.apiKey && this.editor.apiHandler.selectedModel.endpoint;
     const hasConfig = this.editor.apiHandler.apiConfig && this.editor.apiHandler.apiConfig.apiKey && this.editor.apiHandler.apiConfig.endpoint;
-    
-    console.log('🔍 API Configuration Status:', {
-      hasModel,
-      hasConfig,
-      selectedModel: this.editor.apiHandler.selectedModel ? {
-        id: this.editor.apiHandler.selectedModel.id,
-        provider: this.editor.apiHandler.selectedModel.provider
-      } : null
-    });
     
     if (!hasModel && !hasConfig) {
       this.editor.chatManager.addMessage('assistant', 'Please configure your AI API settings first.');
@@ -120,22 +109,13 @@ export class EventHandler {
         }
 
         const domSummary = response?.summary || '';
-        console.log('📋 DOM Summary Received:', {
-          length: domSummary.length,
-          preview: domSummary.substring(0, 300) + '...'
-        });
         
         try {
           const aiResponse = await this.editor.apiHandler.callAIAPI(message, domSummary);
-          console.log('✅ AI Response Received:', {
-            type: aiResponse.type,
-            codeLength: aiResponse.code?.length || 0
-          });
           this.editor.chatManager.removeMessage(loadingId);
           this.handleAIResponse(aiResponse);
         } catch (error) {
-          console.error('❌ AI Generation Error:', error);
-          this.editor.chatManager.removeMessage(loadingId);
+          this.editor.chatManager.removeMessage(loadingId); 
           this.editor.chatManager.addMessage('assistant', `Error: ${error.message}`, { error: true });
         }
       });
@@ -146,27 +126,17 @@ export class EventHandler {
   }
 
   handleAIResponse(response) {
-    console.log('🎯 Handling AI Response:', {
-      isArray: Array.isArray(response),
-      type: response?.type,
-      hasCode: !!response?.code,
-      responseKeys: Object.keys(response || {})
-    });
-    
     if (Array.isArray(response)) {
-      console.log('📝 Displaying array response (actions)');
       this.editor.chatManager.addMessage('assistant', 'I\'ll apply these changes to the page:', {
         code: JSON.stringify(response, null, 2),
         actions: response
       });
     } else if (response.type === 'script' && response.code) {
-      console.log('💻 Displaying script response, code length:', response.code.length);
       this.editor.chatManager.addMessage('assistant', 'I\'ve generated this code for you:', {
         code: response.code,
         isScript: true
       });
     } else {
-      console.error('⚠️ Unexpected response format:', response);
       this.editor.chatManager.addMessage('assistant', 'Unexpected response format from AI', { error: true });
     }
   }
