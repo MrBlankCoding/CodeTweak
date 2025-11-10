@@ -32,7 +32,7 @@ class AISettings {
     this.providerEndpoints = {
       openai: 'https://api.openai.com/v1/chat/completions',
       anthropic: 'https://api.anthropic.com/v1/messages',
-      google: 'https://generativelanguage.googleapis.com/v1beta/models',
+      google: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent',
       aimlapi: 'https://api.aimlapi.com/v1/chat/completions',
       custom: ''
     };
@@ -42,11 +42,10 @@ class AISettings {
       openai: ['gpt-4', 'gpt-4-turbo-preview', 'gpt-3.5-turbo'],
       anthropic: ['claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'],
       google: [
+        'gemini-1.5-pro',
+        'gemini-1.5-flash',
         'gemini-pro',
-        'gemini-pro-vision',
-        'google/gemma-3-12b-it',
-        'google/gemma-3n-e4b-it',
-        'google/gemma-3-4b-it'
+        'gemini-pro-vision'
       ],
       aimlapi: ['gemini-pro', 'gemini-pro-vision', 'google/gemma-3-12b-it', 'google/gemma-3n-e4b-it', 'google/gemma-3-4b-it'],
       custom: []
@@ -244,21 +243,32 @@ class AISettings {
       
       // Always use the selected model
       const model = config.model || 'gpt-3.5-turbo';
-      const requestBody = {
-        model,
-        messages: [
-          { role: 'user', content: testMessage }
-        ],
-        max_tokens: 50
-      };
-
-      // Allow custom header for API key if needed
+      // Build request based on provider
+      let requestBody;
       const headers = {
         'Content-Type': 'application/json'
       };
-      // Default: use Authorization header
-      if (config.apiKey) {
-        headers['Authorization'] = `Bearer ${config.apiKey}`;
+      
+      if (config.provider === 'google' || model.includes('gemini')) {
+        // Gemini uses different format
+        requestBody = {
+          contents: [{
+            parts: [{ text: testMessage }]
+          }]
+        };
+        headers['x-goog-api-key'] = config.apiKey;
+      } else {
+        // OpenAI/standard format
+        requestBody = {
+          model,
+          messages: [
+            { role: 'user', content: testMessage }
+          ],
+          max_tokens: 50
+        };
+        if (config.apiKey) {
+          headers['Authorization'] = `Bearer ${config.apiKey}`;
+        }
       }
       // Optionally: allow user to specify a custom header in the future
       console.log('[AI Settings] Test Connection URL:', config.endpoint);
@@ -294,18 +304,24 @@ class AISettings {
 
   gatherSettings() {
     const provider = this.elements.provider.value;
+    const model = this.elements.model.value;
     let endpoint = this.elements.endpoint.value;
     
     // Use default endpoint if not custom
     if (provider !== 'custom' && this.providerEndpoints[provider]) {
       endpoint = this.providerEndpoints[provider];
+      
+      // For Google/Gemini, update endpoint with specific model
+      if (provider === 'google' && model) {
+        endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+      }
     }
 
     return {
       provider,
       apiKey: this.elements.apiKey.value.trim(),
       endpoint,
-      model: this.elements.model.value,
+      model,
       temperature: parseFloat(this.elements.temperature.value),
       maxTokens: parseInt(this.elements.maxTokens.value)
     };

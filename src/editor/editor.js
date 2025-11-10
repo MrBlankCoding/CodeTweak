@@ -8,6 +8,7 @@ import { CodeEditorManager } from "./editor_settings.js";
 import { buildTampermonkeyMetadata, parseUserScriptMetadata } from "../utils/metadataParser.js";
 import { GM_API_DEFINITIONS, getApiElementIds } from "../GM/gmApiDefinitions.js";
 import { applyTranslations } from "../utils/i18n.js";
+import ScriptAnalyzer from "../utils/scriptAnalyzer.js";
 
 class ScriptEditor {
   constructor() {
@@ -474,13 +475,46 @@ class ScriptEditor {
       const aiData = data[key];
       if (!aiData) return;
       
-      const { code } = aiData;
+      const { code, sourceUrl } = aiData;
 
-      // Parse metadata from the AI-generated userscript
-      const metadata = parseUserScriptMetadata(code);
+      console.log('📥 Loading AI-generated script...');
 
-      // Populate form with AI script data
-      this.handleScriptImport({ code, ...metadata });
+      // Validate and enhance the AI-generated script
+      const enhanced = ScriptAnalyzer.validateAndEnhanceMetadata(code, {
+        url: sourceUrl || '',
+        hostname: sourceUrl ? new URL(sourceUrl).hostname : '',
+        userPrompt: 'AI Generated Script'
+      });
+
+      // Log detected APIs and any warnings
+      console.log('🔍 Analysis complete:');
+      console.log('  📊 Detected GM APIs:', Object.keys(enhanced.detectedApis || {}).length);
+      
+      if (enhanced.warnings && enhanced.warnings.length > 0) {
+        console.log('  ⚠️ Issues found and fixed:');
+        enhanced.warnings.forEach(warning => {
+          console.log(`    - ${warning.message}`);
+          if (warning.suggestion) {
+            console.log(`      💡 ${warning.suggestion}`);
+          }
+        });
+        
+        // Show a summary to the user
+        const fixedCount = enhanced.warnings.length;
+        this.ui.showStatusMessage(
+          `AI script loaded: ${fixedCount} metadata issue${fixedCount > 1 ? 's' : ''} auto-fixed`, 
+          'info'
+        );
+      }
+
+      // Rebuild script with enhanced metadata
+      const enhancedCode = ScriptAnalyzer.rebuildWithEnhancedMetadata(code, enhanced);
+
+      // Parse the enhanced metadata
+      const metadata = parseUserScriptMetadata(enhancedCode);
+
+      // Populate form with enhanced AI script data
+      this.handleScriptImport({ code: enhancedCode, ...metadata });
 
       // Mark as unsaved so user can review and save
       this.state.hasUnsavedChanges = true;
@@ -488,8 +522,10 @@ class ScriptEditor {
 
       // Clean up storage
       await chrome.storage.local.remove(key);
+      
+      console.log('✅ AI script loaded successfully');
     } catch (err) {
-      console.error('Error loading AI script:', err);
+      console.error('❌ Error loading AI script:', err);
       this.ui.showStatusMessage('Failed to load AI-generated script', 'error');
     }
   }

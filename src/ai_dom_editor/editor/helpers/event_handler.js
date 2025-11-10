@@ -115,7 +115,7 @@ export class EventHandler {
           this.editor.chatManager.removeMessage(loadingId);
           this.handleAIResponse(aiResponse);
         } catch (error) {
-          this.editor.chatManager.removeMessage(loadingId);
+          this.editor.chatManager.removeMessage(loadingId); 
           this.editor.chatManager.addMessage('assistant', `Error: ${error.message}`, { error: true });
         }
       });

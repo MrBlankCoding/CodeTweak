@@ -1,93 +1,135 @@
-// src/ai_dom_editor/editor/helpers/api_handler.js
-
 export class ApiHandler {
   constructor(editor) {
     this.editor = editor;
-    this.apiConfig = null;
+    this.apiConfig = null; // global config (array first element in storage)
     this.availableModels = [];
     this.selectedModel = null;
+    this.defaultTimeoutMs = 30_000; // 30s default timeout for network requests
   }
 
+  // Load global API configuration (aiDomEditorConfigs)
   async loadAPIConfig() {
     try {
-      const { aiDomEditorConfigs } = await chrome.storage.local.get('aiDomEditorConfigs');
-      
-      if (aiDomEditorConfigs && aiDomEditorConfigs.length > 0) {
+      // chrome.storage.local.get accepts either string or array; returns an object mapping keys to values
+      const res = await chrome.storage.local.get('aiDomEditorConfigs');
+      const aiDomEditorConfigs = res?.aiDomEditorConfigs;
+
+      if (Array.isArray(aiDomEditorConfigs) && aiDomEditorConfigs.length > 0) {
         this.apiConfig = aiDomEditorConfigs[0];
       } else {
         this.apiConfig = null;
       }
-      
-      if (!this.apiConfig || !this.apiConfig.apiKey || !this.apiConfig.endpoint) {
-        this.editor.uiManager.showConfigBanner();
+
+      // If we don't have a usable config, show banner
+      const hasKeyAndEndpoint = !!(this.apiConfig && (this.apiConfig.apiKey || this.apiConfig.key) && this.apiConfig.endpoint);
+      if (!hasKeyAndEndpoint) {
+        this.editor?.uiManager?.showConfigBanner();
       } else {
-        this.editor.uiManager.hideConfigBanner();
+        this.editor?.uiManager?.hideConfigBanner();
       }
     } catch (error) {
       console.error('Error loading API config:', error);
-      this.editor.uiManager.showConfigBanner();
+      this.editor?.uiManager?.showConfigBanner();
     }
   }
-  
+
+  // Load available models and populate a <select> (modelSelector) if present
   async loadAvailableModels() {
     try {
-      const { availableModels, selectedModel, aiDomEditorConfigs } = 
-        await chrome.storage.local.get(['availableModels', 'selectedModel', 'aiDomEditorConfigs']);
-      
-      this.availableModels = availableModels || [];
-      
-      if (this.availableModels.length === 0 && aiDomEditorConfigs && aiDomEditorConfigs.length > 0) {
-        this.availableModels = aiDomEditorConfigs.map(config => ({
-          id: config.model || 'default',
-          provider: config.provider || 'custom',
-          apiKey: config.apiKey,
-          endpoint: config.endpoint
-        }));
+      const storage = await chrome.storage.local.get(['availableModels', 'selectedModel', 'aiDomEditorConfigs']);
+      let { availableModels, selectedModel, aiDomEditorConfigs } = storage;
+
+      // normalize availableModels
+      if (!Array.isArray(availableModels) || availableModels.length === 0) {
+        // fallback: derive from aiDomEditorConfigs if present
+        if (Array.isArray(aiDomEditorConfigs) && aiDomEditorConfigs.length > 0) {
+          availableModels = aiDomEditorConfigs.map(cfg => ({
+            id: cfg.model || cfg.modelId || 'default',
+            provider: (cfg.provider || cfg.vendor || 'custom').toLowerCase(),
+            apiKey: cfg.apiKey || cfg.key,
+            endpoint: cfg.endpoint,
+            // optional per-model overrides
+            temperature: cfg.temperature,
+            maxTokens: cfg.maxTokens
+          }));
+        } else {
+          availableModels = [];
+        }
       }
-      
-      if (this.editor.elements.modelSelector) {
-        this.editor.elements.modelSelector.innerHTML = '';
-        
-        if (this.availableModels.length === 0) {
+
+      this.availableModels = availableModels;
+
+      // If selectedModel was stored as JSON string, parse it
+      if (typeof selectedModel === 'string') {
+        try {
+          selectedModel = JSON.parse(selectedModel);
+        } catch {
+          // ignore; selectedModel left as string (invalid) and we'll reset it later
+          selectedModel = null;
+        }
+      }
+
+      // Populate UI selector if it exists
+      const selector = this.editor?.elements?.modelSelector;
+      if (selector) {
+        // clear previous options
+        selector.innerHTML = '';
+
+        if (!this.availableModels || this.availableModels.length === 0) {
           const option = document.createElement('option');
           option.value = '';
           option.textContent = 'No models available - Configure API keys';
-          this.editor.elements.modelSelector.appendChild(option);
-          this.editor.elements.modelSelector.disabled = true;
+          selector.appendChild(option);
+          selector.disabled = true;
+          this.selectedModel = null;
         } else {
-          this.editor.elements.modelSelector.disabled = false;
-          
+          selector.disabled = false;
+
+          // group models by provider for visual clarity
           const modelsByProvider = {};
-          this.availableModels.forEach(model => {
-            if (!modelsByProvider[model.provider]) {
-              modelsByProvider[model.provider] = [];
-            }
-            modelsByProvider[model.provider].push(model);
+          this.availableModels.forEach(m => {
+            const provider = (m.provider || 'custom').toLowerCase();
+            modelsByProvider[provider] = modelsByProvider[provider] || [];
+            modelsByProvider[provider].push(m);
           });
-          
+
           Object.keys(modelsByProvider).sort().forEach(provider => {
             const optgroup = document.createElement('optgroup');
             optgroup.label = provider.toUpperCase();
-            
+
             modelsByProvider[provider].forEach(model => {
               const option = document.createElement('option');
               option.value = JSON.stringify(model);
-              option.textContent = model.id;
-              if (selectedModel && selectedModel.id === model.id && selectedModel.provider === model.provider) {
+              option.textContent = model.id || `${provider}-model`;
+              // mark selected if storage's selectedModel matches
+              if (selectedModel && selectedModel.id === model.id && (selectedModel.provider || '').toLowerCase() === provider) {
                 option.selected = true;
               }
               optgroup.appendChild(option);
             });
-            
-            this.editor.elements.modelSelector.appendChild(optgroup);
+
+            selector.appendChild(optgroup);
           });
-          
-          if (selectedModel) {
+
+          // If there's a selectedModel in storage, use that; otherwise default to first available
+          if (selectedModel && typeof selectedModel === 'object') {
             this.selectedModel = selectedModel;
-          } else if (this.availableModels.length > 0) {
+          } else {
+            // default to first availableModel
             this.selectedModel = this.availableModels[0];
+            // persist default
             await chrome.storage.local.set({ selectedModel: this.selectedModel });
           }
+        }
+      } else {
+        // If there's no selector in DOM, still set selectedModel from storage or default
+        if (selectedModel && typeof selectedModel === 'object') {
+          this.selectedModel = selectedModel;
+        } else if (this.availableModels && this.availableModels.length > 0) {
+          this.selectedModel = this.availableModels[0];
+          await chrome.storage.local.set({ selectedModel: this.selectedModel });
+        } else {
+          this.selectedModel = null;
         }
       }
     } catch (error) {
@@ -95,9 +137,12 @@ export class ApiHandler {
     }
   }
 
+  // Handle UI change for model select
   async handleModelChange(e) {
     try {
-      const modelData = JSON.parse(e.target.value);
+      const raw = e?.target?.value;
+      if (!raw) return;
+      const modelData = typeof raw === 'string' ? JSON.parse(raw) : raw;
       this.selectedModel = modelData;
       await chrome.storage.local.set({ selectedModel: modelData });
     } catch (error) {
@@ -105,108 +150,300 @@ export class ApiHandler {
     }
   }
 
-  async callAIAPI(userMessage, domSummary) {
-    const systemPrompt = `You are a JavaScript code generator for Tampermonkey userscripts.
+  // Helper to build headers depending on provider heuristics or explicit headerFormat on model config
+  _buildAuthHeaders(modelConfig) {
+    const apiKey = modelConfig?.apiKey || modelConfig?.key;
+    const provider = (modelConfig?.provider || '').toLowerCase();
+    const modelId = (modelConfig?.id || modelConfig?.model || '').toLowerCase();
 
-The user will describe changes to a webpage. Generate ACTUAL EXECUTABLE JAVASCRIPT CODE, not JSON.
+    if (!apiKey) return {};
 
-Your response should be PURE JAVASCRIPT CODE that will run in a userscript.
-
-IMPORTANT RULES:
-1. Write actual JavaScript code, NOT JSON arrays
-2. Use document.querySelectorAll() and DOM manipulation
-3. DO NOT include // ==UserScript== metadata headers
-4. DO NOT make external network calls
-5. You can use GM_addStyle for CSS changes
-6. Make code robust with null checks
-
-EXAMPLES:
-
-To change text:
-document.querySelectorAll('h1.title').forEach(el => {
-    el.textContent = 'New Title';
-});
-
-To change styles:
-document.querySelectorAll('.button').forEach(el => {
-    el.style.background = 'red';
-    el.style.color = 'white';
-});
-
-To remove elements:
-document.querySelectorAll('.ads').forEach(el => el.remove());
-
-To add CSS:
-GM_addStyle(\`
-    .my-class {
-        color: blue;
-        background: pink;
+    // Allow explicit override
+    if (modelConfig?.headerFormat === 'x-api-key') {
+      return { 'X-API-Key': apiKey };
     }
-\`);
 
-To insert HTML:
-document.querySelectorAll('.container').forEach(el => {
-    el.insertAdjacentHTML('beforeend', '<div>New content</div>');
-});
+    // Gemini API uses x-goog-api-key header
+    if (modelId.includes('gemini') || modelId.includes('gemma') || provider.includes('gemini')) {
+      return { 'x-goog-api-key': apiKey };
+    }
 
-For complex changes, write complete logic with loops, conditionals, etc.
+    // common heuristics
+    if (provider.includes('openai') || provider.includes('gpt') || provider.includes('anthropic')) {
+      return { 'Authorization': `Bearer ${apiKey}` };
+    }
+    if (provider.includes('azure')) {
+      return { 'api-key': apiKey }; // Azure OpenAI uses an 'api-key' header sometimes
+    }
+    if (provider.includes('google') || provider.includes('vertex')) {
+      return { 'Authorization': `Bearer ${apiKey}` };
+    }
 
-DOM Summary:
+    // fallback
+    return { 'Authorization': `Bearer ${apiKey}` };
+  }
+
+  // Robust response content extractor for various provider shapes
+  _extractContentFromResponse(data) {
+    // Gemini API format: { candidates: [{ content: { parts: [{ text: "..." }] } }] }
+    if (data?.candidates && Array.isArray(data.candidates) && data.candidates.length > 0) {
+      const candidate = data.candidates[0];
+      if (candidate?.content?.parts && Array.isArray(candidate.content.parts)) {
+        const textParts = candidate.content.parts
+          .filter(part => part.text)
+          .map(part => part.text)
+          .join('');
+        if (textParts) return textParts;
+      }
+    }
+
+    // OpenAI Chat Completions
+    if (data?.choices && Array.isArray(data.choices) && data.choices.length > 0) {
+      const first = data.choices[0];
+      if (first.message?.content) return first.message.content;
+      if (typeof first.text === 'string') return first.text;
+    }
+
+    // OpenAI / other: top-level 'output_text' or 'text'
+    if (typeof data.output_text === 'string') return data.output_text;
+    if (typeof data.text === 'string') return data.text;
+
+    // Some vendor may return data[0].content or similar
+    if (Array.isArray(data) && data.length > 0 && typeof data[0].content === 'string') return data[0].content;
+
+    // Otherwise fallback to JSON string
+    return JSON.stringify(data);
+  }
+
+  // Extract first fenced-code-block, or return entire content if none
+  _extractCode(content) {
+    if (!content || typeof content !== 'string') return '';
+    // Try to get triple-backtick fenced JS block first
+    const codeFenceRegex = /```(?:javascript|js)?\s*([\s\S]*?)```/i;
+    const match = content.match(codeFenceRegex);
+    if (match && match[1]) return match[1].trim();
+    // If no fences, return content as-is (caller will decide)
+    return content.trim();
+  }
+
+  // Primary method to call AI APIs. Returns { type: 'script', code: '...' }
+  async callAIAPI(userMessage, domSummary) {
+
+    const systemPrompt = `You are an expert JavaScript developer specializing in DOM manipulation and userscripts. Your task is to generate clean, efficient JavaScript code that modifies a webpage based on the user's request.
+
+**CRITICAL CONTEXT - YOU MUST ANALYZE THIS:**
+
+**Current Page Structure (DOM Summary):**
 ${domSummary}
 
-Generate ONLY the JavaScript code, no explanations or JSON.`;
+**INSTRUCTIONS:**
 
-    const modelConfig = this.selectedModel || this.apiConfig;
-    const modelId = this.selectedModel?.id || this.apiConfig?.model || 'gpt-4';
-    const endpoint = modelConfig.endpoint;
-    const apiKey = modelConfig.apiKey;
-    
-    const isGoogleModel = modelId.includes('gemini') || modelId.includes('gemma');
-    
-    const requestBody = {
-      model: modelId,
-      messages: isGoogleModel ? [
-        { role: 'user', content: `${systemPrompt}\n\nUser Request: ${userMessage}` }
-      ] : [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage }
-      ],
-      temperature: this.apiConfig?.temperature || 0.7,
-      max_tokens: this.apiConfig?.maxTokens || 2000
-    };
+1. **DEEPLY ANALYZE THE DOM:** Study the DOM structure carefully. Look for:
+   - Element tags, IDs, and class names you can target
+   - The hierarchy and nesting of elements
+   - Text content that helps identify elements
+   - Attributes that can be used for precise selection
+   
+2. **USE SPECIFIC SELECTORS:** Based on your analysis:
+   - Prefer IDs when available (e.g., \`document.getElementById('specific-id')\`)
+   - Use class names with querySelector (e.g., \`document.querySelector('.specific-class')\`)
+   - Use tag names with additional context (e.g., \`document.querySelector('div > h1')\`)
+   - Combine selectors for precision (e.g., \`document.querySelector('div.container > h1.title')\`)
 
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify(requestBody)
-    });
+3. **GREASEMONKEY APIs AVAILABLE:**
+   You have access to these powerful APIs - USE THEM when they make the code better:
+   
+   **STYLING (HIGHLY RECOMMENDED for CSS changes):**
+   - \`GM_addStyle(css)\` - Inject CSS (ALWAYS prefer this over inline styles for multiple elements)
+   
+   **STORAGE (for persistent data):**
+   - \`GM_setValue(key, value)\` - Store data across page loads
+   - \`GM_getValue(key, defaultValue)\` - Retrieve stored data
+   - \`GM_deleteValue(key)\` - Delete stored data
+   - \`GM_listValues()\` - List all stored keys
+   
+   **NETWORK (for API calls and cross-origin requests):**
+   - \`GM_xmlhttpRequest(details)\` - Make cross-origin HTTP requests
+   
+   **UI ENHANCEMENTS:**
+   - \`GM_notification(options)\` - Show desktop notifications
+   - \`GM_addElement(parent, tag, attributes)\` - Create and insert DOM elements
+   - \`GM_registerMenuCommand(caption, callback)\` - Add custom menu commands
+   - \`GM_openInTab(url, options)\` - Open URLs in new tabs
+   
+   **UTILITIES:**
+   - \`GM_setClipboard(data, type)\` - Copy data to clipboard
+   - \`GM_download(url, name)\` - Download files
+   - \`GM_getResourceText(name)\` - Get text resources
+   - \`unsafeWindow\` - Direct access to page's window object (use cautiously)
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || errorData.message || `API request failed: ${response.status}`);
+4. **CODE QUALITY REQUIREMENTS:**
+   - Write immediately executable code - no placeholders, no TODO comments
+   - Always check element existence before manipulation (e.g., \`if (element) { ... }\`)
+   - Use efficient selectors based on the actual DOM structure provided
+   - Handle edge cases gracefully with try-catch where appropriate
+   - Prefer GM_addStyle for ANY CSS changes affecting multiple elements
+   - Use modern JavaScript (ES6+) with arrow functions, const/let, template literals
+   - Add brief inline comments explaining complex logic
+   - Wait for DOM if needed (DOMContentLoaded or wait functions)
+
+5. **CRITICAL - ZERO METADATA GENERATION:**
+   ⚠️ NEVER generate userscript metadata - this is handled automatically ⚠️
+   
+   **DO NOT INCLUDE:**
+   - \`// ==UserScript==\` headers
+   - \`// @name\`, \`@grant\`, \`@match\`, \`@run-at\`, etc.
+   - Markdown code fences (\`\`\`javascript)
+   - IIFE wrappers (function() {...})()
+   
+   **ONLY PROVIDE:**
+   - Pure JavaScript code that solves the problem
+   - Code starts immediately (no metadata, no wrappers)
+   
+   **WHY:** Our analyzer automatically:
+   - Detects which GM APIs you use
+   - Generates all @grant directives
+   - Creates optimal @match patterns
+   - Sets appropriate @run-at timing
+   - Wraps your code properly
+   
+   Your job: Write great code. Our job: Perfect metadata.
+
+**USER'S REQUEST:**
+${userMessage}
+
+**YOUR RESPONSE:** Pure JavaScript code only (absolutely NO metadata, NO wrappers, NO fences).`;
+
+    // Decide model config (selectedModel preferred, else global apiConfig)
+    const modelConfig = this.selectedModel || this.apiConfig || {};
+    const modelId = modelConfig.id || modelConfig.model || this.apiConfig?.model || 'gpt-4';
+    const endpoint = modelConfig.endpoint || this.apiConfig?.endpoint;
+    const apiKey = modelConfig.apiKey || modelConfig.apiKey || this.apiConfig?.apiKey || this.apiConfig?.key;
+
+    if (!endpoint) {
+      this.editor?.uiManager?.showConfigBanner?.();
+      throw new Error('No endpoint configured for AI provider. Please configure an API endpoint in settings.');
+    }
+    if (!apiKey) {
+      this.editor?.uiManager?.showConfigBanner?.();
+      throw new Error('No API key configured for the selected model/provider.');
     }
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
-    
-    if (!content) {
-      throw new Error('No response from AI');
-    }
+    // choose header format intelligently
+    const authHeaders = this._buildAuthHeaders(modelConfig);
 
-    const codeMatch = content.match(/```(?:javascript|js)?\s*([\s\S]*?)```/);
-    if (codeMatch) {
-      return {
-        type: 'script',
-        code: codeMatch[1].trim()
+    // build messages depending on heuristics (some providers expect system+user, others expect just user)
+    const provider = (modelConfig.provider || '').toLowerCase();
+    const isGoogleish = modelId.toLowerCase().includes('gemini') || modelId.toLowerCase().includes('gemma') || provider.includes('google') || provider.includes('vertex');
+    const isAnthropic = provider.includes('anthropic') || modelId.toLowerCase().includes('claude');
+
+    // prefer settings on per-model config, fallback to global
+    const temperature = (typeof modelConfig.temperature === 'number') ? modelConfig.temperature : (typeof this.apiConfig?.temperature === 'number' ? this.apiConfig.temperature : 0.7);
+    const max_tokens = (typeof modelConfig.maxTokens === 'number') ? modelConfig.maxTokens : (typeof this.apiConfig?.maxTokens === 'number' ? this.apiConfig.maxTokens : 2000);
+    
+    // Construct request body for common Chat completions patterns (best-effort)
+    let requestBody;
+    if (isGoogleish) {
+      // Gemini uses a different API format than OpenAI
+      // Format: { contents: [{ parts: [{ text: "..." }] }] }
+      const combinedPrompt = `${systemPrompt}\n\n${userMessage}`;
+      requestBody = {
+        contents: [
+          {
+            parts: [
+              { text: combinedPrompt }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature,
+          maxOutputTokens: max_tokens
+        }
+      };
+    } else if (isAnthropic) {
+      // Claude-like: use a single input field (this is heuristic)
+      requestBody = {
+        model: modelId,
+        prompt: `${systemPrompt}\n\nUser Request: ${userMessage}`,
+        temperature,
+        max_tokens
+      };
+    } else {
+      // Default: OpenAI/Chat-completions style
+      requestBody = {
+        model: modelId,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage }
+        ],
+        temperature,
+        max_tokens
       };
     }
-    
-    return {
-      type: 'script',
-      code: content.trim()
-    };
+
+    // Add any user-supplied additional fields from modelConfig (non-destructive)
+    if (modelConfig?.extraRequestFields && typeof modelConfig.extraRequestFields === 'object') {
+      Object.assign(requestBody, modelConfig.extraRequestFields);
+    }
+
+    // Timeout handling
+    const controller = new AbortController();
+    const timeout = modelConfig.requestTimeoutMs || this.defaultTimeoutMs;
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        // try to extract json error payload for better message
+        let errText = `API request failed with status ${res.status}`;
+        try {
+          const errJson = await res.json();
+          // different providers put error messages in different places
+          errText = errJson?.error?.message || errJson?.message || JSON.stringify(errJson);
+        } catch {
+          // fallback to text
+          try {
+            const txt = await res.text();
+            if (txt) errText = txt;
+          } catch { /* ignore */ }
+        }
+        throw new Error(errText);
+      }
+
+      const data = await res.json();
+
+      // extract content robustly
+      const content = this._extractContentFromResponse(data);
+      if (!content || content.length === 0) {
+        throw new Error('No usable content returned from AI provider.');
+      }
+
+      const code = this._extractCode(content);
+
+      return {
+        type: 'script',
+        code: code
+      };
+    } catch (err) {
+      console.error('❌ AI API Error:', err);
+      console.groupEnd();
+      if (err.name === 'AbortError') {
+        throw new Error(`AI request timed out after ${timeout}ms`);
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 }

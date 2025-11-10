@@ -1,4 +1,4 @@
-// src/ai_dom_editor/editor/helpers/userscript_handler.js
+import ScriptAnalyzer from '../../../utils/scriptAnalyzer.js';
 
 export class UserscriptHandler {
   constructor(editor) {
@@ -9,44 +9,58 @@ export class UserscriptHandler {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       const url = new URL(tab.url);
-      
-      const scriptCode = typeof code === 'string' ? code : this.convertActionsToScript(code);
-      
-      const siteName = url.hostname.replace('www.', '').split('.')[0];
-      const capitalizedSite = siteName.charAt(0).toUpperCase() + siteName.slice(1);
-      const date = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      
-      const description = this.editor.eventHandler.lastUserPrompt || `Modifications for ${url.hostname}`;
-      
-      const userscript = `// ==UserScript==
-// @name         ${capitalizedSite} - ${date}
-// @namespace    http://tampermonkey.net/
-// @version      1.0.0
-// @description  ${description}
-// @author       AI Assistant
-// @match        ${url.origin}/*
-// @grant        GM_addStyle
-// @grant        GM_getValue
-// @grant        GM_setValue
-// @run-at       document-end
-// ==/UserScript==
+      let scriptCode = typeof code === 'string' ? code : this.convertActionsToScript(code);
+      const userPrompt = this.editor.eventHandler.lastUserPrompt || '';
 
-(function() {
-    'use strict';
-    
-${scriptCode.split('\n').map(line => '    ' + line).join('\n')}
-})();`;
+      scriptCode = scriptCode.replace(/\/\/\s*==UserScript==[\s\S]*?\/\/\s*==\/UserScript==\n*/g, '').trim();
 
+      const detectedApis = ScriptAnalyzer.detectGMApiUsage(scriptCode);
+      const suggestedRunAt = ScriptAnalyzer.suggestRunAt(scriptCode);
+      const scriptName = ScriptAnalyzer.generateScriptName(url.hostname, userPrompt);
+      
+      const metadata = {
+        name: scriptName,
+        namespace: 'https://codetweak.local',
+        version: '1.0.0',
+        description: userPrompt || `Modifications for ${url.hostname}`,
+        author: 'CodeTweak AI',
+        matches: [`${url.origin}/*`],
+        gmApis: detectedApis,
+        runAt: suggestedRunAt
+      };
+      
+      const wrappedCode = this.wrapInIIFE(scriptCode);
+      const finalScript = ScriptAnalyzer.rebuildWithEnhancedMetadata(wrappedCode, metadata);
+
+      // Send to editor
       chrome.runtime.sendMessage({
         action: 'createScriptFromAI',
-        script: userscript,
+        script: finalScript,
         url: tab.url
       });
 
       this.editor.chatManager.addMessage('assistant', '✓ Script created and opened in editor!');
     } catch (error) {
+      console.error('❌ Error creating userscript:', error);
       this.editor.chatManager.addMessage('assistant', `Error creating script: ${error.message}`, { error: true });
     }
+  }
+  
+  wrapInIIFE(code) {
+    const isWrapped = /^\s*\(\s*function\s*\(/.test(code) || /^\s*\(function\s*\(/.test(code);
+    
+    if (isWrapped) {
+      return code;
+    }
+    
+    const lines = code.split('\n');
+    const indentedLines = lines.map(line => '    ' + line);
+    
+    return `(function() {
+    'use strict';
+    
+${indentedLines.join('\n')}
+})();`;
   }
 
   convertActionsToScript(actions) {
