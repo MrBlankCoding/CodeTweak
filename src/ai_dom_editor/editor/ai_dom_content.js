@@ -35,10 +35,7 @@ class AIDOMContent {
       const summary = {
         title: document.title,
         url: window.location.href,
-        tags: this.getTagCounts(),
-        classes: this.getTopClasses(),
-        ids: this.getTopIds(),
-        structure: this.getStructureSummary()
+        domTree: this.getDOMTree(document.body)
       };
 
       return JSON.stringify(summary, null, 2);
@@ -48,73 +45,55 @@ class AIDOMContent {
     }
   }
 
-  getTagCounts() {
-    const tags = {};
-    const elements = document.querySelectorAll('*');
-    
-    elements.forEach(el => {
-      const tag = el.tagName.toLowerCase();
-      tags[tag] = (tags[tag] || 0) + 1;
-    });
+  getDOMTree(element, depth = 0) {
+    if (!element || depth > 7 || element.tagName === 'SCRIPT' || element.tagName === 'STYLE' || element.tagName === 'NOSCRIPT') {
+      return null;
+    }
 
-    // Return top 20 most common tags
-    return Object.entries(tags)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 20)
-      .reduce((obj, [key, val]) => {
-        obj[key] = val;
-        return obj;
-      }, {});
-  }
-
-  getTopClasses() {
-    const classes = {};
-    const elements = document.querySelectorAll('[class]');
-    
-    elements.forEach(el => {
-      el.className.split(/\s+/).forEach(cls => {
-        if (cls.trim()) {
-          classes[cls] = (classes[cls] || 0) + 1;
-        }
-      });
-    });
-
-    // Return top 30 most common classes
-    return Object.entries(classes)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 30)
-      .map(([cls]) => cls);
-  }
-
-  getTopIds() {
-    const ids = [];
-    const elements = document.querySelectorAll('[id]');
-    
-    elements.forEach(el => {
-      if (el.id.trim()) {
-        ids.push(el.id);
-      }
-    });
-
-    return ids.slice(0, 50);
-  }
-
-  getStructureSummary() {
-    const structure = {
-      hasHeader: !!document.querySelector('header, [role="banner"]'),
-      hasNav: !!document.querySelector('nav, [role="navigation"]'),
-      hasMain: !!document.querySelector('main, [role="main"]'),
-      hasFooter: !!document.querySelector('footer, [role="contentinfo"]'),
-      hasSidebar: !!document.querySelector('aside, [role="complementary"]'),
-      hasArticle: !!document.querySelector('article'),
-      hasForm: !!document.querySelector('form'),
-      hasTable: !!document.querySelector('table'),
-      buttonCount: document.querySelectorAll('button, [role="button"]').length,
-      linkCount: document.querySelectorAll('a[href]').length,
-      imageCount: document.querySelectorAll('img').length
+    const node = {
+      tagName: element.tagName.toLowerCase(),
+      attributes: {},
+      children: []
     };
 
-    return structure;
+    // Get key attributes
+    const attrsToInclude = ['id', 'class', 'role', 'href', 'src', 'alt', 'title', 'placeholder', 'type', 'name'];
+    for (const attr of attrsToInclude) {
+      if (element.hasAttribute(attr)) {
+        node.attributes[attr] = element.getAttribute(attr);
+      }
+    }
+
+    // Get truncated text content
+    if (element.children.length === 0 && element.innerText && element.innerText.trim()) {
+        node.text = element.innerText.trim().substring(0, 100);
+    } else {
+        // For non-leaf nodes, get only the immediate text
+        let immediateText = '';
+        if (element.childNodes) {
+            for (const child of element.childNodes) {
+                if (child.nodeType === Node.TEXT_NODE && child.textContent.trim()) {
+                    immediateText += child.textContent.trim() + ' ';
+                }
+            }
+        }
+        if (immediateText.trim()) {
+            node.text = immediateText.trim().substring(0, 100);
+        }
+    }
+
+
+    // Recursively get children
+    if (element.children.length > 0) {
+      for (const child of element.children) {
+        const childNode = this.getDOMTree(child, depth + 1);
+        if (childNode) {
+          node.children.push(childNode);
+        }
+      }
+    }
+
+    return node;
   }
 
   startElementSelection() {
