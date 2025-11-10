@@ -1,6 +1,3 @@
-// src/ai_dom_editor/editor/helpers/api_handler.js
-import { GM_API_DEFINITIONS } from "../../../GM/gmApiDefinitions.js";
-
 export class ApiHandler {
   constructor(editor) {
     this.editor = editor;
@@ -66,7 +63,7 @@ export class ApiHandler {
       if (typeof selectedModel === 'string') {
         try {
           selectedModel = JSON.parse(selectedModel);
-        } catch (e) {
+        } catch {
           // ignore; selectedModel left as string (invalid) and we'll reset it later
           selectedModel = null;
         }
@@ -213,33 +210,57 @@ export class ApiHandler {
 
   // Primary method to call AI APIs. Returns { type: 'script', code: '...' }
   async callAIAPI(userMessage, domSummary) {
-    const gmApiDefs = Object.values(GM_API_DEFINITIONS || {}).map(api => {
-      return `- ${api.name}:\n  - Description: ${api.description}\n  - Signature: ${api.signature}`; 
-    }).join('\n');
 
-    const systemPrompt = `You are an expert Tampermonkey script developer. Your task is to generate a complete, executable JavaScript userscript based on a user's request.
+    const systemPrompt = `You are an expert JavaScript developer specializing in DOM manipulation and userscripts. Your task is to generate clean, efficient JavaScript code that modifies a webpage based on the user's request.
 
-You will be provided with the following context:
-1.  **User's Goal:** A description of what the user wants to achieve on the webpage.
-2.  **DOM Summary:** A simplified JSON tree representing the structure of the current webpage.
-3.  **Available GM APIs:** A list of Greasemonkey APIs you can use.
+**CRITICAL CONTEXT - YOU MUST ANALYZE THIS:**
 
-**IMPORTANT RULES:**
-1.  **Executable Code:** Your response MUST be a single, complete, executable JavaScript code block. Do not wrap it in markdown or any other formatting.
-2.  **No Placeholders:** The code should be fully functional. Do not leave placeholders like
-3.  **Use Provided Context:** Base your script on the provided DOM summary. Use the element tags, IDs, and classes shown in the summary to select elements.
-4.  **Use GM APIs:** When appropriate, use the provided GM APIs. For example, use GM_addStyle for CSS changes.
-5.  **Robustness:** Write robust code. Check for the existence of elements before manipulating them (e.g., if (element) { ... }).
-6.  **No Headers:** Do NOT include the // ==UserScript== header block in your response.
-7.  **No External Calls:** Do not make external network calls unless explicitly requested and using the appropriate GM API (e.g., GM_xmlhttpRequest).
-
-**Available GM APIs:**
-${gmApiDefs}
-
-**DOM Summary:**
+**Current Page Structure (DOM Summary):**
 ${domSummary}
 
-Generate ONLY the JavaScript code for the userscript.`;
+**INSTRUCTIONS:**
+
+1. **DEEPLY ANALYZE THE DOM:** Study the DOM structure carefully. Look for:
+   - Element tags, IDs, and class names you can target
+   - The hierarchy and nesting of elements
+   - Text content that helps identify elements
+   - Attributes that can be used for precise selection
+   
+2. **USE SPECIFIC SELECTORS:** Based on your analysis:
+   - Prefer IDs when available (e.g., \`document.getElementById('specific-id')\`)
+   - Use class names with querySelector (e.g., \`document.querySelector('.specific-class')\`)
+   - Use tag names with additional context (e.g., \`document.querySelector('div > h1')\`)
+   - Combine selectors for precision (e.g., \`document.querySelector('div.container > h1.title')\`)
+
+3. **GREASEMONKEY APIs AVAILABLE:**
+   You have access to these powerful APIs - use them when appropriate:
+   - \`GM_addStyle(css)\` - Inject CSS (preferred for styling changes)
+   - \`GM_setValue(key, value)\` - Store persistent data
+   - \`GM_getValue(key, defaultValue)\` - Retrieve stored data
+   - \`GM_xmlhttpRequest(details)\` - Make cross-origin requests
+   - \`GM_notification(options)\` - Show desktop notifications
+   - \`GM_addElement(parent, tag, attributes)\` - Create and insert elements
+   - \`GM_registerMenuCommand(name, callback)\` - Add menu commands
+   - And many more standard Tampermonkey APIs
+
+4. **CODE QUALITY REQUIREMENTS:**
+   - Write immediately executable code - no placeholders
+   - Check element existence before manipulation
+   - Use efficient selectors based on the actual DOM
+   - Handle edge cases gracefully
+   - Prefer GM_addStyle for CSS changes over inline styles
+   - Use modern JavaScript (ES6+)
+
+5. **OUTPUT FORMAT:**
+   - Return ONLY the JavaScript code
+   - NO markdown code fences
+   - NO explanations or comments outside the code
+   - NO \`// ==UserScript==\` headers
+
+**USER'S REQUEST:**
+${userMessage}
+
+**YOUR RESPONSE:** Generate the complete, executable JavaScript code now.`;
 
     // Decide model config (selectedModel preferred, else global apiConfig)
     const modelConfig = this.selectedModel || this.apiConfig || {};
@@ -268,7 +289,7 @@ Generate ONLY the JavaScript code for the userscript.`;
     // prefer settings on per-model config, fallback to global
     const temperature = (typeof modelConfig.temperature === 'number') ? modelConfig.temperature : (typeof this.apiConfig?.temperature === 'number' ? this.apiConfig.temperature : 0.7);
     const max_tokens = (typeof modelConfig.maxTokens === 'number') ? modelConfig.maxTokens : (typeof this.apiConfig?.maxTokens === 'number' ? this.apiConfig.maxTokens : 2000);
-
+    
     // Construct request body for common Chat completions patterns (best-effort)
     let requestBody;
     if (isGoogleish) {
@@ -319,6 +340,8 @@ Generate ONLY the JavaScript code for the userscript.`;
     if (modelConfig?.extraRequestFields && typeof modelConfig.extraRequestFields === 'object') {
       Object.assign(requestBody, modelConfig.extraRequestFields);
     }
+    
+    console.log('Request', JSON.stringify(requestBody, null, 2));
 
     // Timeout handling
     const controller = new AbortController();
@@ -326,6 +349,8 @@ Generate ONLY the JavaScript code for the userscript.`;
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
+      const startTime = Date.now();
+      
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -335,7 +360,7 @@ Generate ONLY the JavaScript code for the userscript.`;
         body: JSON.stringify(requestBody),
         signal: controller.signal
       });
-
+      
       clearTimeout(timeoutId);
 
       if (!res.ok) {
@@ -345,12 +370,12 @@ Generate ONLY the JavaScript code for the userscript.`;
           const errJson = await res.json();
           // different providers put error messages in different places
           errText = errJson?.error?.message || errJson?.message || JSON.stringify(errJson);
-        } catch (e) {
+        } catch {
           // fallback to text
           try {
             const txt = await res.text();
             if (txt) errText = txt;
-          } catch (e2) { /* ignore */ }
+          } catch { /* ignore */ }
         }
         throw new Error(errText);
       }
@@ -370,10 +395,11 @@ Generate ONLY the JavaScript code for the userscript.`;
         code: code
       };
     } catch (err) {
+      console.error('❌ AI API Error:', err);
+      console.groupEnd();
       if (err.name === 'AbortError') {
         throw new Error(`AI request timed out after ${timeout}ms`);
       }
-      console.error('AI API error:', err);
       throw err;
     } finally {
       clearTimeout(timeoutId);
