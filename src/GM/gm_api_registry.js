@@ -243,18 +243,28 @@
 
     _registerResources(enabled) {
       if (enabled.gmGetResourceText) {
-        const fn = (name) => new Promise(resolve => {
+        const fn = async (name) => {
+          if (typeof name !== 'string' || name === '') {
+            console.warn('GM_getResourceText: resource name must be a non-empty string');
+            return '';
+          }
           const text = this.resourceManager.getText(name);
-          resolve(String(text || ''));
-        });
+          // Ensure we always return a string, never null or undefined
+          return (text != null) ? String(text) : '';
+        };
         window.GM_getResourceText = window.GM.getResourceText = fn;
       }
 
       if (enabled.gmGetResourceURL) {
-        const fn = (name) => new Promise(resolve => {
+        const fn = async (name) => {
+          if (typeof name !== 'string' || name === '') {
+            console.warn('GM_getResourceURL: resource name must be a non-empty string');
+            return '';
+          }
           const url = this.resourceManager.getURL(name);
-          resolve(String(url || ''));
-        });
+          // Ensure we always return a string, never null or undefined
+          return (url != null) ? String(url) : '';
+        };
         window.GM_getResourceURL = window.GM.getResourceURL = fn;
       }
     }
@@ -365,7 +375,7 @@
 
           try {
             new URL(details.url);
-          } catch (e) {
+          } catch {
             console.error(`CodeTweak: GM_xmlhttpRequest failed due to an invalid URL: "${details.url}"`);
             if (details.onerror) {
               details.onerror(new TypeError(`Invalid URL: ${details.url}`));
