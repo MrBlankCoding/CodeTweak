@@ -112,6 +112,7 @@ async function deleteScript(scriptId) {
 
 async function loadSettings(settingsElements) {
   try {
+    applyTheme();
     const { settings = {} } = await chrome.storage.local.get("settings");
 
     // default values
@@ -150,11 +151,6 @@ async function loadSettings(settingsElements) {
     if (shouldSaveDefaults) {
       await chrome.storage.local.set({ settings });
     }
-    
-    // Apply theme
-    if (settings.accentColor) {
-      document.documentElement.style.setProperty('--accent-color', settings.accentColor);
-    }
 
   } catch (error) {
     console.error("Error loading settings:", error);
@@ -184,10 +180,7 @@ async function saveSettings(settingsElements) {
     showNotification("Settings saved successfully", "success");
     chrome.runtime.sendMessage({ action: "settingsUpdated" });
 
-    // Apply theme
-    if (settings.accentColor) {
-      document.documentElement.style.setProperty('--accent-color', settings.accentColor);
-    }
+    applyTheme();
     
     // Reapply translations if language changed
     await applyTranslations();

@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="../assets/styles/dashboard/dashboard.css">
   <link rel="stylesheet" href="../assets/styles/dashboard/d_sidebar.css">
   <link rel="stylesheet" href="../assets/styles/dashboard/d_script_list.css">
+  <script src="../utils/theme_manager.js"></script>
   <script type="module" src="dashboard.js"></script>
 </head>
 <body>
@@ -161,6 +162,16 @@
                 </span>
                 <input type="color" id="accentColor" value="#61afef">
               </label>
+            </div>
+            <div class="settings-group">
+              <h3 data-i18n="settingsAi">AI Settings</h3>
+              <div class="setting-item">
+                  <span class="setting-label">
+                      <strong data-i18n="settingsAiConfigure">Configure AI Features</strong>
+                      <small data-i18n="settingsAiConfigureDesc">Open the settings page for the AI DOM Editor</small>
+                  </span>
+                  <a href="../ai_dom_editor/settings/ai_settings.html" class="btn-primary" id="aiSettingsLink" data-i18n="settingsAiConfigureButton">Configure</a>
+              </div>
             </div>
             <div class="settings-actions">
               <button type="submit" class="btn-primary" data-i18n="settingsSaveSettings">Save Settings</button>

@@ -344,13 +344,6 @@ class ScriptEditor {
     }
   }
 
-  async applyTheme() {
-    const { settings } = await chrome.storage.local.get("settings");
-    if (settings && settings.accentColor) {
-      document.documentElement.style.setProperty('--accent-color', settings.accentColor);
-    }
-  }
-
   setDefaultValues() {
     if (!this.elements.scriptVersion.value) {
       this.elements.scriptVersion.value = this.config.DEFAULT_VERSION;

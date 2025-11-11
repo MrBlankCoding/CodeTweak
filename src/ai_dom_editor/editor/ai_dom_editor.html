@@ -3,22 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI DOM Editor</title>
+  <title data-i18n="aiEditorTitle">AI DOM Editor</title>
   <link rel="stylesheet" href="../../assets/styles/ai/ai_dom_editor.css">
 </head>
 <body>
   <div class="ai-editor-container">
     <!-- Header -->
     <div class="ai-editor-header">
-      <h2 class="header-title">AI DOM Editor</h2>
+      <h2 class="header-title" data-i18n="aiEditorTitle">AI DOM Editor</h2>
       <div class="header-actions">
-        <button class="tool-btn" id="clearChatBtn" title="Clear conversation">
+        <button class="tool-btn" id="clearChatBtn" title="Clear conversation" data-i18n-title="aiEditorClearConversation">
           <i data-feather="trash-2" width="18" height="18"></i>
         </button>
-        <button class="tool-btn" id="headerSettingsBtn" title="Settings">
+        <button class="tool-btn" id="headerSettingsBtn" title="Settings" data-i18n-title="aiEditorSettings">
           <i data-feather="settings" width="18" height="18"></i>
         </button>
-        <button class="close-btn" id="closeBtn" title="Close AI Editor">
+        <button class="close-btn" id="closeBtn" title="Close AI Editor" data-i18n-title="aiEditorClose">
           <i data-feather="x" width="18" height="18"></i>
         </button>
       </div>
@@ -28,9 +28,9 @@
     <div class="config-banner" id="configBanner" style="display: none;">
       <div class="banner-content">
         <i data-feather="alert-circle" width="20" height="20"></i>
-        <span>API not configured. Please configure your AI provider in settings.</span>
+        <span data-i18n="aiEditorApiNotConfigured">API not configured. Please configure your AI provider in settings.</span>
       </div>
-      <button class="btn-primary" id="openSettingsBtn">Configure</button>
+      <button class="btn-primary" id="openSettingsBtn" data-i18n="aiEditorConfigure">Configure</button>
     </div>
 
     <!-- Chat Container -->
@@ -39,12 +39,12 @@
         <div class="welcome-icon">
           <i data-feather="layers" width="48" height="48"></i>
         </div>
-        <h2>Ai Editor</h2>
-        <p>Whats your idea?</p>
+        <h2 data-i18n="aiEditorWelcomeTitle">Ai Editor</h2>
+        <p data-i18n="aiEditorWelcomeSubtitle">What's your idea?</p>
         <div class="example-prompts">
-          <div class="example-prompt">Make the background pink and all headings blue</div>
-          <div class="example-prompt">Remove all Ad's</div>
-          <div class="example-prompt">Round the page</div>
+          <div class="example-prompt" data-i18n="aiEditorExamplePrompt1">Make the background pink and all headings blue</div>
+          <div class="example-prompt" data-i18n="aiEditorExamplePrompt2">Remove all Ads</div>
+          <div class="example-prompt" data-i18n="aiEditorExamplePrompt3">Make all buttons larger</div>
         </div>
       </div>
       <div class="messages" id="messages"></div>
@@ -53,24 +53,25 @@
     <!-- Element Selector Indicator -->
     <div class="selector-active" id="selectorActive" style="display: none;">
       <i data-feather="target" width="16" height="16"></i>
-      <span>Click an element on the page</span>
-      <button class="btn-text" id="cancelSelector">Cancel</button>
+      <span data-i18n="aiEditorClickElement">Click an element on the page</span>
+      <button class="btn-text" id="cancelSelector" data-i18n="aiEditorCancel">Cancel</button>
     </div>
 
     <!-- Input Area -->
     <div class="input-area">
       <div class="model-selector-row">
-        <select id="modelSelector" class="model-selector" title="Select AI Model">
-          <option value="">Loading models...</option>
+        <select id="modelSelector" class="model-selector" title="Select AI Model" data-i18n-title="aiEditorSelectModel">
+          <option value="" data-i18n="aiEditorLoadingModels">Loading models...</option>
         </select>
       </div>
       <div class="input-wrapper">
-        <button class="tool-btn" id="elementSelectorBtn" title="Select element on page">
+        <button class="tool-btn" id="elementSelectorBtn" title="Select element on page" data-i18n-title="aiEditorSelectElement">
           <i data-feather="target" width="18" height="18"></i>
         </button>
         <textarea 
           id="userInput" 
           placeholder="Describe what you want to change on this page..."
+          data-i18n-placeholder="aiEditorPlaceholder"
           rows="1"
         ></textarea>
         <button class="send-btn" id="sendBtn" disabled>
@@ -80,6 +81,7 @@
     </div>
   </div>
 
+  <script src="../../utils/theme_manager.js"></script>
   <script type="module" src="ai_dom_editor.js"></script>
 </body>
 </html>

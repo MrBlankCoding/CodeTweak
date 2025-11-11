@@ -146,6 +146,19 @@
   "settingsExportAll": {
     "message": "Tout Exporter"
   },
+
+  "settingsAi": {
+    "message": "Paramètres de l`IA"
+  },
+  "settingsAiConfigure": {
+    "message": "Configurer les fonctionnalités de l`IA"
+  },
+  "settingsAiConfigureDesc": {
+    "message": "Ouvrir la page des paramètres de l`éditeur DOM de l`IA"
+  },
+  "settingsAiConfigureButton": {
+    "message": "Configurer"
+  },
   
   "aboutTitle": {
     "message": "À propos de CodeTweak"
@@ -332,5 +345,147 @@
   },
   "editorEnableAutosave": {
     "message": "Activer la Sauvegarde Automatique"
+  },
+  "aiSettingsTitle": {
+    "message": "Paramètres de l'Éditeur DOM IA"
+  },
+  "aiSettingsPrivacySecurity": {
+    "message": "Confidentialité et Sécurité"
+  },
+  "aiSettingsPrivacyLi1": {
+    "message": "Les clés API sont stockées localement dans votre navigateur"
+  },
+  "aiSettingsPrivacyLi2": {
+    "message": "Aucune donnée n'est envoyée aux serveurs de CodeTweak"
+  },
+  "aiSettingsPrivacyLi3": {
+    "message": "Toutes les requêtes vont directement à votre fournisseur d'IA choisi"
+  },
+  "aiSettingsPrivacyLi4": {
+    "message": "Le code généré s`exécute dans un environnement isolé (sandbox)"
+  },
+  "aiSettingsGettingStarted": {
+    "message": "Commencer"
+  },
+  "aiSettingsGettingStartedLi1": {
+    "message": "Obtenez une clé API auprès de votre fournisseur choisi"
+  },
+  "aiSettingsSavedApiKeys": {
+    "message": "Clés API enregistrées"
+  },
+  "aiSettingsAddKey": {
+    "message": "Ajouter une clé"
+  },
+  "aiSettingsProviderConfig": {
+    "message": "Configuration du Fournisseur d'IA"
+  },
+  "aiSettingsProvider": {
+    "message": "Fournisseur d'IA"
+  },
+  "aiSettingsSelectProvider": {
+    "message": "Sélectionnez un fournisseur..."
+  },
+  "aiSettingsProviderHint": {
+    "message": "Choisissez votre fournisseur d'IA"
+  },
+  "aiSettingsApiKey": {
+    "message": "Clé API"
+  },
+  "aiSettingsApiKeyHint": {
+    "message": "Votre clé API est stockée localement et n’est jamais envoyée à des serveurs externes"
+  },
+  "aiSettingsApiEndpoint": {
+    "message": "Point de terminaison API"
+  },
+  "aiSettingsApiEndpointHint": {
+    "message": "URL du point de terminaison API personnalisé"
+  },
+  "aiSettingsModel": {
+    "message": "Modèle"
+  },
+  "aiSettingsSelectModel": {
+    "message": "Sélectionnez un modèle..."
+  },
+  "aiSettingsFetchModels": {
+    "message": "Récupérer les modèles"
+  },
+  "aiSettingsModelHint": {
+    "message": "Modèle d'IA à utiliser pour la génération de code"
+  },
+  "aiSettingsAdvanced": {
+    "message": "Paramètres avancés"
+  },
+  "aiSettingsTemperature": {
+    "message": "Température"
+  },
+  "aiSettingsTemperatureHint": {
+    "message": "Contrôle l'aléatoire (0 = déterministe, 1 = créatif)"
+  },
+  "aiSettingsMaxTokens": {
+    "message": "Nombre maximal de tokens"
+  },
+  "aiSettingsMaxTokensHint": {
+    "message": "Nombre maximal de tokens dans la réponse de l'IA"
+  },
+  "aiSettingsTestConnection": {
+    "message": "Tester la connexion"
+  },
+  "aiSettingsReset": {
+    "message": "Réinitialiser"
+  },
+  "aiSettingsSave": {
+    "message": "Enregistrer les paramètres"
+  },
+
+  "aiEditorTitle": {
+    "message": "Éditeur DOM IA"
+  },
+  "aiEditorClearConversation": {
+    "message": "Effacer la conversation"
+  },
+  "aiEditorSettings": {
+    "message": "Paramètres"
+  },
+  "aiEditorClose": {
+    "message": "Fermer l'Éditeur IA"
+  },
+  "aiEditorApiNotConfigured": {
+    "message": "API non configurée. Veuillez configurer votre fournisseur d'IA dans les paramètres."
+  },
+  "aiEditorConfigure": {
+    "message": "Configurer"
+  },
+  "aiEditorWelcomeTitle": {
+    "message": "Éditeur IA"
+  },
+  "aiEditorWelcomeSubtitle": {
+    "message": "Quelle est votre idée ?"
+  },
+  "aiEditorExamplePrompt1": {
+    "message": "Rends le fond rose et tous les titres bleus"
+  },
+  "aiEditorExamplePrompt2": {
+    "message": "Supprime toutes les publicités"
+  },
+  "aiEditorExamplePrompt3": {
+    "message": "Agrandis tous les boutons"
+  },
+  "aiEditorClickElement": {
+    "message": "Cliquez sur un élément de la page"
+  },
+  "aiEditorCancel": {
+    "message": "Annuler"
+  },
+  "aiEditorSelectModel": {
+    "message": "Sélectionner un modèle d'IA"
+  },
+  "aiEditorLoadingModels": {
+    "message": "Chargement des modèles..."
+  },
+  "aiEditorSelectElement": {
+    "message": "Sélectionnez un élément sur la page"
+  },
+  "aiEditorPlaceholder": {
+    "message": "Décrivez ce que vous voulez modifier sur cette page..."
   }
 }

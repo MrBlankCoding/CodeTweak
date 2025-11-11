@@ -37,6 +37,7 @@ class AIDOMEditor {
   }
 
   async init() {
+    applyTheme();
     await this.initializeAI();
   }
 

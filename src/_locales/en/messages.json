@@ -146,6 +146,19 @@
   "settingsExportAll": {
     "message": "Export All"
   },
+
+  "settingsAi": {
+    "message": "AI Settings"
+  },
+  "settingsAiConfigure": {
+    "message": "Configure AI Features"
+  },
+  "settingsAiConfigureDesc": {
+    "message": "Open the settings page for the AI DOM Editor"
+  },
+  "settingsAiConfigureButton": {
+    "message": "Configure"
+  },
   
   "aboutTitle": {
     "message": "About CodeTweak"
@@ -332,5 +345,148 @@
   },
   "editorEnableAutosave": {
     "message": "Enable Autosave"
+  },
+
+  "aiSettingsTitle": {
+    "message": "AI DOM Editor Settings"
+  },
+  "aiSettingsPrivacySecurity": {
+    "message": "Privacy & Security"
+  },
+  "aiSettingsPrivacyLi1": {
+    "message": "API keys are stored locally in your browser"
+  },
+  "aiSettingsPrivacyLi2": {
+    "message": "No data is sent to CodeTweak servers"
+  },
+  "aiSettingsPrivacyLi3": {
+    "message": "All requests go directly to your chosen AI provider"
+  },
+  "aiSettingsPrivacyLi4": {
+    "message": "Generated code runs in an isolated sandbox"
+  },
+  "aiSettingsGettingStarted": {
+    "message": "Getting Started"
+  },
+  "aiSettingsGettingStartedLi1": {
+    "message": "Obtain an API key from your chosen provider"
+  },
+  "aiSettingsSavedApiKeys": {
+    "message": "Saved API Keys"
+  },
+  "aiSettingsAddKey": {
+    "message": "Add Key"
+  },
+  "aiSettingsProviderConfig": {
+    "message": "AI Provider Configuration"
+  },
+  "aiSettingsProvider": {
+    "message": "AI Provider"
+  },
+  "aiSettingsSelectProvider": {
+    "message": "Select a provider..."
+  },
+  "aiSettingsProviderHint": {
+    "message": "Choose your AI provider"
+  },
+  "aiSettingsApiKey": {
+    "message": "API Key"
+  },
+  "aiSettingsApiKeyHint": {
+    "message": "Your API key is stored locally and never sent to external servers"
+  },
+  "aiSettingsApiEndpoint": {
+    "message": "API Endpoint"
+  },
+  "aiSettingsApiEndpointHint": {
+    "message": "Custom API endpoint URL"
+  },
+  "aiSettingsModel": {
+    "message": "Model"
+  },
+  "aiSettingsSelectModel": {
+    "message": "Select a model..."
+  },
+  "aiSettingsFetchModels": {
+    "message": "Fetch Models"
+  },
+  "aiSettingsModelHint": {
+    "message": "AI model to use for code generation"
+  },
+  "aiSettingsAdvanced": {
+    "message": "Advanced Settings"
+  },
+  "aiSettingsTemperature": {
+    "message": "Temperature"
+  },
+  "aiSettingsTemperatureHint": {
+    "message": "Controls randomness (0 = deterministic, 1 = creative)"
+  },
+  "aiSettingsMaxTokens": {
+    "message": "Max Tokens"
+  },
+  "aiSettingsMaxTokensHint": {
+    "message": "Maximum tokens in AI response"
+  },
+  "aiSettingsTestConnection": {
+    "message": "Test Connection"
+  },
+  "aiSettingsReset": {
+    "message": "Reset"
+  },
+  "aiSettingsSave": {
+    "message": "Save Settings"
+  },
+
+  "aiEditorTitle": {
+    "message": "AI DOM Editor"
+  },
+  "aiEditorClearConversation": {
+    "message": "Clear conversation"
+  },
+  "aiEditorSettings": {
+    "message": "Settings"
+  },
+  "aiEditorClose": {
+    "message": "Close AI Editor"
+  },
+  "aiEditorApiNotConfigured": {
+    "message": "API not configured. Please configure your AI provider in settings."
+  },
+  "aiEditorConfigure": {
+    "message": "Configure"
+  },
+  "aiEditorWelcomeTitle": {
+    "message": "Ai Editor"
+  },
+  "aiEditorWelcomeSubtitle": {
+    "message": "What's your idea?"
+  },
+  "aiEditorExamplePrompt1": {
+    "message": "Make the background pink and all headings blue"
+  },
+  "aiEditorExamplePrompt2": {
+    "message": "Remove all Ads"
+  },
+  "aiEditorExamplePrompt3": {
+    "message": "Make all buttons larger"
+  },
+  "aiEditorClickElement": {
+    "message": "Click an element on the page"
+  },
+  "aiEditorCancel": {
+    "message": "Cancel"
+  },
+  "aiEditorSelectModel": {
+    "message": "Select AI Model"
+  },
+  "aiEditorLoadingModels": {
+    "message": "Loading models..."
+  },
+  "aiEditorSelectElement": {
+    "message": "Select element on page"
+  },
+  "aiEditorPlaceholder": {
+    "message": "Describe what you want to change on this page..."
   }
 }

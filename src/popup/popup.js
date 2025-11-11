@@ -83,12 +83,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  async function applyTheme() {
-    const { settings } = await chrome.storage.local.get("settings");
-    if (settings && settings.accentColor) {
-      document.documentElement.style.setProperty('--accent-color', settings.accentColor);
-    }
-  }
+
 
   async function loadScripts(url) {
     const { scripts = [] } = await chrome.storage.local.get("scripts");
