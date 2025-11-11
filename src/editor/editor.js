@@ -335,7 +335,7 @@ class ScriptEditor {
     }
       this.setupBackgroundConnection();
       this.codeEditorManager.updateEditorLintAndAutocomplete();
-      this.applyTheme();
+      window.applyTheme();
 
       setTimeout(() => this.codeEditorManager.focus(), 100);
     } catch (error) {
@@ -470,25 +470,17 @@ class ScriptEditor {
       
       const { code, sourceUrl } = aiData;
 
-      console.log('📥 Loading AI-generated script...');
-
       // Validate and enhance the AI-generated script
       const enhanced = ScriptAnalyzer.validateAndEnhanceMetadata(code, {
         url: sourceUrl || '',
         hostname: sourceUrl ? new URL(sourceUrl).hostname : '',
         userPrompt: 'AI Generated Script'
       });
-
-      // Log detected APIs and any warnings
-      console.log('🔍 Analysis complete:');
-      console.log('  📊 Detected GM APIs:', Object.keys(enhanced.detectedApis || {}).length);
       
       if (enhanced.warnings && enhanced.warnings.length > 0) {
-        console.log('  ⚠️ Issues found and fixed:');
         enhanced.warnings.forEach(warning => {
-          console.log(`    - ${warning.message}`);
           if (warning.suggestion) {
-            console.log(`      💡 ${warning.suggestion}`);
+            console.log(`       ${warning.suggestion}`);
           }
         });
         
@@ -516,9 +508,8 @@ class ScriptEditor {
       // Clean up storage
       await chrome.storage.local.remove(key);
       
-      console.log('✅ AI script loaded successfully');
     } catch (err) {
-      console.error('❌ Error loading AI script:', err);
+      console.error('Error loading AI script:', err);
       this.ui.showStatusMessage('Failed to load AI-generated script', 'error');
     }
   }

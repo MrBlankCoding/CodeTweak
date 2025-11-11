@@ -386,14 +386,8 @@
   "aiSettingsSelectProvider": {
     "message": "Select a provider..."
   },
-  "aiSettingsProviderHint": {
-    "message": "Choose your AI provider"
-  },
   "aiSettingsApiKey": {
     "message": "API Key"
-  },
-  "aiSettingsApiKeyHint": {
-    "message": "Your API key is stored locally and never sent to external servers"
   },
   "aiSettingsApiEndpoint": {
     "message": "API Endpoint"
@@ -409,9 +403,6 @@
   },
   "aiSettingsFetchModels": {
     "message": "Fetch Models"
-  },
-  "aiSettingsModelHint": {
-    "message": "AI model to use for code generation"
   },
   "aiSettingsAdvanced": {
     "message": "Advanced Settings"

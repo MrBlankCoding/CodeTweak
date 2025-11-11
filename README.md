@@ -45,6 +45,10 @@ npm build.js
 
 ## TODO List
 
+### Element inspector
+* [ ] Fix element inspector aplication
+* [ ] Add element inspector to AI 
+
 ### Editor
 
 * [ ] Reduce editor bundle size (~1.4 MB currently)
@@ -56,6 +60,7 @@ npm build.js
 ### UI
 * [ ] Fix editor optimizations
 * [ ] Can you make it so if you have mutiple scripts running at once on the same page the notifications will expand verticlly and not all overlap
+* [ ] Improve AI settings UI layout
 
 ---
 

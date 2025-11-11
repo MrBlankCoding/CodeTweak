@@ -55,6 +55,7 @@ class AISettings {
   }
 
   async init() {
+    window.applyTheme();
     await this.loadSettings();
     this.setupEventListeners();
     feather.replace();
