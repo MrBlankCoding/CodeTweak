@@ -111,7 +111,21 @@ export class EventHandler {
         const domSummary = response?.summary || '';
         
         try {
-          const aiResponse = await this.editor.apiHandler.callAIAPI(message, domSummary);
+          let previousCode = this.editor.chatManager.getPreviousCode();
+          const scriptNameMatch = message.match(/@(\S+)/);
+          if (scriptNameMatch) {
+            const scriptName = scriptNameMatch[1];
+            try {
+              previousCode = await this.editor.userscriptHandler.getScriptContent(scriptName);
+              this.editor.chatManager.setScriptId(scriptName);
+            } catch (error) {
+              this.editor.chatManager.addMessage('assistant', `Error: ${error.message}`);
+              this.editor.chatManager.removeMessage(loadingId);
+              return;
+            }
+          }
+
+          const aiResponse = await this.editor.apiHandler.callAIAPI(message, domSummary, previousCode);
           this.editor.chatManager.removeMessage(loadingId);
           this.handleAIResponse(aiResponse);
         } catch (error) {

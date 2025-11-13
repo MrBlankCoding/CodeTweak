@@ -7,17 +7,26 @@ export class ChatManager {
     this.editor = editor;
     this.messages = [];
     this.currentSiteUrl = '';
+    this.scriptId = null; // Add scriptId property
+  }
+
+  setScriptId(scriptId) {
+    this.scriptId = scriptId;
+    this.loadChatHistory();
   }
 
   async loadChatHistory() {
     try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab || !tab.url) return;
+      if (!this.scriptId) {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tab || !tab.url) return;
 
-      const url = new URL(tab.url);
-      this.currentSiteUrl = `${url.protocol}//${url.hostname}`;
+        const url = new URL(tab.url);
+        this.currentSiteUrl = `${url.protocol}//${url.hostname}`;
+        this.scriptId = `chat_${this.currentSiteUrl}`;
+      }
 
-      const storageKey = `aiChatHistory_${this.currentSiteUrl}`;
+      const storageKey = `aiChatHistory_${this.scriptId}`;
       const { [storageKey]: history } = await chrome.storage.local.get(storageKey);
 
       if (history && history.messages && history.messages.length > 0) {
@@ -39,11 +48,12 @@ export class ChatManager {
 
   async saveChatHistory() {
     try {
-      if (!this.currentSiteUrl) return;
+      if (!this.scriptId) return;
 
-      const storageKey = `aiChatHistory_${this.currentSiteUrl}`;
+      const storageKey = `aiChatHistory_${this.scriptId}`;
       await chrome.storage.local.set({
         [storageKey]: {
+          id: this.scriptId,
           url: this.currentSiteUrl,
           messages: this.messages,
           lastUpdated: Date.now()
@@ -52,6 +62,11 @@ export class ChatManager {
     } catch (error) {
       console.error('Error saving chat history:', error);
     }
+  }
+
+  getPreviousCode() {
+    const lastAssistantMessage = this.messages.slice().reverse().find(msg => msg.role === 'assistant' && msg.data && msg.data.code);
+    return lastAssistantMessage ? lastAssistantMessage.data.code : null;
   }
 
   addMessage(role, text, data = {}) {
@@ -73,13 +88,13 @@ export class ChatManager {
   }
 
   async clearChat() {
-    if (confirm('Clear conversation history for this site?')) {
+    if (confirm('Clear conversation history for this script?')) {
       this.messages = [];
       this.editor.elements.messages.innerHTML = '';
       this.editor.uiManager.showWelcomeMessage();
 
-      if (this.currentSiteUrl) {
-        const storageKey = `aiChatHistory_${this.currentSiteUrl}`;
+      if (this.scriptId) {
+        const storageKey = `aiChatHistory_${this.scriptId}`;
         await chrome.storage.local.remove(storageKey);
       }
     }

@@ -5,6 +5,20 @@ export class UserscriptHandler {
     this.editor = editor;
   }
 
+  async getScriptContent(scriptName) {
+    return new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage({ action: 'getScriptContent', scriptName }, (response) => {
+        if (chrome.runtime.lastError) {
+          return reject(new Error(chrome.runtime.lastError.message));
+        }
+        if (response.error) {
+          return reject(new Error(response.error));
+        }
+        resolve(response.code);
+      });
+    });
+  }
+
   async createUserscript(code) {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });

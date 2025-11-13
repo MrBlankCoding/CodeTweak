@@ -35,13 +35,21 @@ class AIDOMSidebar {
   }
 
   openSidebar() {
+    if (!this.originalBodyMarginRight) {
+      this.originalBodyMarginRight = document.body.style.marginRight || '0px';
+    }
+
     if (this.sidebar) {
       this.sidebar.style.display = 'flex';
+      document.body.style.marginRight = this.sidebar.style.width;
+      document.body.classList.add('ctwk-ai-editor-sidebar-open');
       this.isOpen = true;
       return;
     }
 
     this.createSidebar();
+    document.body.style.marginRight = this.sidebar.style.width;
+    document.body.classList.add('ctwk-ai-editor-sidebar-open');
     this.isOpen = true;
   }
 
@@ -110,6 +118,7 @@ class AIDOMSidebar {
       const delta = startX - e.clientX;
       const newWidth = Math.min(Math.max(startWidth + delta, 320), window.innerWidth - 200);
       this.sidebar.style.width = `${newWidth}px`;
+      document.body.style.marginRight = this.sidebar.style.width;
     });
 
     document.addEventListener('mouseup', () => {
@@ -126,6 +135,8 @@ class AIDOMSidebar {
     if (this.sidebar) {
       this.sidebar.style.display = 'none';
       this.isOpen = false;
+      document.body.style.marginRight = this.originalBodyMarginRight;
+      document.body.classList.remove('ctwk-ai-editor-sidebar-open');
     }
   }
 }

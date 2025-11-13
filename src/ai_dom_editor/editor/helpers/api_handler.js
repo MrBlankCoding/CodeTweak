@@ -163,6 +163,10 @@ export class ApiHandler {
       return { 'X-API-Key': apiKey };
     }
 
+    if (provider.includes('aimlapi')) {
+      return { 'Authorization': `Bearer ${apiKey}` };
+    }
+
     // Gemini API uses x-goog-api-key header
     if (modelId.includes('gemini') || modelId.includes('gemma') || provider.includes('gemini')) {
       return { 'x-goog-api-key': apiKey };
@@ -227,98 +231,40 @@ export class ApiHandler {
   }
 
   // Primary method to call AI APIs. Returns { type: 'script', code: '...' }
-  async callAIAPI(userMessage, domSummary) {
+  async callAIAPI(userMessage, domSummary, previousCode = null) {
 
-    const systemPrompt = `You are an expert JavaScript developer specializing in DOM manipulation and userscripts. Your task is to generate clean, efficient JavaScript code that modifies a webpage based on the user's request.
+    let systemPrompt = `You are a JavaScript developer who writes userscripts.
+This is the current page structure (DOM summary):
+${domSummary}`;
 
-**CRITICAL CONTEXT - YOU MUST ANALYZE THIS:**
+    if (previousCode) {
+      systemPrompt += `
+This is the previously generated code:
+\`\`\`javascript
+${previousCode}
+\`\`\`
+The user wants to modify the above script.
+`;
+    }
 
-**Current Page Structure (DOM Summary):**
-${domSummary}
+    systemPrompt += `
+Your task is to generate JavaScript code to modify the page based on the user's request.
+- Use specific selectors. Prefer IDs, then classes, then tags.
+- You can use Greasemonkey APIs: GM_addStyle, GM_setValue, GM_getValue, GM_deleteValue, GM_listValues, GM_xmlhttpRequest, GM_notification, GM_addElement, GM_registerMenuCommand, GM_openInTab, GM_setClipboard, GM_download, GM_getResourceText, unsafeWindow.
+- Write immediately executable code.
+- Check if elements exist before using them.
+- Use modern JavaScript.
+- Do not include userscript metadata headers (like // ==UserScript==), markdown fences, or IIFE wrappers. Only provide pure JavaScript code.
 
-**INSTRUCTIONS:**
+User's request: ${userMessage}
 
-1. **DEEPLY ANALYZE THE DOM:** Study the DOM structure carefully. Look for:
-   - Element tags, IDs, and class names you can target
-   - The hierarchy and nesting of elements
-   - Text content that helps identify elements
-   - Attributes that can be used for precise selection
-   
-2. **USE SPECIFIC SELECTORS:** Based on your analysis:
-   - Prefer IDs when available (e.g., \`document.getElementById('specific-id')\`)
-   - Use class names with querySelector (e.g., \`document.querySelector('.specific-class')\`)
-   - Use tag names with additional context (e.g., \`document.querySelector('div > h1')\`)
-   - Combine selectors for precision (e.g., \`document.querySelector('div.container > h1.title')\`)
-
-3. **GREASEMONKEY APIs AVAILABLE:**
-   You have access to these powerful APIs - USE THEM when they make the code better:
-   
-   **STYLING (HIGHLY RECOMMENDED for CSS changes):**
-   - \`GM_addStyle(css)\` - Inject CSS (ALWAYS prefer this over inline styles for multiple elements)
-   
-   **STORAGE (for persistent data):**
-   - \`GM_setValue(key, value)\` - Store data across page loads
-   - \`GM_getValue(key, defaultValue)\` - Retrieve stored data
-   - \`GM_deleteValue(key)\` - Delete stored data
-   - \`GM_listValues()\` - List all stored keys
-   
-   **NETWORK (for API calls and cross-origin requests):**
-   - \`GM_xmlhttpRequest(details)\` - Make cross-origin HTTP requests
-   
-   **UI ENHANCEMENTS:**
-   - \`GM_notification(options)\` - Show desktop notifications
-   - \`GM_addElement(parent, tag, attributes)\` - Create and insert DOM elements
-   - \`GM_registerMenuCommand(caption, callback)\` - Add custom menu commands
-   - \`GM_openInTab(url, options)\` - Open URLs in new tabs
-   
-   **UTILITIES:**
-   - \`GM_setClipboard(data, type)\` - Copy data to clipboard
-   - \`GM_download(url, name)\` - Download files
-   - \`GM_getResourceText(name)\` - Get text resources
-   - \`unsafeWindow\` - Direct access to page's window object (use cautiously)
-
-4. **CODE QUALITY REQUIREMENTS:**
-   - Write immediately executable code - no placeholders, no TODO comments
-   - Always check element existence before manipulation (e.g., \`if (element) { ... }\`)
-   - Use efficient selectors based on the actual DOM structure provided
-   - Handle edge cases gracefully with try-catch where appropriate
-   - Prefer GM_addStyle for ANY CSS changes affecting multiple elements
-   - Use modern JavaScript (ES6+) with arrow functions, const/let, template literals
-   - Add brief inline comments explaining complex logic
-   - Wait for DOM if needed (DOMContentLoaded or wait functions)
-
-5. **CRITICAL - ZERO METADATA GENERATION:**
-   ⚠️ NEVER generate userscript metadata - this is handled automatically ⚠️
-   
-   **DO NOT INCLUDE:**
-   - \`// ==UserScript==\` headers
-   - \`// @name\`, \`@grant\`, \`@match\`, \`@run-at\`, etc.
-   - Markdown code fences (\`\`\`javascript)
-   - IIFE wrappers (function() {...})()
-   
-   **ONLY PROVIDE:**
-   - Pure JavaScript code that solves the problem
-   - Code starts immediately (no metadata, no wrappers)
-   
-   **WHY:** Our analyzer automatically:
-   - Detects which GM APIs you use
-   - Generates all @grant directives
-   - Creates optimal @match patterns
-   - Sets appropriate @run-at timing
-   - Wraps your code properly
-   
-   Your job: Write great code. Our job: Perfect metadata.
-
-**USER'S REQUEST:**
-${userMessage}
-
-**YOUR RESPONSE:** Pure JavaScript code only (absolutely NO metadata, NO wrappers, NO fences).`;
+Your response is only the JavaScript code.`;
 
     // Decide model config (selectedModel preferred, else global apiConfig)
     const modelConfig = this.selectedModel || this.apiConfig || {};
     const modelId = modelConfig.id || modelConfig.model || this.apiConfig?.model || 'gpt-4';
     const endpoint = modelConfig.endpoint || this.apiConfig?.endpoint;
-    const apiKey = modelConfig.apiKey || modelConfig.apiKey || this.apiConfig?.apiKey || this.apiConfig?.key;
+    const apiKey = modelConfig.apiKey || modelConfig.key || this.apiConfig?.apiKey || this.apiConfig?.key;
 
     if (!endpoint) {
       this.editor?.uiManager?.showConfigBanner?.();
@@ -334,7 +280,7 @@ ${userMessage}
 
     // build messages depending on heuristics (some providers expect system+user, others expect just user)
     const provider = (modelConfig.provider || '').toLowerCase();
-    const isGoogleish = modelId.toLowerCase().includes('gemini') || modelId.toLowerCase().includes('gemma') || provider.includes('google') || provider.includes('vertex');
+    const isGoogleish = !provider.includes('aimlapi') && (modelId.toLowerCase().includes('gemini') || modelId.toLowerCase().includes('gemma') || provider.includes('google') || provider.includes('vertex'));
     const isAnthropic = provider.includes('anthropic') || modelId.toLowerCase().includes('claude');
 
     // prefer settings on per-model config, fallback to global

@@ -578,6 +578,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       chrome.runtime.sendMessage({ action: 'aiConfigUpdated' }).catch(() => {});
       sendResponse({ success: true });
     },
+
+    getScriptContent: async ({ scriptName }) => {
+      const { scripts = [] } = await chrome.storage.local.get("scripts");
+      const script = scripts.find(s => s.name === scriptName);
+      if (script) {
+        sendResponse({ code: script.code });
+      } else {
+        sendResponse({ error: `Script not found: ${scriptName}` });
+      }
+    },
   };
 
   const handler = messageHandlers[message.action];
