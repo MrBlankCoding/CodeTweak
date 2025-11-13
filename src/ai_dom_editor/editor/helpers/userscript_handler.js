@@ -19,6 +19,20 @@ export class UserscriptHandler {
     });
   }
 
+  async getAllScripts() {
+    return new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage({ action: 'getAllScripts' }, (response) => {
+        if (chrome.runtime.lastError) {
+          return reject(new Error(chrome.runtime.lastError.message));
+        }
+        if (response.error) {
+          return reject(new Error(response.error));
+        }
+        resolve(response.scripts);
+      });
+    });
+  }
+
   async createUserscript(code) {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });

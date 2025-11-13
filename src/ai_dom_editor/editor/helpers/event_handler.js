@@ -7,9 +7,16 @@ export class EventHandler {
   }
 
   setupEventListeners() {
-    this.editor.elements.userInput.addEventListener('input', () => {
+    this.editor.elements.userInput.addEventListener('input', (e) => {
       this.editor.uiManager.autoResize(this.editor.elements.userInput);
       this.editor.elements.sendBtn.disabled = !this.editor.elements.userInput.value.trim();
+
+      const value = e.target.value;
+      if (value.endsWith('@')) {
+        this.editor.uiManager.showScriptSelector(e.target);
+      } else if (!value.includes('@')) {
+        this.editor.uiManager.hideScriptSelector();
+      }
     });
 
     this.editor.elements.userInput.addEventListener('keydown', (e) => {

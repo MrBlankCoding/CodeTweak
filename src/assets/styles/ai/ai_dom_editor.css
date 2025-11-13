@@ -540,3 +540,24 @@ button svg {
   width: 38px;
   height: 38px;
 }
+
+.script-selector {
+  position: absolute;
+  z-index: 1000;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: 0.5rem;
+  max-height: 150px;
+  overflow-y: auto;
+  width: 250px;
+}
+
+.script-item {
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.8125rem;
+}
+
+.script-item:hover {
+  background: var(--bg-hover);
+}

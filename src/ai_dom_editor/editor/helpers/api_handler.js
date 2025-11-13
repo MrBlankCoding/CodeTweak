@@ -167,8 +167,19 @@ export class ApiHandler {
       return { 'Authorization': `Bearer ${apiKey}` };
     }
 
+    // Handle Gemma models specifically
+    const isGemma = modelId.includes('gemma') || 
+                   (provider.includes('google') && modelId.includes('gemma'));
+
+    if (isGemma) {
+      return { 
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      };
+    }
+
     // Gemini API uses x-goog-api-key header
-    if (modelId.includes('gemini') || modelId.includes('gemma') || provider.includes('gemini')) {
+    if (modelId.includes('gemini') || provider.includes('gemini')) {
       return { 'x-goog-api-key': apiKey };
     }
 
@@ -280,7 +291,12 @@ Your response is only the JavaScript code.`;
 
     // build messages depending on heuristics (some providers expect system+user, others expect just user)
     const provider = (modelConfig.provider || '').toLowerCase();
-    const isGoogleish = !provider.includes('aimlapi') && (modelId.toLowerCase().includes('gemini') || modelId.toLowerCase().includes('gemma') || provider.includes('google') || provider.includes('vertex'));
+    const isGemma = modelId.toLowerCase().includes('gemma');
+    const isGoogleish = !provider.includes('aimlapi') && 
+                       !isGemma && 
+                       (modelId.toLowerCase().includes('gemini') || 
+                        provider.includes('google') || 
+                        provider.includes('vertex'));
     const isAnthropic = provider.includes('anthropic') || modelId.toLowerCase().includes('claude');
 
     // prefer settings on per-model config, fallback to global
@@ -289,7 +305,17 @@ Your response is only the JavaScript code.`;
     
     // Construct request body for common Chat completions patterns (best-effort)
     let requestBody;
-    if (isGoogleish) {
+    if (isGemma) {
+      // Format for Gemma models
+      requestBody = {
+        model: modelId,
+        messages: [
+          { role: 'user', content: `${systemPrompt}\n\n${userMessage}` }
+        ],
+        temperature: temperature,
+        max_tokens: max_tokens
+      };
+    } else if (isGoogleish) {
       // Gemini uses a different API format than OpenAI
       // Format: { contents: [{ parts: [{ text: "..." }] }] }
       const combinedPrompt = `${systemPrompt}\n\n${userMessage}`;

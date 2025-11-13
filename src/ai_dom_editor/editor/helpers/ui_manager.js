@@ -196,4 +196,38 @@ export class UIManager {
       this.editor.elements.welcomeMessage.style.display = 'none';
     }
   }
+
+  async showScriptSelector(input) {
+    this.hideScriptSelector();
+    const scripts = await this.editor.userscriptHandler.getAllScripts();
+    if (!scripts || scripts.length === 0) return;
+
+    const selector = document.createElement('div');
+    selector.className = 'script-selector';
+    
+    scripts.forEach(scriptName => {
+      const item = document.createElement('div');
+      item.className = 'script-item';
+      item.textContent = scriptName;
+      item.addEventListener('click', () => {
+        const atIndex = input.value.lastIndexOf('@');
+        input.value = input.value.substring(0, atIndex + 1) + scriptName + ' ';
+        this.hideScriptSelector();
+        input.focus();
+      });
+      selector.appendChild(item);
+    });
+
+    document.body.appendChild(selector);
+    const rect = input.getBoundingClientRect();
+    selector.style.top = `${rect.top - selector.offsetHeight}px`;
+    selector.style.left = `${rect.left}px`;
+  }
+
+  hideScriptSelector() {
+    const selector = document.querySelector('.script-selector');
+    if (selector) {
+      selector.remove();
+    }
+  }
 }

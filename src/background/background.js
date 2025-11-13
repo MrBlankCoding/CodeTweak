@@ -548,45 +548,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       updateAllTabBadges();
       sendResponse({ success: true });
     },
-
     createScript: () => {
       handleScriptCreation(message.data.url, message.data.template);
     },
-
     contentScriptReady: () => {
       if (sender.tab?.id) {
         state.executedScripts.set(sender.tab.id, new Set());
       }
     },
-
     greasyForkInstall: () => {
       handleGreasyForkInstall(message.url);
     },
-
     openAISettings: () => {
       chrome.tabs.create({ url: chrome.runtime.getURL("ai_dom_editor/settings/ai_settings.html") });
       sendResponse({ success: true });
     },
-
     createScriptFromAI: () => {
       handleAIScriptCreation(message.script, message.url);
       sendResponse({ success: true });
     },
-
     aiSettingsUpdated: () => {
-      // Notify any open AI editors
       chrome.runtime.sendMessage({ action: 'aiConfigUpdated' }).catch(() => {});
       sendResponse({ success: true });
-    },
-
-    getScriptContent: async ({ scriptName }) => {
-      const { scripts = [] } = await chrome.storage.local.get("scripts");
-      const script = scripts.find(s => s.name === scriptName);
-      if (script) {
-        sendResponse({ code: script.code });
-      } else {
-        sendResponse({ error: `Script not found: ${scriptName}` });
-      }
     },
   };
 
@@ -594,6 +577,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (handler) {
     handler();
     return false;
+  }
+
+  if (message.action === 'getScriptContent') {
+    (async () => {
+      const { scripts = [] } = await chrome.storage.local.get("scripts");
+      const script = scripts.find(s => s.name === message.scriptName);
+      if (script) {
+        sendResponse({ code: script.code });
+      } else {
+        sendResponse({ error: `Script not found: ${message.scriptName}` });
+      }
+    })();
+    return true; 
+  }
+
+  if (message.action === 'getAllScripts') {
+    (async () => {
+      const { scripts = [] } = await chrome.storage.local.get("scripts");
+      const scriptNames = scripts.map(s => s.name);
+      sendResponse({ scripts: scriptNames });
+    })();
+    return true;
   }
 
   sendResponse({ error: "Unknown action" });
