@@ -1,4 +1,4 @@
-// src/ai_dom_editor/editor/helpers/event_handler.js
+import ScriptAnalyzer from '../../../utils/scriptAnalyzer.js';
 
 export class EventHandler {
   constructor(editor) {
@@ -119,20 +119,38 @@ export class EventHandler {
         
         try {
           let previousCode = this.editor.chatManager.getPreviousCode();
-          const scriptNameMatch = message.match(/@(\S+)/);
-          if (scriptNameMatch) {
-            const scriptName = scriptNameMatch[1];
-            try {
-              previousCode = await this.editor.userscriptHandler.getScriptContent(scriptName);
-              this.editor.chatManager.setScriptId(scriptName);
-            } catch (error) {
-              this.editor.chatManager.addMessage('assistant', `Error: ${error.message}`);
-              this.editor.chatManager.removeMessage(loadingId);
-              return;
+          let userMessage = message;
+
+          if (message.includes('@')) {
+            const allScripts = await this.editor.userscriptHandler.getAllScripts();
+            const atIndex = message.lastIndexOf('@');
+            const textAfterAt = message.substring(atIndex + 1);
+            let matchedScript = null;
+
+            for (const scriptName of allScripts) {
+              if (textAfterAt.startsWith(scriptName)) {
+                if (!matchedScript || scriptName.length > matchedScript.length) {
+                  matchedScript = scriptName;
+                }
+              }
+            }
+
+            if (matchedScript) {
+              try {
+                const fullCode = await this.editor.userscriptHandler.getScriptContent(matchedScript);
+                previousCode = ScriptAnalyzer.extractCodeFromIIFE(fullCode);
+                this.editor.setCurrentScript(matchedScript);
+                const promptWithoutScriptRef = message.substring(0, atIndex) + textAfterAt.substring(matchedScript.length);
+                userMessage = promptWithoutScriptRef.trim();
+              } catch (error) {
+                this.editor.chatManager.addMessage('assistant', `Error: ${error.message}`);
+                this.editor.chatManager.removeMessage(loadingId);
+                return;
+              }
             }
           }
 
-          const aiResponse = await this.editor.apiHandler.callAIAPI(message, domSummary, previousCode);
+          const aiResponse = await this.editor.apiHandler.callAIAPI(userMessage, domSummary, previousCode);
           this.editor.chatManager.removeMessage(loadingId);
           this.handleAIResponse(aiResponse);
         } catch (error) {

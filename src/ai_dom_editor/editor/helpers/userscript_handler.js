@@ -1,4 +1,4 @@
-import ScriptAnalyzer from '../../../utils/scriptAnalyzer.js';
+import ScriptAnalyzer from "../../../utils/scriptAnalyzer.js";
 
 export class UserscriptHandler {
   constructor(editor) {
@@ -7,21 +7,24 @@ export class UserscriptHandler {
 
   async getScriptContent(scriptName) {
     return new Promise((resolve, reject) => {
-      chrome.runtime.sendMessage({ action: 'getScriptContent', scriptName }, (response) => {
-        if (chrome.runtime.lastError) {
-          return reject(new Error(chrome.runtime.lastError.message));
+      chrome.runtime.sendMessage(
+        { action: "getScriptContent", scriptName },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            return reject(new Error(chrome.runtime.lastError.message));
+          }
+          if (response.error) {
+            return reject(new Error(response.error));
+          }
+          resolve(response.code);
         }
-        if (response.error) {
-          return reject(new Error(response.error));
-        }
-        resolve(response.code);
-      });
+      );
     });
   }
 
   async getAllScripts() {
     return new Promise((resolve, reject) => {
-      chrome.runtime.sendMessage({ action: 'getAllScripts' }, (response) => {
+      chrome.runtime.sendMessage({ action: "getAllScripts" }, (response) => {
         if (chrome.runtime.lastError) {
           return reject(new Error(chrome.runtime.lastError.message));
         }
@@ -35,88 +38,188 @@ export class UserscriptHandler {
 
   async createUserscript(code) {
     try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
       const url = new URL(tab.url);
-      let scriptCode = typeof code === 'string' ? code : this.convertActionsToScript(code);
-      const userPrompt = this.editor.eventHandler.lastUserPrompt || '';
+      let scriptCode =
+        typeof code === "string" ? code : this.convertActionsToScript(code);
+      const userPrompt = this.editor.eventHandler.lastUserPrompt || "";
 
-      scriptCode = scriptCode.replace(/\/\/\s*==UserScript==[\s\S]*?\/\/\s*==\/UserScript==\n*/g, '').trim();
+      scriptCode = scriptCode
+        .replace(/\/\/\s*==UserScript==[\s\S]*?\/\/\s*==\/UserScript==\n*/g, "")
+        .trim();
 
       const detectedApis = ScriptAnalyzer.detectGMApiUsage(scriptCode);
       const suggestedRunAt = ScriptAnalyzer.suggestRunAt(scriptCode);
-      const scriptName = ScriptAnalyzer.generateScriptName(url.hostname, userPrompt);
-      
+      const scriptName = ScriptAnalyzer.generateScriptName(
+        url.hostname,
+        userPrompt
+      );
+
       const metadata = {
         name: scriptName,
-        namespace: 'https://codetweak.local',
-        version: '1.0.0',
+        namespace: "https://codetweak.local",
+        version: "1.0.0",
         description: userPrompt || `Modifications for ${url.hostname}`,
-        author: 'CodeTweak AI',
+        author: "CodeTweak AI",
         matches: [`${url.origin}/*`],
         gmApis: detectedApis,
-        runAt: suggestedRunAt
+        runAt: suggestedRunAt,
       };
-      
+
       const wrappedCode = this.wrapInIIFE(scriptCode);
-      const finalScript = ScriptAnalyzer.rebuildWithEnhancedMetadata(wrappedCode, metadata);
+      const finalScript = ScriptAnalyzer.rebuildWithEnhancedMetadata(
+        wrappedCode,
+        metadata
+      );
 
       // Send to editor
       chrome.runtime.sendMessage({
-        action: 'createScriptFromAI',
+        action: "createScriptFromAI",
         script: finalScript,
-        url: tab.url
+        url: tab.url,
       });
 
-      this.editor.chatManager.addMessage('assistant', '✓ Script created and opened in editor!');
+      this.editor.chatManager.addMessage(
+        "assistant",
+        "✓ Script created and opened in editor!"
+      );
+      this.editor.setCurrentScript(scriptName);
     } catch (error) {
-      console.error('❌ Error creating userscript:', error);
-      this.editor.chatManager.addMessage('assistant', `Error creating script: ${error.message}`, { error: true });
+      console.error("Error creating userscript:", error);
+      this.editor.chatManager.addMessage(
+        "assistant",
+        `Error creating script: ${error.message}`,
+        { error: true }
+      );
     }
   }
-  
+
+  async updateUserscript(scriptName, newCode) {
+    try {
+      const { scripts = [] } = await chrome.storage.local.get("scripts");
+      const scriptToUpdate = scripts.find((s) => s.name === scriptName);
+
+      if (!scriptToUpdate) {
+        throw new Error(`Script "${scriptName}" not found for update.`);
+      }
+
+      const metadata = ScriptAnalyzer.extractMetadata(scriptToUpdate.code);
+      metadata.version = ScriptAnalyzer.incrementVersion(metadata.version);
+
+      // Detect any new APIs used in the updated code
+      const detectedApis = ScriptAnalyzer.detectGMApiUsage(newCode);
+      const suggestedRunAt = ScriptAnalyzer.suggestRunAt(newCode);
+
+      // Merge detected APIs with existing ones (preserve previously used APIs)
+      metadata.gmApis = {
+        ...metadata.gmApis,
+        ...detectedApis,
+      };
+
+      // Update runAt if the new code suggests a different value
+      metadata.runAt = suggestedRunAt;
+
+      const wrappedCode = this.wrapInIIFE(newCode);
+      const finalScript = ScriptAnalyzer.rebuildWithEnhancedMetadata(
+        wrappedCode,
+        metadata
+      );
+
+      chrome.runtime.sendMessage(
+        {
+          action: "updateScript",
+          scriptId: scriptToUpdate.id,
+          code: finalScript,
+        },
+        (response) => {
+          if (chrome.runtime.lastErro || response?.error) {
+            const errorMsg =
+              chrome.runtime.lastError?.message || response.error;
+            console.error("Error updating script in background:", errorMsg);
+            this.editor.chatManager.addMessage(
+              "assistant",
+              `Error updating script: ${errorMsg}`,
+              { error: true }
+            );
+          } else {
+            this.editor.chatManager.addMessage(
+              "assistant",
+              `✓ Script "${scriptName}" updated successfully.`
+            );
+          }
+        }
+      );
+    } catch (error) {
+      console.error("Error updating userscript:", error);
+      this.editor.chatManager.addMessage(
+        "assistant",
+        `Error updating script: ${error.message}`,
+        { error: true }
+      );
+    }
+  }
+
   wrapInIIFE(code) {
-    const isWrapped = /^\s*\(\s*function\s*\(/.test(code) || /^\s*\(function\s*\(/.test(code);
-    
+    const isWrapped =
+      /^\s*\(\s*function\s*\(/.test(code) || /^\s*\(function\s*\(/.test(code);
+
     if (isWrapped) {
       return code;
     }
-    
-    const lines = code.split('\n');
-    const indentedLines = lines.map(line => '    ' + line);
-    
+
+    const lines = code.split("\n");
+    const indentedLines = lines.map((line) => "    " + line);
+
     return `(function() {
     'use strict';
     
-${indentedLines.join('\n')}
+${indentedLines.join("\n")}
 })();`;
   }
 
   convertActionsToScript(actions) {
     const lines = [];
-    
+
     for (const action of actions) {
       switch (action.type) {
-        case 'style':
-          lines.push(`    document.querySelectorAll('${action.selector}').forEach(el => {`);
+        case "style":
+          lines.push(
+            `    document.querySelectorAll('${action.selector}').forEach(el => {`
+          );
           lines.push(`        el.style.cssText += '${action.value}';`);
           lines.push(`    });`);
           break;
-        case 'text':
-          lines.push(`    document.querySelectorAll('${action.selector}').forEach(el => {`);
-          lines.push(`        el.textContent = ${JSON.stringify(action.value)};`);
+        case "text":
+          lines.push(
+            `    document.querySelectorAll('${action.selector}').forEach(el => {`
+          );
+          lines.push(
+            `        el.textContent = ${JSON.stringify(action.value)};`
+          );
           lines.push(`    });`);
           break;
-        case 'remove':
-          lines.push(`    document.querySelectorAll('${action.selector}').forEach(el => el.remove());`);
+        case "remove":
+          lines.push(
+            `    document.querySelectorAll('${action.selector}').forEach(el => el.remove());`
+          );
           break;
-        case 'insert':
-          lines.push(`    document.querySelectorAll('${action.selector}').forEach(el => {`);
-          lines.push(`        el.insertAdjacentHTML('beforeend', ${JSON.stringify(action.value)});`);
+        case "insert":
+          lines.push(
+            `    document.querySelectorAll('${action.selector}').forEach(el => {`
+          );
+          lines.push(
+            `        el.insertAdjacentHTML('beforeend', ${JSON.stringify(
+              action.value
+            )});`
+          );
           lines.push(`    });`);
           break;
       }
     }
-    
-    return lines.join('\n');
+
+    return lines.join("\n");
   }
 }

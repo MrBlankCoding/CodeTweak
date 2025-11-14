@@ -10,7 +10,11 @@
   <div class="ai-editor-container">
     <!-- Header -->
     <div class="ai-editor-header">
-      <h2 class="header-title" data-i18n="aiEditorTitle">AI DOM Editor</h2>
+      <h2 class="header-title" id="headerTitle" data-i18n="aiEditorTitle">AI DOM Editor</h2>
+      <div class="current-script-display" id="currentScriptDisplay" style="display: none;">
+        <i data-feather="file-text" width="16" height="16"></i>
+        <span id="currentScriptName"></span>
+      </div>
       <div class="header-actions">
         <button class="tool-btn" id="clearChatBtn" title="Clear conversation" data-i18n-title="aiEditorClearConversation">
           <i data-feather="trash-2" width="18" height="18"></i>

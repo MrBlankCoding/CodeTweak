@@ -1,21 +1,6 @@
-/**
- * Script Analyzer - Intelligent code analysis for userscripts
- * 
- * Analyzes JavaScript code to:
- * - Detect GM API usage
- * - Validate and enhance metadata
- * - Suggest missing @grant directives
- * - Fix common issues in AI-generated scripts
- */
-
 import { GM_API_DEFINITIONS } from '../GM/gmApiDefinitions.js';
 
 export class ScriptAnalyzer {
-  /**
-   * Analyzes JavaScript code to detect which GM APIs are actually used
-   * @param {string} code - The JavaScript code to analyze
-   * @returns {Object} - Object with detected API element IDs as keys, boolean true as values
-   */
   static detectGMApiUsage(code) {
     if (!code || typeof code !== 'string') {
       return {};
@@ -23,12 +8,9 @@ export class ScriptAnalyzer {
 
     const detectedApis = {};
 
-    // Check each GM API definition
     Object.values(GM_API_DEFINITIONS).forEach(api => {
       const apiName = api.name;
       
-      // Create regex patterns to detect API usage
-      // Matches: GM_setValue(, GM.setValue(, window.GM_setValue(, etc.
       const patterns = [
         new RegExp(`\\b${apiName}\\s*\\(`, 'g'),
         new RegExp(`\\bGM\\.${apiName.replace('GM_', '')}\\s*\\(`, 'g'), // Modern GM.* syntax
@@ -38,7 +20,7 @@ export class ScriptAnalyzer {
       // Special case for unsafeWindow (it's not a function)
       if (apiName === 'unsafeWindow') {
         patterns.push(
-          /\bunsafeWindow\b(?!\s*\()/g, // Match unsafeWindow but not as a function call
+          /\bunsafeWindow\b(?!\s*\()/g,
           /window\.unsafeWindow\b/g
         );
       }
@@ -54,11 +36,6 @@ export class ScriptAnalyzer {
     return detectedApis;
   }
 
-  /**
-   * Analyzes code to suggest appropriate run-at timing
-   * @param {string} code - The JavaScript code to analyze
-   * @returns {string} - Suggested run-at value (document_start, document_end, document_idle)
-   */
   static suggestRunAt(code) {
     if (!code) return 'document_end';
 
@@ -95,12 +72,6 @@ export class ScriptAnalyzer {
     return 'document_end';
   }
 
-  /**
-   * Validates and enhances userscript metadata
-   * @param {string} code - The complete userscript code
-   * @param {Object} options - Additional options for enhancement
-   * @returns {Object} - Enhanced metadata object
-   */
   static validateAndEnhanceMetadata(code, options = {}) {
     const {
       url = '',
@@ -108,21 +79,16 @@ export class ScriptAnalyzer {
       userPrompt = ''
     } = options;
 
-    // Extract existing metadata
     const existingMetadata = this.extractMetadata(code);
-    
-    // Detect actual GM API usage
     const detectedApis = this.detectGMApiUsage(code);
     const suggestedRunAt = this.suggestRunAt(code);
 
-    // Build enhanced metadata
     const enhanced = {
       ...existingMetadata,
       detectedApis,
       suggestedRunAt
     };
 
-    // Validate and fix common issues
     if (!enhanced.name || enhanced.name === 'Untitled Script') {
       enhanced.name = this.generateScriptName(hostname, userPrompt);
     }
@@ -139,28 +105,20 @@ export class ScriptAnalyzer {
       enhanced.author = 'CodeTweak AI';
     }
 
-    // Validate match patterns
     if (!enhanced.matches || enhanced.matches.length === 0) {
       if (url) {
         enhanced.matches = [this.generateMatchPattern(url)];
       }
     }
 
-    // Merge detected APIs with existing grants
     const mergedApis = { ...existingMetadata.gmApis, ...detectedApis };
     enhanced.gmApis = mergedApis;
 
-    // Add issues/warnings
     enhanced.warnings = this.detectIssues(code, enhanced);
 
     return enhanced;
   }
 
-  /**
-   * Extracts metadata from userscript code
-   * @param {string} code - The userscript code
-   * @returns {Object} - Extracted metadata
-   */
   static extractMetadata(code) {
     const metadata = {
       name: null,
@@ -231,12 +189,6 @@ export class ScriptAnalyzer {
     return metadata;
   }
 
-  /**
-   * Generates a smart script name based on context
-   * @param {string} hostname - The website hostname
-   * @param {string} userPrompt - The user's original request
-   * @returns {string} - Generated script name
-   */
   static generateScriptName(hostname, userPrompt) {
     if (!hostname && !userPrompt) {
       return 'CodeTweak Script';
@@ -276,31 +228,18 @@ export class ScriptAnalyzer {
       : `Script - ${date}`;
   }
 
-  /**
-   * Generates a match pattern from a URL
-   * @param {string} url - The URL to generate pattern from
-   * @returns {string} - Match pattern
-   */
   static generateMatchPattern(url) {
     try {
       const urlObj = new URL(url);
-      // Generate pattern that matches the entire site
       return `${urlObj.origin}/*`;
     } catch {
       return '*://*/*'; // Fallback to match all
     }
   }
 
-  /**
-   * Detects common issues in generated code
-   * @param {string} code - The code to analyze
-   * @param {Object} metadata - The metadata object
-   * @returns {Array} - Array of warning objects
-   */
   static detectIssues(code, metadata) {
     const warnings = [];
 
-    // Check for GM API usage without grants
     const detectedApis = this.detectGMApiUsage(code);
     Object.keys(detectedApis).forEach(apiEl => {
       if (!metadata.gmApis || !metadata.gmApis[apiEl]) {
@@ -356,12 +295,6 @@ export class ScriptAnalyzer {
     return warnings;
   }
 
-  /**
-   * Rebuilds userscript with enhanced metadata
-   * @param {string} code - Original code
-   * @param {Object} enhanced - Enhanced metadata
-   * @returns {string} - Rebuilt userscript with proper metadata
-   */
   static rebuildWithEnhancedMetadata(code, enhanced) {
     // Extract code without metadata
     const codeWithoutMeta = code.replace(/\/\/\s*==UserScript==[\s\S]*?\/\/\s*==\/UserScript==\n*/, '');
@@ -413,6 +346,26 @@ export class ScriptAnalyzer {
     lines.push(''); // Empty line after metadata
 
     return lines.join('\n') + '\n' + codeWithoutMeta;
+  }
+
+  static extractCodeFromIIFE(code) {
+    if (!code) return '';
+    const match = code.match(/\(\s*function\s*\(\)\s*\{(?:\s*'use strict';)?\s*([\s\S]*?)\s*\}\)\(\);/);
+    return match && match[1] ? match[1].trim() : code;
+  }
+
+  static incrementVersion(version) {
+    if (!version || typeof version !== 'string') return '1.0.1';
+    
+    const parts = version.split('.').map(part => parseInt(part, 10));
+    
+    if (parts.some(isNaN)) {
+      return version; // Return original if parsing fails
+    }
+    
+    parts[parts.length - 1]++;
+    
+    return parts.join('.');
   }
 }
 

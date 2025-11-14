@@ -20,6 +20,11 @@ class AIDOMContent {
   }
 
   setupMessageListener() {
+    if (window.__ctwkDOMContentListenerAdded) {
+      return;
+    }
+    window.__ctwkDOMContentListenerAdded = true;
+
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.action === 'collectDOMSummary') {
         const summary = this.collectDOMSummary();

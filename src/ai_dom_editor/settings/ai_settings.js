@@ -13,6 +13,7 @@ class AISettings {
       anthropic: "https://api.anthropic.com/v1/messages",
       google:
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent",
+      mistral: "https://api.mistral.ai/v1/chat/completions",
       aimlapi: "https://api.aimlapi.com/v1/chat/completions",
       custom: "",
     };
@@ -36,6 +37,12 @@ class AISettings {
         "google/gemma-3-12b-it",
         "google/gemma-3n-e4b-it",
         "google/gemma-3-4b-it",
+      ],
+      mistral: [
+        "mistral-large-latest",
+        "mistral-small-latest",
+        "open-mistral-7b",
+        "open-mixtral-8x7b",
       ],
       custom: [],
     };
@@ -584,6 +591,8 @@ class AISettings {
         return this.fetchAnthropicModels();
       case "google":
         return this.fetchGoogleModels(config.apiKey);
+      case "mistral":
+        return this.fetchMistralModels(config.apiKey);
       case "aimlapi":
         return this.fetchAIMLAPIModels(config.apiKey);
       case "custom":
@@ -618,6 +627,19 @@ class AISettings {
       .filter((model) => model.id.includes("gpt"))
       .map((model) => model.id)
       .sort();
+  }
+
+  async fetchMistralModels(apiKey) {
+    const response = await fetch("https://api.mistral.ai/v1/models", {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch models: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.data.map((model) => model.id).sort();
   }
 
   async fetchAnthropicModels() {
@@ -673,7 +695,7 @@ class AISettings {
         const models = await this.fetchModelsForProvider(config);
 
         models.forEach((model) => {
-          if (!allModels.find((m) => m.id === model)) {
+          if (!allModels.find((m) => m.id === model && m.provider === config.provider)) {
             allModels.push({
               id: model,
               provider: config.provider,

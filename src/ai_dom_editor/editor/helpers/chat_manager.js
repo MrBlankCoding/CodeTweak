@@ -1,5 +1,3 @@
-// src/ai_dom_editor/editor/helpers/chat_manager.js
-
 import feather from 'feather-icons';
 
 export class ChatManager {
@@ -7,7 +5,7 @@ export class ChatManager {
     this.editor = editor;
     this.messages = [];
     this.currentSiteUrl = '';
-    this.scriptId = null; // Add scriptId property
+    this.scriptId = null;
   }
 
   setScriptId(scriptId) {
@@ -29,6 +27,8 @@ export class ChatManager {
       const storageKey = `aiChatHistory_${this.scriptId}`;
       const { [storageKey]: history } = await chrome.storage.local.get(storageKey);
 
+      this.editor.elements.messages.innerHTML = '';
+
       if (history && history.messages && history.messages.length > 0) {
         this.messages = history.messages;
         this.editor.uiManager.hideWelcomeMessage();
@@ -40,6 +40,9 @@ export class ChatManager {
 
         feather.replace();
         this.editor.uiManager.scrollToBottom();
+      } else {
+        this.messages = [];
+        this.editor.uiManager.showWelcomeMessage();
       }
     } catch (error) {
       console.error('Error loading chat history:', error);

@@ -1,5 +1,9 @@
 import { urlMatchesPattern } from "../utils/urls.js";
-import { injectScriptsForStage, INJECTION_TYPES, clearInjectedCoreScriptsForTab } from "../utils/inject.js";
+import {
+  injectScriptsForStage,
+  INJECTION_TYPES,
+  clearInjectedCoreScriptsForTab,
+} from "../utils/inject.js";
 
 // State management
 class BackgroundState {
@@ -74,9 +78,9 @@ async function setupOffscreenDocument() {
     return;
   }
   state.creatingOffscreenDocument = chrome.offscreen.createDocument({
-    url: 'offscreen/offscreen.html',
-    reasons: ['CLIPBOARD'],
-    justification: 'Clipboard access',
+    url: "offscreen/offscreen.html",
+    reasons: ["CLIPBOARD"],
+    justification: "Clipboard access",
   });
   await state.creatingOffscreenDocument;
   state.creatingOffscreenDocument = null;
@@ -198,17 +202,19 @@ async function handleAIScriptCreation(scriptContent, url) {
     // Store script in temporary storage (like Greasy Fork import)
     const tempId = crypto.randomUUID();
     const key = `tempAIScript_${tempId}`;
-    await chrome.storage.local.set({ 
-      [key]: { 
-        code: scriptContent, 
+    await chrome.storage.local.set({
+      [key]: {
+        code: scriptContent,
         sourceUrl: url,
-        isAI: true 
-      } 
+        isAI: true,
+      },
     });
 
     // Open editor with AI script
     chrome.tabs.create({
-      url: `${chrome.runtime.getURL("editor/editor.html")}?aiScriptId=${tempId}`,
+      url: `${chrome.runtime.getURL(
+        "editor/editor.html"
+      )}?aiScriptId=${tempId}`,
     });
   } catch (error) {
     console.error("AI script creation error:", error);
@@ -236,14 +242,18 @@ async function handleGreasyForkInstall(url) {
 async function handleCrossOriginXmlhttpRequest(details, tabId, sendResponse) {
   const { settings = {} } = await chrome.storage.local.get("settings");
   if (!settings.allowExternalResources) {
-    sendResponse({ error: "Cross-origin requests are disabled by a security setting." });
+    sendResponse({
+      error: "Cross-origin requests are disabled by a security setting.",
+    });
     return;
   }
 
   const { url, method = "GET", headers, data } = details;
 
   if (!url) {
-    console.error("CodeTweak: Cross-origin XMLHttprequest failed: No URL provided.");
+    console.error(
+      "CodeTweak: Cross-origin XMLHttprequest failed: No URL provided."
+    );
     sendResponse({ error: "No URL provided." });
     return;
   }
@@ -268,7 +278,7 @@ async function handleCrossOriginXmlhttpRequest(details, tabId, sendResponse) {
 
     const responseType = details.responseType;
     let responseData;
-    
+
     // Clone the response to be able to read the body twice
     const responseForText = response.clone();
     const responseText = await responseForText.text();
@@ -277,7 +287,7 @@ async function handleCrossOriginXmlhttpRequest(details, tabId, sendResponse) {
       const blob = await response.blob();
       const reader = new FileReader();
       reader.readAsDataURL(blob);
-      responseData = await new Promise(resolve => {
+      responseData = await new Promise((resolve) => {
         reader.onloadend = () => {
           resolve(reader.result);
         };
@@ -286,13 +296,16 @@ async function handleCrossOriginXmlhttpRequest(details, tabId, sendResponse) {
       responseData = await response.arrayBuffer();
     } else if (responseType === "json") {
       responseData = JSON.parse(responseText);
-    } else { // text
+    } else {
+      // text
       responseData = responseText;
     }
 
     const result = {
       readyState: 4,
-      responseHeaders: Object.entries(responseHeaders).map(([name, value]) => `${name}: ${value}`).join("\n"),
+      responseHeaders: Object.entries(responseHeaders)
+        .map(([name, value]) => `${name}: ${value}`)
+        .join("\n"),
       responseText: responseText,
       response: responseData,
       status: response.status,
@@ -306,22 +319,22 @@ async function handleCrossOriginXmlhttpRequest(details, tabId, sendResponse) {
       error: error,
       url: url,
       method: method,
-      headers: headers
+      headers: headers,
     });
     let errorMessage = error.message;
-    if (error instanceof TypeError && error.message === 'Failed to fetch') {
-        errorMessage = `Network request failed. This could be due to a CORS issue, a network error, or an invalid URL. URL: ${url}`;
+    if (error instanceof TypeError && error.message === "Failed to fetch") {
+      errorMessage = `Network request failed. This could be due to a CORS issue, a network error, or an invalid URL. URL: ${url}`;
     }
     sendResponse({ error: errorMessage });
   }
 }
 // hi.
 function normalizeStackTrace(stack) {
-  if (!stack) return '';
+  if (!stack) return "";
   return stack
-    .replace(/blob:[^\s)]+/g, 'blob:URL')
-    .replace(/:\d+:\d+/g, '')
-    .replace(/at\s+blob:URL/g, 'at blob:URL')
+    .replace(/blob:[^\s)]+/g, "blob:URL")
+    .replace(/:\d+:\d+/g, "")
+    .replace(/at\s+blob:URL/g, "at blob:URL")
     .trim();
 }
 
@@ -335,35 +348,43 @@ async function storeScriptError(scriptId, error) {
     }
 
     const storageKey = `scriptErrors_${scriptId}`;
-    const { [storageKey]: existingErrors = [] } = await chrome.storage.local.get(storageKey);
+    const { [storageKey]: existingErrors = [] } =
+      await chrome.storage.local.get(storageKey);
     const normalizedNewStack = normalizeStackTrace(error.stack);
-    
+
     // Check for dupes
-    const isDuplicate = existingErrors.some(existingError => {
+    const isDuplicate = existingErrors.some((existingError) => {
       const normalizedExistingStack = normalizeStackTrace(existingError.stack);
-      return existingError.message === error.message && 
-             normalizedExistingStack === normalizedNewStack;
+      return (
+        existingError.message === error.message &&
+        normalizedExistingStack === normalizedNewStack
+      );
     });
-    
+
     if (isDuplicate) {
-      return; 
+      return;
     }
-    
+
     const updatedErrors = [error, ...existingErrors];
     if (updatedErrors.length > 50) {
       updatedErrors.splice(50);
     }
-    
+
     await chrome.storage.local.set({ [storageKey]: updatedErrors });
-    chrome.runtime.sendMessage({
-      type: 'SCRIPT_ERROR_UPDATE',
-      scriptId: scriptId,
-      error: error
-    }).catch(() => {
-      // Editor might not be open, ignore
-    });
+    chrome.runtime
+      .sendMessage({
+        type: "SCRIPT_ERROR_UPDATE",
+        scriptId: scriptId,
+        error: error,
+      })
+      .catch(() => {
+        // Editor might not be open, ignore
+      });
   } catch (err) {
-    console.error('[CodeTweak Error Storage] Failed to store script error:', err);
+    console.error(
+      "[CodeTweak Error Storage] Failed to store script error:",
+      err
+    );
   }
 }
 
@@ -372,7 +393,7 @@ async function clearScriptErrors(scriptId) {
     const storageKey = `scriptErrors_${scriptId}`;
     await chrome.storage.local.remove(storageKey);
   } catch (err) {
-    console.error('Failed to clear script errors:', err);
+    console.error("Failed to clear script errors:", err);
   }
 }
 
@@ -409,11 +430,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const listeners = state.valueChangeListeners.get(name);
         if (listeners) {
           for (const tabId of listeners) {
-            if (tabId !== sender.tab.id) { // Don't notify the tab that made the change
-              chrome.tabs.sendMessage(tabId, {
-                type: "GM_VALUE_CHANGED",
-                payload: { name, oldValue, newValue: value, remote: true },
-              }).catch(() => {}); // Ignore errors if tab is closed
+            if (tabId !== sender.tab.id) {
+              // Don't notify the tab that made the change
+              chrome.tabs
+                .sendMessage(tabId, {
+                  type: "GM_VALUE_CHANGED",
+                  payload: { name, oldValue, newValue: value, remote: true },
+                })
+                .catch(() => {}); // Ignore errors if tab is closed
             }
           }
         }
@@ -432,10 +456,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const listeners = state.valueChangeListeners.get(name);
         if (listeners) {
           for (const tabId of listeners) {
-            chrome.tabs.sendMessage(tabId, {
-              type: "GM_VALUE_CHANGED",
-              payload: { name, oldValue, newValue: undefined, remote: tabId !== sender.tab.id },
-            }).catch(() => {});
+            chrome.tabs
+              .sendMessage(tabId, {
+                type: "GM_VALUE_CHANGED",
+                payload: {
+                  name,
+                  oldValue,
+                  newValue: undefined,
+                  remote: tabId !== sender.tab.id,
+                },
+              })
+              .catch(() => {});
           }
         }
         sendResponse({ result: null });
@@ -467,14 +498,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         });
       },
       xmlhttpRequest() {
-        handleCrossOriginXmlhttpRequest(payload.details, sender.tab.id, sendResponse);
+        handleCrossOriginXmlhttpRequest(
+          payload.details,
+          sender.tab.id,
+          sendResponse
+        );
       },
       notification({ details }) {
         const notificationOptions = {
-          type: 'basic',
-          iconUrl: details.image || 'assets/icons/icon128.png',
-          title: details.title || 'CodeTweak Notification',
-          message: details.text || ''
+          type: "basic",
+          iconUrl: details.image || "assets/icons/icon128.png",
+          title: details.title || "CodeTweak Notification",
+          message: details.text || "",
         };
         chrome.notifications.create(notificationOptions, () => {
           if (chrome.runtime.lastError) {
@@ -488,20 +523,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       async setClipboard({ data, type }) {
         await setupOffscreenDocument();
         chrome.runtime.sendMessage({
-          target: 'offscreen',
-          type: 'copy-to-clipboard',
-          data: data
+          target: "offscreen",
+          type: "copy-to-clipboard",
+          data: data,
         });
         sendResponse({ result: null });
       },
       download(details) {
-        chrome.downloads.download({ url: details.url, filename: details.name }, (downloadId) => {
-          if (chrome.runtime.lastError) {
-            sendResponse({ error: chrome.runtime.lastError.message });
-          } else {
-            sendResponse({ result: { downloadId } });
+        chrome.downloads.download(
+          { url: details.url, filename: details.name },
+          (downloadId) => {
+            if (chrome.runtime.lastError) {
+              sendResponse({ error: chrome.runtime.lastError.message });
+            } else {
+              sendResponse({ result: { downloadId } });
+            }
           }
-        });
+        );
         return true;
       },
     };
@@ -514,7 +552,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ error: `Unknown GM API action: ${action}` });
     return true;
   }
-  // Some errors around here.... not all errors being captured 
+  // Some errors around here.... not all errors being captured
   if (message.type === "SCRIPT_ERROR") {
     storeScriptError(message.scriptId, message.error);
     sendResponse({ success: true });
@@ -560,7 +598,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       handleGreasyForkInstall(message.url);
     },
     openAISettings: () => {
-      chrome.tabs.create({ url: chrome.runtime.getURL("ai_dom_editor/settings/ai_settings.html") });
+      chrome.tabs.create({
+        url: chrome.runtime.getURL("ai_dom_editor/settings/ai_settings.html"),
+      });
       sendResponse({ success: true });
     },
     createScriptFromAI: () => {
@@ -568,7 +608,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ success: true });
     },
     aiSettingsUpdated: () => {
-      chrome.runtime.sendMessage({ action: 'aiConfigUpdated' }).catch(() => {});
+      chrome.runtime.sendMessage({ action: "aiConfigUpdated" }).catch(() => {});
       sendResponse({ success: true });
     },
   };
@@ -579,24 +619,46 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
 
-  if (message.action === 'getScriptContent') {
+  if (message.action === "getScriptContent") {
     (async () => {
       const { scripts = [] } = await chrome.storage.local.get("scripts");
-      const script = scripts.find(s => s.name === message.scriptName);
+      const script = scripts.find((s) => s.name === message.scriptName);
       if (script) {
         sendResponse({ code: script.code });
       } else {
         sendResponse({ error: `Script not found: ${message.scriptName}` });
       }
     })();
-    return true; 
+    return true;
   }
 
-  if (message.action === 'getAllScripts') {
+  if (message.action === "getAllScripts") {
     (async () => {
       const { scripts = [] } = await chrome.storage.local.get("scripts");
-      const scriptNames = scripts.map(s => s.name);
+      const scriptNames = scripts.map((s) => s.name);
       sendResponse({ scripts: scriptNames });
+    })();
+    return true;
+  }
+
+  if (message.action === "updateScript") {
+    (async () => {
+      const { scripts = [] } = await chrome.storage.local.get("scripts");
+      const scriptIndex = scripts.findIndex((s) => s.id === message.scriptId);
+      if (scriptIndex !== -1) {
+        scripts[scriptIndex].code = message.code;
+        scripts[scriptIndex].updatedAt = new Date().toISOString();
+        await chrome.storage.local.set({ scripts });
+
+        state.clearCache();
+        notifyPorts("scriptsUpdated");
+        updateAllTabBadges();
+        sendResponse({ success: true });
+      } else {
+        sendResponse({
+          error: `Script with id ${message.scriptId} not found.`,
+        });
+      }
     })();
     return true;
   }
@@ -641,7 +703,7 @@ navigationEvents.forEach((event, index) => {
       Object.values(INJECTION_TYPES)[index],
       getFilteredScripts,
       state.executedScripts
-    )
+    );
   });
 });
 
