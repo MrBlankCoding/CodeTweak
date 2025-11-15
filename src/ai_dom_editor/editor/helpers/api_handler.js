@@ -241,6 +241,13 @@ export class ApiHandler {
     return content.trim();
   }
 
+  // Extract script name from content
+  _extractScriptName(content) {
+    if (!content || typeof content !== 'string') return null;
+    const match = content.match(/Script Name:\s*(.+?)(?=\n|$)/i);
+    return match && match[1] ? match[1].trim() : null;
+  }
+
   // Primary method to call AI APIs. Returns { type: 'script', code: '...' }
   async callAIAPI(userMessage, domSummary, previousCode = null) {
 
@@ -260,6 +267,7 @@ The user wants to modify the above script.
 
     systemPrompt += `
 Your task is to generate JavaScript code to modify the page based on the user's request.
+- Provide a concise, descriptive name for the script in the format "Script Name: [Your Script Name]".
 - Use specific selectors. Prefer IDs, then classes, then tags.
 - You can use Greasemonkey APIs: GM_addStyle, GM_setValue, GM_getValue, GM_deleteValue, GM_listValues, GM_xmlhttpRequest, GM_notification, GM_addElement, GM_registerMenuCommand, GM_openInTab, GM_setClipboard, GM_download, GM_getResourceText, unsafeWindow.
 - Write immediately executable code.
@@ -402,10 +410,12 @@ Your response is only the JavaScript code.`;
       }
 
       const code = this._extractCode(content);
+      const scriptName = this._extractScriptName(content);
 
       return {
         type: 'script',
-        code: code
+        code: code,
+        name: scriptName
       };
     } catch (err) {
       console.error('AI API Error:', err);

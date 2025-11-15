@@ -53,10 +53,10 @@ class AIDOMEditor {
     });
   }
 
-  setCurrentScript(scriptName) {
-    if (scriptName) {
-      this.currentScript = { name: scriptName };
-      this.elements.currentScriptName.textContent = scriptName;
+  setCurrentScript(script) {
+    if (script) {
+      this.currentScript = script;
+      this.elements.currentScriptName.textContent = script.name;
       this.elements.currentScriptDisplay.style.display = "flex";
       this.elements.headerTitle.style.display = "none";
     } else {
@@ -91,7 +91,7 @@ class AIDOMEditor {
 
       if (this.currentScript) {
         await chrome.storage.local.set({
-          [storageKey]: this.currentScript.name,
+          [storageKey]: this.currentScript,
         });
       } else {
         await chrome.storage.local.remove(storageKey);
@@ -113,16 +113,16 @@ class AIDOMEditor {
       const siteUrl = `${url.protocol}//${url.hostname}`;
       const storageKey = `aiCurrentScript_${siteUrl}`;
 
-      const { [storageKey]: scriptName } = await chrome.storage.local.get(
+      const { [storageKey]: script } = await chrome.storage.local.get(
         storageKey
       );
-      if (scriptName) {
+      if (script) {
         // Verify the script actually exists before restoring
         const { scripts = [] } = await chrome.storage.local.get("scripts");
-        const scriptExists = scripts.some((s) => s.name === scriptName);
+        const scriptExists = scripts.some((s) => s.id === script.id);
 
         if (scriptExists) {
-          this.setCurrentScript(scriptName);
+          this.setCurrentScript(script);
         } else {
           // Script doesn't exist anymore, clear the stored state
           await chrome.storage.local.remove(storageKey);

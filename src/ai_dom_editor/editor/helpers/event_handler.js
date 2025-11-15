@@ -127,20 +127,20 @@ export class EventHandler {
             const textAfterAt = message.substring(atIndex + 1);
             let matchedScript = null;
 
-            for (const scriptName of allScripts) {
-              if (textAfterAt.startsWith(scriptName)) {
-                if (!matchedScript || scriptName.length > matchedScript.length) {
-                  matchedScript = scriptName;
+            for (const script of allScripts) {
+              if (textAfterAt.startsWith(script.name)) {
+                if (!matchedScript || script.name.length > matchedScript.name.length) {
+                  matchedScript = script;
                 }
               }
             }
 
             if (matchedScript) {
               try {
-                const fullCode = await this.editor.userscriptHandler.getScriptContent(matchedScript);
+                const fullCode = await this.editor.userscriptHandler.getScriptContent(matchedScript.name);
                 previousCode = ScriptAnalyzer.extractCodeFromIIFE(fullCode);
                 this.editor.setCurrentScript(matchedScript);
-                const promptWithoutScriptRef = message.substring(0, atIndex) + textAfterAt.substring(matchedScript.length);
+                const promptWithoutScriptRef = message.substring(0, atIndex) + textAfterAt.substring(matchedScript.name.length);
                 userMessage = promptWithoutScriptRef.trim();
               } catch (error) {
                 this.editor.chatManager.addMessage('assistant', `Error: ${error.message}`);
@@ -170,10 +170,11 @@ export class EventHandler {
         code: JSON.stringify(response, null, 2),
         actions: response
       });
-    } else if (response.type === 'script' && response.code) {
+    } else if (response.type === 'script') {
       this.editor.chatManager.addMessage('assistant', 'I\'ve generated this code for you:', {
         code: response.code,
-        isScript: true
+        isScript: true,
+        name: response.name
       });
     } else {
       this.editor.chatManager.addMessage('assistant', 'Unexpected response format from AI', { error: true });

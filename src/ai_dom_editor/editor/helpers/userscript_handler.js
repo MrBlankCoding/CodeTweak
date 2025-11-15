@@ -36,7 +36,7 @@ export class UserscriptHandler {
     });
   }
 
-  async createUserscript(code) {
+  async createUserscript(code, name) {
     try {
       const [tab] = await chrome.tabs.query({
         active: true,
@@ -53,10 +53,8 @@ export class UserscriptHandler {
 
       const detectedApis = ScriptAnalyzer.detectGMApiUsage(scriptCode);
       const suggestedRunAt = ScriptAnalyzer.suggestRunAt(scriptCode);
-      const scriptName = ScriptAnalyzer.generateScriptName(
-        url.hostname,
-        userPrompt
-      );
+      const scriptName =
+        name || ScriptAnalyzer.generateScriptName(url.hostname, userPrompt);
 
       const metadata = {
         name: scriptName,
@@ -75,18 +73,29 @@ export class UserscriptHandler {
         metadata
       );
 
-      // Send to editor
-      chrome.runtime.sendMessage({
-        action: "createScriptFromAI",
-        script: finalScript,
-        url: tab.url,
-      });
-
-      this.editor.chatManager.addMessage(
-        "assistant",
-        "✓ Script created and opened in editor!"
+      chrome.runtime.sendMessage(
+        {
+          action: "createScriptFromAI",
+          script: finalScript,
+          url: tab.url,
+        },
+        (response) => {
+          if (response.error) {
+            console.error("Error creating script:", response.error);
+            this.editor.chatManager.addMessage(
+              "assistant",
+              `Error creating script: ${response.error}`,
+              { error: true }
+            );
+            return;
+          }
+          this.editor.chatManager.addMessage(
+            "assistant",
+            "✓ Script created!"
+          );
+          this.editor.setCurrentScript(response.script);
+        }
       );
-      this.editor.setCurrentScript(scriptName);
     } catch (error) {
       console.error("Error creating userscript:", error);
       this.editor.chatManager.addMessage(

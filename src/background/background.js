@@ -4,8 +4,8 @@ import {
   INJECTION_TYPES,
   clearInjectedCoreScriptsForTab,
 } from "../utils/inject.js";
+import { parseUserScriptMetadata } from "../utils/metadataParser.js";
 
-// State management
 class BackgroundState {
   constructor() {
     this.scriptCache = null;
@@ -27,12 +27,28 @@ class BackgroundState {
       this.scriptCache && Date.now() - this.lastCacheUpdate <= this.cacheTtl
     );
   }
+
+  cleanupTab(tabId) {
+    this.executedScripts.delete(tabId);
+    clearInjectedCoreScriptsForTab(tabId);
+
+    for (const listeners of this.valueChangeListeners.values()) {
+      listeners.delete(tabId);
+    }
+  }
 }
 
 const state = new BackgroundState();
 
-// Utility functions
-// :)
+function isIgnorableTabError(error) {
+  const ignorableMessages = [
+    "No tab with id",
+    "Invalid tab ID",
+    "Receiving end does not exist",
+  ];
+  return ignorableMessages.some((msg) => error.message?.includes(msg));
+}
+
 function safeSetBadge(tabId, text = "", color = "#007bff") {
   chrome.action.setBadgeText({ tabId, text }).catch((err) => {
     if (!isIgnorableTabError(err)) {
@@ -43,15 +59,6 @@ function safeSetBadge(tabId, text = "", color = "#007bff") {
   if (text) {
     chrome.action.setBadgeBackgroundColor({ tabId, color }).catch(() => {});
   }
-}
-
-function isIgnorableTabError(error) {
-  const ignorableMessages = [
-    "No tab with id",
-    "Invalid tab ID",
-    "Receiving end does not exist",
-  ];
-  return ignorableMessages.some((msg) => error.message?.includes(msg));
 }
 
 function notifyPorts(action) {
@@ -73,35 +80,46 @@ async function setupOffscreenDocument() {
   if (await chrome.offscreen.hasDocument()) {
     return;
   }
+
   if (state.creatingOffscreenDocument) {
     await state.creatingOffscreenDocument;
     return;
   }
+
   state.creatingOffscreenDocument = chrome.offscreen.createDocument({
     url: "offscreen/offscreen.html",
     reasons: ["CLIPBOARD"],
     justification: "Clipboard access",
   });
+
   await state.creatingOffscreenDocument;
   state.creatingOffscreenDocument = null;
 }
 
-// Script management
+function normalizeStackTrace(stack) {
+  if (!stack) return "";
+  return stack
+    .replace(/blob:[^\s)]+/g, "blob:URL")
+    .replace(/:\d+:\d+/g, "")
+    .replace(/at\s+blob:URL/g, "at blob:URL")
+    .trim();
+}
+
 async function getFilteredScripts(url, runAt = null) {
   if (!url?.startsWith("http")) {
     return [];
   }
+
   if (!state.isCacheValid()) {
     await refreshScriptCache();
   }
 
-  const filteredScripts = state.scriptCache.filter(
+  return state.scriptCache.filter(
     (script) =>
       script.enabled &&
       (!runAt || script.runAt === runAt) &&
       script.targetUrls.some((target) => urlMatchesPattern(url, target))
   );
-  return filteredScripts;
 }
 
 async function refreshScriptCache() {
@@ -137,17 +155,14 @@ async function updateAllTabBadges() {
   const tabs = await chrome.tabs.query({});
 
   tabs.forEach((tab) => {
-    if (tab.id) {
-      if (tab.url) {
-        updateBadgeForTab(tab.id, tab.url);
-      } else {
-        safeSetBadge(tab.id);
-      }
+    if (tab.id && tab.url) {
+      updateBadgeForTab(tab.id, tab.url);
+    } else if (tab.id) {
+      safeSetBadge(tab.id);
     }
   });
 }
 
-// Script creation
 async function handleScriptCreation(url, template) {
   try {
     const { scripts = [] } = await chrome.storage.local.get("scripts");
@@ -197,40 +212,16 @@ async function handleScriptCreation(url, template) {
   }
 }
 
-async function handleAIScriptCreation(scriptContent, url) {
-  try {
-    // Store script in temporary storage (like Greasy Fork import)
-    const tempId = crypto.randomUUID();
-    const key = `tempAIScript_${tempId}`;
-    await chrome.storage.local.set({
-      [key]: {
-        code: scriptContent,
-        sourceUrl: url,
-        isAI: true,
-      },
-    });
-
-    // Open editor with AI script
-    chrome.tabs.create({
-      url: `${chrome.runtime.getURL(
-        "editor/editor.html"
-      )}?aiScriptId=${tempId}`,
-    });
-  } catch (error) {
-    console.error("AI script creation error:", error);
-  }
-}
-
 async function handleGreasyForkInstall(url) {
   try {
     const response = await fetch(url);
     if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-    const code = await response.text();
 
+    const code = await response.text();
     const tempId = crypto.randomUUID();
     const key = `tempImport_${tempId}`;
-    await chrome.storage.local.set({ [key]: { code, sourceUrl: url } });
 
+    await chrome.storage.local.set({ [key]: { code, sourceUrl: url } });
     chrome.tabs.create({
       url: `${chrome.runtime.getURL("editor/editor.html")}?importId=${tempId}`,
     });
@@ -239,29 +230,208 @@ async function handleGreasyForkInstall(url) {
   }
 }
 
-async function handleCrossOriginXmlhttpRequest(details, tabId, sendResponse) {
-  const { settings = {} } = await chrome.storage.local.get("settings");
-  if (!settings.allowExternalResources) {
-    sendResponse({
-      error: "Cross-origin requests are disabled by a security setting.",
+async function storeScriptError(scriptId, error) {
+  try {
+    const { settings = {} } = await chrome.storage.local.get("settings");
+    if (!settings.enhancedDebugging) {
+      return;
+    }
+
+    const storageKey = `scriptErrors_${scriptId}`;
+    const { [storageKey]: existingErrors = [] } =
+      await chrome.storage.local.get(storageKey);
+    const normalizedNewStack = normalizeStackTrace(error.stack);
+
+    // Check for duplicates
+    const isDuplicate = existingErrors.some((existingError) => {
+      const normalizedExistingStack = normalizeStackTrace(existingError.stack);
+      return (
+        existingError.message === error.message &&
+        normalizedExistingStack === normalizedNewStack
+      );
     });
-    return;
+
+    if (isDuplicate) {
+      return;
+    }
+
+    const updatedErrors = [error, ...existingErrors].slice(0, 50);
+    await chrome.storage.local.set({ [storageKey]: updatedErrors });
+
+    chrome.runtime
+      .sendMessage({
+        type: "SCRIPT_ERROR_UPDATE",
+        scriptId,
+        error,
+      })
+      .catch(() => {
+        // Editor might not be open, ignore
+      });
+  } catch (err) {
+    console.error("[CodeTweak] Failed to store script error:", err);
+  }
+}
+
+async function clearScriptErrors(scriptId) {
+  try {
+    const storageKey = `scriptErrors_${scriptId}`;
+    await chrome.storage.local.remove(storageKey);
+  } catch (err) {
+    console.error("Failed to clear script errors:", err);
+  }
+}
+
+
+class GMAPIHandler {
+  constructor(scriptId, sender) {
+    this.scriptId = scriptId;
+    this.sender = sender;
+    this.storageKey = `script-values-${scriptId}`;
   }
 
-  const { url, method = "GET", headers, data } = details;
+  async getStorage() {
+    const result = await chrome.storage.local.get(this.storageKey);
+    return result[this.storageKey] || {};
+  }
+
+  async setStorage(values) {
+    await chrome.storage.local.set({ [this.storageKey]: values });
+  }
+
+  async setValue({ name, value }) {
+    const values = await this.getStorage();
+    const oldValue = values[name];
+    values[name] = value;
+    await this.setStorage(values);
+
+    this.notifyValueChange(name, oldValue, value);
+    return { result: null };
+  }
+
+  async getValue({ name, defaultValue }) {
+    const values = await this.getStorage();
+    return { result: values[name] ?? defaultValue };
+  }
+
+  async deleteValue({ name }) {
+    const values = await this.getStorage();
+    const oldValue = values[name];
+    delete values[name];
+    await this.setStorage(values);
+
+    this.notifyValueChange(name, oldValue, undefined);
+    return { result: null };
+  }
+
+  async listValues() {
+    const values = await this.getStorage();
+    return { result: Object.keys(values) };
+  }
+
+  addValueChangeListener({ name }) {
+    if (!state.valueChangeListeners.has(name)) {
+      state.valueChangeListeners.set(name, new Set());
+    }
+    state.valueChangeListeners.get(name).add(this.sender.tab.id);
+    return { result: null };
+  }
+
+  removeValueChangeListener({ name }) {
+    const listeners = state.valueChangeListeners.get(name);
+    if (listeners) {
+      listeners.delete(this.sender.tab.id);
+      if (listeners.size === 0) {
+        state.valueChangeListeners.delete(name);
+      }
+    }
+    return { result: null };
+  }
+
+  notifyValueChange(name, oldValue, newValue) {
+    const listeners = state.valueChangeListeners.get(name);
+    if (!listeners) return;
+
+    for (const tabId of listeners) {
+      if (tabId !== this.sender.tab.id) {
+        chrome.tabs
+          .sendMessage(tabId, {
+            type: "GM_VALUE_CHANGED",
+            payload: { name, oldValue, newValue, remote: true },
+          })
+          .catch(() => {}); // Ignore errors if tab is closed
+      }
+    }
+  }
+
+  async getSettings() {
+    const { settings = {} } = await chrome.storage.local.get("settings");
+    return { result: settings };
+  }
+
+  async xmlhttpRequest({ details }) {
+    return await handleCrossOriginXmlhttpRequest(details, this.sender.tab.id);
+  }
+
+  async notification({ details }) {
+    const notificationOptions = {
+      type: "basic",
+      iconUrl: details.image || "assets/icons/icon128.png",
+      title: details.title || "CodeTweak Notification",
+      message: details.text || "",
+    };
+
+    return new Promise((resolve) => {
+      chrome.notifications.create(notificationOptions, () => {
+        if (chrome.runtime.lastError) {
+          resolve({ error: chrome.runtime.lastError.message });
+        } else {
+          resolve({ result: null });
+        }
+      });
+    });
+  }
+
+  async setClipboard({ data }) {
+    await setupOffscreenDocument();
+    chrome.runtime.sendMessage({
+      target: "offscreen",
+      type: "copy-to-clipboard",
+      data,
+    });
+    return { result: null };
+  }
+
+  async download({ url, name }) {
+    return new Promise((resolve) => {
+      chrome.downloads.download({ url, filename: name }, (downloadId) => {
+        if (chrome.runtime.lastError) {
+          resolve({ error: chrome.runtime.lastError.message });
+        } else {
+          resolve({ result: { downloadId } });
+        }
+      });
+    });
+  }
+}
+
+
+async function handleCrossOriginXmlhttpRequest(details) {
+  const { settings = {} } = await chrome.storage.local.get("settings");
+
+  if (!settings.allowExternalResources) {
+    return {
+      error: "Cross-origin requests are disabled by a security setting.",
+    };
+  }
+
+  const { url, method = "GET", headers, data, responseType } = details;
 
   if (!url) {
-    console.error(
-      "CodeTweak: Cross-origin XMLHttprequest failed: No URL provided."
-    );
-    sendResponse({ error: "No URL provided." });
-    return;
+    console.error("CodeTweak: Cross-origin request failed: No URL provided.");
+    return { error: "No URL provided." };
   }
 
-  const requestOptions = {
-    method,
-    headers,
-  };
+  const requestOptions = { method, headers };
 
   // Only add body for methods that support it
   if (data && !["GET", "HEAD"].includes(method.toUpperCase())) {
@@ -276,283 +446,193 @@ async function handleCrossOriginXmlhttpRequest(details, tabId, sendResponse) {
       responseHeaders[name] = value;
     });
 
-    const responseType = details.responseType;
+    // Clone response to read body multiple times
+    const responseClone = response.clone();
+    const responseText = await responseClone.text();
+
     let responseData;
-
-    // Clone the response to be able to read the body twice
-    const responseForText = response.clone();
-    const responseText = await responseForText.text();
-
     if (responseType === "blob") {
       const blob = await response.blob();
-      const reader = new FileReader();
-      reader.readAsDataURL(blob);
       responseData = await new Promise((resolve) => {
-        reader.onloadend = () => {
-          resolve(reader.result);
-        };
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
       });
     } else if (responseType === "arraybuffer") {
       responseData = await response.arrayBuffer();
     } else if (responseType === "json") {
       responseData = JSON.parse(responseText);
     } else {
-      // text
       responseData = responseText;
     }
 
-    const result = {
-      readyState: 4,
-      responseHeaders: Object.entries(responseHeaders)
-        .map(([name, value]) => `${name}: ${value}`)
-        .join("\n"),
-      responseText: responseText,
-      response: responseData,
-      status: response.status,
-      statusText: response.statusText,
-      finalUrl: response.url,
-      context: details.context,
+    return {
+      result: {
+        readyState: 4,
+        responseHeaders: Object.entries(responseHeaders)
+          .map(([name, value]) => `${name}: ${value}`)
+          .join("\n"),
+        responseText,
+        response: responseData,
+        status: response.status,
+        statusText: response.statusText,
+        finalUrl: response.url,
+        context: details.context,
+      },
     };
-    sendResponse({ result });
   } catch (error) {
-    console.error("CodeTweak: Cross-origin XMLHttprequest failed:", {
-      error: error,
-      url: url,
-      method: method,
-      headers: headers,
+    console.error("CodeTweak: Cross-origin request failed:", {
+      error,
+      url,
+      method,
+      headers,
     });
+
     let errorMessage = error.message;
     if (error instanceof TypeError && error.message === "Failed to fetch") {
-      errorMessage = `Network request failed. This could be due to a CORS issue, a network error, or an invalid URL. URL: ${url}`;
+      errorMessage = `Network request failed. This could be due to a CORS issue, network error, or invalid URL. URL: ${url}`;
     }
-    sendResponse({ error: errorMessage });
+
+    return { error: errorMessage };
   }
 }
-// hi.
-function normalizeStackTrace(stack) {
-  if (!stack) return "";
-  return stack
-    .replace(/blob:[^\s)]+/g, "blob:URL")
-    .replace(/:\d+:\d+/g, "")
-    .replace(/at\s+blob:URL/g, "at blob:URL")
-    .trim();
-}
 
-// Script error handeling
-// Needs a rework
-async function storeScriptError(scriptId, error) {
-  try {
-    const { settings = {} } = await chrome.storage.local.get("settings");
-    if (!settings.enhancedDebugging) {
-      return;
+const messageHandlers = {
+  scriptsUpdated: async () => {
+    state.clearCache();
+    notifyPorts("scriptsUpdated");
+    updateAllTabBadges();
+    return { success: true };
+  },
+
+  createScript: async (message) => {
+    await handleScriptCreation(message.data.url, message.data.template);
+    return { success: true };
+  },
+
+  contentScriptReady: (message, sender) => {
+    if (sender.tab?.id) {
+      state.executedScripts.set(sender.tab.id, new Set());
+    }
+    return { success: true };
+  },
+
+  greasyForkInstall: async (message) => {
+    await handleGreasyForkInstall(message.url);
+    return { success: true };
+  },
+
+  openAISettings: () => {
+    chrome.tabs.create({
+      url: chrome.runtime.getURL("ai_dom_editor/settings/ai_settings.html"),
+    });
+    return { success: true };
+  },
+
+  createScriptFromAI: async (message) => {
+    const { scripts = [] } = await chrome.storage.local.get("scripts");
+    const metadata = parseUserScriptMetadata(message.script);
+
+    const newScript = {
+      id: crypto.randomUUID(),
+      code: message.script,
+      enabled: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      targetUrls: metadata.matches || [message.url],
+      runAt: metadata.runAt || "document_idle",
+      name: metadata.name || "New AI Script",
+    };
+
+    scripts.push(newScript);
+    await chrome.storage.local.set({ scripts });
+    state.clearCache();
+    notifyPorts("scriptsUpdated");
+    updateAllTabBadges();
+
+    return { script: newScript };
+  },
+
+  aiSettingsUpdated: () => {
+    chrome.runtime.sendMessage({ action: "aiConfigUpdated" }).catch(() => {});
+    return { success: true };
+  },
+
+  getScriptContent: async (message) => {
+    const { scripts = [] } = await chrome.storage.local.get("scripts");
+    const script = scripts.find((s) => s.name === message.scriptName);
+
+    if (script) {
+      return { code: script.code };
+    } else {
+      return { error: `Script not found: ${message.scriptName}` };
+    }
+  },
+
+  getAllScripts: async () => {
+    const { scripts = [] } = await chrome.storage.local.get("scripts");
+    return { scripts };
+  },
+
+  updateScript: async (message) => {
+    const { scripts = [] } = await chrome.storage.local.get("scripts");
+    const scriptIndex = scripts.findIndex((s) => s.id === message.scriptId);
+
+    if (scriptIndex === -1) {
+      return { error: `Script with id ${message.scriptId} not found.` };
     }
 
-    const storageKey = `scriptErrors_${scriptId}`;
-    const { [storageKey]: existingErrors = [] } =
-      await chrome.storage.local.get(storageKey);
-    const normalizedNewStack = normalizeStackTrace(error.stack);
+    scripts[scriptIndex].code = message.code;
+    scripts[scriptIndex].updatedAt = new Date().toISOString();
+    await chrome.storage.local.set({ scripts });
 
-    // Check for dupes
-    const isDuplicate = existingErrors.some((existingError) => {
-      const normalizedExistingStack = normalizeStackTrace(existingError.stack);
-      return (
-        existingError.message === error.message &&
-        normalizedExistingStack === normalizedNewStack
-      );
+    state.clearCache();
+    notifyPorts("scriptsUpdated");
+    updateAllTabBadges();
+
+    // Reload tabs where the script is running
+    const updatedScript = scripts[scriptIndex];
+    const tabs = await chrome.tabs.query({
+      url: updatedScript.targetUrls,
     });
 
-    if (isDuplicate) {
-      return;
+    for (const tab of tabs) {
+      chrome.tabs.reload(tab.id);
     }
 
-    const updatedErrors = [error, ...existingErrors];
-    if (updatedErrors.length > 50) {
-      updatedErrors.splice(50);
-    }
+    return { success: true };
+  },
+};
 
-    await chrome.storage.local.set({ [storageKey]: updatedErrors });
-    chrome.runtime
-      .sendMessage({
-        type: "SCRIPT_ERROR_UPDATE",
-        scriptId: scriptId,
-        error: error,
-      })
-      .catch(() => {
-        // Editor might not be open, ignore
-      });
-  } catch (err) {
-    console.error(
-      "[CodeTweak Error Storage] Failed to store script error:",
-      err
-    );
-  }
-}
-
-async function clearScriptErrors(scriptId) {
-  try {
-    const storageKey = `scriptErrors_${scriptId}`;
-    await chrome.storage.local.remove(storageKey);
-  } catch (err) {
-    console.error("Failed to clear script errors:", err);
-  }
-}
-
-// Message handling
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log("[CodeTweak] Message received:", message.type || message.action);
 
+  // Handle GM API requests
   if (message.type === "GM_API_REQUEST") {
     if (!message.payload) {
       console.error("[CodeTweak] GM_API_REQUEST received with no payload.");
       sendResponse({ error: "Request payload is missing." });
-      return true;
+      return false;
     }
+
     const { action, scriptId, ...payload } = message.payload;
+    const handler = new GMAPIHandler(scriptId, sender);
 
-    const getStorage = async () => {
-      const key = `script-values-${scriptId}`;
-      const result = await chrome.storage.local.get(key);
-      return result[key] || {};
-    };
-
-    const setStorage = async (values) => {
-      const key = `script-values-${scriptId}`;
-      await chrome.storage.local.set({ [key]: values });
-    };
-
-    const actionHandlers = {
-      async setValue({ name, value }) {
-        const values = await getStorage();
-        const oldValue = values[name];
-        values[name] = value;
-        await setStorage(values);
-
-        const listeners = state.valueChangeListeners.get(name);
-        if (listeners) {
-          for (const tabId of listeners) {
-            if (tabId !== sender.tab.id) {
-              // Don't notify the tab that made the change
-              chrome.tabs
-                .sendMessage(tabId, {
-                  type: "GM_VALUE_CHANGED",
-                  payload: { name, oldValue, newValue: value, remote: true },
-                })
-                .catch(() => {}); // Ignore errors if tab is closed
-            }
-          }
-        }
-        sendResponse({ result: null });
-      },
-      async getValue({ name, defaultValue }) {
-        const values = await getStorage();
-        sendResponse({ result: values[name] ?? defaultValue });
-      },
-      async deleteValue({ name }) {
-        const values = await getStorage();
-        const oldValue = values[name];
-        delete values[name];
-        await setStorage(values);
-
-        const listeners = state.valueChangeListeners.get(name);
-        if (listeners) {
-          for (const tabId of listeners) {
-            chrome.tabs
-              .sendMessage(tabId, {
-                type: "GM_VALUE_CHANGED",
-                payload: {
-                  name,
-                  oldValue,
-                  newValue: undefined,
-                  remote: tabId !== sender.tab.id,
-                },
-              })
-              .catch(() => {});
-          }
-        }
-        sendResponse({ result: null });
-      },
-      async listValues() {
-        const values = await getStorage();
-        sendResponse({ result: Object.keys(values) });
-      },
-      addValueChangeListener({ name }) {
-        if (!state.valueChangeListeners.has(name)) {
-          state.valueChangeListeners.set(name, new Set());
-        }
-        state.valueChangeListeners.get(name).add(sender.tab.id);
-        sendResponse({ result: null });
-      },
-      removeValueChangeListener({ name }) {
-        const listeners = state.valueChangeListeners.get(name);
-        if (listeners) {
-          listeners.delete(sender.tab.id);
-          if (listeners.size === 0) {
-            state.valueChangeListeners.delete(name);
-          }
-        }
-        sendResponse({ result: null });
-      },
-      getSettings() {
-        chrome.storage.local.get("settings").then(({ settings = {} }) => {
-          sendResponse({ result: settings });
+    if (typeof handler[action] === "function") {
+      handler[action](payload)
+        .then(sendResponse)
+        .catch((error) => {
+          console.error(`GM API error [${action}]:`, error);
+          sendResponse({ error: error.message });
         });
-      },
-      xmlhttpRequest() {
-        handleCrossOriginXmlhttpRequest(
-          payload.details,
-          sender.tab.id,
-          sendResponse
-        );
-      },
-      notification({ details }) {
-        const notificationOptions = {
-          type: "basic",
-          iconUrl: details.image || "assets/icons/icon128.png",
-          title: details.title || "CodeTweak Notification",
-          message: details.text || "",
-        };
-        chrome.notifications.create(notificationOptions, () => {
-          if (chrome.runtime.lastError) {
-            sendResponse({ error: chrome.runtime.lastError.message });
-          } else {
-            sendResponse({ result: null });
-          }
-        });
-        return true;
-      },
-      async setClipboard({ data, type }) {
-        await setupOffscreenDocument();
-        chrome.runtime.sendMessage({
-          target: "offscreen",
-          type: "copy-to-clipboard",
-          data: data,
-        });
-        sendResponse({ result: null });
-      },
-      download(details) {
-        chrome.downloads.download(
-          { url: details.url, filename: details.name },
-          (downloadId) => {
-            if (chrome.runtime.lastError) {
-              sendResponse({ error: chrome.runtime.lastError.message });
-            } else {
-              sendResponse({ result: { downloadId } });
-            }
-          }
-        );
-        return true;
-      },
-    };
-
-    if (actionHandlers[action]) {
-      actionHandlers[action](payload);
       return true;
     }
 
     sendResponse({ error: `Unknown GM API action: ${action}` });
-    return true;
+    return false;
   }
-  // Some errors around here.... not all errors being captured
+
+  // Handle script errors
   if (message.type === "SCRIPT_ERROR") {
     storeScriptError(message.scriptId, message.error);
     sendResponse({ success: true });
@@ -569,97 +649,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "GET_SCRIPT_ERRORS") {
     const storageKey = `scriptErrors_${message.scriptId}`;
     chrome.storage.local.get(storageKey).then((result) => {
-      const errors = result[storageKey] || [];
-      sendResponse({ errors });
+      sendResponse({ errors: result[storageKey] || [] });
     });
     return true;
   }
 
   if (message.type === "offscreen-clipboard-response") {
-    return false; // Handled by promise in handleSetClipboard
-  }
-
-  const messageHandlers = {
-    scriptsUpdated: () => {
-      state.clearCache();
-      notifyPorts("scriptsUpdated");
-      updateAllTabBadges();
-      sendResponse({ success: true });
-    },
-    createScript: () => {
-      handleScriptCreation(message.data.url, message.data.template);
-    },
-    contentScriptReady: () => {
-      if (sender.tab?.id) {
-        state.executedScripts.set(sender.tab.id, new Set());
-      }
-    },
-    greasyForkInstall: () => {
-      handleGreasyForkInstall(message.url);
-    },
-    openAISettings: () => {
-      chrome.tabs.create({
-        url: chrome.runtime.getURL("ai_dom_editor/settings/ai_settings.html"),
-      });
-      sendResponse({ success: true });
-    },
-    createScriptFromAI: () => {
-      handleAIScriptCreation(message.script, message.url);
-      sendResponse({ success: true });
-    },
-    aiSettingsUpdated: () => {
-      chrome.runtime.sendMessage({ action: "aiConfigUpdated" }).catch(() => {});
-      sendResponse({ success: true });
-    },
-  };
-
-  const handler = messageHandlers[message.action];
-  if (handler) {
-    handler();
     return false;
   }
 
-  if (message.action === "getScriptContent") {
-    (async () => {
-      const { scripts = [] } = await chrome.storage.local.get("scripts");
-      const script = scripts.find((s) => s.name === message.scriptName);
-      if (script) {
-        sendResponse({ code: script.code });
-      } else {
-        sendResponse({ error: `Script not found: ${message.scriptName}` });
-      }
-    })();
-    return true;
-  }
-
-  if (message.action === "getAllScripts") {
-    (async () => {
-      const { scripts = [] } = await chrome.storage.local.get("scripts");
-      const scriptNames = scripts.map((s) => s.name);
-      sendResponse({ scripts: scriptNames });
-    })();
-    return true;
-  }
-
-  if (message.action === "updateScript") {
-    (async () => {
-      const { scripts = [] } = await chrome.storage.local.get("scripts");
-      const scriptIndex = scripts.findIndex((s) => s.id === message.scriptId);
-      if (scriptIndex !== -1) {
-        scripts[scriptIndex].code = message.code;
-        scripts[scriptIndex].updatedAt = new Date().toISOString();
-        await chrome.storage.local.set({ scripts });
-
-        state.clearCache();
-        notifyPorts("scriptsUpdated");
-        updateAllTabBadges();
-        sendResponse({ success: true });
-      } else {
-        sendResponse({
-          error: `Script with id ${message.scriptId} not found.`,
-        });
-      }
-    })();
+  // Handle standard messages
+  const handler = messageHandlers[message.action];
+  if (handler) {
+    handler(message, sender)
+      .then(sendResponse)
+      .catch((error) => {
+        console.error(`Message handler error [${message.action}]:`, error);
+        sendResponse({ error: error.message });
+      });
     return true;
   }
 
@@ -667,7 +674,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return false;
 });
 
-// Context menu
+
 chrome.contextMenus.removeAll(() => {
   chrome.contextMenus.create({
     id: "selectElement",
@@ -682,7 +689,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
 });
 
-// Port connections
+
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name !== "CodeTweak" || state.ports.has(port)) return;
 
@@ -691,13 +698,15 @@ chrome.runtime.onConnect.addListener((port) => {
   port.onMessage.addListener(console.log);
 });
 
-// Web navigation injection
+
 const navigationEvents = ["onCommitted", "onDOMContentLoaded", "onCompleted"];
+
 navigationEvents.forEach((event, index) => {
   chrome.webNavigation[event].addListener((details) => {
     if (event === "onCommitted" && details.frameId === 0) {
       clearInjectedCoreScriptsForTab(details.tabId);
     }
+
     injectScriptsForStage(
       details,
       Object.values(INJECTION_TYPES)[index],
@@ -707,14 +716,9 @@ navigationEvents.forEach((event, index) => {
   });
 });
 
-// Event listners for tab actions
-chrome.tabs.onRemoved.addListener((tabId) => {
-  state.executedScripts.delete(tabId);
-  clearInjectedCoreScriptsForTab(tabId);
 
-  for (const listeners of state.valueChangeListeners.values()) {
-    listeners.delete(tabId);
-  }
+chrome.tabs.onRemoved.addListener((tabId) => {
+  state.cleanupTab(tabId);
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
@@ -728,13 +732,12 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
     const tab = await chrome.tabs.get(activeInfo.tabId);
     updateBadgeForTab(tab.id, tab.url);
   } catch (error) {
-    // Tab could of been closed
     if (!isIgnorableTabError(error)) {
       console.warn("Error getting activated tab:", error);
     }
   }
 });
 
-// Lifecycle stuff
+
 chrome.runtime.onInstalled.addListener(updateAllTabBadges);
 chrome.runtime.onStartup.addListener(updateAllTabBadges);

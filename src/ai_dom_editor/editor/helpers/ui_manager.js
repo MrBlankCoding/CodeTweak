@@ -46,7 +46,9 @@ export class UIManager {
           const editLink = document.createElement("a");
           editLink.className = "btn-text icon-btn";
           editLink.title = "Open in editor";
-          editLink.href = chrome.runtime.getURL("editor/editor.html");
+          editLink.href = `${chrome.runtime.getURL(
+            "editor/editor.html"
+          )}?id=${this.editor.currentScript.id}`;
           editLink.target = "_blank";
           editLink.innerHTML = `<i data-feather="edit-2" width="16" height="16"></i>`;
           // Insert before the action button
@@ -148,7 +150,8 @@ export class UIManager {
       const codePreview = this.createCodePreview(
         data.code,
         data.actions,
-        data.isScript
+        data.isScript,
+        data.name
       );
       content.appendChild(codePreview);
     }
@@ -157,7 +160,7 @@ export class UIManager {
     return messageEl;
   }
 
-  createCodePreview(code, actions, isScript) {
+  createCodePreview(code, actions, isScript, name) {
     const preview = document.createElement("div");
     preview.className = "code-preview";
 
@@ -193,7 +196,9 @@ export class UIManager {
       const editLink = document.createElement("a");
       editLink.className = "btn-text icon-btn";
       editLink.title = "Open in editor";
-      editLink.href = chrome.runtime.getURL("editor/editor.html");
+      editLink.href = `${chrome.runtime.getURL("editor/editor.html")}?id=${
+        this.editor.currentScript.id
+      }`;
       editLink.target = "_blank";
       editLink.innerHTML = `<i data-feather="edit-2" width="16" height="16"></i>`;
       actionsDiv.appendChild(editLink);
@@ -222,7 +227,7 @@ export class UIManager {
           code
         );
       } else {
-        this.editor.userscriptHandler.createUserscript(code);
+        this.editor.userscriptHandler.createUserscript(code, name);
       }
     });
 
@@ -331,13 +336,13 @@ export class UIManager {
     const selector = document.createElement("div");
     selector.className = "script-selector";
 
-    scripts.forEach((scriptName) => {
+    scripts.forEach((script) => {
       const item = document.createElement("div");
       item.className = "script-item";
-      item.textContent = scriptName;
+      item.textContent = script.name;
       item.addEventListener("click", () => {
         const atIndex = input.value.lastIndexOf("@");
-        input.value = input.value.substring(0, atIndex + 1) + scriptName + " ";
+        input.value = input.value.substring(0, atIndex + 1) + script.name + " ";
         this.hideScriptSelector();
         input.focus();
       });
