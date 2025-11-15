@@ -104,8 +104,8 @@ export class UIManager {
 
       const codePreview = this.createCodePreview(
         data.code,
-        true, // isScript
-        data.name
+        data.name,
+        data.explanation
       );
       content.appendChild(codePreview);
     } else if (data.type === "text") {
@@ -210,7 +210,7 @@ export class UIManager {
     return markdownIndicators.some(pattern => pattern.test(text));
   }
 
-  createCodePreview(code, name = "Generated Script") {
+  createCodePreview(code, name = "Generated Script", explanation = null) {
     const preview = document.createElement("div");
     preview.className = "code-preview";
 
@@ -278,10 +278,11 @@ export class UIManager {
         this.editor.userscriptHandler.updateUserscript(
           this.editor.currentScript.name,
           code,
-          name
+          name,
+          explanation
         );
       } else {
-        this.editor.userscriptHandler.createUserscript(code, name);
+        this.editor.userscriptHandler.createUserscript(code, name, explanation);
       }
     });
 

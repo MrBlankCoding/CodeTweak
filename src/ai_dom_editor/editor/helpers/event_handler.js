@@ -109,6 +109,9 @@ export class EventHandler {
 
     this.editor.uiManager.hideWelcomeMessage();
 
+    const history = [...this.editor.chatManager.messages];
+    const previousCode = this.editor.chatManager.getPreviousCode();
+
     this.editor.chatManager.addMessage("user", message);
     this.lastUserPrompt = message;
     this.editor.elements.userInput.value = "";
@@ -139,7 +142,7 @@ export class EventHandler {
           const domSummary = response?.summary || "";
 
           try {
-            let previousCode = this.editor.chatManager.getPreviousCode();
+            let finalPreviousCode = previousCode;
             let userMessage = message;
 
             if (message.includes("@")) {
@@ -166,7 +169,8 @@ export class EventHandler {
                     await this.editor.userscriptHandler.getScriptContent(
                       matchedScript.name
                     );
-                  previousCode = ScriptAnalyzer.extractCodeFromIIFE(fullCode);
+                  finalPreviousCode =
+                    ScriptAnalyzer.extractCodeFromIIFE(fullCode);
                   this.editor.setCurrentScript(matchedScript);
                   const promptWithoutScriptRef =
                     message.substring(0, atIndex) +
@@ -186,7 +190,8 @@ export class EventHandler {
             const aiResponse = await this.editor.apiHandler.callAIAPI(
               userMessage,
               domSummary,
-              previousCode
+              finalPreviousCode,
+              history
             );
             this.editor.chatManager.removeMessage(loadingId);
             this.handleAIResponse(aiResponse);
@@ -220,25 +225,14 @@ export class EventHandler {
           actions: response,
         }
       );
-    } else if (response.type === "script") {
+    } else if (response.type === "code") {
       this.editor.chatManager.addMessage(
         "assistant",
-        "I've generated this code for you:",
-        {
-          code: response.code,
-          isScript: true,
-          name: response.name,
-        }
+        response.explanation || "I've generated this code for you.",
+        response
       );
-    } else if (response.type === "markdown") {
-      this.editor.chatManager.addMessage("assistant", response.message, {
-        isMarkdown: true,
-        code: response.code,
-        name: response.name,
-        hasCode: response.hasCode || false,
-      });
     } else if (response.type === "text") {
-      this.editor.chatManager.addMessage("assistant", response.message);
+      this.editor.chatManager.addMessage("assistant", response.message, response);
     } else {
       this.editor.chatManager.addMessage(
         "assistant",

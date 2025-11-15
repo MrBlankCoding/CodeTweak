@@ -36,33 +36,47 @@ export class UserscriptHandler {
     });
   }
 
-  async createUserscript(code, name = null) {
+  async createUserscript(code, name = null, explanation = null) {
     try {
       const [tab] = await chrome.tabs.query({
         active: true,
         currentWindow: true,
       });
       const url = new URL(tab.url);
-      
+
       let scriptCode = typeof code === "string" ? code : JSON.stringify(code);
       scriptCode = scriptCode
         .replace(/\/\/\s*==UserScript==[\s\S]*?\/\/\s*==\/UserScript==\n*/g, "")
         .trim();
       const userPrompt = this.editor.eventHandler?.lastUserPrompt || "";
 
+      let extractedExplanation = null;
+      const commentMatch = scriptCode.match(/^\s*\/\/\s*(.*)\r?\n/);
+      if (commentMatch && commentMatch[1]) {
+        extractedExplanation = commentMatch[1].trim();
+        scriptCode = scriptCode.substring(commentMatch[0].length).trim();
+      }
+
+      const description =
+        extractedExplanation ||
+        explanation ||
+        userPrompt ||
+        `Modifications for ${url.hostname}`;
+
       const detectedApis = ScriptAnalyzer.detectGMApiUsage(scriptCode);
       const suggestedRunAt = ScriptAnalyzer.suggestRunAt(scriptCode);
-      
-      const scriptName = name || 
-                        ScriptAnalyzer.generateScriptName(url.hostname, userPrompt) ||
-                        "AI Generated Script";
+
+      const scriptName =
+        name ||
+        ScriptAnalyzer.generateScriptName(url.hostname, userPrompt) ||
+        "AI Generated Script";
 
       // Build metadata
       const metadata = {
         name: scriptName,
         namespace: "https://codetweak.local",
         version: "1.0.0",
-        description: userPrompt || `Modifications for ${url.hostname}`,
+        description: description,
         author: "CodeTweak AI",
         matches: [`${url.origin}/*`],
         gmApis: detectedApis,
@@ -93,13 +107,13 @@ export class UserscriptHandler {
             );
             return;
           }
-          
+
           this.editor.chatManager.addMessage(
             "assistant",
             `✓ Script "${scriptName}" created successfully!`,
             { type: "text" }
           );
-          
+
           // Set as current script for future updates
           this.editor.setCurrentScript(response.script);
         }
@@ -114,7 +128,12 @@ export class UserscriptHandler {
     }
   }
 
-  async updateUserscript(scriptName, newCode, newName = null) {
+  async updateUserscript(
+    scriptName,
+    newCode,
+    newName = null,
+    explanation = null
+  ) {
     try {
       const { scripts = [] } = await chrome.storage.local.get("scripts");
       const scriptToUpdate = scripts.find((s) => s.name === scriptName);
@@ -129,9 +148,20 @@ export class UserscriptHandler {
         metadata.name = newName;
       }
 
-      const cleanCode = newCode
+      let cleanCode = newCode
         .replace(/\/\/\s*==UserScript==[\s\S]*?\/\/\s*==\/UserScript==\n*/g, "")
         .trim();
+
+      let extractedExplanation = null;
+      const commentMatch = cleanCode.match(/^\s*\/\/\s*(.*)\r?\n/);
+      if (commentMatch && commentMatch[1]) {
+        extractedExplanation = commentMatch[1].trim();
+        cleanCode = cleanCode.substring(commentMatch[0].length).trim();
+      }
+
+      if (extractedExplanation || explanation) {
+        metadata.description = extractedExplanation || explanation;
+      }
 
       const detectedApis = ScriptAnalyzer.detectGMApiUsage(cleanCode);
       const suggestedRunAt = ScriptAnalyzer.suggestRunAt(cleanCode);
@@ -171,7 +201,7 @@ export class UserscriptHandler {
               `✓ Script "${displayName}" updated successfully!`,
               { type: "text" }
             );
-            
+
             if (newName && newName !== scriptName) {
               this.editor.setCurrentScript({
                 ...scriptToUpdate,
