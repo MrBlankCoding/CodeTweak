@@ -250,12 +250,96 @@ body {
 .message-text {
   background: var(--bg-secondary);
   border: 1px solid var(--border-primary);
-  border-radius: 0.5rem;
-  padding: 0.75rem;
-  font-size: 0.875rem;
-  line-height: 1.5;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  font-size: 1rem;
+  line-height: 1.7;
   white-space: pre-wrap;
   word-wrap: break-word;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  max-width: 650px;
+  margin-bottom: 0.25rem;
+  transition: box-shadow 0.2s;
+}
+
+.message-text:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* Markdown styles */
+.message-text h1,
+.message-text h2,
+.message-text h3 {
+  font-weight: 700;
+  margin: 1.2em 0 0.6em 0;
+  line-height: 1.2;
+}
+.message-text h1 {
+  font-size: 1.3em;
+}
+.message-text h2 {
+  font-size: 1.15em;
+}
+.message-text h3 {
+  font-size: 1.05em;
+}
+
+.message-text ul,
+.message-text ol {
+  margin: 0.5em 0 0.5em 1.5em;
+  padding-left: 1.2em;
+}
+.message-text li {
+  margin-bottom: 0.25em;
+}
+.message-text blockquote {
+  border-left: 3px solid var(--primary);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  margin: 0.75em 0;
+  padding: 0.5em 1em;
+  border-radius: 0.4em;
+  font-style: italic;
+}
+.message-text a {
+  color: var(--primary);
+  text-decoration: underline;
+  word-break: break-all;
+}
+.message-text pre,
+.message-text code {
+  font-family: "JetBrains Mono", "Fira Mono", "Consolas", monospace;
+  font-size: 0.93em;
+}
+.message-text pre {
+  background: #23272e;
+  color: #f8f8f2;
+  border-radius: 0.4em;
+  padding: 0.85em 1em;
+  overflow-x: auto;
+  margin: 1em 0;
+}
+.message-text code {
+  background: var(--bg-tertiary);
+  color: var(--primary);
+  border-radius: 0.3em;
+  padding: 0.15em 0.4em;
+  margin: 0 0.1em;
+}
+
+.message-text pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  margin: 0;
+}
+
+@media (max-width: 700px) {
+  .message-text {
+    font-size: 0.95rem;
+    padding: 0.75rem 0.7rem;
+    max-width: 98vw;
+  }
 }
 
 .message.user .message-text {

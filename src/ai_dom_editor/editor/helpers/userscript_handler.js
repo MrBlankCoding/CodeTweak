@@ -36,26 +36,28 @@ export class UserscriptHandler {
     });
   }
 
-  async createUserscript(code, name) {
+  async createUserscript(code, name = null) {
     try {
       const [tab] = await chrome.tabs.query({
         active: true,
         currentWindow: true,
       });
       const url = new URL(tab.url);
-      let scriptCode =
-        typeof code === "string" ? code : this.convertActionsToScript(code);
-      const userPrompt = this.editor.eventHandler.lastUserPrompt || "";
-
+      
+      let scriptCode = typeof code === "string" ? code : JSON.stringify(code);
       scriptCode = scriptCode
         .replace(/\/\/\s*==UserScript==[\s\S]*?\/\/\s*==\/UserScript==\n*/g, "")
         .trim();
+      const userPrompt = this.editor.eventHandler?.lastUserPrompt || "";
 
       const detectedApis = ScriptAnalyzer.detectGMApiUsage(scriptCode);
       const suggestedRunAt = ScriptAnalyzer.suggestRunAt(scriptCode);
-      const scriptName =
-        name || ScriptAnalyzer.generateScriptName(url.hostname, userPrompt);
+      
+      const scriptName = name || 
+                        ScriptAnalyzer.generateScriptName(url.hostname, userPrompt) ||
+                        "AI Generated Script";
 
+      // Build metadata
       const metadata = {
         name: scriptName,
         namespace: "https://codetweak.local",
@@ -67,12 +69,14 @@ export class UserscriptHandler {
         runAt: suggestedRunAt,
       };
 
+      // Wrap code and add metadata
       const wrappedCode = this.wrapInIIFE(scriptCode);
       const finalScript = ScriptAnalyzer.rebuildWithEnhancedMetadata(
         wrappedCode,
         metadata
       );
 
+      // Send to background script
       chrome.runtime.sendMessage(
         {
           action: "createScriptFromAI",
@@ -85,14 +89,18 @@ export class UserscriptHandler {
             this.editor.chatManager.addMessage(
               "assistant",
               `Error creating script: ${response.error}`,
-              { error: true }
+              { type: "text", error: true }
             );
             return;
           }
+          
           this.editor.chatManager.addMessage(
             "assistant",
-            "✓ Script created!"
+            `✓ Script "${scriptName}" created successfully!`,
+            { type: "text" }
           );
+          
+          // Set as current script for future updates
           this.editor.setCurrentScript(response.script);
         }
       );
@@ -101,12 +109,12 @@ export class UserscriptHandler {
       this.editor.chatManager.addMessage(
         "assistant",
         `Error creating script: ${error.message}`,
-        { error: true }
+        { type: "text", error: true }
       );
     }
   }
 
-  async updateUserscript(scriptName, newCode) {
+  async updateUserscript(scriptName, newCode, newName = null) {
     try {
       const { scripts = [] } = await chrome.storage.local.get("scripts");
       const scriptToUpdate = scripts.find((s) => s.name === scriptName);
@@ -117,21 +125,24 @@ export class UserscriptHandler {
 
       const metadata = ScriptAnalyzer.extractMetadata(scriptToUpdate.code);
       metadata.version = ScriptAnalyzer.incrementVersion(metadata.version);
+      if (newName && newName !== scriptName && newName !== "Generated Script") {
+        metadata.name = newName;
+      }
 
-      // Detect any new APIs used in the updated code
-      const detectedApis = ScriptAnalyzer.detectGMApiUsage(newCode);
-      const suggestedRunAt = ScriptAnalyzer.suggestRunAt(newCode);
+      const cleanCode = newCode
+        .replace(/\/\/\s*==UserScript==[\s\S]*?\/\/\s*==\/UserScript==\n*/g, "")
+        .trim();
 
-      // Merge detected APIs with existing ones (preserve previously used APIs)
+      const detectedApis = ScriptAnalyzer.detectGMApiUsage(cleanCode);
+      const suggestedRunAt = ScriptAnalyzer.suggestRunAt(cleanCode);
+
       metadata.gmApis = {
         ...metadata.gmApis,
         ...detectedApis,
       };
 
-      // Update runAt if the new code suggests a different value
       metadata.runAt = suggestedRunAt;
-
-      const wrappedCode = this.wrapInIIFE(newCode);
+      const wrappedCode = this.wrapInIIFE(cleanCode);
       const finalScript = ScriptAnalyzer.rebuildWithEnhancedMetadata(
         wrappedCode,
         metadata
@@ -144,20 +155,30 @@ export class UserscriptHandler {
           code: finalScript,
         },
         (response) => {
-          if (chrome.runtime.lastErro || response?.error) {
+          if (chrome.runtime.lastError || response?.error) {
             const errorMsg =
               chrome.runtime.lastError?.message || response.error;
             console.error("Error updating script in background:", errorMsg);
             this.editor.chatManager.addMessage(
               "assistant",
               `Error updating script: ${errorMsg}`,
-              { error: true }
+              { type: "text", error: true }
             );
           } else {
+            const displayName = metadata.name || scriptName;
             this.editor.chatManager.addMessage(
               "assistant",
-              `✓ Script "${scriptName}" updated successfully.`
+              `✓ Script "${displayName}" updated successfully!`,
+              { type: "text" }
             );
+            
+            if (newName && newName !== scriptName) {
+              this.editor.setCurrentScript({
+                ...scriptToUpdate,
+                name: newName,
+                code: finalScript,
+              });
+            }
           }
         }
       );
@@ -166,14 +187,16 @@ export class UserscriptHandler {
       this.editor.chatManager.addMessage(
         "assistant",
         `Error updating script: ${error.message}`,
-        { error: true }
+        { type: "text", error: true }
       );
     }
   }
 
   wrapInIIFE(code) {
     const isWrapped =
-      /^\s*\(\s*function\s*\(/.test(code) || /^\s*\(function\s*\(/.test(code);
+      /^\s*\(\s*function\s*\(/.test(code) || 
+      /^\s*\(function\s*\(/.test(code) ||
+      /^\s*\(\s*\(\s*\)\s*=>\s*{/.test(code); // Arrow function IIFE
 
     if (isWrapped) {
       return code;
@@ -187,48 +210,5 @@ export class UserscriptHandler {
     
 ${indentedLines.join("\n")}
 })();`;
-  }
-
-  convertActionsToScript(actions) {
-    const lines = [];
-
-    for (const action of actions) {
-      switch (action.type) {
-        case "style":
-          lines.push(
-            `    document.querySelectorAll('${action.selector}').forEach(el => {`
-          );
-          lines.push(`        el.style.cssText += '${action.value}';`);
-          lines.push(`    });`);
-          break;
-        case "text":
-          lines.push(
-            `    document.querySelectorAll('${action.selector}').forEach(el => {`
-          );
-          lines.push(
-            `        el.textContent = ${JSON.stringify(action.value)};`
-          );
-          lines.push(`    });`);
-          break;
-        case "remove":
-          lines.push(
-            `    document.querySelectorAll('${action.selector}').forEach(el => el.remove());`
-          );
-          break;
-        case "insert":
-          lines.push(
-            `    document.querySelectorAll('${action.selector}').forEach(el => {`
-          );
-          lines.push(
-            `        el.insertAdjacentHTML('beforeend', ${JSON.stringify(
-              action.value
-            )});`
-          );
-          lines.push(`    });`);
-          break;
-      }
-    }
-
-    return lines.join("\n");
   }
 }

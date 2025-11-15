@@ -1,26 +1,27 @@
-import ScriptAnalyzer from '../../../utils/scriptAnalyzer.js';
+import ScriptAnalyzer from "../../../utils/scriptAnalyzer.js";
 
 export class EventHandler {
   constructor(editor) {
     this.editor = editor;
-    this.lastUserPrompt = '';
+    this.lastUserPrompt = "";
   }
 
   setupEventListeners() {
-    this.editor.elements.userInput.addEventListener('input', (e) => {
+    this.editor.elements.userInput.addEventListener("input", (e) => {
       this.editor.uiManager.autoResize(this.editor.elements.userInput);
-      this.editor.elements.sendBtn.disabled = !this.editor.elements.userInput.value.trim();
+      this.editor.elements.sendBtn.disabled =
+        !this.editor.elements.userInput.value.trim();
 
       const value = e.target.value;
-      if (value.endsWith('@')) {
+      if (value.endsWith("@")) {
         this.editor.uiManager.showScriptSelector(e.target);
-      } else if (!value.includes('@')) {
+      } else if (!value.includes("@")) {
         this.editor.uiManager.hideScriptSelector();
       }
     });
 
-    this.editor.elements.userInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
+    this.editor.elements.userInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         if (!this.editor.elements.sendBtn.disabled) {
           this.handleSendMessage();
@@ -28,41 +29,43 @@ export class EventHandler {
       }
     });
 
-    this.editor.elements.sendBtn.addEventListener('click', () => {
+    this.editor.elements.sendBtn.addEventListener("click", () => {
       this.handleSendMessage();
     });
 
-    this.editor.elements.closeBtn.addEventListener('click', () => {
+    this.editor.elements.closeBtn.addEventListener("click", () => {
       this.closeEditor();
     });
 
-    this.editor.elements.openSettingsBtn.addEventListener('click', () => {
+    this.editor.elements.openSettingsBtn.addEventListener("click", () => {
       this.openSettings();
     });
 
-    this.editor.elements.headerSettingsBtn.addEventListener('click', () => {
+    this.editor.elements.headerSettingsBtn.addEventListener("click", () => {
       this.openSettings();
     });
 
-    this.editor.elements.elementSelectorBtn.addEventListener('click', () => {
+    this.editor.elements.elementSelectorBtn.addEventListener("click", () => {
       this.editor.uiManager.activateElementSelector();
     });
 
-    this.editor.elements.clearChatBtn.addEventListener('click', () => {
+    this.editor.elements.clearChatBtn.addEventListener("click", () => {
       this.editor.chatManager.clearChat();
     });
 
-    this.editor.elements.cancelSelector.addEventListener('click', () => {
+    this.editor.elements.cancelSelector.addEventListener("click", () => {
       this.editor.uiManager.deactivateElementSelector();
     });
-    
-    this.editor.elements.modelSelector.addEventListener('change', (e) => {
+
+    this.editor.elements.modelSelector.addEventListener("change", (e) => {
       this.editor.apiHandler.handleModelChange(e);
     });
 
-    document.querySelectorAll('.example-prompt').forEach(prompt => {
-      prompt.addEventListener('click', () => {
-        this.editor.elements.userInput.value = prompt.textContent.replace(/^[^a-zA-Z]+/, '').trim();
+    document.querySelectorAll(".example-prompt").forEach((prompt) => {
+      prompt.addEventListener("click", () => {
+        this.editor.elements.userInput.value = prompt.textContent
+          .replace(/^[^a-zA-Z]+/, "")
+          .trim();
         this.editor.uiManager.autoResize(this.editor.elements.userInput);
         this.editor.elements.sendBtn.disabled = false;
         this.editor.elements.userInput.focus();
@@ -72,11 +75,11 @@ export class EventHandler {
 
   setupMessageListener() {
     chrome.runtime.onMessage.addListener((message) => {
-      if (message.action === 'elementSelected') {
+      if (message.action === "elementSelected") {
         this.handleElementSelected(message.selector);
-      } else if (message.action === 'domSummaryReady') {
+      } else if (message.action === "domSummaryReady") {
         this.handleDOMSummary(message.summary);
-      } else if (message.action === 'aiSettingsUpdated') {
+      } else if (message.action === "aiSettingsUpdated") {
         this.editor.apiHandler.loadAPIConfig();
         this.editor.apiHandler.loadAvailableModels();
       }
@@ -87,109 +90,173 @@ export class EventHandler {
     const message = this.editor.elements.userInput.value.trim();
     if (!message) return;
 
-    const hasModel = this.editor.apiHandler.selectedModel && this.editor.apiHandler.selectedModel.apiKey && this.editor.apiHandler.selectedModel.endpoint;
-    const hasConfig = this.editor.apiHandler.apiConfig && this.editor.apiHandler.apiConfig.apiKey && this.editor.apiHandler.apiConfig.endpoint;
-    
+    const hasModel =
+      this.editor.apiHandler.selectedModel &&
+      this.editor.apiHandler.selectedModel.apiKey &&
+      this.editor.apiHandler.selectedModel.endpoint;
+    const hasConfig =
+      this.editor.apiHandler.apiConfig &&
+      this.editor.apiHandler.apiConfig.apiKey &&
+      this.editor.apiHandler.apiConfig.endpoint;
+
     if (!hasModel && !hasConfig) {
-      this.editor.chatManager.addMessage('assistant', 'Please configure your AI API settings first.');
+      this.editor.chatManager.addMessage(
+        "assistant",
+        "Please configure your AI API settings first."
+      );
       return;
     }
 
     this.editor.uiManager.hideWelcomeMessage();
 
-    this.editor.chatManager.addMessage('user', message);
+    this.editor.chatManager.addMessage("user", message);
     this.lastUserPrompt = message;
-    this.editor.elements.userInput.value = '';
+    this.editor.elements.userInput.value = "";
     this.editor.uiManager.autoResize(this.editor.elements.userInput);
     this.editor.elements.sendBtn.disabled = true;
 
     const loadingId = this.editor.uiManager.addLoadingMessage();
 
     try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      
-      chrome.tabs.sendMessage(tab.id, { action: 'collectDOMSummary' }, async (response) => {
-        if (chrome.runtime.lastError) {
-          this.editor.chatManager.removeMessage(loadingId);
-          this.editor.chatManager.addMessage('assistant', 'Error: Could not access page content. Please refresh the page and try again.');
-          return;
-        }
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
 
-        const domSummary = response?.summary || '';
-        
-        try {
-          let previousCode = this.editor.chatManager.getPreviousCode();
-          let userMessage = message;
+      chrome.tabs.sendMessage(
+        tab.id,
+        { action: "collectDOMSummary" },
+        async (response) => {
+          if (chrome.runtime.lastError) {
+            this.editor.chatManager.removeMessage(loadingId);
+            this.editor.chatManager.addMessage(
+              "assistant",
+              "Error: Could not access page content. Please refresh the page and try again."
+            );
+            return;
+          }
 
-          if (message.includes('@')) {
-            const allScripts = await this.editor.userscriptHandler.getAllScripts();
-            const atIndex = message.lastIndexOf('@');
-            const textAfterAt = message.substring(atIndex + 1);
-            let matchedScript = null;
+          const domSummary = response?.summary || "";
 
-            for (const script of allScripts) {
-              if (textAfterAt.startsWith(script.name)) {
-                if (!matchedScript || script.name.length > matchedScript.name.length) {
-                  matchedScript = script;
+          try {
+            let previousCode = this.editor.chatManager.getPreviousCode();
+            let userMessage = message;
+
+            if (message.includes("@")) {
+              const allScripts =
+                await this.editor.userscriptHandler.getAllScripts();
+              const atIndex = message.lastIndexOf("@");
+              const textAfterAt = message.substring(atIndex + 1);
+              let matchedScript = null;
+
+              for (const script of allScripts) {
+                if (textAfterAt.startsWith(script.name)) {
+                  if (
+                    !matchedScript ||
+                    script.name.length > matchedScript.name.length
+                  ) {
+                    matchedScript = script;
+                  }
+                }
+              }
+
+              if (matchedScript) {
+                try {
+                  const fullCode =
+                    await this.editor.userscriptHandler.getScriptContent(
+                      matchedScript.name
+                    );
+                  previousCode = ScriptAnalyzer.extractCodeFromIIFE(fullCode);
+                  this.editor.setCurrentScript(matchedScript);
+                  const promptWithoutScriptRef =
+                    message.substring(0, atIndex) +
+                    textAfterAt.substring(matchedScript.name.length);
+                  userMessage = promptWithoutScriptRef.trim();
+                } catch (error) {
+                  this.editor.chatManager.addMessage(
+                    "assistant",
+                    `Error: ${error.message}`
+                  );
+                  this.editor.chatManager.removeMessage(loadingId);
+                  return;
                 }
               }
             }
 
-            if (matchedScript) {
-              try {
-                const fullCode = await this.editor.userscriptHandler.getScriptContent(matchedScript.name);
-                previousCode = ScriptAnalyzer.extractCodeFromIIFE(fullCode);
-                this.editor.setCurrentScript(matchedScript);
-                const promptWithoutScriptRef = message.substring(0, atIndex) + textAfterAt.substring(matchedScript.name.length);
-                userMessage = promptWithoutScriptRef.trim();
-              } catch (error) {
-                this.editor.chatManager.addMessage('assistant', `Error: ${error.message}`);
-                this.editor.chatManager.removeMessage(loadingId);
-                return;
-              }
-            }
+            const aiResponse = await this.editor.apiHandler.callAIAPI(
+              userMessage,
+              domSummary,
+              previousCode
+            );
+            this.editor.chatManager.removeMessage(loadingId);
+            this.handleAIResponse(aiResponse);
+          } catch (error) {
+            this.editor.chatManager.removeMessage(loadingId);
+            this.editor.chatManager.addMessage(
+              "assistant",
+              `Error: ${error.message}`,
+              { error: true }
+            );
           }
-
-          const aiResponse = await this.editor.apiHandler.callAIAPI(userMessage, domSummary, previousCode);
-          this.editor.chatManager.removeMessage(loadingId);
-          this.handleAIResponse(aiResponse);
-        } catch (error) {
-          this.editor.chatManager.removeMessage(loadingId); 
-          this.editor.chatManager.addMessage('assistant', `Error: ${error.message}`, { error: true });
         }
-      });
+      );
     } catch (error) {
       this.editor.chatManager.removeMessage(loadingId);
-      this.editor.chatManager.addMessage('assistant', `Error: ${error.message}`, { error: true });
+      this.editor.chatManager.addMessage(
+        "assistant",
+        `Error: ${error.message}`,
+        { error: true }
+      );
     }
   }
 
   handleAIResponse(response) {
     if (Array.isArray(response)) {
-      this.editor.chatManager.addMessage('assistant', 'I\'ll apply these changes to the page:', {
-        code: JSON.stringify(response, null, 2),
-        actions: response
-      });
-    } else if (response.type === 'script') {
-      this.editor.chatManager.addMessage('assistant', 'I\'ve generated this code for you:', {
+      this.editor.chatManager.addMessage(
+        "assistant",
+        "I'll apply these changes to the page:",
+        {
+          code: JSON.stringify(response, null, 2),
+          actions: response,
+        }
+      );
+    } else if (response.type === "script") {
+      this.editor.chatManager.addMessage(
+        "assistant",
+        "I've generated this code for you:",
+        {
+          code: response.code,
+          isScript: true,
+          name: response.name,
+        }
+      );
+    } else if (response.type === "markdown") {
+      this.editor.chatManager.addMessage("assistant", response.message, {
+        isMarkdown: true,
         code: response.code,
-        isScript: true,
-        name: response.name
+        name: response.name,
+        hasCode: response.hasCode || false,
       });
+    } else if (response.type === "text") {
+      this.editor.chatManager.addMessage("assistant", response.message);
     } else {
-      this.editor.chatManager.addMessage('assistant', 'Unexpected response format from AI', { error: true });
+      this.editor.chatManager.addMessage(
+        "assistant",
+        "Unexpected response format from AI",
+        { error: true }
+      );
     }
   }
 
   handleElementSelected(selector) {
     this.editor.uiManager.deactivateElementSelector();
     this.editor.selectedElement = selector;
-    
+
     const currentValue = this.editor.elements.userInput.value.trim();
-    const newValue = currentValue 
+    const newValue = currentValue
       ? `${currentValue} (element: ${selector})`
       : `Modify the element: ${selector}`;
-    
+
     this.editor.elements.userInput.value = newValue;
     this.editor.uiManager.autoResize(this.editor.elements.userInput);
     this.editor.elements.sendBtn.disabled = false;
@@ -197,10 +264,10 @@ export class EventHandler {
   }
 
   closeEditor() {
-    window.parent.postMessage({ action: 'closeAIEditor' }, '*');
+    window.parent.postMessage({ action: "closeAIEditor" }, "*");
   }
 
   openSettings() {
-    chrome.runtime.sendMessage({ action: 'openAISettings' });
+    chrome.runtime.sendMessage({ action: "openAISettings" });
   }
 }

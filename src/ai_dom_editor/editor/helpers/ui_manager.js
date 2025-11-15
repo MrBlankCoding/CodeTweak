@@ -1,4 +1,5 @@
 import feather from "feather-icons";
+import { marked } from "marked";
 
 export class UIManager {
   constructor(editor) {
@@ -13,7 +14,6 @@ export class UIManager {
   }
 
   updateAllActionButtons() {
-    // Update all action buttons when currentScript changes
     const allButtons = document.querySelectorAll(
       ".code-preview-actions .action-btn"
     );
@@ -28,30 +28,25 @@ export class UIManager {
       feather.replace();
     });
 
-    // Show/hide edit links based on script state
     const editLinks = document.querySelectorAll(
       ".code-preview-actions a[href*='editor/editor.html']"
     );
     editLinks.forEach((link) => {
-      // Remove all edit links first
       link.remove();
     });
 
-    // Re-add edit link only if we have a current script
     if (this.editor.currentScript) {
       const previewActions = document.querySelectorAll(".code-preview-actions");
       previewActions.forEach((actionsDiv) => {
-        // Check if this actions div doesn't already have an edit link
         if (!actionsDiv.querySelector("a[href*='editor/editor.html']")) {
           const editLink = document.createElement("a");
           editLink.className = "btn-text icon-btn";
           editLink.title = "Open in editor";
-          editLink.href = `${chrome.runtime.getURL(
-            "editor/editor.html"
-          )}?id=${this.editor.currentScript.id}`;
+          editLink.href = `${chrome.runtime.getURL("editor/editor.html")}?id=${
+            this.editor.currentScript.id
+          }`;
           editLink.target = "_blank";
           editLink.innerHTML = `<i data-feather="edit-2" width="16" height="16"></i>`;
-          // Insert before the action button
           const actionBtn = actionsDiv.querySelector(".action-btn");
           if (actionBtn) {
             actionBtn.parentNode.insertBefore(editLink, actionBtn);
@@ -77,7 +72,7 @@ export class UIManager {
     textarea.style.height = Math.min(textarea.scrollHeight, 120) + "px";
   }
 
-  createMessageElement(role, text, data) {
+  createMessageElement(role, text, data = {}) {
     const messageEl = document.createElement("div");
     messageEl.className = `message ${role}`;
     messageEl.dataset.id = `msg-${Date.now()}-${Math.random()}`;
@@ -90,6 +85,71 @@ export class UIManager {
     const content = document.createElement("div");
     content.className = "message-content";
 
+    if (role === "user") {
+      const textEl = this._createUserTextElement(text);
+      content.appendChild(textEl);
+      messageEl.appendChild(content);
+      return messageEl;
+    }
+
+    // Handle assistant messages based on response type
+    if (data.type === "code") {
+      // Code response with optional explanation
+      if (data.explanation) {
+        const explanationEl = document.createElement("div");
+        explanationEl.className = "message-text";
+        explanationEl.innerHTML = marked.parse(data.explanation);
+        content.appendChild(explanationEl);
+      }
+
+      const codePreview = this.createCodePreview(
+        data.code,
+        true, // isScript
+        data.name
+      );
+      content.appendChild(codePreview);
+    } else if (data.type === "text") {
+      // Pure text response (questions, clarifications, etc.)
+      const textEl = document.createElement("div");
+      textEl.className = "message-text";
+      
+      // Check if the text looks like markdown
+      if (this._hasMarkdownFormatting(data.message || text)) {
+        textEl.innerHTML = marked.parse(data.message || text);
+      } else {
+        textEl.textContent = data.message || text;
+      }
+      
+      content.appendChild(textEl);
+    } else if (data.error) {
+      // Error message
+      const textEl = document.createElement("div");
+      textEl.className = "message-text";
+      textEl.textContent = text;
+      content.appendChild(textEl);
+
+      const errorEl = document.createElement("div");
+      errorEl.className = "error-message";
+      errorEl.innerHTML = `
+        <i data-feather="alert-circle" width="16" height="16"></i>
+        <span>An error occurred</span>
+      `;
+      content.appendChild(errorEl);
+      feather.replace();
+    } else {
+      // Fallback for unknown types
+      const textEl = document.createElement("div");
+      textEl.className = "message-text";
+      textEl.textContent = text;
+      content.appendChild(textEl);
+    }
+
+    messageEl.appendChild(content);
+    feather.replace();
+    return messageEl;
+  }
+
+  _createUserTextElement(text) {
     const textEl = document.createElement("div");
     textEl.className = "message-text";
 
@@ -99,14 +159,12 @@ export class UIManager {
     let match;
 
     while ((match = regex.exec(text)) !== null) {
-      // Add text before the match
       if (match.index > lastIndex) {
         parts.push(
           document.createTextNode(text.substring(lastIndex, match.index))
         );
       }
 
-      // Create styled span for the script reference
       const space = match[1];
       const scriptRef = document.createElement("span");
       scriptRef.className = "script-reference";
@@ -120,47 +178,39 @@ export class UIManager {
       lastIndex = match.index + match[0].length;
     }
 
-    // Add any remaining text
     if (lastIndex < text.length) {
       parts.push(document.createTextNode(text.substring(lastIndex)));
     }
 
-    // Add all parts to the text element
-    parts.forEach((part) => textEl.appendChild(part));
-
-    // If no script references were found, just set the text content
     if (parts.length === 0) {
       textEl.textContent = text;
+    } else {
+      parts.forEach((part) => textEl.appendChild(part));
     }
 
-    content.appendChild(textEl);
-
-    if (data.error) {
-      const errorEl = document.createElement("div");
-      errorEl.className = "error-message";
-      errorEl.innerHTML = `
-        <i data-feather="alert-circle" width="16" height="16"></i>
-        <span>An error occurred</span>
-      `;
-      content.appendChild(errorEl);
-      feather.replace();
-    }
-
-    if (data.code) {
-      const codePreview = this.createCodePreview(
-        data.code,
-        data.actions,
-        data.isScript,
-        data.name
-      );
-      content.appendChild(codePreview);
-    }
-
-    messageEl.appendChild(content);
-    return messageEl;
+    return textEl;
   }
 
-  createCodePreview(code, actions, isScript, name) {
+  _hasMarkdownFormatting(text) {
+    if (!text || typeof text !== "string") return false;
+    
+    const markdownIndicators = [
+      /^#{1,6}\s+/m,           // Headers
+      /\*\*[^*]+\*\*/,         // Bold
+      /\*[^*]+\*/,             // Italic
+      /_[^_]+_/,               // Italic with underscores
+      /^[-*+]\s+/m,            // Unordered lists
+      /^\d+\.\s+/m,            // Ordered lists
+      /\[.+?\]\(.+?\)/,        // Links
+      /^>\s+/m,                // Blockquotes
+      /`[^`]+`/,               // Inline code
+      /^\|.+\|$/m,             // Tables
+    ];
+
+    return markdownIndicators.some(pattern => pattern.test(text));
+  }
+
+  createCodePreview(code, name = "Generated Script") {
     const preview = document.createElement("div");
     preview.className = "code-preview";
 
@@ -169,7 +219,10 @@ export class UIManager {
 
     const title = document.createElement("div");
     title.className = "code-preview-title";
-    title.textContent = isScript ? "Generated JavaScript" : "Generated Actions";
+    title.innerHTML = `
+      <i data-feather="code" width="16" height="16"></i>
+      <span>${name}</span>
+    `;
     header.appendChild(title);
 
     const actionsDiv = document.createElement("div");
@@ -224,7 +277,8 @@ export class UIManager {
       if (this.editor.currentScript) {
         this.editor.userscriptHandler.updateUserscript(
           this.editor.currentScript.name,
-          code
+          code,
+          name
         );
       } else {
         this.editor.userscriptHandler.createUserscript(code, name);

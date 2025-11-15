@@ -25,6 +25,7 @@
     "@codemirror/view": "6.38.6",
     "@replit/codemirror-minimap": "0.5.2",
     "codemirror": "^6.0.2",
-    "feather-icons": "4.29.2"
+    "feather-icons": "4.29.2",
+    "marked": "^17.0.0"
   }
 }
