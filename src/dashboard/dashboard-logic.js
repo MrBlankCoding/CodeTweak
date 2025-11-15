@@ -2,6 +2,7 @@ import {
   buildTampermonkeyMetadata,
   extractMetadataBlock,
 } from "../utils/metadataParser.js";
+import { ScriptAnalyzer } from '../utils/scriptAnalyzer.js';
 import {
   updateWebsiteFilterOptions,
   updateScriptsList,
@@ -232,8 +233,12 @@ async function checkForUpdates(script) {
       const scriptIndex = scripts.findIndex((s) => s.id === script.id);
 
       if (scriptIndex !== -1) {
+        const newMetadata = await ScriptAnalyzer.validateAndEnhanceMetadata(newCode);
+
         scripts[scriptIndex] = {
           ...scripts[scriptIndex],
+          ...newMetadata,
+          gmApis: newMetadata.gmApis,
           version: newVersion,
           code: newCode,
           updatedAt: Date.now(),

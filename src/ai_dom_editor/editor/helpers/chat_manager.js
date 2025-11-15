@@ -100,6 +100,7 @@ export class ChatManager {
         const storageKey = `aiChatHistory_${this.scriptId}`;
         await chrome.storage.local.remove(storageKey);
       }
+      this.editor.setCurrentScript(null);
     }
   }
 }

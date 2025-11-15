@@ -1,202 +1,19 @@
+import {
+  createMainWorldExecutor,
+  createIsolatedWorldExecutor,
+} from "./worldExecutors.js";
+
 const INJECTION_TYPES = Object.freeze({
   DOCUMENT_START: "document_start",
   DOCUMENT_END: "document_end",
   DOCUMENT_IDLE: "document_idle",
 });
 
-// Maybe add a feature where the user can pick execution world
 const EXECUTION_WORLDS = Object.freeze({
   MAIN: "MAIN",
   ISOLATED: "ISOLATED",
 });
 
-function createMainWorldExecutor(
-  userCode,
-  scriptId,
-  enabledApis,
-  script,
-  extensionId,
-  initialValues,
-  requiredUrls,
-  gmInfo,
-  enhancedDebugging
-) {
-  if (enhancedDebugging) {
-    console.group(`[CodeTweak] Injecting script: ${script.name}`);
-    console.log("  ID: ", scriptId);
-    console.log("  Run at: ", script.runAt);
-    console.log("  Inject into: Main World");
-    console.log("  Enabled APIs: ", Object.keys(enabledApis).filter(api => enabledApis[api]));
-    console.log("  Requires: ", requiredUrls || "none");
-    console.log("  Resources: ", script.resources || "none");
-    console.groupEnd();
-  }
-
-  function waitForGMBridge(worldType, callback) {
-    if (window.GMBridge) {
-      callback();
-      return;
-    }
-
-    window.addEventListener('GMBridgeReady', () => {
-      callback();
-    }, { once: true });
-  }
-
-  function exposeGMInfo(info) {
-    try {
-      if (!Object.prototype.hasOwnProperty.call(window, "GM_info")) {
-        Object.defineProperty(window, "GM_info", {
-          value: Object.freeze(info || {}),
-          writable: false,
-          configurable: false,
-        });
-      }
-      window.GM = window.GM || {};
-      if (!window.GM.info) {
-        window.GM.info = window.GM_info;
-      }
-    } catch (e) {
-      console.warn("CodeTweak: Unable to define GM_info", e);
-    }
-  }
-
-  function bindNativeFunctions() {
-    const nativeFunctions = [
-      'fetch',
-      'setTimeout',
-      'clearTimeout',
-      'setInterval',
-      'clearInterval',
-      'requestAnimationFrame',
-      'cancelAnimationFrame',
-      'requestIdleCallback',
-      'cancelIdleCallback'
-    ];
-
-    nativeFunctions.forEach(fnName => {
-      if (window[fnName]) {
-        window[fnName] = window[fnName].bind(window);
-      }
-    });
-  }
-
-  function preventReExecution() {
-    window._executedScriptIds = window._executedScriptIds || new Set();
-    
-    if (window._executedScriptIds.has(scriptId)) {
-      return true;
-    }
-    
-    window._executedScriptIds.add(scriptId);
-    return false;
-  }
-
-  waitForGMBridge('MAIN', () => {
-    if (preventReExecution()) return;
-
-    const bridge = new window.GMBridge(scriptId, extensionId, 'MAIN');
-    const resourceManager = window.GMBridge.ResourceManager.fromScript(script);
-    const apiRegistry = new window.GMBridge.GMAPIRegistry(bridge, resourceManager);
-    const scriptLoader = new window.GMBridge.ExternalScriptLoader();
-
-    apiRegistry.initializeCache(initialValues);
-    apiRegistry.registerAll(enabledApis);
-    bindNativeFunctions();
-    exposeGMInfo(gmInfo);
-
-    window.GMBridge.executeUserScriptWithDependencies(
-      userCode,
-      scriptId,
-      requiredUrls,
-      scriptLoader
-    );
-  });
-}
-
-function createIsolatedWorldExecutor(
-  userCode,
-  scriptId,
-  enabledApis,
-  script,
-  initialValues,
-  requiredUrls,
-  gmInfo,
-  enhancedDebugging
-) {
-  if (enhancedDebugging) {
-    console.group(`[CodeTweak] Injecting script: ${script.name}`);
-    console.log("  ID: ", scriptId);
-    console.log("  Run at: ", script.runAt);
-    console.log("  Inject into: Isolated World");
-    console.log("  Enabled APIs: ", Object.keys(enabledApis).filter(api => enabledApis[api]));
-    console.log("  Requires: ", requiredUrls || "none");
-    console.log("  Resources: ", script.resources || "none");
-    console.groupEnd();
-  }
-
-  function waitForGMBridge(worldType, callback) {
-    if (window.GMBridge) {
-      callback();
-      return;
-    }
-
-    window.addEventListener('GMBridgeReady', () => {
-      callback();
-    }, { once: true });
-  }
-
-  function exposeGMInfo(info) {
-    try {
-      if (!Object.prototype.hasOwnProperty.call(window, "GM_info")) {
-        Object.defineProperty(window, "GM_info", {
-          value: Object.freeze(info || {}),
-          writable: false,
-          configurable: false,
-        });
-      }
-      window.GM = window.GM || {};
-      if (!window.GM.info) {
-        window.GM.info = window.GM_info;
-      }
-    } catch (e) {
-      console.warn("CodeTweak: Unable to define GM_info", e);
-    }
-  }
-
-  function preventReExecution() {
-    window._executedScriptIds = window._executedScriptIds || new Set();
-    
-    if (window._executedScriptIds.has(scriptId)) {
-      return true;
-    }
-    
-    window._executedScriptIds.add(scriptId);
-    return false;
-  }
-
-  waitForGMBridge('ISOLATED', () => {
-    if (preventReExecution()) return;
-    const bridge = new window.GMBridge(scriptId, chrome.runtime.id, 'ISOLATED');
-    const resourceManager = window.GMBridge.ResourceManager.fromScript(script);
-    const apiRegistry = new window.GMBridge.GMAPIRegistry(
-      bridge,
-      resourceManager
-    );
-    const scriptLoader = new window.GMBridge.ExternalScriptLoader();
-
-    apiRegistry.initializeCache(initialValues);
-    apiRegistry.registerAll(enabledApis);
-    exposeGMInfo(gmInfo);
-
-    window.GMBridge.executeUserScriptWithDependencies(
-      userCode,
-      scriptId,
-      requiredUrls,
-      scriptLoader
-    );
-  });
-}
 
 class ScriptInjector {
   constructor() {
@@ -204,145 +21,41 @@ class ScriptInjector {
     this.injectedCoreScripts = new Map();
   }
 
-  async injectScript(tabId, script, settings = {}) {
-    try {
-      const tab = await chrome.tabs.get(tabId);
-      if (!tab || !chrome.runtime?.id) {
-        console.warn(
-          `CodeTweak: Tab or extension runtime not available for ${script?.name}`
-        );
-        return false;
-      }
-
-      const { settings: storedSettings = {} } = await chrome.storage.local.get("settings");
-      const config = this.prepareScriptConfig(script, storedSettings.enhancedDebugging);
-      const injected = await this.tryInjectInBothWorlds(tabId, config, script.injectInto);
-
-      if (injected && settings.showNotifications) {
-        this.showNotification(tabId, script.name);
-      }
-
-      return injected;
-    } catch (error) {
-      console.warn(`CodeTweak: Failed to inject script ${script?.name}:`, error);
-      return false;
-    }
-  }
-
-  async tryInjectInBothWorlds(tabId, config, injectInto) {
-    if (injectInto === "default") {
-      try {
-        await this.injectInWorld(tabId, config, EXECUTION_WORLDS.MAIN);
-        return true;
-      } catch (error) {
-        console.warn(
-          `CodeTweak: MAIN world injection failed for script '${config.id}', trying ISOLATED world:`,
-          error?.message
-        );
-        try {
-          await this.injectInWorld(tabId, config, EXECUTION_WORLDS.ISOLATED);
-          return true;
-        } catch (error) {
-          console.error(`CodeTweak: ISOLATED world injection also failed for script '${config.id}':`, error);
-          return false;
-        }
-      }
-    } else {
-      const world = injectInto === "main" ? EXECUTION_WORLDS.MAIN : EXECUTION_WORLDS.ISOLATED;
-      try {
-        await this.injectInWorld(tabId, config, world);
-        return true;
-      } catch (error) {
-        console.error(`CodeTweak: ${world} world injection failed for script '${config.id}':`, error);
-        return false;
-      }
-    }
-  }
-
-  async injectInWorld(tabId, config, world) {
-    if (!this.injectedCoreScripts.has(tabId)) {
-      this.injectedCoreScripts.set(tabId, new Set());
-    }
-    
-    const tabCoreScripts = this.injectedCoreScripts.get(tabId);
-
-    if (!tabCoreScripts.has(world)) {
-      if (world === EXECUTION_WORLDS.MAIN) {
-        await chrome.scripting.executeScript({
-          target: { tabId },
-          world: EXECUTION_WORLDS.MAIN,
-          func: () => {
-            if (typeof unsafeWindow === 'undefined') {
-              Object.defineProperty(window, 'unsafeWindow', {
-                value: window,
-                writable: false,
-                configurable: false
-              });
-            }
-          },
-        });
-      }
-
-      await chrome.scripting.executeScript({
-        target: { tabId },
-        world,
-        files: ["GM/gm_core.js", "GM/gm_api_registry.js"],
-      });
-      tabCoreScripts.add(world);
-    }
-
-    const executor = world === EXECUTION_WORLDS.MAIN
-      ? createMainWorldExecutor
-      : createIsolatedWorldExecutor;
-
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      world,
-      func: executor,
-      args: [
-        config.code,
-        config.id,
-        config.enabledApis,
-        config.script,
-        chrome.runtime.id,
-        config.initialValues,
-        config.requires,
-        config.gmInfo,
-        config.enhancedDebugging,
-      ],
-    });
-  }
-
   prepareScriptConfig(script, enhancedDebugging) {
-    const scriptId = script.id || script.name || `anonymous_script_${Date.now()}`;
+    const scriptId =
+      script.id || script.name || `anonymous_script_${Date.now()}`;
 
-    const enabledApis = {
-      gmSetValue: Boolean(script.gmSetValue),
-      gmGetValue: Boolean(script.gmGetValue),
-      gmDeleteValue: Boolean(script.gmDeleteValue),
-      gmListValues: Boolean(script.gmListValues),
-      gmAddValueChangeListener: Boolean(script.gmAddValueChangeListener),
-      gmRemoveValueChangeListener: Boolean(script.gmRemoveValueChangeListener),
-      gmOpenInTab: Boolean(script.gmOpenInTab),
-      gmNotification: Boolean(script.gmNotification),
-      gmGetResourceText: Boolean(script.gmGetResourceText),
-      gmGetResourceURL: Boolean(script.gmGetResourceURL),
-      gmSetClipboard: Boolean(script.gmSetClipboard),
-      gmDownload: Boolean(script.gmDownload),
-      gmAddStyle: Boolean(script.gmAddStyle),
-      gmAddElement: Boolean(script.gmAddElement),
-      gmRegisterMenuCommand: Boolean(script.gmRegisterMenuCommand),
-      gmUnregisterMenuCommand: Boolean(script.gmUnregisterMenuCommand),
-      gmXmlhttpRequest: Boolean(script.gmXmlhttpRequest),
-      unsafeWindow: Boolean(script.unsafeWindow),
-      gmLog: Boolean(script.gmLog),
-    };
+    const apiKeys = [
+      "gmSetValue",
+      "gmGetValue",
+      "gmDeleteValue",
+      "gmListValues",
+      "gmAddValueChangeListener",
+      "gmRemoveValueChangeListener",
+      "gmOpenInTab",
+      "gmNotification",
+      "gmGetResourceText",
+      "gmGetResourceURL",
+      "gmSetClipboard",
+      "gmDownload",
+      "gmAddStyle",
+      "gmAddElement",
+      "gmRegisterMenuCommand",
+      "gmUnregisterMenuCommand",
+      "gmXmlhttpRequest",
+      "unsafeWindow",
+      "gmLog",
+    ];
+
+    const enabledApis = Object.fromEntries(
+      apiKeys.map((key) => [key, Boolean(script[key])])
+    );
 
     return {
       code: script.code,
       id: scriptId,
       enabledApis,
-      script: script,
+      script,
       initialValues: script.initialValues || {},
       requires: Array.isArray(script.requires) ? script.requires : [],
       gmInfo: {
@@ -361,80 +74,159 @@ class ScriptInjector {
     };
   }
 
-  async injectScriptsForStage(details, runAt, getFilteredScripts) {
-    if (details.frameId !== 0) return;
+  async injectCoreScripts(tabId, world) {
+    if (!this.injectedCoreScripts.has(tabId)) {
+      this.injectedCoreScripts.set(tabId, new Set());
+    }
 
+    const tabCoreScripts = this.injectedCoreScripts.get(tabId);
+
+    if (tabCoreScripts.has(world)) {
+      return;
+    }
+
+    if (world === EXECUTION_WORLDS.MAIN) {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        world: EXECUTION_WORLDS.MAIN,
+        func: () => {
+          if (typeof unsafeWindow === "undefined") {
+            Object.defineProperty(window, "unsafeWindow", {
+              value: window,
+              writable: false,
+              configurable: false,
+            });
+          }
+        },
+      });
+    }
+
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      world,
+      files: ["GM/gm_core.js", "GM/gm_api_registry.js"],
+    });
+
+    tabCoreScripts.add(world);
+  }
+
+  async injectInWorld(tabId, config, world) {
+    await this.injectCoreScripts(tabId, world);
+
+    const executor =
+      world === EXECUTION_WORLDS.MAIN
+        ? createMainWorldExecutor
+        : createIsolatedWorldExecutor;
+
+    const args =
+      world === EXECUTION_WORLDS.MAIN
+        ? [
+            config.code,
+            config.id,
+            config.enabledApis,
+            config.script,
+            chrome.runtime.id,
+            config.initialValues,
+            config.requires,
+            config.gmInfo,
+            config.enhancedDebugging,
+          ]
+        : [
+            config.code,
+            config.id,
+            config.enabledApis,
+            config.script,
+            config.initialValues,
+            config.requires,
+            config.gmInfo,
+            config.enhancedDebugging,
+          ];
+
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      world,
+      func: executor,
+      args,
+    });
+  }
+
+  async tryInjectInBothWorlds(tabId, config, injectInto) {
+    if (injectInto === "default") {
+      try {
+        await this.injectInWorld(tabId, config, EXECUTION_WORLDS.MAIN);
+        return true;
+      } catch (error) {
+        console.warn(
+          `CodeTweak: MAIN world injection failed for script '${config.id}', trying ISOLATED world:`,
+          error?.message
+        );
+        try {
+          await this.injectInWorld(tabId, config, EXECUTION_WORLDS.ISOLATED);
+          return true;
+        } catch (isolatedError) {
+          console.error(
+            `CodeTweak: ISOLATED world injection also failed for script '${config.id}':`,
+            isolatedError
+          );
+          return false;
+        }
+      }
+    }
+
+    const world =
+      injectInto === "main" ? EXECUTION_WORLDS.MAIN : EXECUTION_WORLDS.ISOLATED;
     try {
-      const { settings = {} } = await chrome.storage.local.get("settings");
-      const { url, tabId } = details;
-
-      if (!this.executedScripts.has(tabId)) {
-        this.executedScripts.set(tabId, new Set());
-      }
-      
-      const tabScripts = this.executedScripts.get(tabId);
-
-      if (runAt === INJECTION_TYPES.DOCUMENT_START) {
-        tabScripts.clear();
-      }
-
-      await this.injectMatchingScripts(
-        url,
-        runAt,
-        tabId,
-        tabScripts,
-        getFilteredScripts,
-        settings
-      );
+      await this.injectInWorld(tabId, config, world);
+      return true;
     } catch (error) {
-      console.error("CodeTweak: Script injection error:", error);
+      console.error(
+        `CodeTweak: ${world} world injection failed for script '${config.id}':`,
+        error
+      );
+      return false;
     }
   }
 
-  async injectMatchingScripts(
-    url,
-    runAt,
-    tabId,
-    tabScripts,
-    getFilteredScripts,
-    settings
-  ) {
-    const matchingScripts = await getFilteredScripts(url, runAt);
-    const newScripts = matchingScripts.filter(
-      (script) => !tabScripts.has(script.id)
-    );
+  async injectScript(tabId, script, settings = {}) {
+    try {
+      const tab = await chrome.tabs.get(tabId);
 
-    if (settings.confirmFirstRun) {
-      const { scriptPermissions = {} } = await chrome.storage.local.get(
-        "scriptPermissions"
+      if (!tab || !chrome.runtime?.id) {
+        console.warn(
+          `CodeTweak: Tab or extension runtime not available for ${script?.name}`
+        );
+        return false;
+      }
+
+      const storageKey = `script-values-${script.id}`;
+      const result = await chrome.storage.local.get(storageKey);
+      script.initialValues = result[storageKey] || {};
+
+      const { settings: storedSettings = {} } = await chrome.storage.local.get(
+        "settings"
       );
-      const domain = new URL(url).hostname;
+      const config = this.prepareScriptConfig(
+        script,
+        storedSettings.enhancedDebugging
+      );
 
-      for (const script of newScripts) {
-        const allowedDomains = scriptPermissions[script.id] || [];
-        if (allowedDomains.includes(domain)) {
-          tabScripts.add(script.id);
-          await this.injectScript(tabId, script, settings);
-        } else {
-          const confirmed = await this.askForConfirmation(
-            tabId,
-            script.name,
-            domain
-          );
-          if (confirmed) {
-            allowedDomains.push(domain);
-            scriptPermissions[script.id] = allowedDomains;
-            await chrome.storage.local.set({ scriptPermissions });
-            tabScripts.add(script.id);
-            await this.injectScript(tabId, script, settings);
-          }
-        }
+      const injected = await this.tryInjectInBothWorlds(
+        tabId,
+        config,
+        script.injectInto
+      );
+
+      if (injected && settings.showNotifications) {
+        this.showNotification(tabId, script.name);
       }
-    } else {
-      for (const script of newScripts) {
-        tabScripts.add(script.id);
-        await this.injectScript(tabId, script, settings);
-      }
+
+      return injected;
+    } catch (error) {
+      console.warn(
+        `CodeTweak: Failed to inject script ${script?.name}:`,
+        error
+      );
+      return false;
     }
   }
 
@@ -510,13 +302,13 @@ class ScriptInjector {
               <button id="allow-btn">Allow</button>
             </div>
           `;
+
           const strongs = modal.querySelectorAll("strong");
           strongs[0].textContent = scriptName;
           strongs[1].textContent = domain;
 
           shadow.appendChild(style);
           shadow.appendChild(modal);
-
           document.body.appendChild(container);
 
           const cleanup = () => {
@@ -538,7 +330,87 @@ class ScriptInjector {
       },
       args: [scriptName, domain],
     });
+
     return results[0].result;
+  }
+
+  async injectMatchingScripts(
+    url,
+    runAt,
+    tabId,
+    tabScripts,
+    getFilteredScripts,
+    settings
+  ) {
+    const matchingScripts = await getFilteredScripts(url, runAt);
+    const newScripts = matchingScripts.filter(
+      (script) => !tabScripts.has(script.id)
+    );
+
+    if (settings.confirmFirstRun) {
+      const { scriptPermissions = {} } = await chrome.storage.local.get(
+        "scriptPermissions"
+      );
+      const domain = new URL(url).hostname;
+
+      for (const script of newScripts) {
+        const allowedDomains = scriptPermissions[script.id] || [];
+
+        if (allowedDomains.includes(domain)) {
+          tabScripts.add(script.id);
+          await this.injectScript(tabId, script, settings);
+        } else {
+          const confirmed = await this.askForConfirmation(
+            tabId,
+            script.name,
+            domain
+          );
+
+          if (confirmed) {
+            allowedDomains.push(domain);
+            scriptPermissions[script.id] = allowedDomains;
+            await chrome.storage.local.set({ scriptPermissions });
+            tabScripts.add(script.id);
+            await this.injectScript(tabId, script, settings);
+          }
+        }
+      }
+    } else {
+      for (const script of newScripts) {
+        tabScripts.add(script.id);
+        await this.injectScript(tabId, script, settings);
+      }
+    }
+  }
+
+  async injectScriptsForStage(details, runAt, getFilteredScripts) {
+    if (details.frameId !== 0) return;
+
+    try {
+      const { settings = {} } = await chrome.storage.local.get("settings");
+      const { url, tabId } = details;
+
+      if (!this.executedScripts.has(tabId)) {
+        this.executedScripts.set(tabId, new Set());
+      }
+
+      const tabScripts = this.executedScripts.get(tabId);
+
+      if (runAt === INJECTION_TYPES.DOCUMENT_START) {
+        tabScripts.clear();
+      }
+
+      await this.injectMatchingScripts(
+        url,
+        runAt,
+        tabId,
+        tabScripts,
+        getFilteredScripts,
+        settings
+      );
+    } catch (error) {
+      console.error("CodeTweak: Script injection error:", error);
+    }
   }
 
   showNotification(tabId, scriptName) {
@@ -582,8 +454,16 @@ class ScriptInjector {
 
 const scriptInjector = new ScriptInjector();
 
-export async function injectScriptsForStage(details, runAt, getFilteredScripts) {
-  return scriptInjector.injectScriptsForStage(details, runAt, getFilteredScripts);
+export async function injectScriptsForStage(
+  details,
+  runAt,
+  getFilteredScripts
+) {
+  return scriptInjector.injectScriptsForStage(
+    details,
+    runAt,
+    getFilteredScripts
+  );
 }
 
 export function showNotification(tabId, scriptName) {

@@ -1,330 +1,283 @@
-(function () {
-  'use strict';
+"use strict";
 
-  // Prevent multiple initializations
-  if (typeof window.GMBridge !== "undefined") {
-    return;
-  }
-  // Lets start with trusted types
-  // Is this allowed on the web store?
-  let ctTrustedTypesPolicy = null;
+import { GMBridge } from "./gm_bridge.js";
+import { ExternalScriptLoader } from "./helpers/external_script_loader.js";
+import { getTrustedTypesPolicy } from "./helpers/trusted_types.js";
 
-  function getTrustedTypesPolicy() {
-    if (ctTrustedTypesPolicy) {
-      return ctTrustedTypesPolicy;
+// Prevent multiple initializations
+if (window.GMBridge === undefined) {
+  function ensureEventListenerProtection(scriptId) {
+    if (window._codetweak_listeners_protected) {
+      return; // Already protected
     }
+    window._codetweak_listeners_protected = true;
 
-    if (window.trustedTypes && window.trustedTypes.createPolicy) {
-      try {
-        ctTrustedTypesPolicy = window.trustedTypes.createPolicy(
-          "codetweak-gm-apis",
-          {
-            createHTML: (input) => {
-              if (typeof input !== "string") return "";
-              return input
-                .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-                .replace(/on\w+\s*=\s*["'][^"']*["']/gi, "")
-                .replace(/javascript:/gi, "");
-            },
-            createScript: (input) => input,
-            createScriptURL: (input) => input,
+    const userScriptListeners = new Map();
+    const protectedEventTypes = [
+      "DOMContentLoaded",
+      "load",
+      "readystatechange",
+    ];
+
+    // Store original methods
+    const originalMethods = {
+      documentAddEventListener: Document.prototype.addEventListener,
+      windowAddEventListener: Window.prototype.addEventListener,
+      documentRemoveEventListener: Document.prototype.removeEventListener,
+      windowRemoveEventListener: Window.prototype.removeEventListener,
+    };
+
+    function createListenerTracker(isWindow) {
+      const addFn = isWindow
+        ? originalMethods.windowAddEventListener
+        : originalMethods.documentAddEventListener;
+
+      return function addEventListener(type, listener, options) {
+        if (protectedEventTypes.includes(type) && typeof listener === "function") {
+          const trackedOptions = { ...options, capture: true };
+          const key = `${
+            isWindow ? "window" : "document"
+          }_${type}_${scriptId}`;
+
+          if (!userScriptListeners.has(key)) {
+            userScriptListeners.set(key, []);
           }
-        );
-        return ctTrustedTypesPolicy;
-      } catch (e) {
-        console.error("Failed to create Trusted Types policy:", e);
-      }
-    }
-    return null;
-  }
 
-  // Very important
-  // Optamised from last version where there was 2 dif bridges
-  class GMBridge {
-    static ResourceManager = class ResourceManager {
-      constructor(resourceContents = {}, resourceURLs = {}) {
-        this.contents = new Map(Object.entries(resourceContents));
-        this.urls = new Map(Object.entries(resourceURLs));
-      }
-  
-      getText(resourceName) {
-         return this.contents.get(resourceName) || null;
-       }
-
-       getURL(resourceName) {
-         return this.urls.get(resourceName) || null;
-       }
-  
-      static fromScript(script) {
-        const resourceURLs = {};
-    
-        if (Array.isArray(script.resources)) {
-          script.resources.forEach((resource) => {
-            resourceURLs[resource.name] = resource.url;
+          userScriptListeners.get(key).push({
+            listener,
+            originalOptions: options,
           });
+
+          // If the event has already passed, simulate it for the new listener
+          if (
+            type === "DOMContentLoaded" &&
+            !isWindow &&
+            (document.readyState === "interactive" ||
+              document.readyState === "complete")
+          ) {
+            setTimeout(
+              () => listener.call(document, new Event("DOMContentLoaded")),
+              0
+            );
+          } else if (
+            type === "load" &&
+            isWindow &&
+            document.readyState === "complete"
+          ) {
+            setTimeout(() => listener.call(window, new Event("load")), 0);
+          } else if (
+            type === "readystatechange" &&
+            !isWindow &&
+            document.readyState !== "loading"
+          ) {
+            // Fire for current state, the listener should check readyState
+            setTimeout(
+              () => listener.call(document, new Event("readystatechange")),
+              0
+            );
+          }
+
+          return addFn.call(this, type, listener, trackedOptions);
         }
-    
-        return new ResourceManager(script.resourceContents || {}, resourceURLs);
-      }
+
+        // For other events, use normal binding
+        return addFn.call(this, type, listener, options);
+      };
     }
 
-    constructor(scriptId, extensionId, worldType = 'MAIN') {
-      this.scriptId = scriptId;
-      this.extensionId = extensionId;
-      this.worldType = worldType;
-      this.messageIdCounter = 0;
-      this.pendingPromises = new Map();
+    Document.prototype.addEventListener = createListenerTracker(false);
+    Window.prototype.addEventListener = createListenerTracker(true);
 
-      if (this.worldType === 'MAIN') {
-        this.setupMessageListener();
-      }
-    }
-
-    setupMessageListener() {
-      window.addEventListener("message", (event) => {
-        if (!this.isValidResponse(event)) return;
-
-        const { messageId, error, result } = event.data;
-        const promise = this.pendingPromises.get(messageId);
-        if (!promise) return;
-
-        if (error) {
-          promise.reject(new Error(error));
-        } else {
-          promise.resolve(result);
-        }
-
-        this.pendingPromises.delete(messageId);
+    // --- Intercept property assignments ---
+    const defineProtectedProperty = (target, propertyName, eventName) => {
+      let currentListener = null;
+      Object.defineProperty(target, propertyName, {
+        configurable: true,
+        get() {
+          return currentListener;
+        },
+        set(listener) {
+          if (currentListener) {
+            target.removeEventListener(eventName, currentListener);
+          }
+          if (typeof listener === "function") {
+            target.addEventListener(eventName, listener);
+            currentListener = listener;
+          } else {
+            currentListener = null;
+          }
+        },
       });
-    }
+    };
 
-    isValidResponse(event) {
-      return (
-        event.source === window &&
-        event.data?.type === "GM_API_RESPONSE" &&
-        event.data.extensionId === this.extensionId &&
-        this.pendingPromises.has(event.data.messageId)
-      );
-    }
+    defineProtectedProperty(window, "onload", "load");
+    defineProtectedProperty(document, "onreadystatechange", "readystatechange");
 
-    call(action, payload = {}) {
-      const newPayload = { ...payload, scriptId: this.scriptId };
-      // If in the ISOLATED world, use the direct chrome.runtime.sendMessage
-      if (this.worldType === 'ISOLATED' && typeof chrome?.runtime?.sendMessage === 'function') {
-        return this.callIsolated(action, newPayload);
-      }
-      // Otherwise, fallback to the MAIN world postMessage mechanism
-      return this.callMain(action, newPayload);
-    }
+    // Watch for DOM mutations and restore listeners if needed
+    if (typeof MutationObserver !== "undefined") {
+      let isRestoring = false;
 
-    callMain(action, payload = {}) {
-      return new Promise((resolve, reject) => {
-        const messageId = `gm_${this.scriptId}_${this.messageIdCounter++}`;
-        this.pendingPromises.set(messageId, { resolve, reject });
+      const observer = new MutationObserver(() => {
+        if (isRestoring) return;
 
-        window.postMessage(
-          {
-            type: "GM_API_REQUEST",
-            extensionId: this.extensionId,
-            messageId,
-            action,
-            payload,
-          },
-          "*"
-        );
-      });
-    }
+        // Check if document is being replaced
+        if (document.documentElement?.childNodes.length === 0) {
+          isRestoring = true;
 
-    callIsolated(action, payload = {}) {
-      return new Promise((resolve, reject) => {
-        try {
-          chrome.runtime.sendMessage(
-            {
-              type: "GM_API_REQUEST",
-              payload: { action, ...payload },
-            },
-            (response) => {
-              if (chrome.runtime.lastError) {
-                reject(new Error(chrome.runtime.lastError.message));
-              } else if (response?.error) {
-                reject(new Error(response.error));
+          // Re-register listeners
+          userScriptListeners.forEach((listeners, key) => {
+            const [target, eventType] = key.split("_");
+
+            listeners.forEach(({ listener, originalOptions }) => {
+              const options = { ...originalOptions, capture: true };
+
+              if (target === "document") {
+                originalMethods.documentAddEventListener.call(
+                  document,
+                  eventType,
+                  listener,
+                  options
+                );
               } else {
-                resolve(response?.result);
+                originalMethods.windowAddEventListener.call(
+                  window,
+                  eventType,
+                  listener,
+                  options
+                );
               }
-            }
-          );
-        } catch (error) {
-          reject(error);
+            });
+          });
+
+          isRestoring = false;
         }
+      });
+
+      observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
       });
     }
   }
 
-  window.GMBridge = GMBridge;
+  function reportScriptError(scriptId, error, type = "error") {
+    const message = error?.message || String(error) || "Unknown error";
+    const stack = error?.stack || "";
 
-  // Needs work, extenal script loading is getting blocked by CORS
-  class ExternalScriptLoader {
-    constructor() {
-      this.loadedScripts = new Set();
-    }
-
-    async loadScript(url) {
-      if (this.loadedScripts.has(url)) {
-        return;
-      }
-      // Auto-upgrade HTTP to HTTPS to prevent mixed content errors
-      const upgradedUrl = url.replace(/^http:\/\//i, 'https://');
-      if (upgradedUrl !== url) {
-        console.info(`CodeTweak: Auto-upgraded ${url} to HTTPS`);
-      }
-      await this.injectScriptTag(upgradedUrl);
-      this.loadedScripts.add(url);
-    }
-
-    async loadScripts(urls) {
-      if (!Array.isArray(urls)) return;
-      for (const url of urls) {
-        await this.loadScript(url);
-      }
-    }
-
-    injectScriptTag(src) {
-      return new Promise((resolve, reject) => {
-        const el = document.createElement("script");
-
-        const policy = getTrustedTypesPolicy();
-        let trustedSrc = src;
-        if (policy) {
-          try {
-            trustedSrc = policy.createScriptURL(src);
-          } catch (e) {
-            console.error("Failed to create trusted script URL:", e);
-            console.warn("Falling back to raw URL.");
-          }
-        }
-
-        el.src = trustedSrc;
-        el.async = false; // preserve execution order
-        el.onload = resolve;
-        el.onerror = () => {
-          console.error(`CodeTweak: Failed to load script ${src}`);
-          reject(new Error(`Failed to load script ${src}`));
-        }
-        (document.head || document.documentElement).appendChild(el);
-      });
-    }
-  }
-
-
-
-  async function executeUserScriptWithDependencies(userCode, scriptId, requireUrls, loader) {
-    // Set up error collection
-    const errorHandler = (event) => {
-      const stack = event.error?.stack || event.reason?.stack || '';
-      const message = event.error?.message || event.reason?.message || event.message || 'Unknown error';
-      
-      console.error(`CodeTweak: Error in user script (ID: ${scriptId}). This is likely an issue with the script itself, not CodeTweak.`, `
-Message: ${message}`, `
-Stack: ${stack}`);
-      // Send to editor
-      try {
-        window.postMessage({
-          type: 'SCRIPT_ERROR',
-          scriptId: scriptId,
+    try {
+      window.postMessage(
+        {
+          type: "SCRIPT_ERROR",
+          scriptId,
           error: {
-            message: message,
-            stack: stack,
+            message,
+            stack,
             timestamp: new Date().toISOString(),
-            type: 'error'
-          }
-        }, '*');
-      } catch (e) {
-        console.error('[CodeTweak Error Capture] Failed to report script error:', e);
-      }
+            type,
+          },
+        },
+        "*"
+      );
+    } catch (postError) {
+      console.error("[GMBridge] Failed to report script error:", postError);
+    }
+  }
+
+  async function executeUserScriptWithDependencies(
+    userCode,
+    scriptId,
+    requireUrls,
+    loader
+  ) {
+    // Set up error handlers
+    const errorHandler = (event) => {
+      const message = event.error?.message || event.message || "Unknown error";
+      const stack = event.error?.stack || "";
+
+      console.error(
+        `[GMBridge] Error in user script (ID: ${scriptId})`,
+        `\nMessage: ${message}`,
+        `\nStack: ${stack}`
+      );
+
+      reportScriptError(scriptId, { message, stack }, "error");
     };
 
     const rejectionHandler = (event) => {
-      const message = event.reason?.message || String(event.reason) || 'Unhandled promise rejection';
-      const stack = event.reason?.stack || '';
-      
-      console.error(`CodeTweak: Unhandled promise rejection in user script (ID: ${scriptId}). This is likely an issue with the script itself, not CodeTweak.`, `
-Message: ${message}`, `
-Stack: ${stack}`);
-      try {
-        window.postMessage({
-          type: 'SCRIPT_ERROR',
-          scriptId: scriptId,
-          error: {
-            message: message,
-            stack: stack,
-            timestamp: new Date().toISOString(),
-            type: 'error'
-          }
-        }, '*');
-      } catch (e) {
-        console.error('[CodeTweak Error Capture] Failed to report script error:', e);
-      }
+      const message =
+        event.reason?.message ||
+        String(event.reason) ||
+        "Unhandled promise rejection";
+      const stack = event.reason?.stack || "";
+
+      console.error(
+        `[GMBridge] Unhandled rejection in user script (ID: ${scriptId})`,
+        `\nMessage: ${message}`,
+        `\nStack: ${stack}`
+      );
+
+      reportScriptError(scriptId, { message, stack }, "rejection");
     };
 
-    window.addEventListener('error', errorHandler);
-    window.addEventListener('unhandledrejection', rejectionHandler);
+    window.addEventListener("error", errorHandler);
+    window.addEventListener("unhandledrejection", rejectionHandler);
 
     try {
-      await loader.loadScripts(requireUrls);
-      
-      const wrappedCode = `(function() {\n'use strict';\nconst unsafeWindow = this;\n${userCode}\n}).call(window);`;
-      
-      const scriptEl = document.createElement("script");
-      scriptEl.setAttribute('data-script-id', scriptId);
+      // Protect event listeners before executing user code
+      ensureEventListenerProtection(scriptId);
 
+      // Load external dependencies
+      await loader.loadScripts(requireUrls);
+
+      // Wrap user code in IIFE with unsafeWindow
+      const wrappedCode = `(function() {
+  'use strict';
+  const unsafeWindow = this;
+  ${userCode}
+}).call(window);
+`;
+
+      // Create and inject script element
+      const scriptElement = document.createElement("script");
+      scriptElement.setAttribute("data-script-id", scriptId);
+
+      // Apply Trusted Types if available
       const policy = getTrustedTypesPolicy();
       let trustedCode = wrappedCode;
+
       if (policy) {
         try {
           trustedCode = policy.createScript(wrappedCode);
-        } catch (e) {
-          console.error("Failed to create trusted script:", e);
-          console.warn("Falling back to raw code.");
+        } catch (error) {
+          console.error("[GMBridge] Failed to create trusted script:", error);
         }
       }
 
-      scriptEl.textContent = trustedCode;
-      (document.head || document.documentElement || document.body).appendChild(scriptEl);
-      scriptEl.remove();
-
-    } catch (err) {
-      console.error(`CodeTweak: Error executing user script ${scriptId}:`, err);
-      
-      // Report execution error
-      try {
-        window.postMessage({
-          type: 'SCRIPT_ERROR',
-          scriptId: scriptId,
-          error: {
-            message: err.message || 'Script execution failed',
-            stack: err.stack || '',
-            timestamp: new Date().toISOString(),
-            type: 'error'
-          }
-        }, '*');
-      } catch (e) {
-        console.error('Failed to report script execution error:', e);
-      }
+      scriptElement.textContent = trustedCode;
+      (document.head || document.documentElement || document.body).appendChild(
+        scriptElement
+      );
+      scriptElement.remove();
+    } catch (error) {
+      console.error(
+        `[GMBridge] Error executing user script ${scriptId}:`,
+        error
+      );
+      reportScriptError(scriptId, error, "execution");
     } finally {
-      // Clean up the event listeners
-      window.removeEventListener('error', errorHandler);
-      window.removeEventListener('unhandledrejection', rejectionHandler);
+      // Clean up event listeners
+      window.removeEventListener("error", errorHandler);
+      window.removeEventListener("unhandledrejection", rejectionHandler);
     }
   }
 
-  window.GMBridge.ExternalScriptLoader = ExternalScriptLoader;
-  window.GMBridge.executeUserScriptWithDependencies = executeUserScriptWithDependencies;
+  // Expose GMBridge and utilities
+  window.GMBridge = GMBridge;
+  GMBridge.ExternalScriptLoader = ExternalScriptLoader;
+  GMBridge.executeUserScriptWithDependencies =
+    executeUserScriptWithDependencies;
 
+  // Signal initialization complete
   window.postMessage({ type: "GM_CORE_EXECUTED" }, "*");
-
-  // Dispatch a custom event to signal that GMBridge is ready
-  const event = new CustomEvent('GMBridgeReady');
-  window.dispatchEvent(event);
-})();
-
-// Crazy !
+  window.dispatchEvent(new CustomEvent("GMBridgeReady"));
+}

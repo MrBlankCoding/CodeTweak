@@ -408,7 +408,7 @@ Your response is only the JavaScript code.`;
         code: code
       };
     } catch (err) {
-      console.error('❌ AI API Error:', err);
+      console.error('AI API Error:', err);
       console.groupEnd();
       if (err.name === 'AbortError') {
         throw new Error(`AI request timed out after ${timeout}ms`);
