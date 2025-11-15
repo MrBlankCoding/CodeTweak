@@ -229,35 +229,25 @@ if (window.GMBridge === undefined) {
       // Load external dependencies
       await loader.loadScripts(requireUrls);
 
-      // Wrap user code in IIFE with unsafeWindow
-      const wrappedCode = `(function() {
-  'use strict';
-  const unsafeWindow = this;
-  ${userCode}
-}).call(window);
-`;
-
-      // Create and inject script element
-      const scriptElement = document.createElement("script");
-      scriptElement.setAttribute("data-script-id", scriptId);
-
-      // Apply Trusted Types if available
       const policy = getTrustedTypesPolicy();
-      let trustedCode = wrappedCode;
-
       if (policy) {
-        try {
-          trustedCode = policy.createScript(wrappedCode);
-        } catch (error) {
-          console.error("[GMBridge] Failed to create trusted script:", error);
-        }
+        // With Trusted Types, we must use a script tag, which runs in the MAIN world.
+        // This is a known limitation for ISOLATED world scripts.
+        const wrappedCode = `(function() { 'use strict'; const unsafeWindow = this; ${userCode} }).call(window);`;
+        const scriptElement = document.createElement("script");
+        scriptElement.setAttribute("data-script-id", scriptId);
+        scriptElement.textContent = policy.createScript(wrappedCode);
+        (
+          document.head ||
+          document.documentElement ||
+          document.body
+        ).appendChild(scriptElement);
+        scriptElement.remove();
+      } else {
+        // No Trusted Types, we can execute in the current world's scope.
+        const run = new Function("unsafeWindow", userCode);
+        run.call(window, window);
       }
-
-      scriptElement.textContent = trustedCode;
-      (document.head || document.documentElement || document.body).appendChild(
-        scriptElement
-      );
-      scriptElement.remove();
     } catch (error) {
       console.error(
         `[GMBridge] Error executing user script ${scriptId}:`,

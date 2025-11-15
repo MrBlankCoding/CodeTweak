@@ -39,7 +39,7 @@
   "content_scripts": [
     {
       "matches": ["http://*/*", "https://*/*"],
-      "js": ["utils/elementSelector.js"],
+      "js": ["elementSelector/main.js"],
       "css": ["assets/styles/elementSelector.css"],
       "run_at": "document_start"
     },

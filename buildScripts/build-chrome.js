@@ -72,7 +72,7 @@ const manifest = {
   content_scripts: [
     {
       matches: ["http://*/*", "https://*/*"],
-      js: ["utils/elementSelector.js"],
+      js: ["elementSelector/main.js"],
       css: ["assets/styles/elementSelector.css"],
       run_at: "document_start",
     },
@@ -106,7 +106,7 @@ await build({
   entryPoints: [
     "src/background/background.js",
     "src/utils/content_bridge.js",
-    "src/utils/elementSelector.js",
+    "src/elementSelector/main.js",
     "src/GM/gm_core.js",
     "src/utils/greasyfork_interceptor.js",
     "src/utils/inject.js",

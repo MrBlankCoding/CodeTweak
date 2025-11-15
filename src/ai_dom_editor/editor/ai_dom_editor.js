@@ -43,6 +43,14 @@ class AIDOMEditor {
   async init() {
     applyTheme();
     await this.initializeAI();
+
+    chrome.runtime.onMessage.addListener((message) => {
+      if (message.action === "aiElementSelected") {
+        this.elements.userInput.value += ` ${message.selector} `;
+        this.elements.userInput.focus();
+        this.uiManager.deactivateElementSelector();
+      }
+    });
   }
 
   setCurrentScript(scriptName) {

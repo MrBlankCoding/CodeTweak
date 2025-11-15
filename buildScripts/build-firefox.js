@@ -81,7 +81,7 @@ await build({
   entryPoints: [
     "src/background/background.js",
     "src/utils/content_bridge.js",
-    "src/utils/elementSelector.js",
+    "src/elementSelector/main.js",
     "src/GM/gm_core.js",
     "src/utils/greasyfork_interceptor.js",
     "src/utils/inject.js",

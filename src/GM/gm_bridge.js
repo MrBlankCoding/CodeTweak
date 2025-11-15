@@ -74,7 +74,9 @@ export class GMBridge {
     // Use direct chrome.runtime API if available (ISOLATED world)
     if (
       this.worldType === "ISOLATED" &&
-      typeof chrome?.runtime?.sendMessage === "function"
+      typeof chrome !== "undefined" &&
+      chrome.runtime &&
+      typeof chrome.runtime.sendMessage === "function"
     ) {
       return this.callIsolated(action, enrichedPayload);
     }
@@ -103,6 +105,18 @@ export class GMBridge {
 
   callIsolated(action, payload = {}) {
     return new Promise((resolve, reject) => {
+      // Defensive: ensure chrome.runtime.sendMessage still available
+      if (
+        !(
+          typeof chrome !== "undefined" &&
+          chrome.runtime &&
+          typeof chrome.runtime.sendMessage === "function"
+        )
+      ) {
+        reject(new Error("chrome.runtime.sendMessage is not available"));
+        return;
+      }
+
       try {
         chrome.runtime.sendMessage(
           {
@@ -110,7 +124,11 @@ export class GMBridge {
             payload: { action, ...payload },
           },
           (response) => {
-            if (chrome.runtime.lastError) {
+            if (
+              typeof chrome !== "undefined" &&
+              chrome.runtime &&
+              chrome.runtime.lastError
+            ) {
               reject(new Error(chrome.runtime.lastError.message));
               return;
             }

@@ -288,7 +288,9 @@ export class UIManager {
     this.editor.elements.elementSelectorBtn.classList.add("active");
 
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      chrome.tabs.sendMessage(tabs[0].id, { action: "startSelection" });
+      if (tabs.length > 0) {
+        chrome.tabs.sendMessage(tabs[0].id, { action: "startAiSelection" });
+      }
     });
   }
 
@@ -297,7 +299,9 @@ export class UIManager {
     this.editor.elements.elementSelectorBtn.classList.remove("active");
 
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      chrome.tabs.sendMessage(tabs[0].id, { action: "stopSelection" });
+      if (tabs.length > 0) {
+        chrome.tabs.sendMessage(tabs[0].id, { action: "stopSelection" });
+      }
     });
   }
 
