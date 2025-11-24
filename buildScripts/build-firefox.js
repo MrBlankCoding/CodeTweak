@@ -56,7 +56,7 @@ firefoxManifest.permissions = (firefoxManifest.permissions || []).filter(
 if (firefoxManifest.content_scripts) {
   firefoxManifest.content_scripts = firefoxManifest.content_scripts.map(
     (cs) => {
-      const { world, ...rest } = cs;
+      const { world, ...rest } = cs; // eslint-disable-line no-unused-vars
       return rest;
     }
   );

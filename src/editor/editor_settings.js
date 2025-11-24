@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+
 import { EditorState, Compartment } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers } from "@codemirror/view";
 import { basicSetup } from "codemirror";
@@ -88,6 +90,8 @@ export class CodeEditorManager {
         EditorView.updateListener.of((update) => {
             if (update.docChanged) {
                 this.onChangeCallback?.();
+                if (this._perfCheckTimer) clearTimeout(this._perfCheckTimer);
+                this._perfCheckTimer = setTimeout(() => this.applyLargeFileOptimizations(), 500);
             }
             if (update.selectionSet) {
                 const cursor = update.state.selection.main;
@@ -134,18 +138,59 @@ export class CodeEditorManager {
     }
   }
 
-  applyPerformanceTier(tier) {
+  reconfigureExtensions() {
     if (!this.codeEditor) return;
 
+    const effects = [];
+    const { currentPerfTier, currentSettings } = this;
+
+    // Apply font size directly to the DOM
+    this.codeEditor.dom.style.fontSize = `${currentSettings.fontSize}px`;
+    
+    // Tab size is not performance-related
+    effects.push(this.tabSize.reconfigure(EditorState.tabSize.of(currentSettings.tabSize)));
+
+    // Performance-sensitive settings
+    const isNormalTier = currentPerfTier === 'normal';
+    const isHugeTier = currentPerfTier === 'huge';
+
+    // Line Wrapping
+    const shouldWrap = isNormalTier && currentSettings.lineWrapping;
+    effects.push(this.lineWrapping.reconfigure(shouldWrap ? EditorView.lineWrapping : []));
+    
+    // Bracket Matching
+    const shouldMatchBrackets = isNormalTier && currentSettings.matchBrackets;
+    effects.push(this.matchBrackets.reconfigure(shouldMatchBrackets ? bracketMatching() : []));
+    
+    // Minimap
+    const shouldShowMinimap = isNormalTier && currentSettings.minimap;
+    effects.push(this.minimap.reconfigure(shouldShowMinimap ? showMinimap.compute(['doc'], () => ({
+      create: () => ({ dom: document.createElement('div') }),
+      displayText: 'blocks',
+      showOverlay: 'always'
+    })) : []));
+
+    // Line Numbers
+    const shouldShowLineNumbers = !isHugeTier && currentSettings.lineNumbers;
+    effects.push(this.lineNumbers.reconfigure(shouldShowLineNumbers ? [lineNumbers()] : []));
+
+    // Linting
+    const shouldLint = isNormalTier && this.state.lintingEnabled;
+    effects.push(this.lint.reconfigure(linter(this.getLintOptions(shouldLint, this.getEnabledGmApis()))));
+    
+    if (effects.length > 0) {
+      this.codeEditor.dispatch({ effects });
+    }
+    
+    this.updatePerfBadge(currentPerfTier);
+  }
+
+  applyPerformanceTier(tier) {
+    if (!this.codeEditor || tier === this.currentPerfTier) return;
+    
     this.currentPerfTier = tier;
     this.largeFileOptimized = tier !== 'normal';
-
-    // In CodeMirror 6, extensions are used to configure the editor.
-    // We can dynamically change them by dispatching a transaction.
-    // This is a simplified example. A real implementation would involve
-    // creating a more sophisticated extension management system.
-    
-    this.updatePerfBadge(tier);
+    this.reconfigureExtensions();
   }
 
   updatePerfBadge(tier) {
@@ -176,26 +221,45 @@ export class CodeEditorManager {
     }
   }
 
-  getEditorKeybindings() {
-    return keymap.of([
-        ...defaultKeymap,
-        indentWithTab,
-        { key: "Ctrl-s", run: () => { this.onSaveCallback?.(); return true; } },
-        { key: "Cmd-s", run: () => { this.onSaveCallback?.(); return true; } },
-        { key: "F11", run: (view) => { 
-            if (view.dom.requestFullscreen) {
-                view.dom.requestFullscreen();
-            }
-            return true;
-        }},
-        { key: "Escape", run: (view) => {
-            if (document.fullscreenElement) {
-                document.exitFullscreen();
-            }
-            return true;
-        }},
-    ]);
-  }
+        getEditorKeybindings() {
+
+          return keymap.of([
+
+              ...defaultKeymap,
+
+              indentWithTab,
+
+              { key: "Ctrl-s", run: () => { this.onSaveCallback?.(); return true; } },
+
+              { key: "Cmd-s", run: () => { this.onSaveCallback?.(); return true; } },
+
+              { key: "F11", run: (view) => {
+
+                  if (view.dom.requestFullscreen) {
+
+                      view.dom.requestFullscreen();
+
+                  }
+
+                  return true;
+
+              }},
+
+              { key: "Escape", run: (view) => {
+
+                  if (document.fullscreenElement) {
+
+                      document.exitFullscreen();
+
+                  }
+
+                  return true;
+
+              }},
+
+          ]);
+
+        }
 
   toggleMinimap() {
     // Minimap functionality is not available out-of-the-box in CodeMirror 6.
@@ -223,41 +287,8 @@ export class CodeEditorManager {
 
   applySettings(settings) {
     if (!this.codeEditor) return;
-
-    const effects = [];
-
-    if (settings.fontSize) {
-        this.codeEditor.dom.style.fontSize = `${settings.fontSize}px`;
-    }
-
-    if (settings.tabSize) {
-        effects.push(this.tabSize.reconfigure(EditorState.tabSize.of(settings.tabSize)));
-    }
-    
-    if (settings.lineWrapping !== undefined) {
-        effects.push(this.lineWrapping.reconfigure(settings.lineWrapping ? EditorView.lineWrapping : []));
-    }
-
-    if (settings.matchBrackets !== undefined) {
-        effects.push(this.matchBrackets.reconfigure(settings.matchBrackets ? bracketMatching() : []));
-    }
-
-    if (settings.minimap !== undefined) {
-        effects.push(this.minimap.reconfigure(settings.minimap ? showMinimap.compute(['doc'], () => {
-          return {
-            create: () => {
-              const dom = document.createElement('div');
-              return { dom };
-            },
-            displayText: 'blocks',
-            showOverlay: 'always'
-          };
-        }) : []));
-    }
-
-    if (effects.length > 0) {
-        this.codeEditor.dispatch({ effects });
-    }
+    this.currentSettings = { ...this.currentSettings, ...settings };
+    this.reconfigureExtensions();
   }
 
   resetToDefaultSettings() {

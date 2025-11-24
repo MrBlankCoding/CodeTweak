@@ -522,8 +522,8 @@ const messageHandlers = {
     return { success: true };
   },
 
-  openAISettings: () => {
-    chrome.tabs.create({
+  openAISettings: async () => {
+    await chrome.tabs.create({
       url: chrome.runtime.getURL("ai_dom_editor/settings/ai_settings.html"),
     });
     return { success: true };

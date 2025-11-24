@@ -1,5 +1,3 @@
-/* global feather */
-
 export class ElementSelector {
   constructor() {
     this.state = {

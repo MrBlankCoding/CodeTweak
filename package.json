@@ -10,7 +10,8 @@
   "scripts": {
     "build": "npm run build:chrome",
     "build:chrome": "node buildScripts/build-chrome.js --browser=chrome",
-    "build:firefox": "node buildScripts/build-firefox.js --production"
+    "build:firefox": "node buildScripts/build-firefox.js --production",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@babel/runtime": "7.28.4",

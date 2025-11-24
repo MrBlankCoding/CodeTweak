@@ -175,30 +175,26 @@
 .panel-content {
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-sm);
+  padding: var(--space-sm) 0 var(--space-sm) var(--space-sm); /* Adjusted padding */
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
-}
-.panel-content::-webkit-scrollbar { width: var(--scrollbar-width); }
+}.panel-content::-webkit-scrollbar { width: var(--scrollbar-width); }
 .panel-content::-webkit-scrollbar-track { background: var(--scrollbar-track); }
 .panel-content::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: var(--radius-sm); }
 .panel-content::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
 
 #execution-panel .panel-content,
-#info-panel .panel-content { padding: var(--space-md); }
 #execution-panel .form-group,
-#info-panel .form-group { margin-bottom: var(--space-md); }
 #execution-panel .url-input-group,
 #execution-panel .pattern-builder,
 #execution-panel .generated-pattern-group { margin-bottom: var(--space-md); gap: var(--space-md); }
 #execution-panel .generated-pattern-group { margin-top: var(--space-md); }
 
 /* Forms */
-.form-grid { display: flex; flex-direction: column; gap: var(--space-sm); }
+.form-grid { display: flex; flex-direction: column; gap: var(--space-sm); width: 100%; }
 .form-group { margin-bottom: 0; position: relative; }
 
 .form-label {
-  display: flex;
   align-items: center;
   gap: var(--space-xs);
   margin-bottom: var(--space-xs);
@@ -351,7 +347,8 @@
 .resource-list::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
 
 .url-item,
-.resource-item {
+.resource-item,
+.require-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -420,7 +417,8 @@
 }
 
 .url-text,
-.resource-text {
+.resource-text,
+.require-item > span {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--text-accent);
@@ -430,7 +428,8 @@
 
 .remove-url-btn,
 .remove-resource-btn,
-.remove-btn {
+.remove-btn,
+.remove-require-btn {
   display: flex;
   align-items: center;
   justify-content: center;

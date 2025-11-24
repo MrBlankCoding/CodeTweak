@@ -25,7 +25,7 @@ window.addEventListener("message", (event) => {
           scriptId: event.data.scriptId,
           error: event.data.error,
         },
-        (response) => {
+        (_errorResponse /* eslint-disable-line no-unused-vars */) => {
           if (chrome.runtime && chrome.runtime.lastError) {
             console.error(
               "[CodeTweak Content Bridge] Error forwarding SCRIPT_ERROR:",
@@ -80,7 +80,7 @@ window.addEventListener("message", (event) => {
         ...originalPayload,
       },
     },
-    (response) => {
+    (_response) => {
       let responsePayload = {};
       if (chrome.runtime.lastError) {
         console.error(
@@ -88,14 +88,14 @@ window.addEventListener("message", (event) => {
           chrome.runtime.lastError.message
         );
         responsePayload.error = chrome.runtime.lastError.message;
-      } else if (response && response.error) {
+      } else if (_response && _response.error) {
         console.error(
           `CodeTweak: Error from background for GM_API action ${action}:`,
-          response.error
+          _response.error
         );
-        responsePayload.error = response.error;
+        responsePayload.error = _response.error;
       } else {
-        responsePayload.result = response ? response.result : undefined;
+        responsePayload.result = _response ? _response.result : undefined;
       }
 
       window.postMessage(

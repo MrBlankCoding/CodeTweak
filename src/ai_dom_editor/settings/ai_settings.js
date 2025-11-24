@@ -716,7 +716,7 @@ class AISettings {
   }
 }
 
-let aiSettings;
+let aiSettings; // eslint-disable-line no-unused-vars
 
 document.addEventListener("DOMContentLoaded", () => {
   aiSettings = new AISettings();
