@@ -25,7 +25,7 @@ window.addEventListener("message", (event) => {
           scriptId: event.data.scriptId,
           error: event.data.error,
         },
-        (_errorResponse /* eslint-disable-line no-unused-vars */) => {
+        () => {
           if (chrome.runtime && chrome.runtime.lastError) {
             console.error(
               "[CodeTweak Content Bridge] Error forwarding SCRIPT_ERROR:",

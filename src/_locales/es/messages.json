@@ -435,6 +435,144 @@
   "aiSettingsSave": {
     "message": "Guardar Configuración"
   },
+  "aiSettingsSubtitle": {
+    "message": "Configuración simple por perfiles para proveedores, claves y modelos."
+  },
+  "aiSettingsNewProfile": {
+    "message": "Nuevo perfil"
+  },
+  "aiSettingsProfiles": {
+    "message": "Perfiles"
+  },
+  "aiSettingsNoProfiles": {
+    "message": "Aún no hay perfiles. Haz clic en Nuevo perfil."
+  },
+  "aiSettingsNoModel": {
+    "message": "sin modelo"
+  },
+  "aiSettingsProfileConfig": {
+    "message": "Configuración del perfil"
+  },
+  "aiSettingsProfileHintNew": {
+    "message": "Nuevo perfil sin guardar"
+  },
+  "aiSettingsEditingProfile": {
+    "message": "Editando perfil"
+  },
+  "aiSettingsProviderOpenAI": {
+    "message": "OpenAI"
+  },
+  "aiSettingsProviderAnthropic": {
+    "message": "Anthropic"
+  },
+  "aiSettingsProviderGoogleGemini": {
+    "message": "Google Gemini"
+  },
+  "aiSettingsProviderMistral": {
+    "message": "Mistral"
+  },
+  "aiSettingsProviderAimlapi": {
+    "message": "AIML API"
+  },
+  "aiSettingsProviderCustom": {
+    "message": "Endpoint personalizado"
+  },
+  "aiSettingsApiKeyPlaceholder": {
+    "message": "Pega la clave API"
+  },
+  "aiSettingsToggleKey": {
+    "message": "Mostrar u ocultar clave"
+  },
+  "aiSettingsEndpointPlaceholder": {
+    "message": "https://api.ejemplo.com/v1/chat/completions"
+  },
+  "aiSettingsEndpointRequiredHint": {
+    "message": "Solo es obligatorio para proveedores personalizados."
+  },
+  "aiSettingsSyncModels": {
+    "message": "Sincronizar modelos"
+  },
+  "aiSettingsSyncing": {
+    "message": "Sincronizando..."
+  },
+  "aiSettingsTest": {
+    "message": "Probar"
+  },
+  "aiSettingsTesting": {
+    "message": "Probando..."
+  },
+  "aiSettingsResetAll": {
+    "message": "Restablecer todo"
+  },
+  "aiSettingsSaveProfile": {
+    "message": "Guardar perfil"
+  },
+  "aiSettingsQuickStart": {
+    "message": "Inicio rápido"
+  },
+  "aiSettingsQuickStartSteps": {
+    "message": "1. Crea un perfil 2. Pega la clave 3. Elige un modelo 4. Guarda."
+  },
+  "aiSettingsLinksLabel": {
+    "message": "Enlaces:"
+  },
+  "aiSettingsDeleteProfile": {
+    "message": "Eliminar perfil"
+  },
+  "aiSettingsToastLoadFailed": {
+    "message": "Error al cargar la configuración"
+  },
+  "aiSettingsToastRequiredFields": {
+    "message": "Proveedor, clave, endpoint y modelo son obligatorios"
+  },
+  "aiSettingsToastSaved": {
+    "message": "Perfil guardado"
+  },
+  "aiSettingsToastSaveFailed": {
+    "message": "Error al guardar el perfil"
+  },
+  "aiSettingsConfirmDelete": {
+    "message": "¿Eliminar este perfil?"
+  },
+  "aiSettingsToastDeleted": {
+    "message": "Perfil eliminado"
+  },
+  "aiSettingsConfirmReset": {
+    "message": "¿Restablecer todos los perfiles de IA y la caché de modelos?"
+  },
+  "aiSettingsToastReset": {
+    "message": "Toda la configuración fue restablecida"
+  },
+  "aiSettingsToastNeedConnectionFields": {
+    "message": "Primero agrega clave, endpoint y modelo"
+  },
+  "aiSettingsToastConnectionSuccess": {
+    "message": "Conexión exitosa"
+  },
+  "aiSettingsToastConnectionFailed": {
+    "message": "Error de conexión"
+  },
+  "aiSettingsToastConnectionError": {
+    "message": "Error de conexión"
+  },
+  "aiSettingsToastNeedProviderKey": {
+    "message": "Selecciona proveedor e ingresa la clave primero"
+  },
+  "aiSettingsToastCustomSyncUnsupported": {
+    "message": "La sincronización de modelos no está disponible para endpoint personalizado"
+  },
+  "aiSettingsToastNoModels": {
+    "message": "No se encontraron modelos"
+  },
+  "aiSettingsToastSyncedPrefix": {
+    "message": "Sincronizados"
+  },
+  "aiSettingsToastSyncedSuffix": {
+    "message": "modelos"
+  },
+  "aiSettingsToastSyncFailed": {
+    "message": "Error al sincronizar modelos"
+  },
 
   "aiEditorTitle": {
     "message": "Editor DOM de IA"

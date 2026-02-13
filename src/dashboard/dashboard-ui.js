@@ -67,13 +67,11 @@ function updateScriptsList(scripts, elements) {
 
   // empty state
   if (scripts.length === 0) {
-    if (elements.scriptsTable) elements.scriptsTable.style.display = "none";
     if (elements.emptyState) elements.emptyState.style.display = "block";
     updateScriptCount(0);
     return;
   }
 
-  if (elements.scriptsTable) elements.scriptsTable.style.display = "table";
   if (elements.emptyState) elements.emptyState.style.display = "none";
 
   const fragment = document.createDocumentFragment();
@@ -237,17 +235,6 @@ function showNotification(message, type = "info") {
   }, 5000);
 }
 
-function escapeHtml(unsafe) {
-  return unsafe
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
-
-
 function formatUrlPattern(pattern) {
     if (!pattern) return "All sites";
     
@@ -269,12 +256,10 @@ function formatUrlPattern(pattern) {
 window.updateWebsiteFilterOptions = updateWebsiteFilterOptions;
 window.updateScriptsList = updateScriptsList;
 window.showNotification = showNotification;
-window.escapeHtml = escapeHtml;
 
 export {
   setupTabs,
   updateWebsiteFilterOptions,
   updateScriptsList,
   showNotification,
-  escapeHtml,
 };

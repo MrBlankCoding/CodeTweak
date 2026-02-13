@@ -1,4 +1,4 @@
-export function createMainWorldExecutor(
+export function createWorldExecutor(
   userCode,
   scriptId,
   enabledApis,
@@ -7,9 +7,9 @@ export function createMainWorldExecutor(
   initialValues,
   requiredUrls,
   gmInfo,
-  enhancedDebugging
+  enhancedDebugging,
+  worldType = "MAIN"
 ) {
-  // Helper functions must be defined here to be serialized with the executor
   function waitForGMBridge(callback) {
     if (window.GMBridge) {
       callback();
@@ -19,14 +19,14 @@ export function createMainWorldExecutor(
     window.addEventListener("GMBridgeReady", callback, { once: true });
   }
 
-  function preventReExecution(scriptId) {
+  function preventReExecution(currentScriptId) {
     window._executedScriptIds = window._executedScriptIds || new Set();
 
-    if (window._executedScriptIds.has(scriptId)) {
+    if (window._executedScriptIds.has(currentScriptId)) {
       return true;
     }
 
-    window._executedScriptIds.add(scriptId);
+    window._executedScriptIds.add(currentScriptId);
     return false;
   }
 
@@ -63,23 +63,23 @@ export function createMainWorldExecutor(
       if (!window.GM.info) {
         window.GM.info = window.GM_info;
       }
-    } catch (e) {
-      console.warn("CodeTweak: Unable to define GM_info", e);
+    } catch (error) {
+      console.warn("CodeTweak: Unable to define GM_info", error);
     }
   }
 
   function executeUserscript(
-    userCode,
-    script,
-    scriptId,
-    requiredUrls,
+    userscriptCode,
+    userscript,
+    userscriptId,
+    requires,
     scriptLoader
   ) {
     const run = () => {
       window.GMBridge.executeUserScriptWithDependencies(
-        userCode,
-        scriptId,
-        requiredUrls,
+        userscriptCode,
+        userscriptId,
+        requires,
         scriptLoader
       );
     };
@@ -91,39 +91,23 @@ export function createMainWorldExecutor(
           document.readyState === "complete"
         ) {
           run();
-          if (document.readyState !== "loading") {
-            window.dispatchEvent(new Event("DOMContentLoaded"));
-          }
         } else {
-          window.addEventListener(
-            "DOMContentLoaded",
-            () => {
-              run();
-              window.dispatchEvent(new Event("DOMContentLoaded"));
-            },
-            { once: true }
-          );
+          window.addEventListener("DOMContentLoaded", () => run(), {
+            once: true,
+          });
         }
       },
       document_idle: () => {
         if (document.readyState === "complete") {
           run();
-          window.dispatchEvent(new Event("load"));
         } else {
-          window.addEventListener(
-            "load",
-            () => {
-              run();
-              window.dispatchEvent(new Event("load"));
-            },
-            { once: true }
-          );
+          window.addEventListener("load", () => run(), { once: true });
         }
       },
       document_start: run,
     };
 
-    const handler = runAtHandlers[script.runAt] || run;
+    const handler = runAtHandlers[userscript.runAt] || run;
     handler();
   }
 
@@ -131,7 +115,10 @@ export function createMainWorldExecutor(
     console.group(`[CodeTweak] Injecting script: ${script.name}`);
     console.log("  ID:", scriptId);
     console.log("  Run at:", script.runAt);
-    console.log("  Inject into: Main World");
+    console.log(
+      "  Inject into:",
+      worldType === "ISOLATED" ? "Isolated World" : "Main World"
+    );
     console.log(
       "  Enabled APIs:",
       Object.keys(enabledApis).filter((api) => enabledApis[api])
@@ -144,7 +131,11 @@ export function createMainWorldExecutor(
   waitForGMBridge(() => {
     if (preventReExecution(scriptId)) return;
 
-    const bridge = new window.GMBridge(scriptId, extensionId, "MAIN");
+    const bridge = new window.GMBridge(
+      scriptId,
+      extensionId,
+      worldType === "ISOLATED" ? "ISOLATED" : "MAIN"
+    );
     const resourceManager = window.GMBridge.ResourceManager.fromScript(script);
     const apiRegistry = new window.GMBridge.GMAPIRegistry(
       bridge,
@@ -154,150 +145,17 @@ export function createMainWorldExecutor(
 
     apiRegistry.initializeCache(initialValues);
     apiRegistry.registerAll(enabledApis);
-    bindNativeFunctions();
+    if (worldType === "MAIN") {
+      bindNativeFunctions();
+    }
     exposeGMInfo(gmInfo);
 
-    executeUserscript(userCode, script, scriptId, requiredUrls, scriptLoader);
-  });
-}
-
-export function createIsolatedWorldExecutor(
-  userCode,
-  scriptId,
-  enabledApis,
-  script,
-  initialValues,
-  requiredUrls,
-  gmInfo,
-  enhancedDebugging
-) {
-  // Helper functions must be defined here to be serialized with the executor
-  function waitForGMBridge(callback) {
-    if (window.GMBridge) {
-      callback();
-      return;
-    }
-
-    window.addEventListener("GMBridgeReady", callback, { once: true });
-  }
-
-  function preventReExecution(scriptId) {
-    window._executedScriptIds = window._executedScriptIds || new Set();
-
-    if (window._executedScriptIds.has(scriptId)) {
-      return true;
-    }
-
-    window._executedScriptIds.add(scriptId);
-    return false;
-  }
-
-  function exposeGMInfo(info) {
-    try {
-      if (!Object.prototype.hasOwnProperty.call(window, "GM_info")) {
-        Object.defineProperty(window, "GM_info", {
-          value: Object.freeze(info || {}),
-          writable: false,
-          configurable: false,
-        });
-      }
-      window.GM = window.GM || {};
-      if (!window.GM.info) {
-        window.GM.info = window.GM_info;
-      }
-    } catch (e) {
-      console.warn("CodeTweak: Unable to define GM_info", e);
-    }
-  }
-
-  function executeUserscript(
-    userCode,
-    script,
-    scriptId,
-    requiredUrls,
-    scriptLoader
-  ) {
-    const run = () => {
-      window.GMBridge.executeUserScriptWithDependencies(
-        userCode,
-        scriptId,
-        requiredUrls,
-        scriptLoader
-      );
-    };
-
-    const runAtHandlers = {
-      document_end: () => {
-        if (
-          document.readyState === "interactive" ||
-          document.readyState === "complete"
-        ) {
-          run();
-          if (document.readyState !== "loading") {
-            window.dispatchEvent(new Event("DOMContentLoaded"));
-          }
-        } else {
-          window.addEventListener(
-            "DOMContentLoaded",
-            () => {
-              run();
-              window.dispatchEvent(new Event("DOMContentLoaded"));
-            },
-            { once: true }
-          );
-        }
-      },
-      document_idle: () => {
-        if (document.readyState === "complete") {
-          run();
-          window.dispatchEvent(new Event("load"));
-        } else {
-          window.addEventListener(
-            "load",
-            () => {
-              run();
-              window.dispatchEvent(new Event("load"));
-            },
-            { once: true }
-          );
-        }
-      },
-      document_start: run,
-    };
-
-    const handler = runAtHandlers[script.runAt] || run;
-    handler();
-  }
-
-  if (enhancedDebugging) {
-    console.group(`[CodeTweak] Injecting script: ${script.name}`);
-    console.log("  ID:", scriptId);
-    console.log("  Run at:", script.runAt);
-    console.log("  Inject into: Isolated World");
-    console.log(
-      "  Enabled APIs:",
-      Object.keys(enabledApis).filter((api) => enabledApis[api])
+    executeUserscript(
+      userCode,
+      script,
+      scriptId,
+      requiredUrls,
+      scriptLoader
     );
-    console.log("  Requires:", requiredUrls || "none");
-    console.log("  Resources:", script.resources || "none");
-    console.groupEnd();
-  }
-
-  waitForGMBridge(() => {
-    if (preventReExecution(scriptId)) return;
-
-    const bridge = new window.GMBridge(scriptId, chrome.runtime.id, "ISOLATED");
-    const resourceManager = window.GMBridge.ResourceManager.fromScript(script);
-    const apiRegistry = new window.GMBridge.GMAPIRegistry(
-      bridge,
-      resourceManager
-    );
-    const scriptLoader = new window.GMBridge.ExternalScriptLoader();
-
-    apiRegistry.initializeCache(initialValues);
-    apiRegistry.registerAll(enabledApis);
-    exposeGMInfo(gmInfo);
-
-    executeUserscript(userCode, script, scriptId, requiredUrls, scriptLoader);
   });
 }

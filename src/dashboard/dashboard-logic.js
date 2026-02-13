@@ -95,7 +95,6 @@ async function deleteScript(scriptId) {
     chrome.runtime.sendMessage({ action: "scriptsUpdated" });
 
     const elements = {
-      scriptsTable: document.getElementById("scriptsTable"),
       scriptsList: document.getElementById("scriptsList"),
       emptyState: document.getElementById("emptyState"),
       filters: {
@@ -121,7 +120,6 @@ async function loadSettings(settingsElements) {
       enableAllScripts: true,
       showNotifications: true,
       enhancedDebugging: false,
-      confirmBeforeRunning: false,
       allowExternalResources: true,
       confirmFirstRun: false,
       accentColor: "#61afef",
@@ -264,7 +262,6 @@ async function checkForUpdates(script) {
 // refresh dash
 async function refreshDashboard() {
   const elements = {
-    scriptsTable: document.getElementById("scriptsTable"),
     scriptsList: document.getElementById("scriptsList"),
     emptyState: document.getElementById("emptyState"),
     filters: {

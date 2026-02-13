@@ -2,7 +2,7 @@ import globals from "globals";
 
 export default [
   {
-    ignores: ["build/**"],
+    ignores: ["build/**", "docs/**", "docs-src/.vitepress/cache/**"],
   },
   {
     languageOptions: {

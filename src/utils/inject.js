@@ -1,6 +1,5 @@
 import {
-  createMainWorldExecutor,
-  createIsolatedWorldExecutor,
+  createWorldExecutor,
 } from "./worldExecutors.js";
 
 const INJECTION_TYPES = Object.freeze({
@@ -113,39 +112,23 @@ class ScriptInjector {
   async injectInWorld(tabId, config, world) {
     await this.injectCoreScripts(tabId, world);
 
-    const executor =
-      world === EXECUTION_WORLDS.MAIN
-        ? createMainWorldExecutor
-        : createIsolatedWorldExecutor;
-
-    const args =
-      world === EXECUTION_WORLDS.MAIN
-        ? [
-            config.code,
-            config.id,
-            config.enabledApis,
-            config.script,
-            chrome.runtime.id,
-            config.initialValues,
-            config.requires,
-            config.gmInfo,
-            config.enhancedDebugging,
-          ]
-        : [
-            config.code,
-            config.id,
-            config.enabledApis,
-            config.script,
-            config.initialValues,
-            config.requires,
-            config.gmInfo,
-            config.enhancedDebugging,
-          ];
+    const args = [
+      config.code,
+      config.id,
+      config.enabledApis,
+      config.script,
+      chrome.runtime.id,
+      config.initialValues,
+      config.requires,
+      config.gmInfo,
+      config.enhancedDebugging,
+      world,
+    ];
 
     await chrome.scripting.executeScript({
       target: { tabId },
       world,
-      func: executor,
+      func: createWorldExecutor,
       args,
     });
   }

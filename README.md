@@ -43,19 +43,6 @@ npm build.js
 
 ---
 
-## TODO List
-
-### Editor
-
-* [ ] Link CodeMirror minimap toggle
-* [ ] Move helper functions (`exportScript`, `generateTamperMonkeyHeader`) to separate files
-
-### UI
-* [ ] Fix editor optimizations
-* [ ] Can you make it so if you have mutiple scripts running at once on the same page the notifications will expand verticlly and not all overlap
-
----
-
 ## Acknowledgments
 
 * Built with [CodeMirror](https://codemirror.net/)

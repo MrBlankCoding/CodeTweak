@@ -1,360 +1,257 @@
-// Summarises the DOM
-// Very IMPORTANT be careful with tweaks
 class AIDOMContent {
   constructor() {
+    this.maxNodes = 180;
+    this.maxTextLen = 120;
+    this.maxAttrLen = 80;
+    this.maxChars = 45000;
+    this.skipTags = new Set([
+      "script",
+      "style",
+      "noscript",
+      "meta",
+      "link",
+      "svg",
+      "path",
+      "iframe",
+    ]);
+
     this.setupMessageListener();
-    
-    this.config = {
-      maxTokens: 30000,
-      charsPerToken: 4,
-      maxChars: 120000, // 30k tokens * 4 chars/token Assumtions could be based on model but for now lets just do 30
-      maxDepth: 4,
-      maxChildren: 8,
-      maxTextLength: 40,
-      maxAttributeValue: 50,
-      interactiveTagsPriority: ['button', 'a', 'input', 'select', 'textarea', 'form'],
-      contentTags: ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'td', 'th', 'span', 'div'],
-      skipTags: ['script', 'style', 'noscript', 'svg', 'path', 'meta', 'link'],
-      criticalAttributes: ['id', 'class', 'name', 'type', 'role', 'aria-label', 'href', 'src', 'value', 'placeholder']
-    };
   }
 
   setupMessageListener() {
-    if (window.__ctwkDOMContentListenerAdded) {
+    if (window.__ctwkAIDOMSummaryListener) {
       return;
     }
-    window.__ctwkDOMContentListenerAdded = true;
+
+    window.__ctwkAIDOMSummaryListener = true;
 
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-      if (message.action === 'collectDOMSummary') {
-        const summary = this.collectDOMSummary();
-        sendResponse({ success: true, summary });
-        return true;
+      if (message.action !== "collectDOMSummary") {
+        return false;
       }
-      
-      if (message.action === 'startSelection') {
-        this.startElementSelection();
-        sendResponse({ success: true });
-        return true;
+
+      try {
+        sendResponse({
+          success: true,
+          summary: this.collectDOMSummary(),
+        });
+      } catch (error) {
+        sendResponse({
+          success: false,
+          summary: JSON.stringify({ error: error.message }),
+        });
       }
-      
-      if (message.action === 'stopSelection') {
-        this.stopElementSelection();
-        sendResponse({ success: true });
-        return true;
-      }
-      
-      return false;
+
+      return true;
     });
   }
 
   collectDOMSummary() {
-    try {
-      // First pass: collect with size tracking
-      const collectionResult = this.smartCollectDOM();
-      
-      const summary = {
+    const root = this._findRoot();
+    const nodes = [];
+    this._walk(root, nodes);
+
+    const summary = {
+      page: {
         title: document.title,
         url: window.location.href,
         viewport: {
           width: window.innerWidth,
-          height: window.innerHeight
+          height: window.innerHeight,
         },
-        stats: collectionResult.stats,
-        domTree: collectionResult.tree
-      };
-
-      const jsonSummary = JSON.stringify(summary);
-      
-      return jsonSummary;
-    } catch (error) {
-      console.error('❌ [DOM Collector] Error:', error);
-      return JSON.stringify({ error: error.message });
-    }
-  }
-
-  smartCollectDOM() {
-    const stats = {
-      totalNodes: 0,
-      skippedNodes: 0,
-      maxDepthReached: 0,
-      charCount: 0
+      },
+      landmarks: this._collectLandmarks(),
+      nodes,
     };
 
-    // Strategy: Multi-pass collection with priority scoring
-    // 1. Find main content area
-    // 2. Collect interactive elements (high priority)
-    // 3. Collect content structure (medium priority)
-    // 4. Fill remaining budget with context
-    
-    const mainContent = this.findMainContent();
-    const tree = this.getDOMTree(mainContent || document.body, 0, stats);
-    
-    return { tree, stats };
-  }
-
-  findMainContent() {
-    const candidates = [
-      document.querySelector('main'),
-      document.querySelector('[role="main"]'),
-      document.querySelector('article'),
-      document.querySelector('#content'),
-      document.querySelector('#main-content'),
-      document.querySelector('.content'),
-      document.querySelector('.main-content')
-    ].filter(Boolean);
-
-    if (candidates.length > 0) {
-      return candidates.reduce((best, current) => {
-        const bestText = best.innerText?.length || 0;
-        const currentText = current.innerText?.length || 0;
-        return currentText > bestText ? current : best;
-      });
+    const text = JSON.stringify(summary);
+    if (text.length <= this.maxChars) {
+      return text;
     }
 
-    return null;
+    while (nodes.length > 40 && JSON.stringify(summary).length > this.maxChars) {
+      nodes.pop();
+    }
+
+    return JSON.stringify(summary);
   }
 
-  shouldSkipElement(element) {
-    if (!element || !element.tagName) return true;
-    
-    const tagName = element.tagName.toLowerCase();
-    
-    if (this.config.skipTags.includes(tagName)) return true;
-    
-    if (element.id === 'ctwk-ai-editor-sidebar' || 
-        element.closest?.('#ctwk-ai-editor-sidebar')) return true;
-    
-    const style = window.getComputedStyle(element);
-    if (style.display === 'none' || 
-        style.visibility === 'hidden' || 
-        style.opacity === '0') return true;
-    
-    const rect = element.getBoundingClientRect();
-    if (rect.width < 5 && rect.height < 5) return true;
-    
-    const id = element.id?.toLowerCase() || '';
-    const className = element.className?.toString().toLowerCase() || '';
-    const skipPatterns = [
-      'cookie', 'gdpr', 'consent', 'banner', 'popup', 'modal', 'overlay',
-      'advertisement', 'ad-', '-ad', 'sponsor', 'tracking',
-      'social-share', 'share-button', 'comment-form', 'newsletter',
-      'related-posts', 'recommended', 'sidebar-widget'
-    ];
-    
-    return skipPatterns.some(pattern => 
-      id.includes(pattern) || className.includes(pattern)
+  _findRoot() {
+    return (
+      document.querySelector("main") ||
+      document.querySelector("[role='main']") ||
+      document.querySelector("article") ||
+      document.body
     );
   }
 
-  calculateNodePriority(element) {
-    const tagName = element.tagName.toLowerCase();
-    let priority = 0;
-    
-    if (this.config.interactiveTagsPriority.includes(tagName)) {
-      priority += 100;
-    }
-    
-    if (this.config.contentTags.includes(tagName)) {
-      priority += 50;
-    }
-    
-    if (element.id) {
-      priority += 30;
-    }
-    
-    if (element.getAttribute('aria-label')) {
-      priority += 20;
-    }
-    
-    const rect = element.getBoundingClientRect();
-    if (rect.top >= 0 && rect.top <= window.innerHeight) {
-      priority += 40;
-    }
-    
-    return priority;
-  }
+  _collectLandmarks() {
+    const selectors = [
+      "header",
+      "nav",
+      "main",
+      "article",
+      "section",
+      "aside",
+      "footer",
+      "form",
+      "button",
+      "a",
+      "input",
+      "select",
+      "textarea",
+    ];
 
-  getDOMTree(element, depth, stats, budget = this.config.maxChars) {
-    if (stats.charCount > budget * 0.9) {
-      return null;
-    }
+    const landmarks = [];
 
-    if (depth > this.config.maxDepth || this.shouldSkipElement(element)) {
-      stats.skippedNodes++;
-      return null;
-    }
-
-    stats.maxDepthReached = Math.max(stats.maxDepthReached, depth);
-    stats.totalNodes++;
-
-    const tagName = element.tagName.toLowerCase();
-    const priority = this.calculateNodePriority(element);
-    
-    const node = {
-      tag: tagName,
-      ...(priority > 70 && { p: Math.floor(priority) })
-    };
-
-    const attrs = this.getMinimalAttributes(element);
-    if (Object.keys(attrs).length > 0) {
-      node.a = attrs;
-    }
-    const text = this.getMinimalText(element, tagName);
-    if (text) {
-      node.t = text;
-      stats.charCount += text.length;
-    }
-
-    const children = this.collectChildren(element, depth, stats, budget);
-    if (children.length > 0) {
-      node.c = children;
-    }
-
-    const nodeSize = JSON.stringify(node).length;
-    stats.charCount += nodeSize;
-
-    return node;
-  }
-
-  getMinimalAttributes(element) {
-    const attrs = {};
-    const priority = this.calculateNodePriority(element);
-    
-    const attributesToCheck = priority > 70 
-      ? this.config.criticalAttributes 
-      : ['id', 'class', 'role'];
-
-    for (const attrName of attributesToCheck) {
-      const value = element.getAttribute(attrName);
-      if (value) {
-        // Shorten class names - keep only first 2-3 meaningful classes
-        if (attrName === 'class') {
-          const classes = value.split(/\s+/)
-            .filter(c => c.length > 0 && !c.startsWith('_') && !c.match(/^[a-f0-9]{6,}$/))
-            .slice(0, 3)
-            .join(' ');
-          if (classes) attrs[attrName] = classes;
-        } else if (attrName === 'style') {
-          // Skip inline styles - too verbose
-          continue;
-        } else {
-          // Truncate long attribute values
-          const truncated = value.length > this.config.maxAttributeValue 
-            ? value.substring(0, this.config.maxAttributeValue) + '...'
-            : value;
-          attrs[attrName] = truncated;
-        }
+    for (const selector of selectors) {
+      const matches = Array.from(document.querySelectorAll(selector)).slice(0, 8);
+      for (const el of matches) {
+        const desc = this._describeElement(el);
+        if (desc) landmarks.push(desc);
       }
+      if (landmarks.length >= 50) break;
+    }
+
+    return landmarks;
+  }
+
+  _walk(root, output) {
+    const queue = [{ el: root, depth: 0 }];
+
+    while (queue.length && output.length < this.maxNodes) {
+      const { el, depth } = queue.shift();
+      if (!el || this._shouldSkip(el)) continue;
+
+      const desc = this._describeElement(el, depth);
+      if (desc) {
+        output.push(desc);
+      }
+
+      if (depth >= 4) continue;
+
+      const children = Array.from(el.children)
+        .sort((a, b) => this._priority(b) - this._priority(a))
+        .slice(0, 10);
+
+      for (const child of children) {
+        queue.push({ el: child, depth: depth + 1 });
+      }
+    }
+  }
+
+  _priority(el) {
+    let score = 0;
+    const tag = el.tagName.toLowerCase();
+
+    if (["button", "a", "input", "select", "textarea", "form"].includes(tag)) {
+      score += 90;
+    }
+
+    if (["h1", "h2", "h3", "p", "article", "main", "nav"].includes(tag)) {
+      score += 50;
+    }
+
+    if (el.id) score += 25;
+    if (el.getAttribute("aria-label")) score += 20;
+    if (el.getBoundingClientRect().top < window.innerHeight) score += 15;
+
+    return score;
+  }
+
+  _shouldSkip(el) {
+    if (!el?.tagName) return true;
+
+    const tag = el.tagName.toLowerCase();
+    if (this.skipTags.has(tag)) return true;
+
+    if (el.id === "ctwk-ai-editor-sidebar" || el.closest?.("#ctwk-ai-editor-sidebar")) {
+      return true;
+    }
+
+    const rect = el.getBoundingClientRect();
+    if (rect.width < 2 && rect.height < 2) return true;
+
+    const style = window.getComputedStyle(el);
+    if (style.display === "none" || style.visibility === "hidden") return true;
+
+    return false;
+  }
+
+  _describeElement(el, depth = 0) {
+    try {
+      const tag = el.tagName.toLowerCase();
+      const attrs = this._extractAttributes(el);
+      const text = this._extractText(el);
+
+      const payload = {
+        tag,
+        depth,
+      };
+
+      if (Object.keys(attrs).length) payload.attrs = attrs;
+      if (text) payload.text = text;
+
+      return payload;
+    } catch {
+      return null;
+    }
+  }
+
+  _extractAttributes(el) {
+    const attrs = {};
+    const keys = [
+      "id",
+      "class",
+      "name",
+      "type",
+      "role",
+      "aria-label",
+      "placeholder",
+      "href",
+      "data-testid",
+    ];
+
+    for (const key of keys) {
+      const value = el.getAttribute(key);
+      if (!value) continue;
+
+      let normalized = value.trim();
+      if (!normalized) continue;
+
+      if (key === "class") {
+        normalized = normalized
+          .split(/\s+/)
+          .slice(0, 4)
+          .join(" ");
+      }
+
+      attrs[key] = normalized.slice(0, this.maxAttrLen);
     }
 
     return attrs;
   }
 
-  getMinimalText(element, tagName) {
-    const isContainer = ['div', 'section', 'article', 'aside', 'nav'].includes(tagName);
-    
-    if (element.children.length === 0) {
-      const text = element.innerText?.trim();
-      if (!text) return null;
-      
-      const maxLen = this.config.interactiveTagsPriority.includes(tagName)
-        ? 60
-        : this.config.maxTextLength;
-      
-      return text.length > maxLen ? text.substring(0, maxLen) + '…' : text;
-    } else if (!isContainer) {
-      let immediateText = '';
-      for (const child of element.childNodes) {
-        if (child.nodeType === Node.TEXT_NODE) {
-          const text = child.textContent.trim();
-          if (text) immediateText += text + ' ';
-        }
-      }
-      const trimmed = immediateText.trim();
-      if (!trimmed) return null;
-      
-      return trimmed.length > this.config.maxTextLength 
-        ? trimmed.substring(0, this.config.maxTextLength) + '…'
-        : trimmed;
-    }
-    
-    return null;
-  }
+  _extractText(el) {
+    let text = "";
 
-  collectChildren(element, depth, stats, budget) {
-    const children = [];
-    
-    if (!element.children || element.children.length === 0) {
-      return children;
+    if (el.children.length === 0) {
+      text = (el.textContent || "").trim();
+    } else {
+      for (const node of el.childNodes) {
+        if (node.nodeType !== Node.TEXT_NODE) continue;
+        const segment = (node.textContent || "").trim();
+        if (!segment) continue;
+        text += `${segment} `;
+      }
+      text = text.trim();
     }
 
-    const scoredChildren = Array.from(element.children)
-      .map(child => ({
-        element: child,
-        priority: this.calculateNodePriority(child)
-      }))
-      .sort((a, b) => b.priority - a.priority); // Highest priority first
-
-    // Adaptive child limit based on depth and budget remaining
-    const budgetRemaining = budget - stats.charCount;
-    const budgetRatio = budgetRemaining / budget;
-    
-    let maxChildren = this.config.maxChildren;
-    if (depth > 2) maxChildren = Math.max(4, Math.floor(maxChildren * budgetRatio));
-    if (depth > 3) maxChildren = Math.max(2, Math.floor(maxChildren * budgetRatio * 0.5));
-
-    let collected = 0;
-    let skipped = 0;
-
-    for (const { element: child, priority } of scoredChildren) {
-      // Stop if budget is tight and this is low priority
-      if (budgetRatio < 0.3 && priority < 50) {
-        skipped++;
-        continue;
-      }
-
-      if (collected >= maxChildren) {
-        skipped++;
-        continue;
-      }
-
-      const childNode = this.getDOMTree(child, depth + 1, stats, budget);
-      if (childNode) {
-        children.push(childNode);
-        collected++;
-      } else {
-        skipped++;
-      }
-
-      // Emergency brake if approaching budget
-      if (stats.charCount > budget * 0.95) {
-        skipped += scoredChildren.length - collected - skipped;
-        break;
-      }
-    }
-
-    // Add ellipsis indicator if we skipped children
-    if (skipped > 0) {
-      children.push({
-        tag: '...',
-        t: `+${skipped} more`
-      });
-    }
-
-    return children;
-  }
-
-  startElementSelection() {
-    // Placeholder for element selection functionality
-  }
-
-  stopElementSelection() {
-    // Placeholder for element selection functionality
+    if (!text) return "";
+    return text.replace(/\s+/g, " ").slice(0, this.maxTextLen);
   }
 }
 
-// Initialize
 if (!window.__ctwkAIDOMContent) {
   window.__ctwkAIDOMContent = new AIDOMContent();
 }

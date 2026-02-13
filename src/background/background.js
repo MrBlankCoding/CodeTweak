@@ -373,22 +373,47 @@ class GMAPIHandler {
   }
 
   async notification({ details }) {
-    const notificationOptions = {
+    const baseOptions = {
       type: "basic",
-      iconUrl: details.image || "assets/icons/icon128.png",
       title: details.title || "CodeTweak Notification",
       message: details.text || "",
     };
 
-    return new Promise((resolve) => {
-      chrome.notifications.create(notificationOptions, () => {
-        if (chrome.runtime.lastError) {
-          resolve({ error: chrome.runtime.lastError.message });
-        } else {
-          resolve({ result: null });
-        }
+    const defaultIconUrl = chrome.runtime.getURL("assets/icons/icon128.png");
+    const requestedIconUrl =
+      typeof details.image === "string" && details.image.trim()
+        ? details.image.trim()
+        : defaultIconUrl;
+
+    const createNotification = (iconUrl) =>
+      new Promise((resolve) => {
+        chrome.notifications.create({ ...baseOptions, iconUrl }, () => {
+          if (chrome.runtime.lastError) {
+            resolve({
+              ok: false,
+              error: chrome.runtime.lastError.message,
+            });
+            return;
+          }
+          resolve({ ok: true });
+        });
       });
-    });
+
+    let result = await createNotification(requestedIconUrl);
+
+    if (!result.ok && requestedIconUrl !== defaultIconUrl) {
+      console.warn(
+        "[CodeTweak] Notification image failed, retrying with extension icon:",
+        result.error
+      );
+      result = await createNotification(defaultIconUrl);
+    }
+
+    if (!result.ok) {
+      return { error: result.error };
+    }
+
+    return { result: null };
   }
 
   async setClipboard({ data }) {
@@ -619,8 +644,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const handler = new GMAPIHandler(scriptId, sender);
 
     if (typeof handler[action] === "function") {
-      handler[action](payload)
-        .then(sendResponse)
+      Promise.resolve()
+        .then(() => handler[action](payload))
+        .then((response) => {
+          sendResponse(response ?? { result: null });
+        })
         .catch((error) => {
           console.error(`GM API error [${action}]:`, error);
           sendResponse({ error: error.message });

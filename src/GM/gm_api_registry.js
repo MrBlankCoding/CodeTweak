@@ -374,240 +374,280 @@
           }
 
           try {
-            new URL(details.url);
-          } catch {
-            console.error(`CodeTweak: GM_xmlhttpRequest failed due to an invalid URL: "${details.url}"`);
-            if (details.onerror) {
-              details.onerror(new TypeError(`Invalid URL: ${details.url}`));
+            const absoluteURL = new URL(details.url, window.location.href);
+            const normalizedDetails = {
+              ...details,
+              url: absoluteURL.toString(),
+              method: (details.method || "GET").toUpperCase(),
+            };
+
+            if (absoluteURL.origin === window.location.origin) {
+              return this._handleSameOriginXmlhttpRequest(normalizedDetails);
             }
-            return;
-          }
-
-          const currentOrigin = window.location.origin;
-          const requestOrigin = new URL(details.url, window.location.href).origin;
-
-          if (requestOrigin === currentOrigin) {
-            return this._handleSameOriginXmlhttpRequest(details);
-          } else {
-            return this._handleCrossOriginXmlhttpRequest(details);
+            return this._handleCrossOriginXmlhttpRequest(normalizedDetails);
+          } catch (error) {
+            console.error(
+              `CodeTweak: GM_xmlhttpRequest failed due to an invalid URL: "${details.url}"`,
+              error
+            );
+            this._invokeCallback(
+              details.onerror,
+              "onerror",
+              new TypeError(`Invalid URL: ${details.url}`)
+            );
+            return {
+              abort: () => {},
+            };
           }
         };
         window.GM_xmlhttpRequest = window.GM.xmlhttpRequest = fn;
       }
     }
 
-    // Duplicate from inject...
-    // Ill fix it later
-    _handleSameOriginXmlhttpRequest(details) {
-      const xhr = new XMLHttpRequest();
-      xhr.open(details.method || "GET", details.url);
-
-      // Set headers
-      if (details.headers) {
-        for (const header in details.headers) {
-          xhr.setRequestHeader(header, details.headers[header]);
-        }
-      }
-
-      // Set responseType
-      if (details.responseType) {
-        xhr.responseType = details.responseType;
-      }
-
-      // Set timeout
-      if (details.timeout) {
-      xhr.timeout = details.timeout;
-      }
-
-      // Event listeners
-      if (details.onreadystatechange) {
-         xhr.onreadystatechange = details.onreadystatechange;
-       }
-
-       if (details.onprogress) {
-         xhr.onprogress = details.onprogress;
-       }
-
-       xhr.onload = () => {
-        const response = {
-          readyState: xhr.readyState,
-          responseHeaders: xhr.getAllResponseHeaders(),
-          responseText: xhr.responseText,
-          response: xhr.response,
-          status: xhr.status,
-          statusText: xhr.statusText,
-          finalUrl: xhr.responseURL,
-          context: details.context,
-        };
-
-        if (details.onload) {
-          details.onload(response);
-        }
-      };
-
-      xhr.onerror = () => {
-        const error = new Error("Network error");
-        if (details.onerror) {
-          details.onerror(error);
-        }
-      };
-
-      xhr.ontimeout = () => {
-        const error = new Error("Timeout");
-        if (details.ontimeout) {
-          details.ontimeout(error);
-        }
-      };
-
-      // Send request
-      xhr.send(details.data);
-
-      return {
-        abort: () => xhr.abort()
-      };
-    }
-    // NEEDS HELP!
-    _handleCrossOriginXmlhttpRequest(details) {
-      // Assume cross-origin requests are allowed (settings check handled by bridge)
+    _extractCallbacks(details) {
       const callbacks = {};
-      const cloneableDetails = {};
+      const requestDetails = {};
 
       Object.entries(details).forEach(([key, value]) => {
-        if (typeof value === 'function') {
+        if (typeof value === "function") {
           callbacks[key] = value;
         } else {
-          cloneableDetails[key] = value;
+          requestDetails[key] = value;
         }
       });
 
-      let timeoutId;
-      let onloadCalled = false;
-      let aborted = false;
+      return { callbacks, requestDetails };
+    }
 
-      if (details.timeout) {
-        timeoutId = setTimeout(() => {
-          if (!onloadCalled && !aborted) {
-            onloadCalled = true;
-            if (callbacks.ontimeout) {
-              try {
-                callbacks.ontimeout(new Error("Timeout"));
-              } catch (error) {
-                console.error("GM_xmlhttpRequest ontimeout error:", error);
-              }
-            }
-          }
-        }, details.timeout);
+    _invokeCallback(callback, callbackName, payload) {
+      if (typeof callback !== "function") {
+        return;
+      }
+      try {
+        callback(payload);
+      } catch (error) {
+        console.error(`GM_xmlhttpRequest ${callbackName} callback failed:`, error);
+      }
+    }
+
+    async _normalizeResponseData(response, responseType) {
+      if (!response || typeof response !== "object") {
+        return {
+          readyState: 4,
+          responseHeaders: "",
+          responseText: "",
+          response: null,
+          status: 0,
+          statusText: "",
+          finalUrl: "",
+          context: undefined,
+        };
       }
 
-      // Start the request asynchronously
-      this.bridge.call("xmlhttpRequest", { details: cloneableDetails })
+      if (!responseType) {
+        return response;
+      }
+
+      const normalized = { ...response };
+      if (responseType === "arraybuffer" && !(normalized.response instanceof ArrayBuffer)) {
+        try {
+          if (typeof normalized.response === "string") {
+            if (normalized.response.startsWith("data:")) {
+              const res = await fetch(normalized.response);
+              normalized.response = await res.arrayBuffer();
+            } else {
+              normalized.response = new TextEncoder().encode(normalized.response).buffer;
+            }
+          } else if (normalized.response instanceof Blob) {
+            normalized.response = await normalized.response.arrayBuffer();
+          } else if (normalized.response != null) {
+            const serialized = JSON.stringify(normalized.response);
+            normalized.response = new TextEncoder().encode(serialized).buffer;
+          }
+        } catch (error) {
+          console.error("CodeTweak: Failed to normalize arraybuffer response.", error);
+        }
+      }
+
+      if (responseType === "blob" && !(normalized.response instanceof Blob)) {
+        try {
+          if (typeof normalized.response === "string" && normalized.response.startsWith("data:")) {
+            const res = await fetch(normalized.response);
+            normalized.response = await res.blob();
+          } else if (typeof normalized.response === "string") {
+            normalized.response = new Blob([normalized.response], { type: "text/plain" });
+          } else if (normalized.response instanceof ArrayBuffer) {
+            normalized.response = new Blob([normalized.response]);
+          } else if (normalized.response != null) {
+            normalized.response = new Blob([JSON.stringify(normalized.response)], {
+              type: "application/json",
+            });
+          }
+        } catch (error) {
+          console.error("CodeTweak: Failed to normalize blob response.", error);
+        }
+      }
+
+      return normalized;
+    }
+
+    _notifyCompletion(callbacks, response, context) {
+      const safeResponse = response || {
+        readyState: 4,
+        responseHeaders: "",
+        responseText: "",
+        response: null,
+        status: 0,
+        statusText: "",
+        finalUrl: "",
+      };
+
+      this._invokeCallback(callbacks.onreadystatechange, "onreadystatechange", {
+        readyState: 4,
+        responseHeaders: safeResponse.responseHeaders,
+        responseText: safeResponse.responseText,
+        response: safeResponse.response,
+        status: safeResponse.status,
+        statusText: safeResponse.statusText,
+        finalUrl: safeResponse.finalUrl,
+        context,
+      });
+
+      this._invokeCallback(callbacks.onprogress, "onprogress", {
+        loaded: safeResponse.responseText ? safeResponse.responseText.length : 0,
+        total: 0,
+        lengthComputable: false,
+        context,
+      });
+
+      this._invokeCallback(callbacks.onload, "onload", safeResponse);
+    }
+
+    _buildXhrResponse(xhr, context) {
+      let responseText = "";
+      try {
+        responseText = xhr.responseText ?? "";
+      } catch {
+        responseText = "";
+      }
+
+      return {
+        readyState: xhr.readyState,
+        responseHeaders: xhr.getAllResponseHeaders(),
+        responseText,
+        response: xhr.response,
+        status: xhr.status,
+        statusText: xhr.statusText,
+        finalUrl: xhr.responseURL,
+        context,
+      };
+    }
+
+    _handleSameOriginXmlhttpRequest(details) {
+      const { callbacks, requestDetails } = this._extractCallbacks(details);
+      const xhr = new XMLHttpRequest();
+      xhr.open(requestDetails.method || "GET", requestDetails.url);
+
+      if (requestDetails.headers) {
+        for (const header in requestDetails.headers) {
+          xhr.setRequestHeader(header, requestDetails.headers[header]);
+        }
+      }
+
+      if (requestDetails.responseType) {
+        xhr.responseType = requestDetails.responseType;
+      }
+
+      if (requestDetails.timeout) {
+        xhr.timeout = requestDetails.timeout;
+      }
+
+      xhr.onreadystatechange = () => {
+        this._invokeCallback(
+          callbacks.onreadystatechange,
+          "onreadystatechange",
+          this._buildXhrResponse(xhr, requestDetails.context)
+        );
+      };
+
+      xhr.onprogress = (event) => {
+        this._invokeCallback(callbacks.onprogress, "onprogress", {
+          loaded: event.loaded,
+          total: event.total,
+          lengthComputable: event.lengthComputable,
+          context: requestDetails.context,
+        });
+      };
+
+      xhr.onload = async () => {
+        const normalizedResponse = await this._normalizeResponseData(
+          this._buildXhrResponse(xhr, requestDetails.context),
+          requestDetails.responseType
+        );
+        this._invokeCallback(callbacks.onload, "onload", normalizedResponse);
+      };
+
+      xhr.onerror = () => {
+        this._invokeCallback(callbacks.onerror, "onerror", new Error("Network error"));
+      };
+
+      xhr.ontimeout = () => {
+        this._invokeCallback(callbacks.ontimeout, "ontimeout", new Error("Timeout"));
+      };
+
+      xhr.send(requestDetails.data);
+
+      return {
+        abort: () => xhr.abort(),
+      };
+    }
+
+    _handleCrossOriginXmlhttpRequest(details) {
+      const { callbacks, requestDetails } = this._extractCallbacks(details);
+
+      let timeoutId;
+      let completed = false;
+      let aborted = false;
+
+      if (requestDetails.timeout) {
+        timeoutId = setTimeout(() => {
+          if (!completed && !aborted) {
+            completed = true;
+            this._invokeCallback(callbacks.ontimeout, "ontimeout", new Error("Timeout"));
+          }
+        }, requestDetails.timeout);
+      }
+
+      this.bridge
+        .call("xmlhttpRequest", { details: requestDetails })
         .then(async (response) => {
-          if (onloadCalled || aborted) return;
-          onloadCalled = true;
+          if (completed || aborted) return;
+          completed = true;
           clearTimeout(timeoutId);
 
-          if (response && cloneableDetails.responseType === 'blob' && response.response && typeof response.response === 'string' && response.response.startsWith('data:')) {
-            try {
-              const res = await fetch(response.response);
-              const blob = await res.blob();
-              response.response = blob;
-            } catch (e) {
-              console.error("CodeTweak: Failed to reconstruct blob from data URL.", e);
-            }
-          }
-
-          if (response && cloneableDetails.responseType === 'arraybuffer' && response.response && typeof response.response === 'string' && response.response.startsWith('data:')) {
-            try {
-              const res = await fetch(response.response);
-              const arrayBuffer = await res.arrayBuffer();
-              response.response = arrayBuffer;
-            } catch (e) {
-              console.error("CodeTweak: Failed to reconstruct arraybuffer from data URL.", e);
-            }
-          }
-
-          // Handle responseType conversion if not properly set
-          if (response && cloneableDetails.responseType === 'arraybuffer' && !(response.response instanceof ArrayBuffer)) {
-            if (typeof response.response === 'string') {
-              const encoder = new TextEncoder();
-              response.response = encoder.encode(response.response).buffer;
-            } else if (typeof response.response === 'object') {
-              const str = JSON.stringify(response.response);
-              const encoder = new TextEncoder();
-              response.response = encoder.encode(str).buffer;
-            }
-          }
-
-          if (response && cloneableDetails.responseType === 'blob' && !(response.response instanceof Blob)) {
-            if (typeof response.response === 'string') {
-              try {
-                const res = await fetch('data:text/plain;base64,' + btoa(response.response));
-                response.response = await res.blob();
-              } catch (e) {
-                console.error("CodeTweak: Failed to convert string to blob.", e);
-              }
-            }
-          }
-
-          // Call onreadystatechange with readyState 4
-          if (callbacks.onreadystatechange) {
-            try {
-              callbacks.onreadystatechange({
-                readyState: 4,
-                responseHeaders: response.responseHeaders,
-                responseText: response.responseText,
-                response: response.response,
-                status: response.status,
-                statusText: response.statusText,
-                finalUrl: response.finalUrl,
-                context: details.context,
-              });
-            } catch (error) {
-              console.error("GM_xmlhttpRequest onreadystatechange error:", error);
-            }
-          }
-
-          // Call onprogress with some progress info
-          if (callbacks.onprogress) {
-            try {
-              callbacks.onprogress({
-                loaded: response.responseText ? response.responseText.length : 0,
-                total: 0,
-                lengthComputable: false,
-                context: details.context,
-              });
-            } catch (error) {
-              console.error("GM_xmlhttpRequest onprogress error:", error);
-            }
-          }
-
-          if (callbacks.onload) {
-            try {
-              callbacks.onload(response);
-            } catch (error) {
-              console.error("GM_xmlhttpRequest onload error:", error);
-            }
-          }
+          const normalizedResponse = await this._normalizeResponseData(
+            response,
+            requestDetails.responseType
+          );
+          this._notifyCompletion(
+            callbacks,
+            normalizedResponse,
+            requestDetails.context
+          );
         })
         .catch((error) => {
-          if (onloadCalled || aborted) return;
-          onloadCalled = true;
+          if (completed || aborted) return;
+          completed = true;
           clearTimeout(timeoutId);
-          if (callbacks.onerror) {
-            try {
-              callbacks.onerror(error);
-            } catch (callbackError) {
-              console.error("GM_xmlhttpRequest onerror callback failed:", callbackError);
-            }
-          }
+          this._invokeCallback(callbacks.onerror, "onerror", error);
         });
 
       return {
         abort: () => {
           aborted = true;
-          onloadCalled = true; // Prevent any further callbacks
+          completed = true;
           clearTimeout(timeoutId);
-        }
+        },
       };
     }
 

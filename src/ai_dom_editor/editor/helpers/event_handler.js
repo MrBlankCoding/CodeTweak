@@ -7,10 +7,11 @@ export class EventHandler {
   }
 
   setupEventListeners() {
-    this.editor.elements.userInput.addEventListener("input", (e) => {
-      this.editor.uiManager.autoResize(this.editor.elements.userInput);
-      this.editor.elements.sendBtn.disabled =
-        !this.editor.elements.userInput.value.trim();
+    const { elements } = this.editor;
+
+    elements.userInput.addEventListener("input", (e) => {
+      this.editor.uiManager.autoResize(elements.userInput);
+      elements.sendBtn.disabled = !elements.userInput.value.trim();
 
       const value = e.target.value;
       if (value.endsWith("@")) {
@@ -20,89 +21,73 @@ export class EventHandler {
       }
     });
 
-    this.editor.elements.userInput.addEventListener("keydown", (e) => {
+    elements.userInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        if (!this.editor.elements.sendBtn.disabled) {
+        if (!elements.sendBtn.disabled) {
           this.handleSendMessage();
         }
       }
     });
 
-    this.editor.elements.sendBtn.addEventListener("click", () => {
-      this.handleSendMessage();
-    });
+    elements.sendBtn.addEventListener("click", () => this.handleSendMessage());
+    elements.closeBtn.addEventListener("click", () => this.closeEditor());
+    elements.openSettingsBtn.addEventListener("click", () => this.openSettings());
+    elements.headerSettingsBtn.addEventListener("click", () => this.openSettings());
 
-    this.editor.elements.closeBtn.addEventListener("click", () => {
-      this.closeEditor();
-    });
-
-    this.editor.elements.openSettingsBtn.addEventListener("click", () => {
-      this.openSettings();
-    });
-
-    this.editor.elements.headerSettingsBtn.addEventListener("click", () => {
-      this.openSettings();
-    });
-
-    this.editor.elements.elementSelectorBtn.addEventListener("click", () => {
+    elements.elementSelectorBtn.addEventListener("click", () => {
       this.editor.uiManager.activateElementSelector();
     });
 
-    this.editor.elements.clearChatBtn.addEventListener("click", () => {
+    elements.clearChatBtn.addEventListener("click", () => {
       this.editor.chatManager.clearChat();
     });
 
-    this.editor.elements.cancelSelector.addEventListener("click", () => {
+    elements.cancelSelector.addEventListener("click", () => {
       this.editor.uiManager.deactivateElementSelector();
     });
 
-    this.editor.elements.modelSelector.addEventListener("change", (e) => {
+    elements.modelSelector.addEventListener("change", (e) => {
       this.editor.apiHandler.handleModelChange(e);
     });
 
     document.querySelectorAll(".example-prompt").forEach((prompt) => {
       prompt.addEventListener("click", () => {
-        this.editor.elements.userInput.value = prompt.textContent
+        elements.userInput.value = prompt.textContent
           .replace(/^[^a-zA-Z]+/, "")
           .trim();
-        this.editor.uiManager.autoResize(this.editor.elements.userInput);
-        this.editor.elements.sendBtn.disabled = false;
-        this.editor.elements.userInput.focus();
+        this.editor.uiManager.autoResize(elements.userInput);
+        elements.sendBtn.disabled = !elements.userInput.value.trim();
+        elements.userInput.focus();
       });
     });
   }
 
   setupMessageListener() {
     chrome.runtime.onMessage.addListener((message) => {
-      if (message.action === "elementSelected") {
-        this.handleElementSelected(message.selector);
-      } else if (message.action === "domSummaryReady") {
-        this.handleDOMSummary(message.summary);
-      } else if (message.action === "aiSettingsUpdated") {
+      if (message.action === "aiSettingsUpdated") {
         this.editor.apiHandler.loadAPIConfig();
         this.editor.apiHandler.loadAvailableModels();
+      }
+
+      if (
+        message.action === "aiElementSelected" ||
+        message.action === "elementSelected"
+      ) {
+        this.handleElementSelected(message.selector);
       }
     });
   }
 
   async handleSendMessage() {
-    const message = this.editor.elements.userInput.value.trim();
-    if (!message) return;
+    const rawMessage = this.editor.elements.userInput.value.trim();
+    if (!rawMessage) return;
 
-    const hasModel =
-      this.editor.apiHandler.selectedModel &&
-      this.editor.apiHandler.selectedModel.apiKey &&
-      this.editor.apiHandler.selectedModel.endpoint;
-    const hasConfig =
-      this.editor.apiHandler.apiConfig &&
-      this.editor.apiHandler.apiConfig.apiKey &&
-      this.editor.apiHandler.apiConfig.endpoint;
-
-    if (!hasModel && !hasConfig) {
+    if (!this._hasUsableAIConfig()) {
       this.editor.chatManager.addMessage(
         "assistant",
-        "Please configure your AI API settings first."
+        "Please configure your AI API settings first.",
+        { type: "text" }
       );
       return;
     }
@@ -110,10 +95,9 @@ export class EventHandler {
     this.editor.uiManager.hideWelcomeMessage();
 
     const history = [...this.editor.chatManager.messages];
-    const previousCode = this.editor.chatManager.getPreviousCode();
+    this.editor.chatManager.addMessage("user", rawMessage, { type: "text" });
+    this.lastUserPrompt = rawMessage;
 
-    this.editor.chatManager.addMessage("user", message);
-    this.lastUserPrompt = message;
     this.editor.elements.userInput.value = "";
     this.editor.uiManager.autoResize(this.editor.elements.userInput);
     this.editor.elements.sendBtn.disabled = true;
@@ -121,90 +105,23 @@ export class EventHandler {
     const loadingId = this.editor.uiManager.addLoadingMessage();
 
     try {
-      const [tab] = await chrome.tabs.query({
-        active: true,
-        currentWindow: true,
-      });
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab?.id) {
+        throw new Error("No active tab found.");
+      }
 
-      chrome.tabs.sendMessage(
-        tab.id,
-        { action: "collectDOMSummary" },
-        async (response) => {
-          if (chrome.runtime.lastError) {
-            this.editor.chatManager.removeMessage(loadingId);
-            this.editor.chatManager.addMessage(
-              "assistant",
-              "Error: Could not access page content. Please refresh the page and try again."
-            );
-            return;
-          }
+      const resolved = await this._resolveScriptReference(rawMessage);
+      const domSummary = await this._collectDOMSummary(tab.id);
 
-          const domSummary = response?.summary || "";
-
-          try {
-            let finalPreviousCode = previousCode;
-            let userMessage = message;
-
-            if (message.includes("@")) {
-              const allScripts =
-                await this.editor.userscriptHandler.getAllScripts();
-              const atIndex = message.lastIndexOf("@");
-              const textAfterAt = message.substring(atIndex + 1);
-              let matchedScript = null;
-
-              for (const script of allScripts) {
-                if (textAfterAt.startsWith(script.name)) {
-                  if (
-                    !matchedScript ||
-                    script.name.length > matchedScript.name.length
-                  ) {
-                    matchedScript = script;
-                  }
-                }
-              }
-
-              if (matchedScript) {
-                try {
-                  const fullCode =
-                    await this.editor.userscriptHandler.getScriptContent(
-                      matchedScript.name
-                    );
-                  finalPreviousCode =
-                    ScriptAnalyzer.extractCodeFromIIFE(fullCode);
-                  this.editor.setCurrentScript(matchedScript);
-                  const promptWithoutScriptRef =
-                    message.substring(0, atIndex) +
-                    textAfterAt.substring(matchedScript.name.length);
-                  userMessage = promptWithoutScriptRef.trim();
-                } catch (error) {
-                  this.editor.chatManager.addMessage(
-                    "assistant",
-                    `Error: ${error.message}`
-                  );
-                  this.editor.chatManager.removeMessage(loadingId);
-                  return;
-                }
-              }
-            }
-
-            const aiResponse = await this.editor.apiHandler.callAIAPI(
-              userMessage,
-              domSummary,
-              finalPreviousCode,
-              history
-            );
-            this.editor.chatManager.removeMessage(loadingId);
-            this.handleAIResponse(aiResponse);
-          } catch (error) {
-            this.editor.chatManager.removeMessage(loadingId);
-            this.editor.chatManager.addMessage(
-              "assistant",
-              `Error: ${error.message}`,
-              { error: true }
-            );
-          }
-        }
+      const aiResponse = await this.editor.apiHandler.callAIAPI(
+        resolved.userMessage,
+        domSummary,
+        resolved.previousCode,
+        history
       );
+
+      this.editor.chatManager.removeMessage(loadingId);
+      this.handleAIResponse(aiResponse);
     } catch (error) {
       this.editor.chatManager.removeMessage(loadingId);
       this.editor.chatManager.addMessage(
@@ -216,30 +133,98 @@ export class EventHandler {
   }
 
   handleAIResponse(response) {
-    if (Array.isArray(response)) {
+    if (response?.type === "code") {
       this.editor.chatManager.addMessage(
         "assistant",
-        "I'll apply these changes to the page:",
-        {
-          code: JSON.stringify(response, null, 2),
-          actions: response,
-        }
-      );
-    } else if (response.type === "code") {
-      this.editor.chatManager.addMessage(
-        "assistant",
-        response.explanation || "I've generated this code for you.",
+        response.explanation || "Generated script ready.",
         response
       );
-    } else if (response.type === "text") {
+      return;
+    }
+
+    if (response?.type === "text") {
       this.editor.chatManager.addMessage("assistant", response.message, response);
-    } else {
-      this.editor.chatManager.addMessage(
-        "assistant",
-        "Unexpected response format from AI",
-        { error: true }
+      return;
+    }
+
+    this.editor.chatManager.addMessage(
+      "assistant",
+      "Unexpected response format from AI.",
+      { error: true }
+    );
+  }
+
+  async _collectDOMSummary(tabId) {
+    const response = await this._sendTabMessage(tabId, { action: "collectDOMSummary" });
+
+    if (!response?.success && !response?.summary) {
+      throw new Error(
+        "Could not access page context. Refresh the page and try again."
       );
     }
+
+    return response.summary || "";
+  }
+
+  async _resolveScriptReference(message) {
+    const previousCode = this.editor.chatManager.getPreviousCode();
+
+    if (!message.includes("@")) {
+      return { userMessage: message, previousCode };
+    }
+
+    const allScripts = await this.editor.userscriptHandler.getAllScripts();
+    const atIndex = message.lastIndexOf("@");
+    const suffix = message.substring(atIndex + 1).trimStart();
+
+    let matched = null;
+    for (const script of allScripts || []) {
+      if (suffix.startsWith(script.name)) {
+        if (!matched || script.name.length > matched.name.length) {
+          matched = script;
+        }
+      }
+    }
+
+    if (!matched) {
+      return { userMessage: message, previousCode };
+    }
+
+    const fullCode = await this.editor.userscriptHandler.getScriptContent(matched.name);
+    const extracted = ScriptAnalyzer.extractCodeFromIIFE(fullCode);
+
+    const promptWithoutRef =
+      message.substring(0, atIndex) + suffix.substring(matched.name.length);
+
+    this.editor.setCurrentScript(matched);
+
+    return {
+      userMessage: promptWithoutRef.trim(),
+      previousCode: extracted,
+    };
+  }
+
+  _sendTabMessage(tabId, payload) {
+    return new Promise((resolve, reject) => {
+      chrome.tabs.sendMessage(tabId, payload, (response) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
+        resolve(response);
+      });
+    });
+  }
+
+  _hasUsableAIConfig() {
+    const selected = this.editor.apiHandler.selectedModel || {};
+    const fallback = this.editor.apiHandler.apiConfig || {};
+
+    const endpoint = selected.endpoint || fallback.endpoint;
+    const apiKey = selected.apiKey || selected.key || fallback.apiKey || fallback.key;
+    const model = selected.id || selected.model || fallback.id || fallback.model;
+
+    return !!(endpoint && apiKey && model);
   }
 
   handleElementSelected(selector) {
@@ -247,11 +232,11 @@ export class EventHandler {
     this.editor.selectedElement = selector;
 
     const currentValue = this.editor.elements.userInput.value.trim();
-    const newValue = currentValue
+    const updated = currentValue
       ? `${currentValue} (element: ${selector})`
       : `Modify the element: ${selector}`;
 
-    this.editor.elements.userInput.value = newValue;
+    this.editor.elements.userInput.value = updated;
     this.editor.uiManager.autoResize(this.editor.elements.userInput);
     this.editor.elements.sendBtn.disabled = false;
     this.editor.elements.userInput.focus();

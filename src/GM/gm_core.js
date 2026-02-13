@@ -2,7 +2,6 @@
 
 import { GMBridge } from "./gm_bridge.js";
 import { ExternalScriptLoader } from "./helpers/external_script_loader.js";
-import { getTrustedTypesPolicy } from "./helpers/trusted_types.js";
 
 // Prevent multiple initializations
 if (window.GMBridge === undefined) {
@@ -229,25 +228,9 @@ if (window.GMBridge === undefined) {
       // Load external dependencies
       await loader.loadScripts(requireUrls);
 
-      const policy = getTrustedTypesPolicy();
-      if (policy) {
-        // With Trusted Types, we must use a script tag, which runs in the MAIN world.
-        // This is a known limitation for ISOLATED world scripts.
-        const wrappedCode = `(function() { 'use strict'; const unsafeWindow = this; ${userCode} }).call(window);`;
-        const scriptElement = document.createElement("script");
-        scriptElement.setAttribute("data-script-id", scriptId);
-        scriptElement.textContent = policy.createScript(wrappedCode);
-        (
-          document.head ||
-          document.documentElement ||
-          document.body
-        ).appendChild(scriptElement);
-        scriptElement.remove();
-      } else {
-        // No Trusted Types, we can execute in the current world's scope.
-        const run = new Function("unsafeWindow", userCode);
-        run.call(window, window);
-      }
+      // Execute in the current world directly to avoid page-level DOM sink restrictions.
+      const run = new Function("unsafeWindow", userCode);
+      run.call(window, window);
     } catch (error) {
       console.error(
         `[GMBridge] Error executing user script ${scriptId}:`,

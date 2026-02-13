@@ -1,5 +1,3 @@
-/* eslint-disable no-unused-vars */
-
 import { EditorState, Compartment } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers } from "@codemirror/view";
 import { basicSetup } from "codemirror";
@@ -37,7 +35,6 @@ export class CodeEditorManager {
     this.matchBrackets = new Compartment();
     this.minimap = new Compartment();
 
-    this.largeFileOptimized = false;
     this.LARGE_FILE_LINE_COUNT = 3000;
     this.HUGE_FILE_LINE_COUNT = 10000;
     this.LARGE_FILE_CHAR_COUNT = 200_000; // ~200 KB text
@@ -189,7 +186,6 @@ export class CodeEditorManager {
     if (!this.codeEditor || tier === this.currentPerfTier) return;
     
     this.currentPerfTier = tier;
-    this.largeFileOptimized = tier !== 'normal';
     this.reconfigureExtensions();
   }
 
@@ -245,7 +241,7 @@ export class CodeEditorManager {
 
               }},
 
-              { key: "Escape", run: (view) => {
+              { key: "Escape", run: () => {
 
                   if (document.fullscreenElement) {
 
@@ -374,11 +370,11 @@ export class CodeEditorManager {
       globals[name] = false; // treat as read-only globals
     });
 
-    return (view) => {
+    return (_view) => {
         // JSHINT is loaded globally via script tag in editor.html
         /* global JSHINT */
         if (typeof JSHINT === 'undefined') return [];
-        JSHINT(view.state.doc.toString(), {
+        JSHINT(_view.state.doc.toString(), {
             esversion: 11,
             asi: true,
             browser: true,
@@ -409,16 +405,6 @@ export class CodeEditorManager {
     this.updateEditorLintAndAutocomplete();
     localStorage.setItem("lintingEnabled", this.state.lintingEnabled);
     return this.state.lintingEnabled;
-  }
-
-  insertTemplateCode(template) {
-    const wrappedCode = `(function() {
-    'use strict';
-    
-  ${template}
-  
-  })();`;
-    this.setValue(wrappedCode);
   }
 
   insertDefaultTemplate() {
@@ -461,10 +447,6 @@ export class CodeEditorManager {
   
   setImportCallback(callback) {
     this.onImportCallback = callback;
-  }
-
-  setStatusCallback(callback) {
-    this.onStatusCallback = callback;
   }
 
   getEditor() {

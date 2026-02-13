@@ -5,13 +5,17 @@
     "archiver": "7.0.1",
     "esbuild": "0.25.12",
     "eslint": "9.39.1",
-    "globals": "16.5.0"
+    "globals": "16.5.0",
+    "vitepress": "^1.6.4"
   },
   "scripts": {
     "build": "npm run build:chrome",
     "build:chrome": "node buildScripts/build-chrome.js --browser=chrome",
     "build:firefox": "node buildScripts/build-firefox.js --production",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "docs:dev": "vitepress dev docs-src",
+    "docs:build": "vitepress build docs-src",
+    "docs:preview": "vitepress preview docs-src"
   },
   "dependencies": {
     "@babel/runtime": "7.28.4",

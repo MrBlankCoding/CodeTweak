@@ -5,6 +5,7 @@ import { UIManager } from "./helpers/ui_manager.js";
 import { ApiHandler } from "./helpers/api_handler.js";
 import { EventHandler } from "./helpers/event_handler.js";
 import { UserscriptHandler } from "./helpers/userscript_handler.js";
+import { applyTranslations } from "../../utils/i18n.js";
 
 class AIDOMEditor {
   constructor() {
@@ -43,14 +44,6 @@ class AIDOMEditor {
   async init() {
     applyTheme();
     await this.initializeAI();
-
-    chrome.runtime.onMessage.addListener((message) => {
-      if (message.action === "aiElementSelected") {
-        this.elements.userInput.value += ` ${message.selector} `;
-        this.elements.userInput.focus();
-        this.uiManager.deactivateElementSelector();
-      }
-    });
   }
 
   setCurrentScript(script) {
@@ -153,6 +146,7 @@ class AIDOMEditor {
     try {
       const lang = await this.getUserLanguage();
       document.documentElement.setAttribute("lang", lang);
+      await applyTranslations();
     } catch (error) {
       console.error("Error setting language:", error);
     }

@@ -43,16 +43,8 @@ async function searchGreasyfork(elements) {
 
   try {
     const encodedQuery = encodeURIComponent(query);
-    // Using the search API endpoint with proper parameters
     const response = await fetch(
-      `https://greasyfork.org/en/scripts?q=${encodedQuery}&sort=updated`, 
-      {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        credentials: 'same-origin' // Important for CORS
-      }
+      `https://greasyfork.org/en/scripts.json?q=${encodedQuery}&page=1`
     );
 
     if (!response.ok) {
@@ -61,8 +53,12 @@ async function searchGreasyfork(elements) {
       throw new Error(`HTTP error ${response.status}: ${errorText}`);
     }
 
-    const scripts = await response.json();
-    console.log('Search results:', scripts); // Debug log
+    const payload = await response.json();
+    const scripts = Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload?.scripts)
+        ? payload.scripts
+        : [];
     
     elements.results.textContent = ""; // Clear previous results
 
@@ -194,9 +190,11 @@ async function importGreasyforkScript(codeUrl) {
       ...(metadata.license && { license: metadata.license }),
       ...(metadata.icon && { icon: metadata.icon }),
     };
-    Object.keys(metadata.gmApis).forEach((apiFlag) => {
-      scriptData[apiFlag] = metadata.gmApis[apiFlag];
-    });
+    if (metadata.gmApis) {
+      Object.keys(metadata.gmApis).forEach((apiFlag) => {
+        scriptData[apiFlag] = metadata.gmApis[apiFlag];
+      });
+    }
 
     try {
       const { scripts = [] } = await chrome.storage.local.get("scripts");

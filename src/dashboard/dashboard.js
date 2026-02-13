@@ -14,12 +14,9 @@ import { applyTranslations } from "../utils/i18n.js";
 function initDashboard() {
   const elements = {
     createScriptBtn: document.getElementById("createScriptBtn"),
-    scriptsTable: document.getElementById("scriptsTable"),
     scriptsList: document.getElementById("scriptsList"),
     emptyState: document.getElementById("emptyState"),
     settingsForm: document.getElementById("settingsForm"),
-    saveSettingsBtn: document.getElementById("saveSettingsBtn"),
-    resetSettingsBtn: document.getElementById("resetSettingsBtn"),
     exportAllBtn: document.getElementById("exportAllBtn"),
     navItems: document.querySelectorAll(".nav-item"),
     tabContents: document.querySelectorAll(".tab-content"),
@@ -30,16 +27,16 @@ function initDashboard() {
       statusFilter: document.getElementById("statusFilter"),
       runAtFilter: document.getElementById("runAtFilter"),
     },
-                            settings: {
-                            enableAllScripts: document.getElementById("enableAllScripts"),
-                            showNotifications: document.getElementById("showNotifications"),
-                            enhancedDebugging: document.getElementById("enhancedDebugging"),
-                            darkMode: document.getElementById("darkMode"),
-                            allowExternalResources: document.getElementById("allowExternalResources"),
-                            confirmFirstRun: document.getElementById("confirmFirstRun"),
-                            accentColor: document.getElementById("accentColor"),
-                            languageSelector: document.getElementById("languageSelector"),
-                          },    greasyfork: {
+    settings: {
+      enableAllScripts: document.getElementById("enableAllScripts"),
+      showNotifications: document.getElementById("showNotifications"),
+      enhancedDebugging: document.getElementById("enhancedDebugging"),
+      allowExternalResources: document.getElementById("allowExternalResources"),
+      confirmFirstRun: document.getElementById("confirmFirstRun"),
+      accentColor: document.getElementById("accentColor"),
+      languageSelector: document.getElementById("languageSelector"),
+    },
+    greasyfork: {
       button: document.getElementById("greasyforkBtn"),
       modal: document.getElementById("greasyforkModal"),
       closeBtn: document.querySelector(".modal-close"),
@@ -88,10 +85,6 @@ function setupEventListeners(elements, state) {
   elements.settingsForm?.addEventListener("submit", (e) => {
     e.preventDefault();
     saveSettings(elements.settings);
-  });
-
-  elements.resetSettingsBtn?.addEventListener("click", () => {
-    showNotification("Settings reset to defaults", "success");
   });
 
   // bulk export

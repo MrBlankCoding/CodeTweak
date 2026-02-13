@@ -72,6 +72,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0;
 }
 
 .tab-content {
@@ -79,10 +80,20 @@ body {
   flex-direction: column;
   flex: 1;
   overflow: auto;
+  min-height: 0;
 }
 
 .tab-content.active {
   display: flex;
+}
+
+#scripts-tab {
+  overflow: hidden;
+}
+
+#scripts-tab.active {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
 }
 
 .content-header {

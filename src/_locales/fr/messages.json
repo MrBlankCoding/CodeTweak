@@ -436,6 +436,144 @@
   "aiSettingsSave": {
     "message": "Enregistrer les paramètres"
   },
+  "aiSettingsSubtitle": {
+    "message": "Configuration simple par profil pour fournisseurs, clés et modèles."
+  },
+  "aiSettingsNewProfile": {
+    "message": "Nouveau profil"
+  },
+  "aiSettingsProfiles": {
+    "message": "Profils"
+  },
+  "aiSettingsNoProfiles": {
+    "message": "Aucun profil. Cliquez sur Nouveau profil."
+  },
+  "aiSettingsNoModel": {
+    "message": "aucun modèle"
+  },
+  "aiSettingsProfileConfig": {
+    "message": "Configuration du profil"
+  },
+  "aiSettingsProfileHintNew": {
+    "message": "Nouveau profil non enregistré"
+  },
+  "aiSettingsEditingProfile": {
+    "message": "Modification du profil"
+  },
+  "aiSettingsProviderOpenAI": {
+    "message": "OpenAI"
+  },
+  "aiSettingsProviderAnthropic": {
+    "message": "Anthropic"
+  },
+  "aiSettingsProviderGoogleGemini": {
+    "message": "Google Gemini"
+  },
+  "aiSettingsProviderMistral": {
+    "message": "Mistral"
+  },
+  "aiSettingsProviderAimlapi": {
+    "message": "AIML API"
+  },
+  "aiSettingsProviderCustom": {
+    "message": "Point de terminaison personnalisé"
+  },
+  "aiSettingsApiKeyPlaceholder": {
+    "message": "Collez la clé API"
+  },
+  "aiSettingsToggleKey": {
+    "message": "Afficher ou masquer la clé"
+  },
+  "aiSettingsEndpointPlaceholder": {
+    "message": "https://api.exemple.com/v1/chat/completions"
+  },
+  "aiSettingsEndpointRequiredHint": {
+    "message": "Requis uniquement pour les fournisseurs personnalisés."
+  },
+  "aiSettingsSyncModels": {
+    "message": "Synchroniser les modèles"
+  },
+  "aiSettingsSyncing": {
+    "message": "Synchronisation..."
+  },
+  "aiSettingsTest": {
+    "message": "Tester"
+  },
+  "aiSettingsTesting": {
+    "message": "Test en cours..."
+  },
+  "aiSettingsResetAll": {
+    "message": "Tout réinitialiser"
+  },
+  "aiSettingsSaveProfile": {
+    "message": "Enregistrer le profil"
+  },
+  "aiSettingsQuickStart": {
+    "message": "Démarrage rapide"
+  },
+  "aiSettingsQuickStartSteps": {
+    "message": "1. Créez un profil 2. Collez la clé 3. Choisissez un modèle 4. Enregistrez."
+  },
+  "aiSettingsLinksLabel": {
+    "message": "Liens :"
+  },
+  "aiSettingsDeleteProfile": {
+    "message": "Supprimer le profil"
+  },
+  "aiSettingsToastLoadFailed": {
+    "message": "Échec du chargement des paramètres"
+  },
+  "aiSettingsToastRequiredFields": {
+    "message": "Le fournisseur, la clé, le point de terminaison et le modèle sont requis"
+  },
+  "aiSettingsToastSaved": {
+    "message": "Profil enregistré"
+  },
+  "aiSettingsToastSaveFailed": {
+    "message": "Échec de l'enregistrement du profil"
+  },
+  "aiSettingsConfirmDelete": {
+    "message": "Supprimer ce profil ?"
+  },
+  "aiSettingsToastDeleted": {
+    "message": "Profil supprimé"
+  },
+  "aiSettingsConfirmReset": {
+    "message": "Réinitialiser tous les profils IA et le cache des modèles ?"
+  },
+  "aiSettingsToastReset": {
+    "message": "Tous les paramètres ont été réinitialisés"
+  },
+  "aiSettingsToastNeedConnectionFields": {
+    "message": "Ajoutez d'abord la clé, le point de terminaison et le modèle"
+  },
+  "aiSettingsToastConnectionSuccess": {
+    "message": "Connexion réussie"
+  },
+  "aiSettingsToastConnectionFailed": {
+    "message": "Échec de la connexion"
+  },
+  "aiSettingsToastConnectionError": {
+    "message": "Erreur de connexion"
+  },
+  "aiSettingsToastNeedProviderKey": {
+    "message": "Sélectionnez un fournisseur et saisissez la clé d'abord"
+  },
+  "aiSettingsToastCustomSyncUnsupported": {
+    "message": "La synchronisation des modèles n'est pas prise en charge pour un endpoint personnalisé"
+  },
+  "aiSettingsToastNoModels": {
+    "message": "Aucun modèle trouvé"
+  },
+  "aiSettingsToastSyncedPrefix": {
+    "message": "Synchronisé"
+  },
+  "aiSettingsToastSyncedSuffix": {
+    "message": "modèles"
+  },
+  "aiSettingsToastSyncFailed": {
+    "message": "Échec de la synchronisation des modèles"
+  },
 
   "aiEditorTitle": {
     "message": "Éditeur DOM IA"

@@ -322,13 +322,6 @@ class ScriptEditor {
       this.codeEditorManager.setImportCallback((importData) =>
         this.handleScriptImport(importData)
       );
-      this.codeEditorManager.setStatusCallback((message, type) => {
-        if (message) {
-          this.ui.showStatusMessage(message, type);
-        } else {
-          this.ui.clearStatusMessage();
-        }
-      });
 
       this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
 

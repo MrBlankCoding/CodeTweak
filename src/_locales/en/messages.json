@@ -428,6 +428,144 @@
   "aiSettingsSave": {
     "message": "Save Settings"
   },
+  "aiSettingsSubtitle": {
+    "message": "Simple profile-based setup for providers, keys, and models."
+  },
+  "aiSettingsNewProfile": {
+    "message": "New Profile"
+  },
+  "aiSettingsProfiles": {
+    "message": "Profiles"
+  },
+  "aiSettingsNoProfiles": {
+    "message": "No profiles yet. Click New Profile."
+  },
+  "aiSettingsNoModel": {
+    "message": "no model"
+  },
+  "aiSettingsProfileConfig": {
+    "message": "Profile Configuration"
+  },
+  "aiSettingsProfileHintNew": {
+    "message": "New unsaved profile"
+  },
+  "aiSettingsEditingProfile": {
+    "message": "Editing profile"
+  },
+  "aiSettingsProviderOpenAI": {
+    "message": "OpenAI"
+  },
+  "aiSettingsProviderAnthropic": {
+    "message": "Anthropic"
+  },
+  "aiSettingsProviderGoogleGemini": {
+    "message": "Google Gemini"
+  },
+  "aiSettingsProviderMistral": {
+    "message": "Mistral"
+  },
+  "aiSettingsProviderAimlapi": {
+    "message": "AIML API"
+  },
+  "aiSettingsProviderCustom": {
+    "message": "Custom Endpoint"
+  },
+  "aiSettingsApiKeyPlaceholder": {
+    "message": "Paste API key"
+  },
+  "aiSettingsToggleKey": {
+    "message": "Show or hide key"
+  },
+  "aiSettingsEndpointPlaceholder": {
+    "message": "https://api.example.com/v1/chat/completions"
+  },
+  "aiSettingsEndpointRequiredHint": {
+    "message": "Only required for custom providers."
+  },
+  "aiSettingsSyncModels": {
+    "message": "Sync Models"
+  },
+  "aiSettingsSyncing": {
+    "message": "Syncing..."
+  },
+  "aiSettingsTest": {
+    "message": "Test"
+  },
+  "aiSettingsTesting": {
+    "message": "Testing..."
+  },
+  "aiSettingsResetAll": {
+    "message": "Reset All"
+  },
+  "aiSettingsSaveProfile": {
+    "message": "Save Profile"
+  },
+  "aiSettingsQuickStart": {
+    "message": "Quick Start"
+  },
+  "aiSettingsQuickStartSteps": {
+    "message": "1. Create a profile 2. Paste key 3. Choose model 4. Save."
+  },
+  "aiSettingsLinksLabel": {
+    "message": "Links:"
+  },
+  "aiSettingsDeleteProfile": {
+    "message": "Delete profile"
+  },
+  "aiSettingsToastLoadFailed": {
+    "message": "Failed to load settings"
+  },
+  "aiSettingsToastRequiredFields": {
+    "message": "Provider, key, endpoint, and model are required"
+  },
+  "aiSettingsToastSaved": {
+    "message": "Profile saved"
+  },
+  "aiSettingsToastSaveFailed": {
+    "message": "Failed to save profile"
+  },
+  "aiSettingsConfirmDelete": {
+    "message": "Delete this profile?"
+  },
+  "aiSettingsToastDeleted": {
+    "message": "Profile deleted"
+  },
+  "aiSettingsConfirmReset": {
+    "message": "Reset all AI profiles and model cache?"
+  },
+  "aiSettingsToastReset": {
+    "message": "All settings reset"
+  },
+  "aiSettingsToastNeedConnectionFields": {
+    "message": "Add key, endpoint, and model first"
+  },
+  "aiSettingsToastConnectionSuccess": {
+    "message": "Connection successful"
+  },
+  "aiSettingsToastConnectionFailed": {
+    "message": "Connection failed"
+  },
+  "aiSettingsToastConnectionError": {
+    "message": "Connection error"
+  },
+  "aiSettingsToastNeedProviderKey": {
+    "message": "Select provider and enter key first"
+  },
+  "aiSettingsToastCustomSyncUnsupported": {
+    "message": "Custom endpoint model sync is not supported"
+  },
+  "aiSettingsToastNoModels": {
+    "message": "No models found"
+  },
+  "aiSettingsToastSyncedPrefix": {
+    "message": "Synced"
+  },
+  "aiSettingsToastSyncedSuffix": {
+    "message": "models"
+  },
+  "aiSettingsToastSyncFailed": {
+    "message": "Model sync failed"
+  },
 
   "aiEditorTitle": {
     "message": "AI DOM Editor"
