@@ -9,32 +9,27 @@ CodeTweak is a Manifest V3 userscript manager with a built-in editor.
 - Support common GM APIs (`GM_getValue`, `GM_setValue`, `GM_xmlhttpRequest`, etc).
 - Import scripts from Greasy Fork.
 
-## Install
-
-### Chrome / Chromium (manual)
+## Build (Firefox)
 
 ```bash
-npm install
-npm run build:chrome
-```
-
-Then:
-
-1. Open `chrome://extensions`.
-2. Enable `Developer mode`.
-3. Click `Load unpacked`.
-4. Select `build/chrome`.
-
-### Firefox (manual)
-
-```bash
-npm install
+npm ci
 npm run build:firefox
 ```
 
-Use the generated package:
+- Build script: `buildScripts/build-firefox.js`
+- Output folder: `build/firefox`
+- Firefox package: `build/codetweak-firefox.zip`
 
-- `build/codetweak-firefox.zip`
+## Build (Chrome)
+
+```bash
+npm ci
+npm run build:chrome
+```
+
+Output: `build/chrome`
+- Chrome package: `build/codetweak-chrome.zip`
+
 
 ## Development
 

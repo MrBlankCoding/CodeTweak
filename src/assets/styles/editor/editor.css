@@ -49,6 +49,16 @@ html, body {
   border-left: 1px solid var(--border-primary);
 }
 
+/* Keep CodeMirror scroll inside the editor pane since page scroll is disabled */
+.editor-container .cm-editor {
+  height: 100%;
+  max-height: 100%;
+}
+
+.editor-container .cm-scroller {
+  overflow: auto;
+}
+
 ::-webkit-scrollbar {
   display: none;
 }
