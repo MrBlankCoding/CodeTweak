@@ -72,10 +72,19 @@ class AIDOMEditor {
 
   async saveCurrentScriptState() {
     try {
-      const [tab] = await chrome.tabs.query({
-        active: true,
-        currentWindow: true,
-      });
+      let tab;
+      if (typeof chrome !== "undefined" && chrome.tabs && chrome.tabs.query) {
+        [tab] = await chrome.tabs.query({
+          active: true,
+          currentWindow: true,
+        });
+      } else {
+        const response = await chrome.runtime.sendMessage({
+          action: "getCurrentTab",
+        });
+        tab = response?.tab;
+      }
+
       if (!tab || !tab.url) return;
 
       const url = new URL(tab.url);
@@ -96,10 +105,19 @@ class AIDOMEditor {
 
   async restoreCurrentScriptState() {
     try {
-      const [tab] = await chrome.tabs.query({
-        active: true,
-        currentWindow: true,
-      });
+      let tab;
+      if (typeof chrome !== "undefined" && chrome.tabs && chrome.tabs.query) {
+        [tab] = await chrome.tabs.query({
+          active: true,
+          currentWindow: true,
+        });
+      } else {
+        const response = await chrome.runtime.sendMessage({
+          action: "getCurrentTab",
+        });
+        tab = response?.tab;
+      }
+
       if (!tab || !tab.url) return;
 
       const url = new URL(tab.url);

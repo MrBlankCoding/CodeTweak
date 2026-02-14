@@ -1,24 +1,25 @@
 # Privacy and Permissions
 
-CodeTweak runs locally in your browser.
+CodeTweak runs locally and stores data in extension storage.
 
-## Data storage
+## Stored data
 
-- Scripts and settings are stored in extension local storage.
-- CodeTweak does not require account login.
+- Userscript code
+- Script settings
+- Extension settings
 
-## Why permissions are used
+## Permission map
 
-- `storage`: save scripts and settings
-- `scripting`, `webNavigation`: inject scripts at the right time
-- `tabs`: target active tabs
-- `notifications`: optional script notifications
-- `downloads`: script export/download
-- `offscreen`, `clipboardWrite`: clipboard support
-- `contextMenus`: element selector actions
+- `storage`: save scripts/settings
+- `scripting`, `webNavigation`: run scripts at chosen timing
+- `tabs`: target active tab
+- `notifications`: GM/system notifications
+- `downloads`: export scripts
+- `clipboardWrite`: clipboard support
+- `contextMenus`: selector and menu actions
 
-## Security controls
+## Security guidance
 
-- Disable `allow external resources` unless needed.
-- Use `confirm first run` for new scripts.
-- Keep scripts scoped with specific `@match` rules.
+- Keep `@match` patterns specific.
+- Keep `Allow external resources` off unless required.
+- Review imported scripts before enabling.

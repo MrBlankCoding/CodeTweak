@@ -1257,17 +1257,22 @@ class ScriptEditor {
     }
 
     // Clear container
-    container.innerHTML = "";
+    container.replaceChildren();
 
     if (errors.length === 0) {
       // Show empty state
-      container.innerHTML = `
-        <div class="error-log-empty">
-          <i data-feather="check-circle"></i>
-          <p>No errors detected</p>
-          <small>Errors will appear here when your script runs</small>
-        </div>
-      `;
+      const empty = document.createElement("div");
+      empty.className = "error-log-empty";
+      const icon = document.createElement("i");
+      icon.setAttribute("data-feather", "check-circle");
+      const title = document.createElement("p");
+      title.textContent = "No errors detected";
+      const subtitle = document.createElement("small");
+      subtitle.textContent = "Errors will appear here when your script runs";
+      empty.appendChild(icon);
+      empty.appendChild(title);
+      empty.appendChild(subtitle);
+      container.appendChild(empty);
       feather.replace();
       return;
     }
@@ -1286,24 +1291,39 @@ class ScriptEditor {
         hour: "2-digit",
         minute: "2-digit",
       });
-      const stack = error.stack
-        ? `<div class="error-log-stack">${this.escapeHtml(error.stack)}</div>`
-        : "";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = Boolean(error.resolved);
+      checkbox.dataset.errorIndex = String(index);
+      checkbox.title = "Mark as resolved";
 
-      errorItem.innerHTML = `
-        <input type="checkbox" ${
-          error.resolved ? "checked" : ""
-        } data-error-index="${index}" title="Mark as resolved">
-        <div class="error-log-header">
-          <span class="error-log-type">${error.type || "error"}</span>
-          <span class="error-log-timestamp">${timestamp}</span>
-        </div>
-        <div class="error-log-message">${this.escapeHtml(error.message)}</div>
-        ${stack}
-      `;
+      const header = document.createElement("div");
+      header.className = "error-log-header";
+      const type = document.createElement("span");
+      type.className = "error-log-type";
+      type.textContent = error.type || "error";
+      const time = document.createElement("span");
+      time.className = "error-log-timestamp";
+      time.textContent = timestamp;
+      header.appendChild(type);
+      header.appendChild(time);
+
+      const message = document.createElement("div");
+      message.className = "error-log-message";
+      message.textContent = error.message || "";
+
+      errorItem.appendChild(checkbox);
+      errorItem.appendChild(header);
+      errorItem.appendChild(message);
+
+      if (error.stack) {
+        const stackEl = document.createElement("div");
+        stackEl.className = "error-log-stack";
+        stackEl.textContent = error.stack;
+        errorItem.appendChild(stackEl);
+      }
 
       // Add checkbox event listener
-      const checkbox = errorItem.querySelector('input[type="checkbox"]');
       checkbox.addEventListener("change", (e) => {
         // Only allow checking, not unchecking (since we dismiss on check)
         if (e.target.checked) {

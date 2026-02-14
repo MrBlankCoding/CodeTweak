@@ -9,7 +9,30 @@ export class ResourceManager {
   }
 
   getURL(resourceName) {
-    return this.urls.get(resourceName) ?? null;
+    const originalUrl = this.urls.get(resourceName) ?? null;
+    const text = this.contents.get(resourceName);
+
+    if (typeof text === "string") {
+      const mime = this._inferMimeType(originalUrl);
+      const encoded = btoa(unescape(encodeURIComponent(text)));
+      return `data:${mime};base64,${encoded}`;
+    }
+
+    return originalUrl;
+  }
+
+  _inferMimeType(url) {
+    if (!url || typeof url !== "string") return "text/plain";
+    const lowerUrl = url.toLowerCase();
+    if (lowerUrl.endsWith(".css")) return "text/css";
+    if (lowerUrl.endsWith(".js")) return "application/javascript";
+    if (lowerUrl.endsWith(".json")) return "application/json";
+    if (lowerUrl.endsWith(".svg")) return "image/svg+xml";
+    if (lowerUrl.endsWith(".html") || lowerUrl.endsWith(".htm")) {
+      return "text/html";
+    }
+    if (lowerUrl.endsWith(".txt")) return "text/plain";
+    return "application/octet-stream";
   }
 
   static fromScript(script) {

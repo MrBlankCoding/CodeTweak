@@ -77,7 +77,17 @@ function notifyPorts(action) {
 }
 
 async function setupOffscreenDocument() {
-  if (await chrome.offscreen.hasDocument()) {
+  const offscreenApi = chrome.offscreen;
+  const hasDocumentFn = offscreenApi?.["hasDocument"];
+  const createDocumentFn = offscreenApi?.["createDocument"];
+  if (
+    typeof hasDocumentFn !== "function" ||
+    typeof createDocumentFn !== "function"
+  ) {
+    return;
+  }
+
+  if (await hasDocumentFn.call(offscreenApi)) {
     return;
   }
 
@@ -86,7 +96,7 @@ async function setupOffscreenDocument() {
     return;
   }
 
-  state.creatingOffscreenDocument = chrome.offscreen.createDocument({
+  state.creatingOffscreenDocument = createDocumentFn.call(offscreenApi, {
     url: "offscreen/offscreen.html",
     reasons: ["CLIPBOARD"],
     justification: "Clipboard access",
@@ -299,6 +309,7 @@ class GMAPIHandler {
   }
 
   async setValue({ name, value }) {
+    if (typeof name !== 'string') return { error: "Name must be a string" };
     const values = await this.getStorage();
     const oldValue = values[name];
     values[name] = value;
@@ -309,11 +320,13 @@ class GMAPIHandler {
   }
 
   async getValue({ name, defaultValue }) {
+    if (typeof name !== 'string') return { result: defaultValue };
     const values = await this.getStorage();
     return { result: values[name] ?? defaultValue };
   }
 
   async deleteValue({ name }) {
+    if (typeof name !== 'string') return { error: "Name must be a string" };
     const values = await this.getStorage();
     const oldValue = values[name];
     delete values[name];
@@ -329,17 +342,27 @@ class GMAPIHandler {
   }
 
   addValueChangeListener({ name }) {
+    const tabId = this.sender?.tab?.id;
+    if (!tabId || typeof name !== "string") {
+      return { result: null };
+    }
+
     if (!state.valueChangeListeners.has(name)) {
       state.valueChangeListeners.set(name, new Set());
     }
-    state.valueChangeListeners.get(name).add(this.sender.tab.id);
+    state.valueChangeListeners.get(name).add(tabId);
     return { result: null };
   }
 
   removeValueChangeListener({ name }) {
+    const tabId = this.sender?.tab?.id;
+    if (!tabId || typeof name !== "string") {
+      return { result: null };
+    }
+
     const listeners = state.valueChangeListeners.get(name);
     if (listeners) {
-      listeners.delete(this.sender.tab.id);
+      listeners.delete(tabId);
       if (listeners.size === 0) {
         state.valueChangeListeners.delete(name);
       }
@@ -348,18 +371,22 @@ class GMAPIHandler {
   }
 
   notifyValueChange(name, oldValue, newValue) {
+    const sourceTabId = this.sender?.tab?.id;
     const listeners = state.valueChangeListeners.get(name);
     if (!listeners) return;
 
     for (const tabId of listeners) {
-      if (tabId !== this.sender.tab.id) {
-        chrome.tabs
-          .sendMessage(tabId, {
-            type: "GM_VALUE_CHANGED",
-            payload: { name, oldValue, newValue, remote: true },
-          })
-          .catch(() => {}); // Ignore errors if tab is closed
-      }
+      chrome.tabs
+        .sendMessage(tabId, {
+          type: "GM_VALUE_CHANGED",
+          payload: {
+            name,
+            oldValue,
+            newValue,
+            remote: tabId !== sourceTabId,
+          },
+        })
+        .catch(() => {}); // Ignore errors if tab is closed
     }
   }
 
@@ -369,6 +396,15 @@ class GMAPIHandler {
   }
 
   async xmlhttpRequest({ details }) {
+    // Standardize URL to absolute
+    try {
+      if (!details.url.startsWith('http')) {
+        return { error: `Invalid URL: ${details.url}` };
+      }
+    } catch {
+      return { error: `Invalid URL: ${details.url}` };
+    }
+    
     return await handleCrossOriginXmlhttpRequest(details, this.sender.tab.id);
   }
 
@@ -380,14 +416,9 @@ class GMAPIHandler {
     };
 
     const defaultIconUrl = chrome.runtime.getURL("assets/icons/icon128.png");
-    const requestedIconUrl =
-      typeof details.image === "string" && details.image.trim()
-        ? details.image.trim()
-        : defaultIconUrl;
-
-    const createNotification = (iconUrl) =>
+    const createNotification = () =>
       new Promise((resolve) => {
-        chrome.notifications.create({ ...baseOptions, iconUrl }, () => {
+        chrome.notifications.create({ ...baseOptions, iconUrl: defaultIconUrl }, () => {
           if (chrome.runtime.lastError) {
             resolve({
               ok: false,
@@ -399,31 +430,34 @@ class GMAPIHandler {
         });
       });
 
-    let result = await createNotification(requestedIconUrl);
-
-    if (!result.ok && requestedIconUrl !== defaultIconUrl) {
-      console.warn(
-        "[CodeTweak] Notification image failed, retrying with extension icon:",
-        result.error
-      );
-      result = await createNotification(defaultIconUrl);
-    }
+    const result = await createNotification();
 
     if (!result.ok) {
-      return { error: result.error };
+      console.warn("[CodeTweak] Notification creation failed:", result.error);
     }
 
     return { result: null };
   }
 
   async setClipboard({ data }) {
-    await setupOffscreenDocument();
-    chrome.runtime.sendMessage({
-      target: "offscreen",
-      type: "copy-to-clipboard",
-      data,
-    });
-    return { result: null };
+    const text = typeof data === "string" ? data : String(data ?? "");
+
+    if (chrome.offscreen?.["createDocument"] && chrome.offscreen?.["hasDocument"]) {
+      await setupOffscreenDocument();
+      chrome.runtime.sendMessage({
+        target: "offscreen",
+        type: "copy-to-clipboard",
+        data: text,
+      });
+      return { result: null };
+    }
+
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return { result: null };
+    }
+
+    return { error: "Clipboard API is unavailable in this browser." };
   }
 
   async download({ url, name }) {
@@ -599,6 +633,15 @@ const messageHandlers = {
     return { scripts };
   },
 
+  getCurrentTab: async (_message, _sender) => {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      return { tab };
+    } catch (error) {
+      return { error: error.message };
+    }
+  },
+
   updateScript: async (message) => {
     const { scripts = [] } = await chrome.storage.local.get("scripts");
     const scriptIndex = scripts.findIndex((s) => s.id === message.scriptId);
@@ -662,9 +705,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   // Handle script errors
   if (message.type === "SCRIPT_ERROR") {
-    storeScriptError(message.scriptId, message.error);
-    sendResponse({ success: true });
-    return false;
+    storeScriptError(message.scriptId, message.error).then(() => {
+      sendResponse({ success: true });
+    });
+    return true;
   }
 
   if (message.type === "CLEAR_SCRIPT_ERRORS") {
@@ -682,14 +726,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message.type === "offscreen-clipboard-response") {
-    return false;
-  }
-
   // Handle standard messages
   const handler = messageHandlers[message.action];
   if (handler) {
-    handler(message, sender)
+    Promise.resolve(handler(message, sender))
       .then(sendResponse)
       .catch((error) => {
         console.error(`Message handler error [${message.action}]:`, error);
@@ -698,7 +738,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  sendResponse({ error: "Unknown action" });
+  // Only send "Unknown action" if we didn't handle it above
+  if (message.type !== "offscreen-clipboard-response") {
+    sendResponse({ error: "Unknown action" });
+  }
   return false;
 });
 

@@ -1,43 +1,65 @@
-# GM APIs
+# GM API Reference
 
-CodeTweak supports safe GM APIs used by most userscripts.
+This page lists common APIs used in CodeTweak scripts.
 
-## Storage
+## Value storage
 
-- `GM_setValue(name, value)`
-- `GM_getValue(name, defaultValue)`
-- `GM_deleteValue(name)`
-- `GM_listValues()`
-- `GM_addValueChangeListener(name, callback)`
-- `GM_removeValueChangeListener(listenerId)`
+```javascript
+await GM_setValue("theme", "dark");
+const theme = await GM_getValue("theme", "light");
+const keys = await GM_listValues();
+await GM_deleteValue("theme");
+```
 
-## Network and IO
+## HTTP requests
 
-- `GM_xmlhttpRequest(details)`
-- `GM_download(urlOrDetails, name)`
-- `GM_setClipboard(data, type)`
+Requires the extension setting that allows external requests.
 
-## UI
+```javascript
+GM_xmlhttpRequest({
+  method: "GET",
+  url: "https://api.example.com/data",
+  onload: (res) => {
+    console.log(res.status, res.responseText);
+  },
+  onerror: (err) => {
+    console.error(err);
+  }
+});
+```
 
-- `GM_notification(details)`
-- `GM_openInTab(url, options)`
-- `GM_addStyle(css)`
-- `GM_addElement(...)`
-- `GM_registerMenuCommand(caption, onClick, accessKey)`
-- `GM_unregisterMenuCommand(commandId)`
+## Notification
 
-## Resources
+```javascript
+GM_notification({
+  title: "CodeTweak",
+  text: "Script finished"
+});
+```
 
-- `GM_getResourceText(name)`
-- `GM_getResourceURL(name)`
+## Clipboard
 
-## Other
+```javascript
+await GM_setClipboard("Copied from CodeTweak");
+```
 
-- `GM_log(...args)`
-- `unsafeWindow`
-- `GM_info`
+## Style injection
 
-## Notes
+```javascript
+GM_addStyle(`
+  .promo-banner { display: none !important; }
+`);
+```
 
-- Some APIs depend on metadata and grants used by the script.
-- Cross-origin requests depend on your dashboard security setting.
+## Metadata grants
+
+Declare grants explicitly when you use GM APIs.
+
+```javascript
+// ==UserScript==
+// @grant GM_getValue
+// @grant GM_setValue
+// @grant GM_xmlhttpRequest
+// @grant GM_notification
+// ==/UserScript==
+```

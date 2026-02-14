@@ -142,7 +142,7 @@ class AISettings {
 
   renderProfilesList() {
     const list = this.elements.apiKeysList;
-    list.innerHTML = "";
+    list.replaceChildren();
 
     if (this.isDraftProfile) {
       list.appendChild(this.createDraftProfileItem());
@@ -171,7 +171,15 @@ class AISettings {
     item.className = "api-key-item active";
 
     const info = document.createElement("div");
-    info.innerHTML = `<strong>${this.t("aiSettingsNewProfile", "New Profile")}</strong><span>${this.t("aiSettingsProfileHintNew", "New unsaved profile")}</span>`;
+    const title = document.createElement("strong");
+    title.textContent = this.t("aiSettingsNewProfile", "New Profile");
+    const subtitle = document.createElement("span");
+    subtitle.textContent = this.t(
+      "aiSettingsProfileHintNew",
+      "New unsaved profile"
+    );
+    info.appendChild(title);
+    info.appendChild(subtitle);
 
     item.appendChild(info);
     return item;
@@ -187,7 +195,12 @@ class AISettings {
     const modelLabel = config.model || this.t("aiSettingsNoModel", "no model");
     const keySuffix = this.maskApiKey(config.apiKey || "");
 
-    info.innerHTML = `<strong>${providerLabel}</strong><span>${modelLabel} ${keySuffix}</span>`;
+    const providerStrong = document.createElement("strong");
+    providerStrong.textContent = providerLabel;
+    const modelSpan = document.createElement("span");
+    modelSpan.textContent = `${modelLabel} ${keySuffix}`.trim();
+    info.appendChild(providerStrong);
+    info.appendChild(modelSpan);
 
     const actions = document.createElement("div");
     actions.className = "api-key-actions";
@@ -196,7 +209,7 @@ class AISettings {
     deleteBtn.type = "button";
     deleteBtn.className = "btn-icon btn-danger";
     deleteBtn.title = this.t("aiSettingsDeleteProfile", "Delete profile");
-    deleteBtn.innerHTML = '<i data-feather="trash-2" width="14" height="14"></i>';
+    deleteBtn.appendChild(this.createFeatherIcon("trash-2", 14));
 
     deleteBtn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -256,7 +269,14 @@ class AISettings {
   updateModelOptions(selectedModel = "") {
     const provider = this.elements.provider.value;
     const modelSelect = this.elements.model;
-    modelSelect.innerHTML = `<option value="">${this.t("aiSettingsSelectModel", "Select model...")}</option>`;
+    modelSelect.replaceChildren();
+    const defaultOption = document.createElement("option");
+    defaultOption.value = "";
+    defaultOption.textContent = this.t(
+      "aiSettingsSelectModel",
+      "Select model..."
+    );
+    modelSelect.appendChild(defaultOption);
 
     const staticModels = this.providerModels[provider] || [];
     const fetchedModels = this.availableModels
@@ -587,9 +607,17 @@ class AISettings {
     }
 
     if (button.id === "testConnection") {
-      button.innerHTML = `<i data-feather="activity" width="16" height="16"></i>${this.t("aiSettingsTest", "Test")}`;
+      button.replaceChildren(
+        this.createFeatherIcon("activity", 16),
+        document.createTextNode(this.t("aiSettingsTest", "Test"))
+      );
     } else if (button.id === "fetchModelsBtn") {
-      button.innerHTML = `<i data-feather="refresh-cw" width="14" height="14"></i>${this.t("aiSettingsSyncModels", "Sync Models")}`;
+      button.replaceChildren(
+        this.createFeatherIcon("refresh-cw", 14),
+        document.createTextNode(
+          this.t("aiSettingsSyncModels", "Sync Models")
+        )
+      );
     }
 
     feather.replace();
@@ -613,6 +641,14 @@ class AISettings {
   t(key, fallback) {
     const value = getMessageSync(key);
     return value && value !== key ? value : fallback;
+  }
+
+  createFeatherIcon(name, size = 16) {
+    const icon = document.createElement("i");
+    icon.setAttribute("data-feather", name);
+    icon.setAttribute("width", String(size));
+    icon.setAttribute("height", String(size));
+    return icon;
   }
 }
 

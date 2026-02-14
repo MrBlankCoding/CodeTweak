@@ -38,8 +38,6 @@ for (const dir of copyDirs) {
 
 const chromeManifest = JSON.parse(readFileSync("src/manifest.json", "utf8"));
 const firefoxManifest = { ...chromeManifest };
-
-// Firefox MV3 uses background.scripts instead of background.service_worker
 if (firefoxManifest.background?.service_worker) {
   firefoxManifest.background = {
     scripts: [firefoxManifest.background.service_worker],
@@ -47,12 +45,10 @@ if (firefoxManifest.background?.service_worker) {
   };
 }
 
-// Remove Chrome-specific permissions
 firefoxManifest.permissions = (firefoxManifest.permissions || []).filter(
   (p) => p !== "offscreen"
 );
 
-// Remove the 'world' property from content_scripts (not supported in Firefox)
 if (firefoxManifest.content_scripts) {
   firefoxManifest.content_scripts = firefoxManifest.content_scripts.map(
     (cs) => {
@@ -66,9 +62,6 @@ firefoxManifest.browser_specific_settings = {
   gecko: {
     id: "codetweak@MrBlankCoding",
     strict_min_version: "128.0",
-    data_collection_permissions: {
-      required: ["none"],
-    },
   },
 };
 
@@ -89,10 +82,10 @@ await build({
     "src/popup/popup.js",
     "src/editor/editor.js",
     "src/dashboard/dashboard.js",
-    "src/ai_dom_editor/ai_dom_content.js",
-    "src/ai_dom_editor/ai_dom_sidebar.js",
-    "src/ai_dom_editor/ai_dom_editor.js",
-    "src/ai_dom_editor/ai_settings.js",
+    "src/ai_dom_editor/editor/ai_dom_content.js",
+    "src/ai_dom_editor/sidebar/ai_dom_sidebar.js",
+    "src/ai_dom_editor/editor/ai_dom_editor.js",
+    "src/ai_dom_editor/settings/ai_settings.js",
   ],
   bundle: true,
   outdir,
@@ -100,8 +93,61 @@ await build({
   platform: "browser",
   define: {
     "process.env.BROWSER": JSON.stringify(browser),
+    global: "window",
   },
 });
+
+// --- POST-BUILD CLEANUP --- //
+// Remove eval and Function("return this") which violate CSP
+const filesToCleanup = [
+  join(outdir, "ai_dom_editor/editor/ai_dom_editor.js"),
+  join(outdir, "editor/editor.js"),
+  join(outdir, "dashboard/dashboard.js"),
+  join(outdir, "popup/popup.js"),
+  join(outdir, "ai_dom_editor/settings/ai_settings.js"),
+  join(outdir, "GM/gm_core.js"),
+];
+
+for (const file of filesToCleanup) {
+  try {
+    let content = readFileSync(file, "utf8");
+    let changed = false;
+
+    if (content.includes('Function("return this")')) {
+      content = content.replace(/Function\("return this"\)/g, "(function() { return window; })");
+      changed = true;
+    }
+    if (/new\s+Function\s*\(\s*['"]unsafeWindow['"]\s*,\s*userCode\s*\)/.test(content)) {
+      content = content.replace(/new\s+Function\s*\(\s*['"]unsafeWindow['"]\s*,\s*userCode\s*\)/g, "(function(){ throw new EvalError('Function constructor is blocked in Firefox'); })");
+      changed = true;
+    }
+
+    const evalPatterns = [
+      /eval\("this"\)/g,
+      /\(1,\s*eval\)\("this"\)/g,
+    ];
+
+    for (const pattern of evalPatterns) {
+      if (pattern.test(content)) {
+        content = content.replace(pattern, "window");
+        changed = true;
+      }
+    }
+
+    const iframeWritePattern = /iframeDocument\.write\([^;]*document\.F=Object[^;]*\);/g;
+    if (iframeWritePattern.test(content)) {
+      content = content.replace(iframeWritePattern, "iframeDocument.F = Object;");
+      changed = true;
+    }
+
+    if (changed) {
+      writeFileSync(file, content);
+      console.log(`Cleaned up CSP-violating patterns in ${file}`);
+    }
+  } catch (err) {
+    console.warn(`Could not cleanup ${file}: ${err.message}`);
+  }
+}
 
 // --- ZIP IN PRODUCTION --- //
 if (isProduction) {

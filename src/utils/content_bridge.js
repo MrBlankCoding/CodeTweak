@@ -6,6 +6,29 @@ const extensionId =
     ? chrome.runtime.id
     : null;
 
+function toCloneable(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+if (
+  typeof chrome !== "undefined" &&
+  chrome.runtime &&
+  typeof chrome.runtime.onMessage?.addListener === "function"
+) {
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message?.type === "GM_VALUE_CHANGED") {
+      window.postMessage(
+        {
+          type: "GM_VALUE_CHANGED",
+          payload: message.payload,
+        },
+        "*"
+      );
+    }
+    return false;
+  });
+}
+
 window.addEventListener("message", (event) => {
   // Only accept messages from our extension
   if (event.source !== window || !event.data) {
@@ -71,14 +94,30 @@ window.addEventListener("message", (event) => {
     return;
   }
 
+  let payload;
+  try {
+    payload = toCloneable({
+      action: action,
+      ...originalPayload,
+    });
+  } catch {
+    window.postMessage(
+      {
+        type: "GM_API_RESPONSE",
+        extensionId: extensionId,
+        messageId,
+        error: "Request payload is not serializable.",
+      },
+      "*"
+    );
+    return;
+  }
+
   // create the payload for the background
   chrome.runtime.sendMessage(
     {
       type: "GM_API_REQUEST",
-      payload: {
-        action: action,
-        ...originalPayload,
-      },
+      payload,
     },
     (_response) => {
       let responsePayload = {};

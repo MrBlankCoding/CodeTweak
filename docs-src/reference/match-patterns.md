@@ -1,14 +1,23 @@
 # Match Patterns
 
-Match patterns control where scripts run.
+`@match` controls where a script runs.
 
 ## Common patterns
 
-- Single site: `*://example.com/*`
+- One site: `*://example.com/*`
 - Subdomains: `*://*.example.com/*`
-- All HTTP(S): `*://*/*`
+- Any HTTP(S): `*://*/*`
 
-## Keep scope narrow
+## Example metadata
+
+```javascript
+// ==UserScript==
+// @match https://github.com/*
+// @match https://gist.github.com/*
+// ==/UserScript==
+```
+
+## Good vs bad scope
 
 Good:
 
@@ -22,8 +31,6 @@ Risky:
 *://*/*
 ```
 
-## Tips
+## Rule
 
-- Use the smallest scope that works.
-- Avoid broad patterns unless required.
-- Re-check patterns after importing scripts.
+Use the narrowest pattern that still works.

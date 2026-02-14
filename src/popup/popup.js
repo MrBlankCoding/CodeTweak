@@ -96,18 +96,27 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     if (matchingScripts.length === 0) {
       emptyState.style.display = "flex";
+      emptyState.replaceChildren();
       
       if (scripts.length === 0) {
-        emptyState.innerHTML = `
-          <div class="empty-icon">
-            <i data-feather="file-text"></i>
-          </div>
-          <p><br>${getMessageSync('popupCreateFirst')}</p>
-        `;
+        const iconDiv = document.createElement("div");
+        iconDiv.className = "empty-icon";
+        const icon = document.createElement("i");
+        icon.setAttribute("data-feather", "file-text");
+        iconDiv.appendChild(icon);
+        
+        const p = document.createElement("p");
+        p.appendChild(document.createElement("br"));
+        p.appendChild(document.createTextNode(getMessageSync('popupCreateFirst')));
+        
+        emptyState.appendChild(iconDiv);
+        emptyState.appendChild(p);
       } else {
-        emptyState.innerHTML = `
-          <p>${getMessageSync('popupNoScriptsForPage')}<br>${getMessageSync('popupCreateOrVisit')}</p>
-        `;
+        const p = document.createElement("p");
+        p.appendChild(document.createTextNode(getMessageSync('popupNoScriptsForPage')));
+        p.appendChild(document.createElement("br"));
+        p.appendChild(document.createTextNode(getMessageSync('popupCreateOrVisit')));
+        emptyState.appendChild(p);
       }
       return;
     }
@@ -222,7 +231,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function loadMenuCommands() {
     const menuContainer = document.getElementById("menuCommandList");
     const menuSection = document.getElementById("menuCommandSection");
-    menuContainer.innerHTML = "";
+    menuContainer.replaceChildren();
 
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });

@@ -229,8 +229,51 @@ if (window.GMBridge === undefined) {
       await loader.loadScripts(requireUrls);
 
       // Execute in the current world directly to avoid page-level DOM sink restrictions.
-      const run = new Function("unsafeWindow", userCode);
-      run.call(window, window);
+      const injectViaScriptTag = () => {
+        const script = document.createElement("script");
+        const code = `(function(unsafeWindow) { \n${userCode}\n })(window);`;
+        
+        // Try inline textContent first (most reliable if no CSP or 'unsafe-inline' allowed)
+        try {
+          script.textContent = code;
+          (document.head || document.documentElement).appendChild(script);
+          script.remove();
+          return;
+        } catch (e) {
+          console.warn("[GMBridge] Inline script textContent failed, trying Blob URL...");
+        }
+
+        // Fallback to Blob URL
+        const blob = new Blob([code], { type: "text/javascript" });
+        const url = URL.createObjectURL(blob);
+        const blobScript = document.createElement("script");
+        blobScript.src = url;
+        
+        blobScript.onload = () => {
+          URL.revokeObjectURL(url);
+          blobScript.remove();
+        };
+        blobScript.onerror = (err) => {
+          console.error(`[GMBridge] Both inline and Blob injection failed for ${scriptId}. This site's CSP is too strict for direct injection.`, err);
+          URL.revokeObjectURL(url);
+          blobScript.remove();
+        };
+
+        (document.head || document.documentElement).appendChild(blobScript);
+      };
+
+      // Firefox strictly forbids Function() in MV3. 
+      // Chrome allows it if 'unsafe-eval' is in extension CSP, but not on page CSP.
+      if (typeof browser !== 'undefined' || /Firefox/.test(navigator.userAgent)) {
+        injectViaScriptTag();
+      } else {
+        try {
+          const run = new Function("unsafeWindow", userCode);
+          run.call(window, window);
+        } catch (e) {
+          injectViaScriptTag();
+        }
+      }
     } catch (error) {
       console.error(
         `[GMBridge] Error executing user script ${scriptId}:`,

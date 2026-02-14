@@ -1,30 +1,44 @@
 # Getting Started
 
-CodeTweak is a Chrome extension for userscripts.
+This is the shortest path from install to working script.
 
-Use this flow:
+## 1. Install CodeTweak
 
-1. Install the extension.
-2. Create or import a script.
-3. Set where it runs.
-4. Save and test.
+Follow [Install CodeTweak](/guide/installation).
 
-## Before you begin
+## 2. Create a script
 
-- Chrome or Chromium browser
-- Developer mode enabled only for manual install
+1. Open CodeTweak popup.
+2. Click `Create Script`.
+3. Paste this:
 
-## Quick start
+```javascript
+// ==UserScript==
+// @name        Hello CodeTweak
+// @match       https://example.com/*
+// @run-at      document-end
+// @grant       none
+// ==/UserScript==
 
-1. Open the CodeTweak dashboard.
-2. Click `New Script`.
-3. Add metadata (`@name`, `@match`, `@run-at`).
-4. Write your script code.
-5. Save.
-6. Open a matching page and confirm it runs.
+console.log("CodeTweak script running");
+```
 
-## Next pages
+4. Save.
 
-- [Install CodeTweak](/guide/installation)
+## 3. Verify it runs
+
+1. Open `https://example.com`.
+2. Open DevTools console.
+3. Confirm you see `CodeTweak script running`.
+
+## 4. If it does not run
+
+- Check `@match` first.
+- Check `@run-at` second.
+- Open script error logs in the editor.
+
+Next:
+
 - [Use the Editor](/guide/editor)
 - [Manage Scripts](/guide/dashboard)
+- [GM API Reference](/reference/gm-apis)

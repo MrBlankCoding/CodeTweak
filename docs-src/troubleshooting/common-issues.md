@@ -1,30 +1,44 @@
-# Common Issues
+# Troubleshooting
 
 ## Script does not run
 
-Check:
+Check in this order:
 
-1. Script is enabled.
-2. URL matches `@match` rules.
-3. Run timing is correct.
-4. No runtime error in page console.
+1. `@match` pattern.
+2. Script is enabled.
+3. `@run-at` timing.
+4. Console errors.
 
-## GM API returns error
+Quick test:
 
-Check:
+```javascript
+console.log("script loaded", location.href);
+```
 
-- API is enabled in script settings.
-- Script metadata/grants are correct.
-- External resource settings allow what script needs.
+## GM API is undefined
 
-## Imported script fails
+Cause: missing `@grant`.
 
-- Review metadata block.
-- Confirm required URLs are reachable.
-- Try `document_end` first.
+Fix:
 
-## Dashboard looks wrong
+```javascript
+// ==UserScript==
+// @grant GM_getValue
+// @grant GM_setValue
+// ==/UserScript==
+```
 
-- Reload extension in `chrome://extensions`.
-- Hard refresh dashboard tab.
-- Rebuild if running unpacked.
+## Cross-origin request fails
+
+Cause: external requests disabled in extension settings.
+
+Fix:
+
+- Enable the external resources/request setting in dashboard.
+- Retry request.
+
+## Firefox CSP/eval warnings
+
+Firefox MV3 is stricter than Chromium.
+CodeTweak Firefox build avoids runtime `eval/new Function` in extension code paths.
+If you still see warnings, rebuild and reload the latest package.

@@ -141,10 +141,20 @@ export class UserscriptHandler {
 
   async createUserscript(code, name = null, explanation = null) {
     try {
-      const [tab] = await chrome.tabs.query({
-        active: true,
-        currentWindow: true,
-      });
+      let tab;
+      if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
+        [tab] = await chrome.tabs.query({
+          active: true,
+          currentWindow: true,
+        });
+      } else {
+        const response = await chrome.runtime.sendMessage({ action: 'getCurrentTab' });
+        tab = response?.tab;
+      }
+      
+      if (!tab || !tab.url) {
+        throw new Error('Could not determine current tab URL');
+      }
       const url = new URL(tab.url);
 
       const prepared = this.extractCleanCodeAndExplanation(code, explanation);

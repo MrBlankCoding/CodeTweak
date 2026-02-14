@@ -4,23 +4,23 @@ layout: home
 title: CodeTweak Docs
 hero:
   name: CodeTweak
-  text: A simple userscript manager for Chrome
-  tagline: Write, install, and manage userscripts with a built-in editor.
+  text: Userscript manager for MV3 browsers
+  tagline: Install, write, and debug userscripts without extra tooling.
   actions:
     - theme: brand
-      text: Get Started
+      text: Start Here
       link: /guide/getting-started
     - theme: alt
-      text: GM API Reference
+      text: GM API
       link: /reference/gm-apis
 
 features:
   - title: Fast setup
-    details: Install CodeTweak, add your first script, and run it in minutes.
-  - title: Built-in editor
-    details: Write and test scripts with linting, formatting, and metadata support.
-  - title: Script dashboard
-    details: Filter, enable, disable, and update scripts in one place.
-  - title: Greasy Fork support
-    details: Search and import scripts directly from the dashboard.
+    details: Build, load unpacked, and run a script in minutes.
+  - title: Practical editor
+    details: Metadata, linting, script logs, and one-click save.
+  - title: GM API support
+    details: Persistent values, notifications, clipboard, and HTTP requests.
+  - title: Debug workflow
+    details: Check run timing, URL scope, and script errors quickly.
 ---

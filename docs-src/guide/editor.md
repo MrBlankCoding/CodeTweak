@@ -1,32 +1,57 @@
 # Use the Editor
 
-The editor is where you write and save scripts.
+CodeTweak has two editing modes:
 
-## Create a script
+- Standard script editor
+- AI DOM Editor sidebar
 
-1. Open dashboard.
-2. Click `New Script`.
-3. Fill script name and metadata.
+## Standard editor workflow
 
-## Recommended metadata
+1. Set metadata.
+2. Write script code.
+3. Save.
+4. Test on a matching URL.
+
+Minimal metadata template:
 
 ```javascript
 // ==UserScript==
-// @name         My Script
-// @match        *://example.com/*
-// @run-at       document_end
+// @name        My Script
+// @match       https://app.example.com/*
+// @run-at      document-end
+// @grant       GM_getValue
+// @grant       GM_setValue
 // ==/UserScript==
 ```
 
-## Run timing
+State example:
 
-- `document_start`: runs early
-- `document_end`: runs when DOM is ready
-- `document_idle`: runs after page load
+```javascript
+(async () => {
+  const count = await GM_getValue("count", 0);
+  await GM_setValue("count", count + 1);
+  console.log("runs:", count + 1);
+})();
+```
 
-## Tips
+## AI DOM Editor workflow
 
-- Keep one purpose per script.
-- Use clear names.
-- Keep match patterns narrow.
-- Test on one site before broad patterns.
+1. Open popup.
+2. Click `AI DOM Editor`.
+3. Click `Select Element` in sidebar.
+4. Click target element on page.
+5. Enter instruction.
+
+Example instructions:
+
+- `Hide this element`
+- `Change this button text to "Checkout"`
+- `Add red border to this card`
+
+Review generated code before saving.
+
+## Common mistakes
+
+- `@match` too broad (`*://*/*`) or too narrow.
+- Wrong `@run-at` for the DOM state you expect.
+- Missing `@grant` for GM APIs.

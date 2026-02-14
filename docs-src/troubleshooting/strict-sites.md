@@ -1,22 +1,23 @@
 # Strict Sites
 
-Some pages have strict policies and complex script loading.
+Some sites use strict CSP or dynamic page bootstrapping.
 
-## What to try
+## What to change first
 
-1. Use `injectInto: default` so CodeTweak can fall back between worlds.
-2. Keep `@require` dependencies minimal.
-3. Use `document_end` before moving to `document_start`.
-4. Test features one by one.
+1. Keep `@match` exact.
+2. Start with `@run-at document-end`.
+3. Move to `document-idle` if elements load late.
+4. Remove unnecessary `@require` dependencies.
 
-## Common causes
+## Diagnostic pattern
 
-- Script assumes globals that are not ready.
-- External dependency fails to load.
-- Site blocks or changes expected DOM timing.
+```javascript
+const el = document.querySelector("#target");
+console.log("target found:", Boolean(el), location.href);
+```
 
-## Debug checklist
+## If behavior is inconsistent
 
-- Enable `Enhanced Debugging` in settings.
-- Check script error logs in editor.
-- Confirm target URL and run timing.
+- Turn on `Enhanced debugging`.
+- Check editor script error logs.
+- Disable other scripts that touch the same page.

@@ -1,28 +1,25 @@
 # Manage Scripts
 
-Use the dashboard to control all scripts.
+Use the dashboard to control scripts and global settings.
 
-## Script list
+## Script list actions
 
-You can:
+- Enable or disable scripts.
+- Search by script name.
+- Filter by status and run timing.
+- Open script in editor.
+- Delete script.
 
-- Enable or disable scripts
-- Search by name
-- Filter by website, status, and run timing
-- Edit or delete scripts
+## Settings that matter
 
-## Settings tab
+- `Enable scripts by default`
+- `Show notifications`
+- `Enhanced debugging`
+- `Allow external resources`
+- `Confirm first run`
 
-Main settings include:
+## Safe defaults
 
-- Enable scripts by default
-- Show notifications
-- Enhanced debugging
-- Allow external resources
-- Confirm first run
-
-## Best practices
-
-- Keep unused scripts disabled.
-- Review scripts with broad `@match` rules.
-- Keep `allow external resources` off unless needed.
+- Keep `Allow external resources` off unless needed.
+- Keep URL scope tight in `@match`.
+- Disable scripts you are not using.

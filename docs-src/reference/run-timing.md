@@ -1,23 +1,33 @@
 # Run Timing
 
-Run timing decides when a script executes.
+`@run-at` decides when your script executes.
 
-## `document_start`
+## Timing options
 
-- Earliest injection point.
-- Use for early hooks and guards.
-- DOM may not be ready.
+- `document-start`: before DOM is fully parsed
+- `document-end`: after DOMContentLoaded
+- `document-idle`: after load when browser is idle
 
-## `document_end`
+## Example
 
-- Runs when DOM is ready.
-- Best default for most scripts.
+```javascript
+// ==UserScript==
+// @run-at document-end
+// ==/UserScript==
 
-## `document_idle`
+const button = document.querySelector("button.buy");
+if (button) button.textContent = "Buy now";
+```
 
-- Runs after full page load.
-- Best for UI work and low priority tasks.
+## Pick the right timing
 
-## Recommendation
+- Use `document-start` for early CSS/patching.
+- Use `document-end` for most DOM edits.
+- Use `document-idle` for heavy or non-critical work.
 
-Start with `document_end`. Move earlier or later only when needed.
+## Debug timing issues
+
+If selectors return `null`, move later:
+
+- `document-start` -> `document-end`
+- `document-end` -> `document-idle`

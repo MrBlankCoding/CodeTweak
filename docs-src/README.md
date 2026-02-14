@@ -1,5 +1,11 @@
-# CodeTweak Docs Source
+# Docs Source
 
-This folder contains VitePress source files.
+VitePress source files for CodeTweak docs.
 
-Build output is generated into `/docs` for GitHub Pages.
+## Commands
+
+```bash
+npm run docs:dev
+npm run docs:build
+npm run docs:preview
+```

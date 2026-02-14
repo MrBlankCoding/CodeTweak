@@ -180,13 +180,17 @@ function createScriptListItem(script) {
 
   const editButton = document.createElement("button");
   editButton.className = "btn-action btn-edit";
-  editButton.innerHTML = `<i data-feather="edit-2"></i>`;
+  const editIcon = document.createElement("i");
+  editIcon.setAttribute("data-feather", "edit-2");
+  editButton.appendChild(editIcon);
   editButton.title = "Edit Script";
   editButton.addEventListener("click", () => editScript(script.id));
 
   const deleteButton = document.createElement("button");
   deleteButton.className = "btn-action btn-delete";
-  deleteButton.innerHTML = `<i data-feather="trash-2"></i>`;
+  const deleteIcon = document.createElement("i");
+  deleteIcon.setAttribute("data-feather", "trash-2");
+  deleteButton.appendChild(deleteIcon);
   deleteButton.title = "Delete Script";
   deleteButton.addEventListener("click", () => deleteScript(script.id));
 
@@ -217,7 +221,7 @@ function showNotification(message, type = "info") {
 
   const closeBtn = document.createElement("button");
   closeBtn.className = "notification-close";
-  closeBtn.innerHTML = "×";
+  closeBtn.textContent = "×";
   closeBtn.addEventListener("click", () => {
     notification.classList.add("notification-hide");
     setTimeout(() => notification.remove(), 300);

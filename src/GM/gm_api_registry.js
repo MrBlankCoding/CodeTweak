@@ -32,18 +32,18 @@
     }
 
     async setValue(name, value) {
-      if (typeof name !== 'string' || name === '') {
-        console.warn('GM_setValue: name must be a non-empty string');
+      if (typeof name !== 'string') {
+        console.warn('GM_setValue: name must be a string');
         return;
       }
       const resolvedValue = value instanceof Promise ? await value : value;
       this.cache.set(name, resolvedValue);
-      return this.bridge.call("setValue", { name, value: resolvedValue });
+      return this.bridge.call("setValue", { name, value: this._toCloneable(resolvedValue) });
     }
 
     getValue(name, defaultValue) {
-      if (typeof name !== 'string' || name === '') {
-        console.warn('GM_getValue: name must be a non-empty string');
+      if (typeof name !== 'string') {
+        console.warn('GM_getValue: name must be a string');
         return defaultValue;
       }
       if (this.cache.has(name)) {
@@ -52,7 +52,7 @@
 
       // Populate cache asynchronously
       this.bridge
-        .call("getValue", { name, defaultValue })
+        .call("getValue", { name, defaultValue: this._toCloneable(defaultValue) })
         .then((value) => this.cache.set(name, value))
         .catch(() => {});
 
@@ -60,15 +60,15 @@
     }
 
     async getValueAsync(name, defaultValue) {
-      if (typeof name !== 'string' || name === '') {
-        console.warn('GM.getValue: name must be a non-empty string');
+      if (typeof name !== 'string') {
+        console.warn('GM.getValue: name must be a string');
         return defaultValue;
       }
       if (this.cache.has(name)) {
         return this.cache.get(name);
       }
       try {
-        const value = await this.bridge.call("getValue", { name, defaultValue });
+        const value = await this.bridge.call("getValue", { name, defaultValue: this._toCloneable(defaultValue) });
         this.cache.set(name, value);
         return value;
       } catch {
@@ -77,8 +77,8 @@
     }
 
     async deleteValue(name) {
-      if (typeof name !== 'string' || name === '') {
-        console.warn('GM_deleteValue: name must be a non-empty string');
+      if (typeof name !== 'string') {
+        console.warn('GM_deleteValue: name must be a string');
         return;
       }
       this.cache.delete(name);
@@ -86,16 +86,37 @@
     }
 
     listValues() {
-      return Array.from(this.cache.keys()).filter(key => typeof key === 'string' && key !== '');
+      return Array.from(this.cache.keys()).filter((key) => typeof key === "string");
     }
 
     initializeCache(initialValues = {}) {
       this.cache.clear();
       Object.entries(initialValues).forEach(([k, v]) => {
-        if (typeof k === 'string' && k !== '') {
+        if (typeof k === 'string') {
           this.cache.set(k, v);
         }
       });
+    }
+
+    _toCloneable(val) {
+      if (val === null || typeof val !== "object") return val;
+      if (typeof val === "function") return undefined; // Can't clone functions
+      
+      try {
+        if (Array.isArray(val)) {
+          return val.map(item => this._toCloneable(item));
+        }
+        
+        const clone = {};
+        for (const [k, v] of Object.entries(val)) {
+          if (typeof v !== "function") {
+            clone[k] = this._toCloneable(v);
+          }
+        }
+        return clone;
+      } catch {
+        return String(val);
+      }
     }
 
     // Main registraction
@@ -135,7 +156,7 @@
       }
 
       if (enabled.gmListValues) {
-        const syncFn = () => Array.from(this.cache.keys()).filter(key => typeof key === 'string' && key !== '');
+        const syncFn = () => Array.from(this.cache.keys()).filter((key) => typeof key === "string");
         const asyncFn = () => this.bridge.call("listValues");
         window.GM_listValues = syncFn;
         window.GM.listValues = asyncFn;
@@ -143,24 +164,25 @@
 
       if (enabled.gmAddValueChangeListener) {
         const addFn = (name, callback) => {
-          if (typeof name !== 'string' || typeof callback !== 'function') return;
+          if (typeof name !== 'string' || name === '' || typeof callback !== 'function') return;
           const listenerId = this.listenerIdCounter++;
           if (!this.valueChangeListeners.has(name)) {
             this.valueChangeListeners.set(name, new Map());
           }
           this.valueChangeListeners.get(name).set(listenerId, callback);
-          this.bridge.call("addValueChangeListener", { name });
+          this.bridge.call("addValueChangeListener", { name }).catch(() => {});
           return listenerId;
         };
         window.GM_addValueChangeListener = window.GM.addValueChangeListener = addFn;
 
         const removeFn = (listenerId) => {
+          if (listenerId === null || listenerId === undefined) return;
           for (const [name, listeners] of this.valueChangeListeners.entries()) {
             if (listeners.has(listenerId)) {
               listeners.delete(listenerId);
               if (listeners.size === 0) {
                 this.valueChangeListeners.delete(name);
-                this.bridge.call("removeValueChangeListener", { name });
+                this.bridge.call("removeValueChangeListener", { name }).catch(() => {});
               }
               break;
             }
@@ -174,26 +196,41 @@
       // GM_openInTab
       if (enabled.gmOpenInTab) {
         const fn = (url, opts = {}) => {
-          return this.bridge.call("openInTab", { url, options: opts });
+          if (!url) return;
+          return this.bridge.call("openInTab", { url, options: this._toCloneable(opts) });
         };
         window.GM_openInTab = window.GM.openInTab = fn;
       }
 
       // GM_notification
       if (enabled.gmNotification) {
-        const fn = (textOrDetails, titleOrOnDone, image) => {
+        const normalizeDetails = (textOrDetails, titleOrOnDone, image) => {
           const details = typeof textOrDetails === "object" 
             ? { ...textOrDetails } 
             : { text: textOrDetails, title: titleOrOnDone, image };
           
-          // Filter out functions
-          const cloneable = Object.fromEntries(
-            Object.entries(details).filter(([, v]) => typeof v !== "function")
-          );
+          if (!details.text) {
+            throw new Error("GM_notification: 'text' is required");
+          }
           
-          return this.bridge.call("notification", { details: cloneable });
+          return this._toCloneable(details);
         };
-        window.GM_notification = window.GM.notification = fn;
+        window.GM_notification = (textOrDetails, titleOrOnDone, image) => {
+          try {
+            const details = normalizeDetails(textOrDetails, titleOrOnDone, image);
+            this.bridge.call("notification", { details }).catch(() => {});
+          } catch (e) {
+            console.warn(e.message);
+          }
+        };
+        window.GM.notification = (textOrDetails, titleOrOnDone, image) => {
+          try {
+            const details = normalizeDetails(textOrDetails, titleOrOnDone, image);
+            return this.bridge.call("notification", { details }).catch(() => null);
+          } catch (e) {
+            return Promise.reject(e);
+          }
+        };
       }
 
       // GM_registerMenuCommand
@@ -243,29 +280,29 @@
 
     _registerResources(enabled) {
       if (enabled.gmGetResourceText) {
-        const fn = async (name) => {
-          if (typeof name !== 'string' || name === '') {
-            console.warn('GM_getResourceText: resource name must be a non-empty string');
-            return '';
+        const syncFn = (name) => {
+          if (typeof name !== "string" || name === "") {
+            console.warn("GM_getResourceText: resource name must be a string");
+            return null;
           }
           const text = this.resourceManager.getText(name);
-          // Ensure we always return a string, never null or undefined
-          return (text != null) ? String(text) : '';
+          return text == null ? null : String(text);
         };
-        window.GM_getResourceText = window.GM.getResourceText = fn;
+        window.GM_getResourceText = syncFn;
+        window.GM.getResourceText = (name) => Promise.resolve(syncFn(name));
       }
 
       if (enabled.gmGetResourceURL) {
-        const fn = async (name) => {
-          if (typeof name !== 'string' || name === '') {
-            console.warn('GM_getResourceURL: resource name must be a non-empty string');
-            return '';
+        const syncFn = (name) => {
+          if (typeof name !== "string" || name === "") {
+            console.warn("GM_getResourceURL: resource name must be a string");
+            return null;
           }
           const url = this.resourceManager.getURL(name);
-          // Ensure we always return a string, never null or undefined
-          return (url != null) ? String(url) : '';
+          return url == null ? null : String(url);
         };
-        window.GM_getResourceURL = window.GM.getResourceURL = fn;
+        window.GM_getResourceURL = syncFn;
+        window.GM.getResourceURL = (name) => Promise.resolve(syncFn(name));
       }
     }
 
@@ -273,8 +310,12 @@
       // GM_addStyle
       if (enabled.gmAddStyle) {
         const fn = (css) => {
+          if (css == null) {
+            console.warn("GM_addStyle: css must be a string");
+            return null;
+          }
           const style = document.createElement("style");
-          style.textContent = css;
+          style.textContent = String(css);
           (document.head || document.documentElement).appendChild(style);
           return style;
         };
@@ -358,10 +399,7 @@
       if (enabled.gmDownload) {
         const fn = (urlOrDetails, name) => {
           const details = typeof urlOrDetails === 'object' ? urlOrDetails : { url: urlOrDetails, name: name };
-          const cloneableDetails = Object.fromEntries(
-            Object.entries(details).filter(([, v]) => typeof v !== 'function')
-          );
-          return this.bridge.call("download", cloneableDetails);
+          return this.bridge.call("download", this._toCloneable(details));
         };
         window.GM_download = window.GM.download = fn;
       }
@@ -381,9 +419,12 @@
               method: (details.method || "GET").toUpperCase(),
             };
 
-            if (absoluteURL.origin === window.location.origin) {
-              return this._handleSameOriginXmlhttpRequest(normalizedDetails);
+            const supportedMethods = ["GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"];
+            if (!supportedMethods.includes(normalizedDetails.method)) {
+              console.warn(`GM_xmlhttpRequest: Unknown method "${normalizedDetails.method}"`);
             }
+
+            // Always use cross-origin handler (via background script) to bypass CORS reliably
             return this._handleCrossOriginXmlhttpRequest(normalizedDetails);
           } catch (error) {
             console.error(
@@ -400,7 +441,34 @@
             };
           }
         };
-        window.GM_xmlhttpRequest = window.GM.xmlhttpRequest = fn;
+        window.GM_xmlhttpRequest = fn;
+        window.GM.xmlhttpRequest = fn;
+        window.GM.xmlHttpRequest = (details = {}) => {
+          return new Promise((resolve, reject) => {
+            const wrapped = {
+              ...details,
+              onload: (response) => {
+                if (typeof details.onload === "function") {
+                  details.onload(response);
+                }
+                resolve(response);
+              },
+              onerror: (error) => {
+                if (typeof details.onerror === "function") {
+                  details.onerror(error);
+                }
+                reject(error);
+              },
+              ontimeout: (error) => {
+                if (typeof details.ontimeout === "function") {
+                  details.ontimeout(error);
+                }
+                reject(error);
+              },
+            };
+            fn(wrapped);
+          });
+        };
       }
     }
 

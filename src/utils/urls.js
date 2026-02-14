@@ -2,11 +2,7 @@ export function urlMatchesPattern(url, pattern) {
   try {
     if (!url || !pattern) return false;
     if (pattern === url) return true;
-
-    // universal wildcard
     if (pattern === "*://*/*") return true;
-
-    // Default if nothing provided
     if (!pattern.includes("://")) {
       pattern = "*://" + pattern;
     }
@@ -46,8 +42,6 @@ export function urlMatchesPattern(url, pattern) {
     }
 
     const segments = patternPath.split("/").filter(Boolean);
-    
-    // If no segments (just /), match any path
     if (segments.length === 0) return true;
     
     const regexParts = ["^"];
@@ -57,7 +51,6 @@ export function urlMatchesPattern(url, pattern) {
       if (segment === "**") {
         regexParts.push("(?:\\/.*)?" );
       } else if (segment === "*") {
-        // Single * as entire segment matches one or more path segments
         regexParts.push("(?:\\/[^/]+)+");
       } else {
         const segmentRegex = segment
@@ -67,7 +60,6 @@ export function urlMatchesPattern(url, pattern) {
       }
     }
 
-    // Allow optional trailing slash and anything after the last segment if it ends with *
     const lastSegment = segments[segments.length - 1];
     if (lastSegment === "*" || lastSegment.includes("*")) {
       regexParts.push("(?:\\/.*)?$");
@@ -125,24 +117,16 @@ export function formatRunAt(runAt) {
     return map[runAt] || runAt || "Load";
   }
 
-/**
- * Analyzes a script and returns a description of its features
- * Detects: GM APIs, CSS, JS code, resources, and execution timing
- */
 export function getScriptDescription(script) {
     const features = [];
-    
-    // Check for CSS styles
     if (script.css?.trim()) {
       features.push("CSS");
     }
     
-    // Check for JavaScript code
     if (script.js?.trim()) {
       features.push("JS");
     }
     
-    // Count enabled GM APIs
     let gmApiCount = 0;
     const gmApiKeys = [
       'gmSetValue', 'gmGetValue', 'gmDeleteValue', 'gmListValues',
@@ -160,35 +144,24 @@ export function getScriptDescription(script) {
     if (gmApiCount > 0) {
       features.push(`${gmApiCount} GM API${gmApiCount > 1 ? 's' : ''}`);
     }
-    
-    // Check for resources
+
     if (script.resources && script.resources.length > 0) {
       features.push(`${script.resources.length} Resource${script.resources.length > 1 ? 's' : ''}`);
     }
     
-    // Check for required scripts
     if (script.requiredScripts && script.requiredScripts.length > 0) {
       features.push(`${script.requiredScripts.length} Lib${script.requiredScripts.length > 1 ? 's' : ''}`);
     }
     
-    // Return empty string if no features are present
     if (features.length === 0) return 'Basic';
-    
-    // Return feature list
     return features.join(" • ");
   }
 
 export function formatUrlPattern(pattern) {
     if (!pattern) return "All sites";
-    
-    // Remove protocol
     let display = pattern.replace(/^https?:\/\//, "");
-    
-    // Clean up wildcards for better display
-    display = display.replace(/^\*\./, ""); // Remove leading wildcard subdomain
-    display = display.replace(/\/\*$/, ""); // Remove trailing wildcard path
-    
-    // Truncate long URLs
+    display = display.replace(/^\*\./, "");
+    display = display.replace(/\/\*$/, "");
     if (display.length > 30) {
       display = display.substring(0, 27) + "...";
     }
@@ -196,7 +169,6 @@ export function formatUrlPattern(pattern) {
     return display;
   }
 
-// Checks if its a webpage
 export function isValidWebpage(url) {
     if (!url) return false;
     

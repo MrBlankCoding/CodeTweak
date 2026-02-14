@@ -1,37 +1,41 @@
 # Install CodeTweak
 
-## Chrome Web Store install
-
-1. Open the Chrome Web Store listing.
-2. Click `Add to Chrome`.
-3. Pin the extension if you want quick access.
-
-## Manual install (developer mode)
-
-1. Build the extension:
+## Chrome / Chromium
 
 ```bash
 npm install
 npm run build:chrome
 ```
 
-2. Open `chrome://extensions`.
-3. Enable `Developer mode`.
-4. Click `Load unpacked`.
-5. Select `build/chrome`.
+Then:
 
-## Update manual install
+1. Open `chrome://extensions`.
+2. Turn on `Developer mode`.
+3. Click `Load unpacked`.
+4. Select `build/chrome`.
 
-1. Rebuild:
+## Firefox
+
+```bash
+npm install
+npm run build:firefox
+```
+
+Build output:
+
+- `build/codetweak-firefox.zip`
+
+## Update after code changes
 
 ```bash
 npm run build:chrome
+npm run build:firefox
 ```
 
-2. In `chrome://extensions`, click `Reload` on CodeTweak.
+Then reload the extension from the browser extension page.
 
-## Verify install
+## Quick install check
 
-- Open the popup.
-- Open the dashboard.
-- Create a test script.
+- Popup opens.
+- Dashboard opens.
+- You can create and save a script.

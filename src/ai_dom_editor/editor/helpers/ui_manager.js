@@ -18,13 +18,17 @@ export class UIManager {
       ".code-preview-actions .action-btn"
     );
     allButtons.forEach((btn) => {
+      btn.replaceChildren();
+      const icon = this._createFeatherIcon("", 16);
+      
       if (this.editor.currentScript) {
-        btn.innerHTML = `<i data-feather="refresh-cw" width="16" height="16"></i>`;
+        icon.setAttribute("data-feather", "refresh-cw");
         btn.title = `Update script: ${this.editor.currentScript.name}`;
       } else {
-        btn.innerHTML = `<i data-feather="plus-circle" width="16" height="16"></i>`;
+        icon.setAttribute("data-feather", "plus-circle");
         btn.title = "Create new script";
       }
+      btn.appendChild(icon);
       feather.replace();
     });
 
@@ -46,7 +50,13 @@ export class UIManager {
             this.editor.currentScript.id
           }`;
           editLink.target = "_blank";
-          editLink.innerHTML = `<i data-feather="edit-2" width="16" height="16"></i>`;
+          
+          const icon = document.createElement("i");
+          icon.setAttribute("data-feather", "edit-2");
+          icon.setAttribute("width", "16");
+          icon.setAttribute("height", "16");
+          editLink.appendChild(icon);
+          
           const actionBtn = actionsDiv.querySelector(".action-btn");
           if (actionBtn) {
             actionBtn.parentNode.insertBefore(editLink, actionBtn);
@@ -98,7 +108,7 @@ export class UIManager {
       if (data.explanation) {
         const explanationEl = document.createElement("div");
         explanationEl.className = "message-text";
-        explanationEl.innerHTML = marked.parse(data.explanation);
+        this._setSafeInnerHTML(explanationEl, marked.parse(data.explanation));
         content.appendChild(explanationEl);
       }
 
@@ -115,7 +125,7 @@ export class UIManager {
       
       // Check if the text looks like markdown
       if (this._hasMarkdownFormatting(data.message || text)) {
-        textEl.innerHTML = marked.parse(data.message || text);
+        this._setSafeInnerHTML(textEl, marked.parse(data.message || text));
       } else {
         textEl.textContent = data.message || text;
       }
@@ -130,10 +140,17 @@ export class UIManager {
 
       const errorEl = document.createElement("div");
       errorEl.className = "error-message";
-      errorEl.innerHTML = `
-        <i data-feather="alert-circle" width="16" height="16"></i>
-        <span>An error occurred</span>
-      `;
+      
+      const errorIcon = document.createElement("i");
+      errorIcon.setAttribute("data-feather", "alert-circle");
+      errorIcon.setAttribute("width", "16");
+      errorIcon.setAttribute("height", "16");
+      errorEl.appendChild(errorIcon);
+      
+      const errorSpan = document.createElement("span");
+      errorSpan.textContent = "An error occurred";
+      errorEl.appendChild(errorSpan);
+      
       content.appendChild(errorEl);
       feather.replace();
     } else {
@@ -219,10 +236,17 @@ export class UIManager {
 
     const title = document.createElement("div");
     title.className = "code-preview-title";
-    title.innerHTML = `
-      <i data-feather="code" width="16" height="16"></i>
-      <span>${name}</span>
-    `;
+    
+    const codeIcon = document.createElement("i");
+    codeIcon.setAttribute("data-feather", "code");
+    codeIcon.setAttribute("width", "16");
+    codeIcon.setAttribute("height", "16");
+    title.appendChild(codeIcon);
+    
+    const titleSpan = document.createElement("span");
+    titleSpan.textContent = name;
+    title.appendChild(titleSpan);
+    
     header.appendChild(title);
 
     const actionsDiv = document.createElement("div");
@@ -231,14 +255,19 @@ export class UIManager {
     const copyBtn = document.createElement("button");
     copyBtn.className = "btn-text icon-btn";
     copyBtn.title = "Copy to clipboard";
-    copyBtn.innerHTML = `<i data-feather="copy" width="16" height="16"></i>`;
+    
+    const copyIcon = document.createElement("i");
+    copyIcon.setAttribute("data-feather", "copy");
+    copyIcon.setAttribute("width", "16");
+    copyIcon.setAttribute("height", "16");
+    copyBtn.appendChild(copyIcon);
+
     copyBtn.addEventListener("click", () => {
       this.copyToClipboard(code);
-      const originalHTML = copyBtn.innerHTML;
-      copyBtn.innerHTML = `<i data-feather="check" width="16" height="16"></i>`;
+      copyBtn.replaceChildren(this._createFeatherIcon("check", 16));
       feather.replace();
       setTimeout(() => {
-        copyBtn.innerHTML = originalHTML;
+        copyBtn.replaceChildren(this._createFeatherIcon("copy", 16));
         feather.replace();
       }, 2000);
     });
@@ -253,7 +282,13 @@ export class UIManager {
         this.editor.currentScript.id
       }`;
       editLink.target = "_blank";
-      editLink.innerHTML = `<i data-feather="edit-2" width="16" height="16"></i>`;
+      
+      const editIcon = document.createElement("i");
+      editIcon.setAttribute("data-feather", "edit-2");
+      editIcon.setAttribute("width", "16");
+      editIcon.setAttribute("height", "16");
+      editLink.appendChild(editIcon);
+      
       actionsDiv.appendChild(editLink);
     }
 
@@ -263,13 +298,17 @@ export class UIManager {
 
     // Update button icon and functionality based on current state
     const updateButtonState = () => {
+      applyIconBtn.replaceChildren();
+      const icon = this._createFeatherIcon("", 16);
+      
       if (this.editor.currentScript) {
-        applyIconBtn.innerHTML = `<i data-feather="refresh-cw" width="16" height="16"></i>`;
+        icon.setAttribute("data-feather", "refresh-cw");
         applyIconBtn.title = `Update script: ${this.editor.currentScript.name}`;
       } else {
-        applyIconBtn.innerHTML = `<i data-feather="plus-circle" width="16" height="16"></i>`;
+        icon.setAttribute("data-feather", "plus-circle");
         applyIconBtn.title = "Create new script";
       }
+      applyIconBtn.appendChild(icon);
       feather.replace();
     };
 
@@ -322,11 +361,13 @@ export class UIManager {
 
     const loading = document.createElement("div");
     loading.className = "loading-indicator";
-    loading.innerHTML = `
-      <div class="loading-dot"></div>
-      <div class="loading-dot"></div>
-      <div class="loading-dot"></div>
-    `;
+    
+    for (let i = 0; i < 3; i++) {
+      const dot = document.createElement("div");
+      dot.className = "loading-dot";
+      loading.appendChild(dot);
+    }
+    
     content.appendChild(loading);
 
     messageEl.appendChild(content);
@@ -415,5 +456,95 @@ export class UIManager {
     if (selector) {
       selector.remove();
     }
+  }
+
+  /**
+   * Safely sets innerHTML by parsing it and only allowing a subset of safe elements/attributes.
+   * This helps satisfy Firefox's security requirements.
+   */
+  _setSafeInnerHTML(element, html) {
+    if (typeof html !== "string" || !html) {
+      element.replaceChildren();
+      return;
+    }
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+
+    const allowedTags = new Set([
+      "A",
+      "BLOCKQUOTE",
+      "BR",
+      "CODE",
+      "EM",
+      "H1",
+      "H2",
+      "H3",
+      "H4",
+      "H5",
+      "H6",
+      "HR",
+      "LI",
+      "OL",
+      "P",
+      "PRE",
+      "STRONG",
+      "TABLE",
+      "TBODY",
+      "TD",
+      "TH",
+      "THEAD",
+      "TR",
+      "UL",
+    ]);
+
+    const walk = (node) => {
+      const children = Array.from(node.children);
+      children.forEach((child) => {
+        if (!allowedTags.has(child.tagName)) {
+          child.replaceWith(...Array.from(child.childNodes));
+          return;
+        }
+
+        // Remove all attributes except explicit link allowlist.
+        Array.from(child.attributes).forEach((attr) => {
+          const name = attr.name.toLowerCase();
+          if (child.tagName === "A" && (name === "href" || name === "title")) {
+            return;
+          }
+          child.removeAttribute(attr.name);
+        });
+
+        if (child.tagName === "A") {
+          const href = child.getAttribute("href");
+          if (!href || !/^(https?:|mailto:)/i.test(href)) {
+            child.removeAttribute("href");
+          } else {
+            child.setAttribute("target", "_blank");
+            child.setAttribute("rel", "noopener noreferrer");
+          }
+        }
+
+        walk(child);
+      });
+    };
+
+    walk(doc.body);
+
+    const fragment = document.createDocumentFragment();
+    while (doc.body.firstChild) {
+      fragment.appendChild(doc.body.firstChild);
+    }
+    element.replaceChildren(fragment);
+  }
+
+  _createFeatherIcon(name, size = 16) {
+    const icon = document.createElement("i");
+    if (name) {
+      icon.setAttribute("data-feather", name);
+    }
+    icon.setAttribute("width", String(size));
+    icon.setAttribute("height", String(size));
+    return icon;
   }
 }
