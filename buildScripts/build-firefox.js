@@ -62,6 +62,9 @@ firefoxManifest.browser_specific_settings = {
   gecko: {
     id: "codetweak@MrBlankCoding",
     strict_min_version: "128.0",
+    data_collection_permissions: {
+      required: ["none"],
+    },
   },
 };
 
