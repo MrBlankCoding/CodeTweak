@@ -60,7 +60,7 @@ if (firefoxManifest.content_scripts) {
 
 firefoxManifest.browser_specific_settings = {
   gecko: {
-    id: "codetweak@MrBlankCoding",
+    id: "MrBlankCoding@CodeTweak",
     strict_min_version: "140.0",
     data_collection_permissions: {
       required: ["none"],
