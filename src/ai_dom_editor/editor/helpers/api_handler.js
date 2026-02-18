@@ -259,7 +259,7 @@ export class ApiHandler {
   _buildSystemPrompt(domSummary, previousCode) {
     const safeDom = (domSummary || "").slice(0, 50000);
 
-    let prompt = `You are a senior Tampermonkey engineer. Generate practical, robust JavaScript for userscripts.
+    let prompt = `You are a senior userscript engineer. Generate practical, robust JavaScript for userscripts.
 
 OUTPUT CONTRACT (required):
 1) First line: Script Name: <short descriptive title>

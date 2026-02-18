@@ -72,3 +72,8 @@ npm run docs:build
 ## License
 
 MIT. See `LICENSE.txt`.
+
+## Privacy Policy
+
+- Docs page: `https://mrblankcoding.github.io/CodeTweak/guide/privacy`
+- Source page: `docs-src/guide/privacy.md`

@@ -6,7 +6,7 @@
  * - signature: TypeScript signature for editor autocomplete
  * - name: Standard GM API name
  * - el: HTML element ID for the checkbox
- * - tmName: Tampermonkey metadata header name (@grant)
+ * - name: metadata header name (@grant)
  * - category: UI category grouping
  * - description: Brief description of what the API does
  */
@@ -19,7 +19,6 @@ export const GM_API_CATEGORIES = {
 };
 
 export const GM_API_DEFINITIONS = {
-  // Storage & Data APIs
   GM_setValue: {
     signature: "declare function GM_setValue(name: string, value: any): Promise<void>;",
     name: "GM_setValue",

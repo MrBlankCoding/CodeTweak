@@ -1,6 +1,6 @@
 import { GM_API_DEFINITIONS } from '../GM/gmApiDefinitions.js';
 
-// Map tampermonkey style to ours
+// Map classic style to ours
 function buildGrantToApiMapping() {
   const grantToGmApi = {};
   
@@ -118,7 +118,7 @@ function buildApiToGrantMapping() {
 
 const gmApiFlagToGrant = buildApiToGrantMapping();
 
-function buildTampermonkeyMetadata(script, useModernStyle = false) {
+function buildMetadata(script, useModernStyle = false) {
   const lines = [];
   lines.push("// ==UserScript==");
 
@@ -147,12 +147,10 @@ function buildTampermonkeyMetadata(script, useModernStyle = false) {
     push("run-at", runAt);
   }
 
-  // Requires
   if (script.requires && script.requires.length) {
     script.requires.forEach((url) => push("require", url));
   }
 
-  // Resources
   if (script.resources && script.resources.length) {
     script.resources.forEach((r) => push("resource", `${r.name} ${r.url}`));
   }
@@ -188,5 +186,5 @@ function buildTampermonkeyMetadata(script, useModernStyle = false) {
 export {
   parseUserScriptMetadata,
   extractMetadataBlock,
-  buildTampermonkeyMetadata,
+  buildMetadata,
 };

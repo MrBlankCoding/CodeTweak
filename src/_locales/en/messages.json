@@ -166,6 +166,12 @@
   "aboutDocsText": {
     "message": "Documentation and guides available at:"
   },
+  "aboutPrivacyText": {
+    "message": "Privacy policy:"
+  },
+  "aboutPrivacyLink": {
+    "message": "Privacy Policy"
+  },
   
   "greasyForkTitle": {
     "message": "Browse Greasy Fork Scripts"

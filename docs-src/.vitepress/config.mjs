@@ -20,7 +20,8 @@ export default defineConfig({
         items: [
           { text: 'Getting Started', link: '/guide/getting-started' },
           { text: 'Install CodeTweak', link: '/guide/installation' },
-          { text: 'Use the Editor', link: '/guide/editor' },
+          { text: 'Using the Editor', link: '/guide/editor' },
+          { text: 'Writing Userscripts', link: '/guide/writing-userscripts' },
           { text: 'Manage Scripts', link: '/guide/dashboard' },
           { text: 'Install From Greasy Fork', link: '/guide/greasyfork' },
           { text: 'Privacy and Permissions', link: '/guide/privacy' }
@@ -29,7 +30,17 @@ export default defineConfig({
       {
         text: 'Reference',
         items: [
-          { text: 'GM APIs', link: '/reference/gm-apis' },
+          { 
+            text: 'GM APIs', 
+            link: '/reference/gm-apis',
+            items: [
+              { text: 'Storage & Data', link: '/reference/gm-apis/storage' },
+              { text: 'UI & Elements', link: '/reference/gm-apis/ui' },
+              { text: 'Network & Clipboard', link: '/reference/gm-apis/network' },
+              { text: 'Resources', link: '/reference/gm-apis/resources' },
+              { text: 'Advanced & Utility', link: '/reference/gm-apis/advanced' }
+            ]
+          },
           { text: 'Run Timing', link: '/reference/run-timing' },
           { text: 'Match Patterns', link: '/reference/match-patterns' }
         ]

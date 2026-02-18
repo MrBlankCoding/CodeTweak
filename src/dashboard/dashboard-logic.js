@@ -1,5 +1,5 @@
 import {
-  buildTampermonkeyMetadata,
+  buildMetadata,
   extractMetadataBlock,
 } from "../utils/metadataParser.js";
 import { ScriptAnalyzer } from '../utils/scriptAnalyzer.js';
@@ -285,7 +285,7 @@ function exportScript(script) {
   try {
     const code = script.code || "";
     const hasMetadata = !!extractMetadataBlock(code);
-    const metadata = hasMetadata ? "" : buildTampermonkeyMetadata(script);
+    const metadata = hasMetadata ? "" : buildMetadata(script);
     const content = hasMetadata ? code : `${metadata}\n\n${code}`;
 
     const fileNameSafe = (script.name || "script")

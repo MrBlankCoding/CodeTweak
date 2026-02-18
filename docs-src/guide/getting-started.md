@@ -39,6 +39,7 @@ console.log("CodeTweak script running");
 
 Next:
 
-- [Use the Editor](/guide/editor)
+- [Using the Editor](/guide/editor)
+- [Writing Userscripts](/guide/writing-userscripts)
 - [Manage Scripts](/guide/dashboard)
 - [GM API Reference](/reference/gm-apis)
