@@ -25,7 +25,9 @@ describe('trusted types helper', () => {
 
     expect(createPolicy).toHaveBeenCalledTimes(1);
     expect(policy1).toBe(policy2);
-    expect(policy1.createHTML('<div onclick="x()"><script>x</script>ok</div>')).toBe('<div >ok</div>');
+    expect(policy1.createHTML('<div onclick="x()"><script>x</script>ok</div>')).toBe(
+      '<div >ok</div>'
+    );
   });
 
   it('returns null if policy creation throws', async () => {

@@ -6,7 +6,7 @@ CodeTweak allows userscripts to declare and use external static resources (like 
 
 ## Implementation Details
 
-CodeTweak uses a **Resource Manager** to fetch and cache all resources defined in your script's metadata block *before* the script is executed.
+CodeTweak uses a **Resource Manager** to fetch and cache all resources defined in your script's metadata block _before_ the script is executed.
 
 1.  **Metadata Definition**: Resources must be declared in the header:
     ```javascript
@@ -27,7 +27,7 @@ GM_getResourceText(name: string): string
 GM.getResourceText(name: string): Promise<string>
 ```
 
--   **name**: The unique identifier for the resource as defined in the `@resource` tag.
+- **name**: The unique identifier for the resource as defined in the `@resource` tag.
 
 ---
 
@@ -41,14 +41,16 @@ GM.getResourceURL(name: string): Promise<string>
 ```
 
 ### Data URLs
+
 CodeTweak typically returns a **Base64 Data URL** (e.g., `data:image/png;base64,...`) for images and other binary resources. This allows you to use the resource directly in `<img>` or `<video>` tags:
 
 ```javascript
-const logo = GM_getResourceURL("logo");
-const img = document.createElement("img");
+const logo = GM_getResourceURL('logo');
+const img = document.createElement('img');
 img.src = logo;
 document.body.appendChild(img);
 ```
+
 ---
 
 ## Resource Best Practices

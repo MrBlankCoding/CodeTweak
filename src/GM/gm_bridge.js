@@ -12,7 +12,7 @@ export class ResourceManager {
     const originalUrl = this.urls.get(resourceName) ?? null;
     const text = this.contents.get(resourceName);
 
-    if (typeof text === "string") {
+    if (typeof text === 'string') {
       const mime = this._inferMimeType(originalUrl);
       const encoded = btoa(unescape(encodeURIComponent(text)));
       return `data:${mime};base64,${encoded}`;
@@ -22,17 +22,17 @@ export class ResourceManager {
   }
 
   _inferMimeType(url) {
-    if (!url || typeof url !== "string") return "text/plain";
+    if (!url || typeof url !== 'string') return 'text/plain';
     const lowerUrl = url.toLowerCase();
-    if (lowerUrl.endsWith(".css")) return "text/css";
-    if (lowerUrl.endsWith(".js")) return "application/javascript";
-    if (lowerUrl.endsWith(".json")) return "application/json";
-    if (lowerUrl.endsWith(".svg")) return "image/svg+xml";
-    if (lowerUrl.endsWith(".html") || lowerUrl.endsWith(".htm")) {
-      return "text/html";
+    if (lowerUrl.endsWith('.css')) return 'text/css';
+    if (lowerUrl.endsWith('.js')) return 'application/javascript';
+    if (lowerUrl.endsWith('.json')) return 'application/json';
+    if (lowerUrl.endsWith('.svg')) return 'image/svg+xml';
+    if (lowerUrl.endsWith('.html') || lowerUrl.endsWith('.htm')) {
+      return 'text/html';
     }
-    if (lowerUrl.endsWith(".txt")) return "text/plain";
-    return "application/octet-stream";
+    if (lowerUrl.endsWith('.txt')) return 'text/plain';
+    return 'application/octet-stream';
   }
 
   static fromScript(script) {
@@ -51,20 +51,20 @@ export class ResourceManager {
 export class GMBridge {
   static ResourceManager = ResourceManager;
 
-  constructor(scriptId, extensionId, worldType = "MAIN") {
+  constructor(scriptId, extensionId, worldType = 'MAIN') {
     this.scriptId = scriptId;
     this.extensionId = extensionId;
     this.worldType = worldType;
     this.messageIdCounter = 0;
     this.pendingPromises = new Map();
 
-    if (this.worldType === "MAIN") {
+    if (this.worldType === 'MAIN') {
       this.setupMessageListener();
     }
   }
 
   setupMessageListener() {
-    window.addEventListener("message", (event) => {
+    window.addEventListener('message', (event) => {
       if (!this.isValidResponse(event)) return;
 
       const { messageId, error, result } = event.data;
@@ -85,7 +85,7 @@ export class GMBridge {
   isValidResponse(event) {
     return (
       event.source === window &&
-      event.data?.type === "GM_API_RESPONSE" &&
+      event.data?.type === 'GM_API_RESPONSE' &&
       event.data.extensionId === this.extensionId &&
       this.pendingPromises.has(event.data.messageId)
     );
@@ -96,10 +96,10 @@ export class GMBridge {
 
     // Use direct chrome.runtime API if available (ISOLATED world)
     if (
-      this.worldType === "ISOLATED" &&
-      typeof chrome !== "undefined" &&
+      this.worldType === 'ISOLATED' &&
+      typeof chrome !== 'undefined' &&
       chrome.runtime &&
-      typeof chrome.runtime.sendMessage === "function"
+      typeof chrome.runtime.sendMessage === 'function'
     ) {
       return this.callIsolated(action, enrichedPayload);
     }
@@ -115,13 +115,13 @@ export class GMBridge {
 
       window.postMessage(
         {
-          type: "GM_API_REQUEST",
+          type: 'GM_API_REQUEST',
           extensionId: this.extensionId,
           messageId,
           action,
           payload,
         },
-        "*"
+        '*'
       );
     });
   }
@@ -131,27 +131,23 @@ export class GMBridge {
       // Defensive: ensure chrome.runtime.sendMessage still available
       if (
         !(
-          typeof chrome !== "undefined" &&
+          typeof chrome !== 'undefined' &&
           chrome.runtime &&
-          typeof chrome.runtime.sendMessage === "function"
+          typeof chrome.runtime.sendMessage === 'function'
         )
       ) {
-        reject(new Error("chrome.runtime.sendMessage is not available"));
+        reject(new Error('chrome.runtime.sendMessage is not available'));
         return;
       }
 
       try {
         chrome.runtime.sendMessage(
           {
-            type: "GM_API_REQUEST",
+            type: 'GM_API_REQUEST',
             payload: { action, ...payload },
           },
           (response) => {
-            if (
-              typeof chrome !== "undefined" &&
-              chrome.runtime &&
-              chrome.runtime.lastError
-            ) {
+            if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.lastError) {
               reject(new Error(chrome.runtime.lastError.message));
               return;
             }

@@ -6,7 +6,8 @@
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   height: 100%;
   margin: 0;
   padding: 0;
@@ -63,10 +64,9 @@ html, body {
   display: none;
 }
 html {
-  -ms-overflow-style: none;  
-  scrollbar-width: none;     
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
-
 
 .logo {
   display: flex;
@@ -198,8 +198,6 @@ html {
   display: block;
 }
 
-
-
 .help-tabs {
   display: flex;
   gap: 8px;
@@ -215,7 +213,9 @@ html {
   font-weight: 500;
   padding: 8px 18px 8px 18px;
   cursor: pointer;
-  transition: color 0.15s, border-bottom 0.15s;
+  transition:
+    color 0.15s,
+    border-bottom 0.15s;
 }
 .help-tab.active {
   color: var(--text-primary, #fff);

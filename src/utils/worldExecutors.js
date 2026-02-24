@@ -8,7 +8,7 @@ export function createWorldExecutor(
   requiredUrls,
   gmInfo,
   enhancedDebugging,
-  worldType = "MAIN"
+  worldType = 'MAIN'
 ) {
   function waitForGMBridge(callback) {
     if (window.GMBridge) {
@@ -16,7 +16,7 @@ export function createWorldExecutor(
       return;
     }
 
-    window.addEventListener("GMBridgeReady", callback, { once: true });
+    window.addEventListener('GMBridgeReady', callback, { once: true });
   }
 
   function preventReExecution(currentScriptId) {
@@ -32,15 +32,15 @@ export function createWorldExecutor(
 
   function bindNativeFunctions() {
     const nativeFunctions = [
-      "fetch",
-      "setTimeout",
-      "clearTimeout",
-      "setInterval",
-      "clearInterval",
-      "requestAnimationFrame",
-      "cancelAnimationFrame",
-      "requestIdleCallback",
-      "cancelIdleCallback",
+      'fetch',
+      'setTimeout',
+      'clearTimeout',
+      'setInterval',
+      'clearInterval',
+      'requestAnimationFrame',
+      'cancelAnimationFrame',
+      'requestIdleCallback',
+      'cancelIdleCallback',
     ];
 
     nativeFunctions.forEach((fnName) => {
@@ -52,8 +52,8 @@ export function createWorldExecutor(
 
   function exposeGMInfo(info) {
     try {
-      if (!Object.prototype.hasOwnProperty.call(window, "GM_info")) {
-        Object.defineProperty(window, "GM_info", {
+      if (!Object.prototype.hasOwnProperty.call(window, 'GM_info')) {
+        Object.defineProperty(window, 'GM_info', {
           value: Object.freeze(info || {}),
           writable: false,
           configurable: false,
@@ -64,17 +64,11 @@ export function createWorldExecutor(
         window.GM.info = window.GM_info;
       }
     } catch (error) {
-      console.warn("CodeTweak: Unable to define GM_info", error);
+      console.warn('CodeTweak: Unable to define GM_info', error);
     }
   }
 
-  function executeUserscript(
-    userscriptCode,
-    userscript,
-    userscriptId,
-    requires,
-    scriptLoader
-  ) {
+  function executeUserscript(userscriptCode, userscript, userscriptId, requires, scriptLoader) {
     const run = () => {
       window.GMBridge.executeUserScriptWithDependencies(
         userscriptCode,
@@ -86,22 +80,19 @@ export function createWorldExecutor(
 
     const runAtHandlers = {
       document_end: () => {
-        if (
-          document.readyState === "interactive" ||
-          document.readyState === "complete"
-        ) {
+        if (document.readyState === 'interactive' || document.readyState === 'complete') {
           run();
         } else {
-          window.addEventListener("DOMContentLoaded", () => run(), {
+          window.addEventListener('DOMContentLoaded', () => run(), {
             once: true,
           });
         }
       },
       document_idle: () => {
-        if (document.readyState === "complete") {
+        if (document.readyState === 'complete') {
           run();
         } else {
-          window.addEventListener("load", () => run(), { once: true });
+          window.addEventListener('load', () => run(), { once: true });
         }
       },
       document_start: run,
@@ -113,18 +104,15 @@ export function createWorldExecutor(
 
   if (enhancedDebugging) {
     console.group(`[CodeTweak] Injecting script: ${script.name}`);
-    console.log("  ID:", scriptId);
-    console.log("  Run at:", script.runAt);
+    console.log('  ID:', scriptId);
+    console.log('  Run at:', script.runAt);
+    console.log('  Inject into:', worldType === 'ISOLATED' ? 'Isolated World' : 'Main World');
     console.log(
-      "  Inject into:",
-      worldType === "ISOLATED" ? "Isolated World" : "Main World"
-    );
-    console.log(
-      "  Enabled APIs:",
+      '  Enabled APIs:',
       Object.keys(enabledApis).filter((api) => enabledApis[api])
     );
-    console.log("  Requires:", requiredUrls || "none");
-    console.log("  Resources:", script.resources || "none");
+    console.log('  Requires:', requiredUrls || 'none');
+    console.log('  Resources:', script.resources || 'none');
     console.groupEnd();
   }
 
@@ -134,28 +122,19 @@ export function createWorldExecutor(
     const bridge = new window.GMBridge(
       scriptId,
       extensionId,
-      worldType === "ISOLATED" ? "ISOLATED" : "MAIN"
+      worldType === 'ISOLATED' ? 'ISOLATED' : 'MAIN'
     );
     const resourceManager = window.GMBridge.ResourceManager.fromScript(script);
-    const apiRegistry = new window.GMBridge.GMAPIRegistry(
-      bridge,
-      resourceManager
-    );
+    const apiRegistry = new window.GMBridge.GMAPIRegistry(bridge, resourceManager);
     const scriptLoader = new window.GMBridge.ExternalScriptLoader();
 
     apiRegistry.initializeCache(initialValues);
     apiRegistry.registerAll(enabledApis);
-    if (worldType === "MAIN") {
+    if (worldType === 'MAIN') {
       bindNativeFunctions();
     }
     exposeGMInfo(gmInfo);
 
-    executeUserscript(
-      userCode,
-      script,
-      scriptId,
-      requiredUrls,
-      scriptLoader
-    );
+    executeUserscript(userCode, script, scriptId, requiredUrls, scriptLoader);
   });
 }

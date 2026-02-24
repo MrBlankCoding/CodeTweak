@@ -1,4 +1,4 @@
-import { getTrustedTypesPolicy } from "./trusted_types.js";
+import { getTrustedTypesPolicy } from './trusted_types.js';
 
 export class ExternalScriptLoader {
   constructor() {
@@ -11,7 +11,7 @@ export class ExternalScriptLoader {
     }
 
     // Auto-upgrade HTTP to HTTPS
-    const upgradedUrl = url.replace(/^http:\/\//i, "https://");
+    const upgradedUrl = url.replace(/^http:\/\//i, 'https://');
     if (upgradedUrl !== url) {
       console.info(`[GMBridge] Auto-upgraded ${url} to HTTPS`);
     }
@@ -30,7 +30,7 @@ export class ExternalScriptLoader {
 
   injectScriptTag(src) {
     return new Promise((resolve, reject) => {
-      const scriptElement = document.createElement("script");
+      const scriptElement = document.createElement('script');
 
       // Apply Trusted Types if available
       const policy = getTrustedTypesPolicy();
@@ -40,10 +40,7 @@ export class ExternalScriptLoader {
         try {
           trustedSrc = policy.createScriptURL(src);
         } catch (error) {
-          console.error(
-            "[GMBridge] Failed to create trusted script URL:",
-            error
-          );
+          console.error('[GMBridge] Failed to create trusted script URL:', error);
         }
       }
 
@@ -52,7 +49,7 @@ export class ExternalScriptLoader {
       scriptElement.onload = resolve;
       scriptElement.onerror = () => {
         const error = new Error(`Failed to load script: ${src}`);
-        console.error("[GMBridge]", error.message);
+        console.error('[GMBridge]', error.message);
         reject(error);
       };
 

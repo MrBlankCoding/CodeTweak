@@ -36,20 +36,20 @@ Every userscript starts with a metadata block (also known as the userscript head
 It is best practice to wrap your script in an Immediately Invoked Function Expression (IIFE) to avoid polluting the global scope and to prevent conflicts with the website's own scripts.
 
 ```javascript
-(function() {
-    'use strict';
+(function () {
+  'use strict';
 
-    // Your code here
-    console.log('Script loaded on ' + window.location.href);
+  // Your code here
+  console.log('Script loaded on ' + window.location.href);
 
-    const button = document.createElement('button');
-    button.textContent = 'Click Me';
-    button.style.position = 'fixed';
-    button.style.top = '10px';
-    button.style.right = '10px';
-    button.onclick = () => alert('Hello from CodeTweak!');
-    
-    document.body.appendChild(button);
+  const button = document.createElement('button');
+  button.textContent = 'Click Me';
+  button.style.position = 'fixed';
+  button.style.top = '10px';
+  button.style.right = '10px';
+  button.onclick = () => alert('Hello from CodeTweak!');
+
+  document.body.appendChild(button);
 })();
 ```
 
@@ -76,11 +76,11 @@ Use `GM_xmlhttpRequest` to fetch data from domains other than the one the script
 
 ```javascript
 GM_xmlhttpRequest({
-    method: "GET",
-    url: "https://api.example.com/data",
-    onload: function(response) {
-        console.log(JSON.parse(response.responseText));
-    }
+  method: 'GET',
+  url: 'https://api.example.com/data',
+  onload: function (response) {
+    console.log(JSON.parse(response.responseText));
+  },
 });
 ```
 

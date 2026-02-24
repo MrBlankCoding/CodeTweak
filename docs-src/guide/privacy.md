@@ -57,4 +57,3 @@ Userscripts are third-party code chosen by you. Installed scripts may process pa
 - Keep `@match` patterns specific.
 - Keep external resource loading disabled unless needed.
 - Review imported scripts before enabling.
-

@@ -1,38 +1,28 @@
-import {
-  buildMetadata,
-  extractMetadataBlock,
-} from "../utils/metadataParser.js";
+import { buildMetadata, extractMetadataBlock } from '../utils/metadataParser.js';
 import { ScriptAnalyzer } from '../utils/scriptAnalyzer.js';
-import {
-  updateWebsiteFilterOptions,
-  updateScriptsList,
-  showNotification,
-} from "./dashboard-ui.js";
-import { applyTranslations } from "../utils/i18n.js";
+import { updateWebsiteFilterOptions, updateScriptsList, showNotification } from './dashboard-ui.js';
+import { applyTranslations } from '../utils/i18n.js';
 
 async function loadScripts(elements, state) {
   try {
-    const { scripts = [] } = await chrome.storage.local.get("scripts");
+    const { scripts = [] } = await chrome.storage.local.get('scripts');
     state.allScripts = scripts;
 
-    updateWebsiteFilterOptions(
-      state.allScripts,
-      elements.filters.websiteFilter
-    );
+    updateWebsiteFilterOptions(state.allScripts, elements.filters.websiteFilter);
     filterScripts(elements, state);
   } catch (error) {
-    console.error("Error loading scripts:", error);
-    showNotification("Error loading scripts", "error");
+    console.error('Error loading scripts:', error);
+    showNotification('Error loading scripts', 'error');
   }
 }
 
 function filterScripts(elements, state) {
   if (!elements.scriptsList) return;
 
-  const searchTerm = (elements.filters.scriptSearch?.value || "").toLowerCase();
-  const websiteValue = elements.filters.websiteFilter?.value || "";
-  const statusValue = elements.filters.statusFilter?.value || "";
-  const runAtValue = elements.filters.runAtFilter?.value || "";
+  const searchTerm = (elements.filters.scriptSearch?.value || '').toLowerCase();
+  const websiteValue = elements.filters.websiteFilter?.value || '';
+  const statusValue = elements.filters.statusFilter?.value || '';
+  const runAtValue = elements.filters.runAtFilter?.value || '';
 
   const filteredScripts = state.allScripts.filter((script) => {
     if (searchTerm && !script.name.toLowerCase().includes(searchTerm)) {
@@ -49,7 +39,7 @@ function filterScripts(elements, state) {
       if (!matchesWebsite) return false;
     }
     if (statusValue) {
-      const isEnabled = statusValue === "enabled";
+      const isEnabled = statusValue === 'enabled';
       if (script.enabled !== isEnabled) return false;
     }
     if (runAtValue && script.runAt !== runAtValue) return false;
@@ -62,18 +52,18 @@ function filterScripts(elements, state) {
 
 async function toggleScript(scriptId, enabled) {
   try {
-    const { scripts = [] } = await chrome.storage.local.get("scripts");
+    const { scripts = [] } = await chrome.storage.local.get('scripts');
     const scriptIndex = scripts.findIndex((s) => s.id === scriptId);
 
     if (scriptIndex !== -1) {
       scripts[scriptIndex].enabled = enabled;
       await chrome.storage.local.set({ scripts });
-      chrome.runtime.sendMessage({ action: "scriptsUpdated" });
-      showNotification(`Script ${enabled ? "enabled" : "disabled"}`, "success");
+      chrome.runtime.sendMessage({ action: 'scriptsUpdated' });
+      showNotification(`Script ${enabled ? 'enabled' : 'disabled'}`, 'success');
     }
   } catch (error) {
-    console.error("Error toggling script:", error);
-    showNotification("Error toggling script", "error");
+    console.error('Error toggling script:', error);
+    showNotification('Error toggling script', 'error');
   }
 }
 
@@ -82,38 +72,38 @@ function editScript(scriptId) {
 }
 
 async function deleteScript(scriptId) {
-  if (!confirm("Are you sure you want to delete this script?")) {
+  if (!confirm('Are you sure you want to delete this script?')) {
     return;
   }
 
   try {
-    const { scripts = [] } = await chrome.storage.local.get("scripts");
+    const { scripts = [] } = await chrome.storage.local.get('scripts');
     const updatedScripts = scripts.filter((s) => s.id !== scriptId);
 
     await chrome.storage.local.set({ scripts: updatedScripts });
-    document.dispatchEvent(new CustomEvent("scriptsChanged"));
-    chrome.runtime.sendMessage({ action: "scriptsUpdated" });
+    document.dispatchEvent(new CustomEvent('scriptsChanged'));
+    chrome.runtime.sendMessage({ action: 'scriptsUpdated' });
 
     const elements = {
-      scriptsList: document.getElementById("scriptsList"),
-      emptyState: document.getElementById("emptyState"),
+      scriptsList: document.getElementById('scriptsList'),
+      emptyState: document.getElementById('emptyState'),
       filters: {
-        websiteFilter: document.getElementById("websiteFilter"),
+        websiteFilter: document.getElementById('websiteFilter'),
       },
     };
 
     updateWebsiteFilterOptions(updatedScripts, elements.filters.websiteFilter);
     updateScriptsList(updatedScripts, elements);
   } catch (error) {
-    console.error("Error deleting script:", error);
-    showNotification("Error deleting script", "error");
+    console.error('Error deleting script:', error);
+    showNotification('Error deleting script', 'error');
   }
 }
 
 async function loadSettings(settingsElements) {
   try {
     applyTheme();
-    const { settings = {} } = await chrome.storage.local.get("settings");
+    const { settings = {} } = await chrome.storage.local.get('settings');
 
     // default values
     const defaultSettings = {
@@ -122,8 +112,8 @@ async function loadSettings(settingsElements) {
       enhancedDebugging: false,
       allowExternalResources: true,
       confirmFirstRun: false,
-      accentColor: "#61afef",
-      language: "auto",
+      accentColor: '#61afef',
+      language: 'auto',
     };
 
     // Apply defaults and update storage if needed
@@ -150,10 +140,9 @@ async function loadSettings(settingsElements) {
     if (shouldSaveDefaults) {
       await chrome.storage.local.set({ settings });
     }
-
   } catch (error) {
-    console.error("Error loading settings:", error);
-    showNotification("Error loading settings", "error");
+    console.error('Error loading settings:', error);
+    showNotification('Error loading settings', 'error');
   }
 }
 
@@ -176,23 +165,22 @@ async function saveSettings(settingsElements) {
     });
 
     await chrome.storage.local.set({ settings });
-    showNotification("Settings saved successfully", "success");
-    chrome.runtime.sendMessage({ action: "settingsUpdated" });
+    showNotification('Settings saved successfully', 'success');
+    chrome.runtime.sendMessage({ action: 'settingsUpdated' });
 
     applyTheme();
-    
+
     // Reapply translations if language changed
     await applyTranslations();
-    
   } catch (error) {
-    console.error("Error saving settings:", error);
-    showNotification("Failed to save settings: " + error.message, "error");
+    console.error('Error saving settings:', error);
+    showNotification('Failed to save settings: ' + error.message, 'error');
   }
 }
 
 async function checkForUpdates(script) {
   if (!script.updateInfo?.updateUrl) {
-    showNotification("No update URL available", "error");
+    showNotification('No update URL available', 'error');
     return;
   }
 
@@ -203,22 +191,20 @@ async function checkForUpdates(script) {
     }
 
     const newCode = await response.text();
-    const metadataBlock = newCode.match(
-      /==UserScript==([\s\S]*?)==\/UserScript==/
-    );
+    const metadataBlock = newCode.match(/==UserScript==([\s\S]*?)==\/UserScript==/);
     if (!metadataBlock) {
-      throw new Error("Invalid script format");
+      throw new Error('Invalid script format');
     }
 
     const versionMatch = metadataBlock[1].match(/@version\s+(.+)/);
     const newVersion = versionMatch ? versionMatch[1].trim() : null;
 
     if (!newVersion) {
-      throw new Error("Could not determine script version");
+      throw new Error('Could not determine script version');
     }
 
     if (newVersion === script.version) {
-      showNotification("Script is up to date", "success");
+      showNotification('Script is up to date', 'success');
       return;
     }
 
@@ -227,7 +213,7 @@ async function checkForUpdates(script) {
     );
 
     if (updateConfirmed) {
-      const { scripts = [] } = await chrome.storage.local.get("scripts");
+      const { scripts = [] } = await chrome.storage.local.get('scripts');
       const scriptIndex = scripts.findIndex((s) => s.id === script.id);
 
       if (scriptIndex !== -1) {
@@ -248,56 +234,55 @@ async function checkForUpdates(script) {
         };
 
         await chrome.storage.local.set({ scripts });
-        chrome.runtime.sendMessage({ action: "scriptsUpdated" });
-        showNotification("Script updated successfully", "success");
+        chrome.runtime.sendMessage({ action: 'scriptsUpdated' });
+        showNotification('Script updated successfully', 'success');
         await refreshDashboard();
       }
     }
   } catch (error) {
-    console.error("Error checking for updates:", error);
-    showNotification("Error checking for updates: " + error.message, "error");
+    console.error('Error checking for updates:', error);
+    showNotification('Error checking for updates: ' + error.message, 'error');
   }
 }
 
 // refresh dash
 async function refreshDashboard() {
   const elements = {
-    scriptsList: document.getElementById("scriptsList"),
-    emptyState: document.getElementById("emptyState"),
+    scriptsList: document.getElementById('scriptsList'),
+    emptyState: document.getElementById('emptyState'),
     filters: {
-      websiteFilter: document.getElementById("websiteFilter"),
-      scriptSearch: document.getElementById("scriptSearch"),
-      statusFilter: document.getElementById("statusFilter"),
-      runAtFilter: document.getElementById("runAtFilter"),
+      websiteFilter: document.getElementById('websiteFilter'),
+      scriptSearch: document.getElementById('scriptSearch'),
+      statusFilter: document.getElementById('statusFilter'),
+      runAtFilter: document.getElementById('runAtFilter'),
     },
   };
 
-  const { scripts = [] } = await chrome.storage.local.get("scripts");
+  const { scripts = [] } = await chrome.storage.local.get('scripts');
   const state = { allScripts: scripts };
 
   updateWebsiteFilterOptions(scripts, elements.filters.websiteFilter);
   filterScripts(elements, state);
 }
 
-
-
 function exportScript(script) {
   try {
-    const code = script.code || "";
+    const code = script.code || '';
     const hasMetadata = !!extractMetadataBlock(code);
-    const metadata = hasMetadata ? "" : buildMetadata(script);
+    const metadata = hasMetadata ? '' : buildMetadata(script);
     const content = hasMetadata ? code : `${metadata}\n\n${code}`;
 
-    const fileNameSafe = (script.name || "script")
-      .replace(/[^a-z0-9_-]+/gi, "_")
-      .replace(/_{2,}/g, "_")
-      .replace(/^_|_$/g, "") || "script";
+    const fileNameSafe =
+      (script.name || 'script')
+        .replace(/[^a-z0-9_-]+/gi, '_')
+        .replace(/_{2,}/g, '_')
+        .replace(/^_|_$/g, '') || 'script';
 
     const blob = new Blob([content], {
-      type: "text/javascript;charset=utf-8",
+      type: 'text/javascript;charset=utf-8',
     });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = url;
     a.download = `${fileNameSafe}.user.js`;
     document.body.appendChild(a);
@@ -305,10 +290,10 @@ function exportScript(script) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    showNotification("Script exported", "success");
+    showNotification('Script exported', 'success');
   } catch (error) {
-    console.error("Export failed:", error);
-    showNotification("Export failed", "error");
+    console.error('Export failed:', error);
+    showNotification('Export failed', 'error');
   }
 }
 

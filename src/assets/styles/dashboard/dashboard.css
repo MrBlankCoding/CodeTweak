@@ -218,7 +218,7 @@ body {
   border-bottom: 1px solid var(--border-primary);
 }
 
-.setting-item input[type="checkbox"] {
+.setting-item input[type='checkbox'] {
   width: 18px;
   height: 18px;
   accent-color: var(--primary);
@@ -264,7 +264,7 @@ body {
   box-shadow: 0 0 0 2px rgba(97, 175, 239, 0.2);
 }
 
-.setting-item input[type="color"] {
+.setting-item input[type='color'] {
   width: 60px;
   height: 40px;
   border: 1px solid var(--border-primary);
@@ -348,7 +348,7 @@ body {
   justify-content: center;
 }
 
-.modal[aria-hidden="false"] {
+.modal[aria-hidden='false'] {
   display: flex;
 }
 
@@ -445,7 +445,9 @@ body {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Notifications */

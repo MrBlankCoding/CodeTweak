@@ -10,26 +10,20 @@ export function getTrustedTypesPolicy() {
   }
 
   try {
-    trustedTypesPolicy = window.trustedTypes.createPolicy(
-      "codetweak-gm-apis",
-      {
-        createHTML: (input) => {
-          if (typeof input !== "string") return "";
-          return input
-            .replace(
-              /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-              ""
-            )
-            .replace(/on\w+\s*=\s*["'][^"']*["']/gi, "")
-            .replace(/javascript:/gi, "");
-        },
-        createScript: (input) => input,
-        createScriptURL: (input) => input,
-      }
-    );
+    trustedTypesPolicy = window.trustedTypes.createPolicy('codetweak-gm-apis', {
+      createHTML: (input) => {
+        if (typeof input !== 'string') return '';
+        return input
+          .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+          .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
+          .replace(/javascript:/gi, '');
+      },
+      createScript: (input) => input,
+      createScriptURL: (input) => input,
+    });
     return trustedTypesPolicy;
   } catch (error) {
-    console.error("[GMBridge] Failed to create Trusted Types policy:", error);
+    console.error('[GMBridge] Failed to create Trusted Types policy:', error);
     return null;
   }
 }

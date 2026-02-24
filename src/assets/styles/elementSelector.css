@@ -79,7 +79,8 @@
 
 /* Animation keyframes using theme variables */
 @keyframes highlight-pulse {
-  0%, 100% {
+  0%,
+  100% {
     outline-color: var(--primary);
     background-color: var(--primary-light);
   }
@@ -112,7 +113,8 @@
 }
 
 @keyframes icon-bounce {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
   }
   50% {

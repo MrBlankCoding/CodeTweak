@@ -1,6 +1,6 @@
 :root {
   --accent-color: #61afef;
-  --primary: var(--accent-color); 
+  --primary: var(--accent-color);
   --primary-hover: var(--accent-color);
   --primary-light: rgba(97, 175, 239, 0.15);
   --secondary: #c678dd;
@@ -77,7 +77,9 @@
   --transition-slower: 0.5s ease-in-out;
   --transition-modal: 0.2s cubic-bezier(0.33, 1, 0.68, 1);
 
-  --transition-colors: color var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast);
+  --transition-colors:
+    color var(--transition-fast), background-color var(--transition-fast),
+    border-color var(--transition-fast);
   --transition-transform: transform var(--transition-fast);
   --transition-opacity: opacity var(--transition-fast);
   --transition-all: all var(--transition-fast);

@@ -11,8 +11,13 @@
   transition: width var(--transition-fast);
   flex-shrink: 0;
 }
-.sidebar.expanded { width: var(--sidebar-width, 328px); }
-.sidebar.collapsed { width: 0 !important; border-right: none; }
+.sidebar.expanded {
+  width: var(--sidebar-width, 328px);
+}
+.sidebar.collapsed {
+  width: 0 !important;
+  border-right: none;
+}
 
 .main-content {
   display: flex;
@@ -53,7 +58,10 @@
   transition: var(--transition-colors);
   font-size: 0;
 }
-.sidebar-icon-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.sidebar-icon-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
 .sidebar-icon-btn.active {
   background: var(--primary);
   color: white;
@@ -126,7 +134,9 @@
   width: 0;
   overflow: hidden;
   min-width: 0;
-  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  transition:
+    opacity var(--transition-fast),
+    transform var(--transition-fast);
 }
 .sidebar.expanded .sidebar-content-area {
   display: flex;
@@ -139,14 +149,16 @@
 }
 
 /* Panels */
-.sidebar-panel { 
-  display: none; 
-  flex-direction: column; 
-  height: 100%; 
+.sidebar-panel {
+  display: none;
+  flex-direction: column;
+  height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
 }
-.sidebar-panel.active { display: flex; }
+.sidebar-panel.active {
+  display: flex;
+}
 
 /* Errors panel should have scrolling in its container, not the panel */
 .sidebar-panel#errors-panel {
@@ -178,21 +190,44 @@
   padding: var(--space-sm) 0 var(--space-sm) var(--space-sm); /* Adjusted padding */
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
-}.panel-content::-webkit-scrollbar { width: var(--scrollbar-width); }
-.panel-content::-webkit-scrollbar-track { background: var(--scrollbar-track); }
-.panel-content::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: var(--radius-sm); }
-.panel-content::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+}
+.panel-content::-webkit-scrollbar {
+  width: var(--scrollbar-width);
+}
+.panel-content::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+.panel-content::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: var(--radius-sm);
+}
+.panel-content::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
 
 #execution-panel .panel-content,
 #execution-panel .form-group,
 #execution-panel .url-input-group,
 #execution-panel .pattern-builder,
-#execution-panel .generated-pattern-group { margin-bottom: var(--space-md); gap: var(--space-md); }
-#execution-panel .generated-pattern-group { margin-top: var(--space-md); }
+#execution-panel .generated-pattern-group {
+  margin-bottom: var(--space-md);
+  gap: var(--space-md);
+}
+#execution-panel .generated-pattern-group {
+  margin-top: var(--space-md);
+}
 
 /* Forms */
-.form-grid { display: flex; flex-direction: column; gap: var(--space-sm); width: 100%; }
-.form-group { margin-bottom: 0; position: relative; }
+.form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  width: 100%;
+}
+.form-group {
+  margin-bottom: 0;
+  position: relative;
+}
 
 .form-label {
   align-items: center;
@@ -227,7 +262,10 @@
   box-shadow: var(--shadow-focus);
 }
 .form-input::placeholder,
-.form-textarea::placeholder { color: var(--text-muted); font-size: var(--text-xs); }
+.form-textarea::placeholder {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
 .form-textarea {
   resize: vertical;
   min-height: 64px;
@@ -236,7 +274,11 @@
 }
 
 /* API Categories */
-.api-categories { display: flex; flex-direction: column; gap: var(--space-sm); }
+.api-categories {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
 .api-category {
   background: var(--bg-primary);
   border: 1px solid var(--border-primary);
@@ -270,8 +312,10 @@
   border-radius: var(--radius-sm);
   transition: var(--transition-colors);
 }
-.form-group-checkbox:hover { background: var(--bg-hover); }
-.form-group-checkbox input[type="checkbox"] {
+.form-group-checkbox:hover {
+  background: var(--bg-hover);
+}
+.form-group-checkbox input[type='checkbox'] {
   width: 14px;
   height: 14px;
   margin: 0 var(--space-sm) 0 0;
@@ -310,7 +354,9 @@
   transform: translateY(-1px);
   box-shadow: var(--shadow-md);
 }
-.add-btn:active { transform: translateY(0); }
+.add-btn:active {
+  transform: translateY(0);
+}
 
 /* Input Groups */
 .url-input-group,
@@ -321,12 +367,16 @@
   align-items: flex-end;
 }
 .url-input-group .form-input,
-.resource-input-group .form-input { flex: 1; }
+.resource-input-group .form-input {
+  flex: 1;
+}
 .resource-input-group {
   flex-direction: column;
   align-items: stretch;
 }
-.resource-input-group .add-btn { width: 100%; }
+.resource-input-group .add-btn {
+  width: 100%;
+}
 
 /* Lists */
 .url-list,
@@ -338,13 +388,22 @@
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 .url-list::-webkit-scrollbar,
-.resource-list::-webkit-scrollbar { width: var(--scrollbar-width); }
+.resource-list::-webkit-scrollbar {
+  width: var(--scrollbar-width);
+}
 .url-list::-webkit-scrollbar-track,
-.resource-list::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+.resource-list::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
 .url-list::-webkit-scrollbar-thumb,
-.resource-list::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: var(--radius-sm); }
+.resource-list::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: var(--radius-sm);
+}
 .url-list::-webkit-scrollbar-thumb:hover,
-.resource-list::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+.resource-list::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
 
 .url-item,
 .resource-item,
@@ -476,7 +535,10 @@
   align-items: flex-end;
   flex-wrap: wrap;
 }
-.pattern-builder .form-select { min-width: 120px; flex: 1; }
+.pattern-builder .form-select {
+  min-width: 120px;
+  flex: 1;
+}
 .generated-pattern-group {
   margin-top: var(--space-sm);
   display: flex;
@@ -484,7 +546,9 @@
   align-items: flex-end;
 }
 
-.hidden { display: none; }
+.hidden {
+  display: none;
+}
 
 /* Error Log Panel */
 .error-log-controls {
@@ -660,7 +724,7 @@
 }
 
 /* Checkbox for marking errors as resolved */
-.error-log-item input[type="checkbox"] {
+.error-log-item input[type='checkbox'] {
   position: absolute;
   top: 8px;
   right: 8px;
@@ -669,7 +733,7 @@
   height: 14px;
 }
 
-.error-log-item input[type="checkbox"]:disabled {
+.error-log-item input[type='checkbox']:disabled {
   cursor: not-allowed;
   opacity: 0.6;
 }

@@ -14,9 +14,7 @@ describe('ExternalScriptLoader', () => {
     const { ExternalScriptLoader } = await importLoaderWithPolicy(null);
     const loader = new ExternalScriptLoader();
 
-    const injectSpy = vi
-      .spyOn(loader, 'injectScriptTag')
-      .mockResolvedValue(undefined);
+    const injectSpy = vi.spyOn(loader, 'injectScriptTag').mockResolvedValue(undefined);
 
     await loader.loadScript('http://cdn.example/a.js');
     await loader.loadScript('http://cdn.example/a.js');
@@ -61,9 +59,7 @@ describe('ExternalScriptLoader', () => {
     const { ExternalScriptLoader } = await importLoaderWithPolicy(null);
     const loader = new ExternalScriptLoader();
 
-    const loadSpy = vi
-      .spyOn(loader, 'loadScript')
-      .mockResolvedValue(undefined);
+    const loadSpy = vi.spyOn(loader, 'loadScript').mockResolvedValue(undefined);
 
     await loader.loadScripts(null);
     await loader.loadScripts(['a.js', 'b.js']);

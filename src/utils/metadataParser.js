@@ -3,18 +3,18 @@ import { GM_API_DEFINITIONS } from '../GM/gmApiDefinitions.js';
 // Map classic style to ours
 function buildGrantToApiMapping() {
   const grantToGmApi = {};
-  
-  Object.values(GM_API_DEFINITIONS).forEach(api => {
+
+  Object.values(GM_API_DEFINITIONS).forEach((api) => {
     // Original GM style
     grantToGmApi[api.tmName] = api.el;
-    
-    // Modern GM 
+
+    // Modern GM
     if (api.tmName !== 'unsafeWindow') {
       const modernName = api.tmName.replace('GM_', 'GM.');
       grantToGmApi[modernName] = api.el;
     }
   });
-  
+
   return grantToGmApi;
 }
 
@@ -29,7 +29,7 @@ function parseUserScriptMetadata(content) {
   if (!metaMatch) return metadata;
 
   const metaBlock = metaMatch[1];
-  const lines = metaBlock.split("\n").filter((line) => line.trim());
+  const lines = metaBlock.split('\n').filter((line) => line.trim());
 
   for (const line of lines) {
     const match = line.match(/@([\w-]+)\s+(.+)/);
@@ -38,18 +38,18 @@ function parseUserScriptMetadata(content) {
     const [, key, value] = match;
 
     switch (key.toLowerCase()) {
-      case "match":
-      case "include":
+      case 'match':
+      case 'include':
         if (!metadata.matches) metadata.matches = [];
         metadata.matches.push(value);
         break;
 
-      case "require":
+      case 'require':
         if (!metadata.requires) metadata.requires = [];
         metadata.requires.push(value);
         break;
 
-      case "resource": {
+      case 'resource': {
         if (!metadata.resources) metadata.resources = [];
         const urlMatch = value.match(/(https?:\/\/[^)\s]+)/);
         if (urlMatch) {
@@ -66,15 +66,15 @@ function parseUserScriptMetadata(content) {
         break;
       }
 
-      case "run-at":
+      case 'run-at':
         metadata.runAt = value;
         break;
 
-      case "grant": {
+      case 'grant': {
         const grantValue = value.trim();
-        if (grantValue === "none") {
+        if (grantValue === 'none') {
           metadata.gmApis = {};
-        } else if (grantValue === "unsafeWindow") {
+        } else if (grantValue === 'unsafeWindow') {
           metadata.gmApis.unsafeWindow = true;
         } else {
           const apiFlag = grantToGmApi[grantValue];
@@ -85,11 +85,11 @@ function parseUserScriptMetadata(content) {
         break;
       }
 
-      case "license":
+      case 'license':
         metadata.license = value.trim();
         break;
 
-      case "icon":
+      case 'icon':
         metadata.icon = value.trim();
         break;
 
@@ -108,11 +108,11 @@ function extractMetadataBlock(content) {
 
 function buildApiToGrantMapping() {
   const apiToGrant = {};
-  
-  Object.values(GM_API_DEFINITIONS).forEach(api => {
+
+  Object.values(GM_API_DEFINITIONS).forEach((api) => {
     apiToGrant[api.el] = api.tmName;
   });
-  
+
   return apiToGrant;
 }
 
@@ -120,39 +120,39 @@ const gmApiFlagToGrant = buildApiToGrantMapping();
 
 function buildMetadata(script, useModernStyle = false) {
   const lines = [];
-  lines.push("// ==UserScript==");
+  lines.push('// ==UserScript==');
 
   const push = (key, value) => {
     if (Array.isArray(value)) {
       value.forEach((v) => lines.push(`// @${key.padEnd(10)} ${v}`));
-    } else if (value !== undefined && value !== null && value !== "") {
+    } else if (value !== undefined && value !== null && value !== '') {
       lines.push(`// @${key.padEnd(10)} ${value}`);
     }
   };
 
-  push("name", script.name || "Untitled Script");
-  push("namespace", script.namespace || "https://codetweak.local"); // Need this domain
-  push("version", script.version || "1.0.0");
-  push("description", script.description || "");
-  push("author", script.author || "Anonymous");
-  push("icon", script.icon);
+  push('name', script.name || 'Untitled Script');
+  push('namespace', script.namespace || 'https://codetweak.local'); // Need this domain
+  push('version', script.version || '1.0.0');
+  push('description', script.description || '');
+  push('author', script.author || 'Anonymous');
+  push('icon', script.icon);
 
   if (script.targetUrls && script.targetUrls.length) {
-    script.targetUrls.forEach((pattern) => push("match", pattern));
+    script.targetUrls.forEach((pattern) => push('match', pattern));
   }
 
   if (script.runAt) {
     let runAt = script.runAt;
-    runAt = runAt.replace(/_/g, "-");
-    push("run-at", runAt);
+    runAt = runAt.replace(/_/g, '-');
+    push('run-at', runAt);
   }
 
   if (script.requires && script.requires.length) {
-    script.requires.forEach((url) => push("require", url));
+    script.requires.forEach((url) => push('require', url));
   }
 
   if (script.resources && script.resources.length) {
-    script.resources.forEach((r) => push("resource", `${r.name} ${r.url}`));
+    script.resources.forEach((r) => push('resource', `${r.name} ${r.url}`));
   }
 
   // Grants
@@ -161,8 +161,8 @@ function buildMetadata(script, useModernStyle = false) {
   Object.keys(gmApiFlagToGrant).forEach((flag) => {
     if (script[flag]) {
       let grantName = gmApiFlagToGrant[flag];
-      if (useModernStyle && grantName !== "unsafeWindow") {
-        grantName = grantName.replace("GM_", "GM.");
+      if (useModernStyle && grantName !== 'unsafeWindow') {
+        grantName = grantName.replace('GM_', 'GM.');
       }
       grants.push(grantName);
       anyApiSelected = true;
@@ -170,21 +170,17 @@ function buildMetadata(script, useModernStyle = false) {
   });
 
   if (!anyApiSelected) {
-    push("grant", "none");
+    push('grant', 'none');
   } else {
-    grants.forEach((g) => push("grant", g));
+    grants.forEach((g) => push('grant', g));
   }
 
   if (script.license) {
-    push("license", script.license);
+    push('license', script.license);
   }
 
-  lines.push("// ==/UserScript==");
-  return lines.join("\n");
+  lines.push('// ==/UserScript==');
+  return lines.join('\n');
 }
 
-export {
-  parseUserScriptMetadata,
-  extractMetadataBlock,
-  buildMetadata,
-};
+export { parseUserScriptMetadata, extractMetadataBlock, buildMetadata };

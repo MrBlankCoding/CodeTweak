@@ -12,7 +12,7 @@ Check in this order:
 Quick test:
 
 ```javascript
-console.log("script loaded", location.href);
+console.log('script loaded', location.href);
 ```
 
 ## GM API is undefined

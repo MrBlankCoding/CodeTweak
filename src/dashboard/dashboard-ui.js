@@ -8,16 +8,16 @@ function setupTabs(navItems, tabContents) {
   if (!navItems) return;
 
   navItems.forEach((tab) => {
-    tab.addEventListener("click", () => {
+    tab.addEventListener('click', () => {
       navItems.forEach((t) => {
-        t.classList.remove("active");
-        t.setAttribute("aria-selected", "false");
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
       });
-      tabContents.forEach((c) => c.classList.remove("active"));
-      tab.classList.add("active");
-      tab.setAttribute("aria-selected", "true");
-      const tabId = `${tab.getAttribute("data-tab")}-tab`;
-      document.getElementById(tabId)?.classList.add("active");
+      tabContents.forEach((c) => c.classList.remove('active'));
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+      const tabId = `${tab.getAttribute('data-tab')}-tab`;
+      document.getElementById(tabId)?.classList.add('active');
     });
   });
 }
@@ -42,37 +42,37 @@ function updateWebsiteFilterOptions(scripts, websiteFilter) {
       websiteFilter.removeChild(websiteFilter.firstChild);
     }
 
-    const allOption = document.createElement("option");
-    allOption.value = "";
-    allOption.textContent = "All Websites";
+    const allOption = document.createElement('option');
+    allOption.value = '';
+    allOption.textContent = 'All Websites';
     websiteFilter.appendChild(allOption);
 
     Array.from(websites)
       .sort()
       .forEach((website) => {
-        const option = document.createElement("option");
+        const option = document.createElement('option');
         option.value = website;
         option.textContent = website;
         websiteFilter.appendChild(option);
       });
   } catch (error) {
-    console.error("Error updating website filter options:", error);
+    console.error('Error updating website filter options:', error);
   }
 }
 
 function updateScriptsList(scripts, elements) {
   if (!elements.scriptsList) return;
 
-  elements.scriptsList.innerHTML = "";
+  elements.scriptsList.innerHTML = '';
 
   // empty state
   if (scripts.length === 0) {
-    if (elements.emptyState) elements.emptyState.style.display = "block";
+    if (elements.emptyState) elements.emptyState.style.display = 'block';
     updateScriptCount(0);
     return;
   }
 
-  if (elements.emptyState) elements.emptyState.style.display = "none";
+  if (elements.emptyState) elements.emptyState.style.display = 'none';
 
   const fragment = document.createDocumentFragment();
   scripts.forEach((script) => {
@@ -85,114 +85,112 @@ function updateScriptsList(scripts, elements) {
 }
 
 function updateScriptCount(count) {
-  const scriptCountElement = document.getElementById("scriptCount");
+  const scriptCountElement = document.getElementById('scriptCount');
   if (scriptCountElement) {
     scriptCountElement.textContent = count;
   }
 }
 
 function createScriptListItem(script) {
-  const item = document.createElement("div");
-  item.className = "script-list-item";
+  const item = document.createElement('div');
+  item.className = 'script-list-item';
   item.dataset.scriptId = script.id;
 
   // Toggle switch column
-  const toggleSwitch = document.createElement("label");
-  toggleSwitch.className = "toggle-switch";
+  const toggleSwitch = document.createElement('label');
+  toggleSwitch.className = 'toggle-switch';
 
-  const toggleInput = document.createElement("input");
-  toggleInput.type = "checkbox";
+  const toggleInput = document.createElement('input');
+  toggleInput.type = 'checkbox';
   toggleInput.checked = script.enabled;
-  toggleInput.addEventListener("change", () =>
-    toggleScript(script.id, toggleInput.checked)
-  );
+  toggleInput.addEventListener('change', () => toggleScript(script.id, toggleInput.checked));
 
-  const toggleSlider = document.createElement("span");
-  toggleSlider.className = "toggle-slider";
+  const toggleSlider = document.createElement('span');
+  toggleSlider.className = 'toggle-slider';
 
   toggleSwitch.append(toggleInput, toggleSlider);
 
   // Name & Description column
-  const nameCol = document.createElement("div");
-  nameCol.className = "script-name-col";
+  const nameCol = document.createElement('div');
+  nameCol.className = 'script-name-col';
 
   if (script.icon) {
-    const icon = document.createElement("img");
+    const icon = document.createElement('img');
     icon.src = script.icon;
-    icon.className = "script-icon";
+    icon.className = 'script-icon';
     nameCol.appendChild(icon);
   }
 
-  const nameAndDesc = document.createElement("div");
-  const name = document.createElement("h3");
-  name.className = "script-name";
+  const nameAndDesc = document.createElement('div');
+  const name = document.createElement('h3');
+  name.className = 'script-name';
   name.textContent = script.name;
 
-  const description = document.createElement("p");
-  description.className = "script-description";
-  description.textContent = script.description || "No description provided.";
+  const description = document.createElement('p');
+  description.className = 'script-description';
+  description.textContent = script.description || 'No description provided.';
 
   nameAndDesc.append(name, description);
   nameCol.append(nameAndDesc);
 
   // Version column
-  const versionCol = document.createElement("div");
-  versionCol.className = "script-version-col";
-  versionCol.textContent = script.version || "1.0.0";
+  const versionCol = document.createElement('div');
+  versionCol.className = 'script-version-col';
+  versionCol.textContent = script.version || '1.0.0';
 
   // Sites column
-  const sitesCol = document.createElement("div");
-  sitesCol.className = "script-sites-col";
+  const sitesCol = document.createElement('div');
+  sitesCol.className = 'script-sites-col';
   const targetUrls = script.targetUrls || [];
   if (targetUrls.length > 0) {
-  if (targetUrls.length === 1) {
-  sitesCol.textContent = formatUrlPattern(targetUrls[0]);
-  } else {
-  sitesCol.textContent = formatUrlPattern(targetUrls[0]);
-    const span = document.createElement('span');
+    if (targetUrls.length === 1) {
+      sitesCol.textContent = formatUrlPattern(targetUrls[0]);
+    } else {
+      sitesCol.textContent = formatUrlPattern(targetUrls[0]);
+      const span = document.createElement('span');
       span.className = 'site-count';
       span.textContent = `+${targetUrls.length - 1}`;
       sitesCol.appendChild(span);
     }
-    sitesCol.title = targetUrls.map(formatUrlPattern).join("\n");
+    sitesCol.title = targetUrls.map(formatUrlPattern).join('\n');
   } else {
-    sitesCol.textContent = "All sites";
+    sitesCol.textContent = 'All sites';
   }
 
   // Features column
-  const featuresCol = document.createElement("div");
-  featuresCol.className = "script-features-col";
+  const featuresCol = document.createElement('div');
+  featuresCol.className = 'script-features-col';
   featuresCol.textContent = getScriptDescription(script);
 
   // Run At column
-  const runAtCol = document.createElement("div");
-  runAtCol.className = "script-runat-col";
+  const runAtCol = document.createElement('div');
+  runAtCol.className = 'script-runat-col';
   const runAtFormats = {
-    document_start: "Page Start",
-    document_end: "DOM Ready",
-    document_idle: "Page Load",
+    document_start: 'Page Start',
+    document_end: 'DOM Ready',
+    document_idle: 'Page Load',
   };
-  runAtCol.textContent = runAtFormats[script.runAt] || script.runAt || "Page Load";
+  runAtCol.textContent = runAtFormats[script.runAt] || script.runAt || 'Page Load';
 
   // Actions column
-  const actions = document.createElement("div");
-  actions.className = "script-actions";
+  const actions = document.createElement('div');
+  actions.className = 'script-actions';
 
-  const editButton = document.createElement("button");
-  editButton.className = "btn-action btn-edit";
-  const editIcon = document.createElement("i");
-  editIcon.setAttribute("data-feather", "edit-2");
+  const editButton = document.createElement('button');
+  editButton.className = 'btn-action btn-edit';
+  const editIcon = document.createElement('i');
+  editIcon.setAttribute('data-feather', 'edit-2');
   editButton.appendChild(editIcon);
-  editButton.title = "Edit Script";
-  editButton.addEventListener("click", () => editScript(script.id));
+  editButton.title = 'Edit Script';
+  editButton.addEventListener('click', () => editScript(script.id));
 
-  const deleteButton = document.createElement("button");
-  deleteButton.className = "btn-action btn-delete";
-  const deleteIcon = document.createElement("i");
-  deleteIcon.setAttribute("data-feather", "trash-2");
+  const deleteButton = document.createElement('button');
+  deleteButton.className = 'btn-action btn-delete';
+  const deleteIcon = document.createElement('i');
+  deleteIcon.setAttribute('data-feather', 'trash-2');
   deleteButton.appendChild(deleteIcon);
-  deleteButton.title = "Delete Script";
-  deleteButton.addEventListener("click", () => deleteScript(script.id));
+  deleteButton.title = 'Delete Script';
+  deleteButton.addEventListener('click', () => deleteScript(script.id));
 
   actions.append(editButton, deleteButton);
 
@@ -201,29 +199,37 @@ function createScriptListItem(script) {
   return item;
 }
 
-
-function showNotification(message, type = "info") {
-  let notificationContainer = document.querySelector(".notification-container");
+function showNotification(message, type = 'info') {
+  let notificationContainer = document.querySelector('.notification-container');
   if (!notificationContainer) {
-    notificationContainer = document.createElement("div");
-    notificationContainer.className = "notification-container";
+    notificationContainer = document.createElement('div');
+    notificationContainer.className = 'notification-container';
     document.body.appendChild(notificationContainer);
   }
 
-  const notification = document.createElement("div");
+  const notification = document.createElement('div');
   notification.className = `notification notification-${type}`;
-  const icon = document.createElement("i");
-  icon.setAttribute("data-feather", type === "success" ? "check-circle" : type === "error" ? "x-circle" : type === "warning" ? "alert-triangle" : "info");
+  const icon = document.createElement('i');
+  icon.setAttribute(
+    'data-feather',
+    type === 'success'
+      ? 'check-circle'
+      : type === 'error'
+        ? 'x-circle'
+        : type === 'warning'
+          ? 'alert-triangle'
+          : 'info'
+  );
 
-  const content = document.createElement("div");
-  content.className = "notification-content";
+  const content = document.createElement('div');
+  content.className = 'notification-content';
   content.textContent = message;
 
-  const closeBtn = document.createElement("button");
-  closeBtn.className = "notification-close";
-  closeBtn.textContent = "×";
-  closeBtn.addEventListener("click", () => {
-    notification.classList.add("notification-hide");
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'notification-close';
+  closeBtn.textContent = '×';
+  closeBtn.addEventListener('click', () => {
+    notification.classList.add('notification-hide');
     setTimeout(() => notification.remove(), 300);
   });
 
@@ -233,37 +239,32 @@ function showNotification(message, type = "info") {
   // remove
   setTimeout(() => {
     if (notification.parentElement) {
-      notification.classList.add("notification-hide");
+      notification.classList.add('notification-hide');
       setTimeout(() => notification.remove(), 300);
     }
   }, 5000);
 }
 
 function formatUrlPattern(pattern) {
-    if (!pattern) return "All sites";
-    
-    // Remove protocol
-    let display = pattern.replace(/^https?:\/\//, "");
-    
-    // Clean up wildcards for better display
-    display = display.replace(/^\*\./, ""); // Remove leading wildcard subdomain
-    display = display.replace(/\/\*$/, ""); // Remove trailing wildcard path
-    
-    // Truncate long URLs
-    if (display.length > 20) {
-      display = display.substring(0, 17) + "...";
-    }
-    
-    return display;
+  if (!pattern) return 'All sites';
+
+  // Remove protocol
+  let display = pattern.replace(/^https?:\/\//, '');
+
+  // Clean up wildcards for better display
+  display = display.replace(/^\*\./, ''); // Remove leading wildcard subdomain
+  display = display.replace(/\/\*$/, ''); // Remove trailing wildcard path
+
+  // Truncate long URLs
+  if (display.length > 20) {
+    display = display.substring(0, 17) + '...';
   }
+
+  return display;
+}
 
 window.updateWebsiteFilterOptions = updateWebsiteFilterOptions;
 window.updateScriptsList = updateScriptsList;
 window.showNotification = showNotification;
 
-export {
-  setupTabs,
-  updateWebsiteFilterOptions,
-  updateScriptsList,
-  showNotification,
-};
+export { setupTabs, updateWebsiteFilterOptions, updateScriptsList, showNotification };

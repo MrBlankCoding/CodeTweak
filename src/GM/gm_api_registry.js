@@ -1,7 +1,10 @@
 (function () {
   'use strict';
 
-  if (typeof window.GMBridge === "undefined" || typeof window.GMBridge.GMAPIRegistry !== "undefined") {
+  if (
+    typeof window.GMBridge === 'undefined' ||
+    typeof window.GMBridge.GMAPIRegistry !== 'undefined'
+  ) {
     return;
   }
 
@@ -14,8 +17,8 @@
       this.valueChangeListeners = new Map();
       this.listenerIdCounter = 0;
 
-      window.addEventListener("message", (event) => {
-        if (event.source === window && event.data?.type === "GM_VALUE_CHANGED") {
+      window.addEventListener('message', (event) => {
+        if (event.source === window && event.data?.type === 'GM_VALUE_CHANGED') {
           const { name, oldValue, newValue, remote } = event.data.payload;
           const listeners = this.valueChangeListeners.get(name);
           if (listeners) {
@@ -23,7 +26,7 @@
               try {
                 listener(name, oldValue, newValue, remote);
               } catch (e) {
-                console.error("Error in value change listener:", e);
+                console.error('Error in value change listener:', e);
               }
             }
           }
@@ -38,7 +41,7 @@
       }
       const resolvedValue = value instanceof Promise ? await value : value;
       this.cache.set(name, resolvedValue);
-      return this.bridge.call("setValue", { name, value: this._toCloneable(resolvedValue) });
+      return this.bridge.call('setValue', { name, value: this._toCloneable(resolvedValue) });
     }
 
     getValue(name, defaultValue) {
@@ -52,7 +55,7 @@
 
       // Populate cache asynchronously
       this.bridge
-        .call("getValue", { name, defaultValue: this._toCloneable(defaultValue) })
+        .call('getValue', { name, defaultValue: this._toCloneable(defaultValue) })
         .then((value) => this.cache.set(name, value))
         .catch(() => {});
 
@@ -68,7 +71,10 @@
         return this.cache.get(name);
       }
       try {
-        const value = await this.bridge.call("getValue", { name, defaultValue: this._toCloneable(defaultValue) });
+        const value = await this.bridge.call('getValue', {
+          name,
+          defaultValue: this._toCloneable(defaultValue),
+        });
         this.cache.set(name, value);
         return value;
       } catch {
@@ -82,11 +88,11 @@
         return;
       }
       this.cache.delete(name);
-      return this.bridge.call("deleteValue", { name });
+      return this.bridge.call('deleteValue', { name });
     }
 
     listValues() {
-      return Array.from(this.cache.keys()).filter((key) => typeof key === "string");
+      return Array.from(this.cache.keys()).filter((key) => typeof key === 'string');
     }
 
     initializeCache(initialValues = {}) {
@@ -99,17 +105,17 @@
     }
 
     _toCloneable(val) {
-      if (val === null || typeof val !== "object") return val;
-      if (typeof val === "function") return undefined; // Can't clone functions
-      
+      if (val === null || typeof val !== 'object') return val;
+      if (typeof val === 'function') return undefined; // Can't clone functions
+
       try {
         if (Array.isArray(val)) {
-          return val.map(item => this._toCloneable(item));
+          return val.map((item) => this._toCloneable(item));
         }
-        
+
         const clone = {};
         for (const [k, v] of Object.entries(val)) {
-          if (typeof v !== "function") {
+          if (typeof v !== 'function') {
             clone[k] = this._toCloneable(v);
           }
         }
@@ -132,7 +138,7 @@
     }
 
     _ensureGMNamespace() {
-      if (typeof window.GM === "undefined") {
+      if (typeof window.GM === 'undefined') {
         window.GM = {};
       }
     }
@@ -156,8 +162,8 @@
       }
 
       if (enabled.gmListValues) {
-        const syncFn = () => Array.from(this.cache.keys()).filter((key) => typeof key === "string");
-        const asyncFn = () => this.bridge.call("listValues");
+        const syncFn = () => Array.from(this.cache.keys()).filter((key) => typeof key === 'string');
+        const asyncFn = () => this.bridge.call('listValues');
         window.GM_listValues = syncFn;
         window.GM.listValues = asyncFn;
       }
@@ -170,7 +176,7 @@
             this.valueChangeListeners.set(name, new Map());
           }
           this.valueChangeListeners.get(name).set(listenerId, callback);
-          this.bridge.call("addValueChangeListener", { name }).catch(() => {});
+          this.bridge.call('addValueChangeListener', { name }).catch(() => {});
           return listenerId;
         };
         window.GM_addValueChangeListener = window.GM.addValueChangeListener = addFn;
@@ -182,7 +188,7 @@
               listeners.delete(listenerId);
               if (listeners.size === 0) {
                 this.valueChangeListeners.delete(name);
-                this.bridge.call("removeValueChangeListener", { name }).catch(() => {});
+                this.bridge.call('removeValueChangeListener', { name }).catch(() => {});
               }
               break;
             }
@@ -197,7 +203,7 @@
       if (enabled.gmOpenInTab) {
         const fn = (url, opts = {}) => {
           if (!url) return;
-          return this.bridge.call("openInTab", { url, options: this._toCloneable(opts) });
+          return this.bridge.call('openInTab', { url, options: this._toCloneable(opts) });
         };
         window.GM_openInTab = window.GM.openInTab = fn;
       }
@@ -205,20 +211,21 @@
       // GM_notification
       if (enabled.gmNotification) {
         const normalizeDetails = (textOrDetails, titleOrOnDone, image) => {
-          const details = typeof textOrDetails === "object" 
-            ? { ...textOrDetails } 
-            : { text: textOrDetails, title: titleOrOnDone, image };
-          
+          const details =
+            typeof textOrDetails === 'object'
+              ? { ...textOrDetails }
+              : { text: textOrDetails, title: titleOrOnDone, image };
+
           if (!details.text) {
             throw new Error("GM_notification: 'text' is required");
           }
-          
+
           return this._toCloneable(details);
         };
         window.GM_notification = (textOrDetails, titleOrOnDone, image) => {
           try {
             const details = normalizeDetails(textOrDetails, titleOrOnDone, image);
-            this.bridge.call("notification", { details }).catch(() => {});
+            this.bridge.call('notification', { details }).catch(() => {});
           } catch (e) {
             console.warn(e.message);
           }
@@ -226,7 +233,7 @@
         window.GM.notification = (textOrDetails, titleOrOnDone, image) => {
           try {
             const details = normalizeDetails(textOrDetails, titleOrOnDone, image);
-            return this.bridge.call("notification", { details }).catch(() => null);
+            return this.bridge.call('notification', { details }).catch(() => null);
           } catch (e) {
             return Promise.reject(e);
           }
@@ -236,22 +243,20 @@
       // GM_registerMenuCommand
       if (enabled.gmRegisterMenuCommand) {
         const fn = (caption, onClick, accessKey) => {
-          if (typeof caption !== "string" || typeof onClick !== "function") {
+          if (typeof caption !== 'string' || typeof onClick !== 'function') {
             console.warn(
-              "GM_registerMenuCommand: Expected (string caption, function onClick, [string accessKey])"
+              'GM_registerMenuCommand: Expected (string caption, function onClick, [string accessKey])'
             );
             return null;
           }
-          
-          const commandId = `gm_menu_${Date.now()}_${Math.random()
-            .toString(36)
-            .substring(2, 8)}`;
-          
+
+          const commandId = `gm_menu_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+
           const command = { commandId, caption, onClick, accessKey };
-          
+
           window.__gmMenuCommands = window.__gmMenuCommands || [];
           window.__gmMenuCommands.push(command);
-          
+
           return commandId;
         };
         window.GM_registerMenuCommand = window.GM.registerMenuCommand = fn;
@@ -260,15 +265,13 @@
       // GM_unregisterMenuCommand
       if (enabled.gmUnregisterMenuCommand) {
         const fn = (commandId) => {
-          if (typeof commandId !== "string") {
-            console.warn("GM_unregisterMenuCommand: Expected string commandId");
+          if (typeof commandId !== 'string') {
+            console.warn('GM_unregisterMenuCommand: Expected string commandId');
             return;
           }
-          
+
           if (window.__gmMenuCommands) {
-            const index = window.__gmMenuCommands.findIndex(
-              (cmd) => cmd.commandId === commandId
-            );
+            const index = window.__gmMenuCommands.findIndex((cmd) => cmd.commandId === commandId);
             if (index !== -1) {
               window.__gmMenuCommands.splice(index, 1);
             }
@@ -281,8 +284,8 @@
     _registerResources(enabled) {
       if (enabled.gmGetResourceText) {
         const syncFn = (name) => {
-          if (typeof name !== "string" || name === "") {
-            console.warn("GM_getResourceText: resource name must be a string");
+          if (typeof name !== 'string' || name === '') {
+            console.warn('GM_getResourceText: resource name must be a string');
             return null;
           }
           const text = this.resourceManager.getText(name);
@@ -294,8 +297,8 @@
 
       if (enabled.gmGetResourceURL) {
         const syncFn = (name) => {
-          if (typeof name !== "string" || name === "") {
-            console.warn("GM_getResourceURL: resource name must be a string");
+          if (typeof name !== 'string' || name === '') {
+            console.warn('GM_getResourceURL: resource name must be a string');
             return null;
           }
           const url = this.resourceManager.getURL(name);
@@ -311,10 +314,10 @@
       if (enabled.gmAddStyle) {
         const fn = (css) => {
           if (css == null) {
-            console.warn("GM_addStyle: css must be a string");
+            console.warn('GM_addStyle: css must be a string');
             return null;
           }
-          const style = document.createElement("style");
+          const style = document.createElement('style');
           style.textContent = String(css);
           (document.head || document.documentElement).appendChild(style);
           return style;
@@ -335,21 +338,24 @@
             // 2) GM_addElement(parent, tag, attributes)
             if (typeof arg1 === 'string') {
               tag = arg1;
-              attributes = (arg2 && typeof arg2 === 'object') ? arg2 : {};
-              
+              attributes = arg2 && typeof arg2 === 'object' ? arg2 : {};
+
               // Default parent by tag
               const lower = tag.toLowerCase();
-              parent = (lower === 'style' || lower === 'script' || lower === 'link')
-                ? (document.head || document.documentElement || document.body)
-                : (document.body || document.documentElement || document.head);
+              parent =
+                lower === 'style' || lower === 'script' || lower === 'link'
+                  ? document.head || document.documentElement || document.body
+                  : document.body || document.documentElement || document.head;
             } else {
               parent = arg1;
               tag = arg2;
-              attributes = (arg3 && typeof arg3 === 'object') ? arg3 : {};
+              attributes = arg3 && typeof arg3 === 'object' ? arg3 : {};
             }
 
             if (!parent || typeof parent.appendChild !== 'function' || typeof tag !== 'string') {
-              console.warn('GM_addElement: parent must be a valid DOM node and tag must be a string');
+              console.warn(
+                'GM_addElement: parent must be a valid DOM node and tag must be a string'
+              );
               return null;
             }
 
@@ -358,7 +364,7 @@
             // Apply attributes and direct properties
             Object.entries(attributes).forEach(([k, v]) => {
               if (v == null) return;
-              
+
               try {
                 if (k === 'style' && typeof v === 'string') {
                   el.style.cssText = v;
@@ -368,8 +374,8 @@
                   el.setAttribute(k, String(v));
                 }
               } catch {
-                try { 
-                  el.setAttribute(k, String(v)); 
+                try {
+                  el.setAttribute(k, String(v));
                 } catch {
                   // Ignore errors
                 }
@@ -391,15 +397,16 @@
       // GM_setClipboard
       if (enabled.gmSetClipboard) {
         const fn = (data, type) => {
-          return this.bridge.call("setClipboard", { data, type });
+          return this.bridge.call('setClipboard', { data, type });
         };
         window.GM_setClipboard = window.GM.setClipboard = fn;
       }
 
       if (enabled.gmDownload) {
         const fn = (urlOrDetails, name) => {
-          const details = typeof urlOrDetails === 'object' ? urlOrDetails : { url: urlOrDetails, name: name };
-          return this.bridge.call("download", this._toCloneable(details));
+          const details =
+            typeof urlOrDetails === 'object' ? urlOrDetails : { url: urlOrDetails, name: name };
+          return this.bridge.call('download', this._toCloneable(details));
         };
         window.GM_download = window.GM.download = fn;
       }
@@ -416,10 +423,10 @@
             const normalizedDetails = {
               ...details,
               url: absoluteURL.toString(),
-              method: (details.method || "GET").toUpperCase(),
+              method: (details.method || 'GET').toUpperCase(),
             };
 
-            const supportedMethods = ["GET", "HEAD", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"];
+            const supportedMethods = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'];
             if (!supportedMethods.includes(normalizedDetails.method)) {
               console.warn(`GM_xmlhttpRequest: Unknown method "${normalizedDetails.method}"`);
             }
@@ -433,7 +440,7 @@
             );
             this._invokeCallback(
               details.onerror,
-              "onerror",
+              'onerror',
               new TypeError(`Invalid URL: ${details.url}`)
             );
             return {
@@ -448,19 +455,19 @@
             const wrapped = {
               ...details,
               onload: (response) => {
-                if (typeof details.onload === "function") {
+                if (typeof details.onload === 'function') {
                   details.onload(response);
                 }
                 resolve(response);
               },
               onerror: (error) => {
-                if (typeof details.onerror === "function") {
+                if (typeof details.onerror === 'function') {
                   details.onerror(error);
                 }
                 reject(error);
               },
               ontimeout: (error) => {
-                if (typeof details.ontimeout === "function") {
+                if (typeof details.ontimeout === 'function') {
                   details.ontimeout(error);
                 }
                 reject(error);
@@ -477,7 +484,7 @@
       const requestDetails = {};
 
       Object.entries(details).forEach(([key, value]) => {
-        if (typeof value === "function") {
+        if (typeof value === 'function') {
           callbacks[key] = value;
         } else {
           requestDetails[key] = value;
@@ -488,7 +495,7 @@
     }
 
     _invokeCallback(callback, callbackName, payload) {
-      if (typeof callback !== "function") {
+      if (typeof callback !== 'function') {
         return;
       }
       try {
@@ -499,15 +506,15 @@
     }
 
     async _normalizeResponseData(response, responseType) {
-      if (!response || typeof response !== "object") {
+      if (!response || typeof response !== 'object') {
         return {
           readyState: 4,
-          responseHeaders: "",
-          responseText: "",
+          responseHeaders: '',
+          responseText: '',
           response: null,
           status: 0,
-          statusText: "",
-          finalUrl: "",
+          statusText: '',
+          finalUrl: '',
           context: undefined,
         };
       }
@@ -517,10 +524,10 @@
       }
 
       const normalized = { ...response };
-      if (responseType === "arraybuffer" && !(normalized.response instanceof ArrayBuffer)) {
+      if (responseType === 'arraybuffer' && !(normalized.response instanceof ArrayBuffer)) {
         try {
-          if (typeof normalized.response === "string") {
-            if (normalized.response.startsWith("data:")) {
+          if (typeof normalized.response === 'string') {
+            if (normalized.response.startsWith('data:')) {
               const res = await fetch(normalized.response);
               normalized.response = await res.arrayBuffer();
             } else {
@@ -533,26 +540,26 @@
             normalized.response = new TextEncoder().encode(serialized).buffer;
           }
         } catch (error) {
-          console.error("CodeTweak: Failed to normalize arraybuffer response.", error);
+          console.error('CodeTweak: Failed to normalize arraybuffer response.', error);
         }
       }
 
-      if (responseType === "blob" && !(normalized.response instanceof Blob)) {
+      if (responseType === 'blob' && !(normalized.response instanceof Blob)) {
         try {
-          if (typeof normalized.response === "string" && normalized.response.startsWith("data:")) {
+          if (typeof normalized.response === 'string' && normalized.response.startsWith('data:')) {
             const res = await fetch(normalized.response);
             normalized.response = await res.blob();
-          } else if (typeof normalized.response === "string") {
-            normalized.response = new Blob([normalized.response], { type: "text/plain" });
+          } else if (typeof normalized.response === 'string') {
+            normalized.response = new Blob([normalized.response], { type: 'text/plain' });
           } else if (normalized.response instanceof ArrayBuffer) {
             normalized.response = new Blob([normalized.response]);
           } else if (normalized.response != null) {
             normalized.response = new Blob([JSON.stringify(normalized.response)], {
-              type: "application/json",
+              type: 'application/json',
             });
           }
         } catch (error) {
-          console.error("CodeTweak: Failed to normalize blob response.", error);
+          console.error('CodeTweak: Failed to normalize blob response.', error);
         }
       }
 
@@ -562,15 +569,15 @@
     _notifyCompletion(callbacks, response, context) {
       const safeResponse = response || {
         readyState: 4,
-        responseHeaders: "",
-        responseText: "",
+        responseHeaders: '',
+        responseText: '',
         response: null,
         status: 0,
-        statusText: "",
-        finalUrl: "",
+        statusText: '',
+        finalUrl: '',
       };
 
-      this._invokeCallback(callbacks.onreadystatechange, "onreadystatechange", {
+      this._invokeCallback(callbacks.onreadystatechange, 'onreadystatechange', {
         readyState: 4,
         responseHeaders: safeResponse.responseHeaders,
         responseText: safeResponse.responseText,
@@ -581,22 +588,22 @@
         context,
       });
 
-      this._invokeCallback(callbacks.onprogress, "onprogress", {
+      this._invokeCallback(callbacks.onprogress, 'onprogress', {
         loaded: safeResponse.responseText ? safeResponse.responseText.length : 0,
         total: 0,
         lengthComputable: false,
         context,
       });
 
-      this._invokeCallback(callbacks.onload, "onload", safeResponse);
+      this._invokeCallback(callbacks.onload, 'onload', safeResponse);
     }
 
     _buildXhrResponse(xhr, context) {
-      let responseText = "";
+      let responseText = '';
       try {
-        responseText = xhr.responseText ?? "";
+        responseText = xhr.responseText ?? '';
       } catch {
-        responseText = "";
+        responseText = '';
       }
 
       return {
@@ -614,7 +621,7 @@
     _handleSameOriginXmlhttpRequest(details) {
       const { callbacks, requestDetails } = this._extractCallbacks(details);
       const xhr = new XMLHttpRequest();
-      xhr.open(requestDetails.method || "GET", requestDetails.url);
+      xhr.open(requestDetails.method || 'GET', requestDetails.url);
 
       if (requestDetails.headers) {
         for (const header in requestDetails.headers) {
@@ -633,13 +640,13 @@
       xhr.onreadystatechange = () => {
         this._invokeCallback(
           callbacks.onreadystatechange,
-          "onreadystatechange",
+          'onreadystatechange',
           this._buildXhrResponse(xhr, requestDetails.context)
         );
       };
 
       xhr.onprogress = (event) => {
-        this._invokeCallback(callbacks.onprogress, "onprogress", {
+        this._invokeCallback(callbacks.onprogress, 'onprogress', {
           loaded: event.loaded,
           total: event.total,
           lengthComputable: event.lengthComputable,
@@ -652,15 +659,15 @@
           this._buildXhrResponse(xhr, requestDetails.context),
           requestDetails.responseType
         );
-        this._invokeCallback(callbacks.onload, "onload", normalizedResponse);
+        this._invokeCallback(callbacks.onload, 'onload', normalizedResponse);
       };
 
       xhr.onerror = () => {
-        this._invokeCallback(callbacks.onerror, "onerror", new Error("Network error"));
+        this._invokeCallback(callbacks.onerror, 'onerror', new Error('Network error'));
       };
 
       xhr.ontimeout = () => {
-        this._invokeCallback(callbacks.ontimeout, "ontimeout", new Error("Timeout"));
+        this._invokeCallback(callbacks.ontimeout, 'ontimeout', new Error('Timeout'));
       };
 
       xhr.send(requestDetails.data);
@@ -681,13 +688,13 @@
         timeoutId = setTimeout(() => {
           if (!completed && !aborted) {
             completed = true;
-            this._invokeCallback(callbacks.ontimeout, "ontimeout", new Error("Timeout"));
+            this._invokeCallback(callbacks.ontimeout, 'ontimeout', new Error('Timeout'));
           }
         }, requestDetails.timeout);
       }
 
       this.bridge
-        .call("xmlhttpRequest", { details: requestDetails })
+        .call('xmlhttpRequest', { details: requestDetails })
         .then(async (response) => {
           if (completed || aborted) return;
           completed = true;
@@ -697,17 +704,13 @@
             response,
             requestDetails.responseType
           );
-          this._notifyCompletion(
-            callbacks,
-            normalizedResponse,
-            requestDetails.context
-          );
+          this._notifyCompletion(callbacks, normalizedResponse, requestDetails.context);
         })
         .catch((error) => {
           if (completed || aborted) return;
           completed = true;
           clearTimeout(timeoutId);
-          this._invokeCallback(callbacks.onerror, "onerror", error);
+          this._invokeCallback(callbacks.onerror, 'onerror', error);
         });
 
       return {
@@ -722,7 +725,7 @@
     _registerAdvanced(enabled) {
       if (enabled.unsafeWindow) {
         try {
-          Object.defineProperty(window, "unsafeWindow", {
+          Object.defineProperty(window, 'unsafeWindow', {
             value: window,
             writable: false,
             configurable: false,

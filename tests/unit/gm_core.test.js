@@ -39,7 +39,11 @@ describe('gm_core bootstrap', () => {
       'console.log(1)',
       'script-x',
       ['https://cdn.example/lib.js'],
-      { loadScripts: vi.fn(async () => { throw new Error('load fail'); }) }
+      {
+        loadScripts: vi.fn(async () => {
+          throw new Error('load fail');
+        }),
+      }
     );
 
     expect(postSpy).toHaveBeenCalledWith(

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ScriptAnalyzer } from '../../src/utils/scriptAnalyzer.js';
 
 describe('ScriptAnalyzer', () => {
@@ -12,7 +12,9 @@ describe('ScriptAnalyzer', () => {
   });
 
   it('suggests runAt and enhances metadata', () => {
-    expect(ScriptAnalyzer.suggestRunAt("document.addEventListener('DOMContentLoaded',()=>{})")).toBe('document_start');
+    expect(
+      ScriptAnalyzer.suggestRunAt("document.addEventListener('DOMContentLoaded',()=>{})")
+    ).toBe('document_start');
     expect(ScriptAnalyzer.suggestRunAt('document.querySelector("#x")')).toBe('document_end');
 
     const enhanced = ScriptAnalyzer.validateAndEnhanceMetadata('GM_setValue("a",1);', {

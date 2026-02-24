@@ -2,56 +2,54 @@
 // Acts as a bridge between user scripts and the extension itself for saftey
 
 const extensionId =
-  typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.id
-    ? chrome.runtime.id
-    : null;
+  typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id ? chrome.runtime.id : null;
 
 function toCloneable(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
 if (
-  typeof chrome !== "undefined" &&
+  typeof chrome !== 'undefined' &&
   chrome.runtime &&
-  typeof chrome.runtime.onMessage?.addListener === "function"
+  typeof chrome.runtime.onMessage?.addListener === 'function'
 ) {
   chrome.runtime.onMessage.addListener((message) => {
-    if (message?.type === "GM_VALUE_CHANGED") {
+    if (message?.type === 'GM_VALUE_CHANGED') {
       window.postMessage(
         {
-          type: "GM_VALUE_CHANGED",
+          type: 'GM_VALUE_CHANGED',
           payload: message.payload,
         },
-        "*"
+        '*'
       );
     }
     return false;
   });
 }
 
-window.addEventListener("message", (event) => {
+window.addEventListener('message', (event) => {
   // Only accept messages from our extension
   if (event.source !== window || !event.data) {
     return;
   }
 
   // Handle script error messages
-  if (event.data.type === "SCRIPT_ERROR") {
+  if (event.data.type === 'SCRIPT_ERROR') {
     if (
-      typeof chrome !== "undefined" &&
+      typeof chrome !== 'undefined' &&
       chrome.runtime &&
-      typeof chrome.runtime.sendMessage === "function"
+      typeof chrome.runtime.sendMessage === 'function'
     ) {
       chrome.runtime.sendMessage(
         {
-          type: "SCRIPT_ERROR",
+          type: 'SCRIPT_ERROR',
           scriptId: event.data.scriptId,
           error: event.data.error,
         },
         () => {
           if (chrome.runtime && chrome.runtime.lastError) {
             console.error(
-              "[CodeTweak Content Bridge] Error forwarding SCRIPT_ERROR:",
+              '[CodeTweak Content Bridge] Error forwarding SCRIPT_ERROR:',
               chrome.runtime.lastError
             );
           }
@@ -62,10 +60,7 @@ window.addEventListener("message", (event) => {
   }
 
   // Handle GM API requests
-  if (
-    event.data.type !== "GM_API_REQUEST" ||
-    event.data.extensionId !== extensionId
-  ) {
+  if (event.data.type !== 'GM_API_REQUEST' || event.data.extensionId !== extensionId) {
     return;
   }
 
@@ -73,23 +68,22 @@ window.addEventListener("message", (event) => {
 
   if (
     !(
-      typeof chrome !== "undefined" &&
+      typeof chrome !== 'undefined' &&
       chrome.runtime &&
-      typeof chrome.runtime.sendMessage === "function"
+      typeof chrome.runtime.sendMessage === 'function'
     )
   ) {
     console.error(
-      "CodeTweak: chrome.runtime.sendMessage is not available. Cannot bridge GM_API request."
+      'CodeTweak: chrome.runtime.sendMessage is not available. Cannot bridge GM_API request.'
     );
     window.postMessage(
       {
-        type: "GM_API_RESPONSE",
+        type: 'GM_API_RESPONSE',
         extensionId: extensionId,
         messageId: messageId,
-        error:
-          "Extension context has been invalidated. Please reload the page.",
+        error: 'Extension context has been invalidated. Please reload the page.',
       },
-      "*"
+      '*'
     );
     return;
   }
@@ -103,12 +97,12 @@ window.addEventListener("message", (event) => {
   } catch {
     window.postMessage(
       {
-        type: "GM_API_RESPONSE",
+        type: 'GM_API_RESPONSE',
         extensionId: extensionId,
         messageId,
-        error: "Request payload is not serializable.",
+        error: 'Request payload is not serializable.',
       },
-      "*"
+      '*'
     );
     return;
   }
@@ -116,7 +110,7 @@ window.addEventListener("message", (event) => {
   // create the payload for the background
   chrome.runtime.sendMessage(
     {
-      type: "GM_API_REQUEST",
+      type: 'GM_API_REQUEST',
       payload,
     },
     (_response) => {
@@ -139,12 +133,12 @@ window.addEventListener("message", (event) => {
 
       window.postMessage(
         {
-          type: "GM_API_RESPONSE",
+          type: 'GM_API_RESPONSE',
           extensionId: extensionId,
           messageId,
           ...responsePayload,
         },
-        "*"
+        '*'
       ); // post back to main world
     }
   );

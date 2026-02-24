@@ -1,36 +1,30 @@
-import {
-  createWorldExecutor,
-} from "./worldExecutors.js";
+import { createWorldExecutor } from './worldExecutors.js';
 
 const INJECTION_TYPES = Object.freeze({
-  DOCUMENT_START: "document_start",
-  DOCUMENT_END: "document_end",
-  DOCUMENT_IDLE: "document_idle",
+  DOCUMENT_START: 'document_start',
+  DOCUMENT_END: 'document_end',
+  DOCUMENT_IDLE: 'document_idle',
 });
 
 const EXECUTION_WORLDS = Object.freeze({
-  MAIN: "MAIN",
-  ISOLATED: "ISOLATED",
+  MAIN: 'MAIN',
+  ISOLATED: 'ISOLATED',
 });
 
 function toSerializableValue(value, seen = new WeakSet()) {
   if (value === null) return null;
 
   const valueType = typeof value;
-  if (valueType === "string" || valueType === "boolean") {
+  if (valueType === 'string' || valueType === 'boolean') {
     return value;
   }
-  if (valueType === "number") {
+  if (valueType === 'number') {
     return Number.isFinite(value) ? value : null;
   }
-  if (valueType === "bigint") {
+  if (valueType === 'bigint') {
     return value.toString();
   }
-  if (
-    valueType === "undefined" ||
-    valueType === "function" ||
-    valueType === "symbol"
-  ) {
+  if (valueType === 'undefined' || valueType === 'function' || valueType === 'symbol') {
     return null;
   }
 
@@ -45,7 +39,7 @@ function toSerializableValue(value, seen = new WeakSet()) {
     return value.map((item) => toSerializableValue(item, seen));
   }
 
-  if (valueType === "object") {
+  if (valueType === 'object') {
     if (seen.has(value)) {
       return null;
     }
@@ -68,7 +62,6 @@ function sanitizeExecutionArgs(args) {
   return args.map((arg) => toSerializableValue(arg));
 }
 
-
 class ScriptInjector {
   constructor() {
     this.executedScripts = new Map();
@@ -76,34 +69,31 @@ class ScriptInjector {
   }
 
   prepareScriptConfig(script, enhancedDebugging) {
-    const scriptId =
-      script.id || script.name || `anonymous_script_${Date.now()}`;
+    const scriptId = script.id || script.name || `anonymous_script_${Date.now()}`;
 
     const apiKeys = [
-      "gmSetValue",
-      "gmGetValue",
-      "gmDeleteValue",
-      "gmListValues",
-      "gmAddValueChangeListener",
-      "gmRemoveValueChangeListener",
-      "gmOpenInTab",
-      "gmNotification",
-      "gmGetResourceText",
-      "gmGetResourceURL",
-      "gmSetClipboard",
-      "gmDownload",
-      "gmAddStyle",
-      "gmAddElement",
-      "gmRegisterMenuCommand",
-      "gmUnregisterMenuCommand",
-      "gmXmlhttpRequest",
-      "unsafeWindow",
-      "gmLog",
+      'gmSetValue',
+      'gmGetValue',
+      'gmDeleteValue',
+      'gmListValues',
+      'gmAddValueChangeListener',
+      'gmRemoveValueChangeListener',
+      'gmOpenInTab',
+      'gmNotification',
+      'gmGetResourceText',
+      'gmGetResourceURL',
+      'gmSetClipboard',
+      'gmDownload',
+      'gmAddStyle',
+      'gmAddElement',
+      'gmRegisterMenuCommand',
+      'gmUnregisterMenuCommand',
+      'gmXmlhttpRequest',
+      'unsafeWindow',
+      'gmLog',
     ];
 
-    const enabledApis = Object.fromEntries(
-      apiKeys.map((key) => [key, Boolean(script[key])])
-    );
+    const enabledApis = Object.fromEntries(apiKeys.map((key) => [key, Boolean(script[key])]));
 
     return {
       code: script.code,
@@ -115,14 +105,14 @@ class ScriptInjector {
       gmInfo: {
         script: {
           id: scriptId,
-          name: script.name || "",
-          version: script.version || "",
-          description: script.description || "",
-          author: script.author || "",
-          namespace: script.namespace || "",
+          name: script.name || '',
+          version: script.version || '',
+          description: script.description || '',
+          author: script.author || '',
+          namespace: script.namespace || '',
         },
-        scriptHandler: "CodeTweak",
-        version: chrome.runtime?.getManifest?.().version || "",
+        scriptHandler: 'CodeTweak',
+        version: chrome.runtime?.getManifest?.().version || '',
       },
       enhancedDebugging: Boolean(enhancedDebugging),
     };
@@ -144,8 +134,8 @@ class ScriptInjector {
         target: { tabId },
         world: EXECUTION_WORLDS.MAIN,
         func: () => {
-          if (typeof unsafeWindow === "undefined") {
-            Object.defineProperty(window, "unsafeWindow", {
+          if (typeof unsafeWindow === 'undefined') {
+            Object.defineProperty(window, 'unsafeWindow', {
               value: window,
               writable: false,
               configurable: false,
@@ -158,7 +148,7 @@ class ScriptInjector {
     await chrome.scripting.executeScript({
       target: { tabId },
       world,
-      files: ["GM/gm_core.js", "GM/gm_api_registry.js"],
+      files: ['GM/gm_core.js', 'GM/gm_api_registry.js'],
     });
 
     tabCoreScripts.add(world);
@@ -189,7 +179,7 @@ class ScriptInjector {
   }
 
   async tryInjectInBothWorlds(tabId, config, injectInto) {
-    if (injectInto === "default") {
+    if (injectInto === 'default') {
       try {
         await this.injectInWorld(tabId, config, EXECUTION_WORLDS.MAIN);
         return true;
@@ -211,16 +201,12 @@ class ScriptInjector {
       }
     }
 
-    const world =
-      injectInto === "main" ? EXECUTION_WORLDS.MAIN : EXECUTION_WORLDS.ISOLATED;
+    const world = injectInto === 'main' ? EXECUTION_WORLDS.MAIN : EXECUTION_WORLDS.ISOLATED;
     try {
       await this.injectInWorld(tabId, config, world);
       return true;
     } catch (error) {
-      console.error(
-        `CodeTweak: ${world} world injection failed for script '${config.id}':`,
-        error
-      );
+      console.error(`CodeTweak: ${world} world injection failed for script '${config.id}':`, error);
       return false;
     }
   }
@@ -230,9 +216,7 @@ class ScriptInjector {
       const tab = await chrome.tabs.get(tabId);
 
       if (!tab || !chrome.runtime?.id) {
-        console.warn(
-          `CodeTweak: Tab or extension runtime not available for ${script?.name}`
-        );
+        console.warn(`CodeTweak: Tab or extension runtime not available for ${script?.name}`);
         return false;
       }
 
@@ -240,19 +224,10 @@ class ScriptInjector {
       const result = await chrome.storage.local.get(storageKey);
       script.initialValues = result[storageKey] || {};
 
-      const { settings: storedSettings = {} } = await chrome.storage.local.get(
-        "settings"
-      );
-      const config = this.prepareScriptConfig(
-        script,
-        storedSettings.enhancedDebugging
-      );
+      const { settings: storedSettings = {} } = await chrome.storage.local.get('settings');
+      const config = this.prepareScriptConfig(script, storedSettings.enhancedDebugging);
 
-      const injected = await this.tryInjectInBothWorlds(
-        tabId,
-        config,
-        script.injectInto
-      );
+      const injected = await this.tryInjectInBothWorlds(tabId, config, script.injectInto);
 
       if (injected && settings.showNotifications) {
         this.showNotification(tabId, script.name);
@@ -260,10 +235,7 @@ class ScriptInjector {
 
       return injected;
     } catch (error) {
-      console.warn(
-        `CodeTweak: Failed to inject script ${script?.name}:`,
-        error
-      );
+      console.warn(`CodeTweak: Failed to inject script ${script?.name}:`, error);
       return false;
     }
   }
@@ -271,15 +243,15 @@ class ScriptInjector {
   async askForConfirmation(tabId, scriptName, domain) {
     const results = await chrome.scripting.executeScript({
       target: { tabId },
-      world: "MAIN",
+      world: 'MAIN',
       func: (scriptName, domain) => {
         return new Promise((resolve) => {
-          const container = document.createElement("div");
-          container.id = "codetweak-confirm-container";
+          const container = document.createElement('div');
+          container.id = 'codetweak-confirm-container';
 
-          const shadow = container.attachShadow({ mode: "open" });
+          const shadow = container.attachShadow({ mode: 'open' });
 
-          const style = document.createElement("style");
+          const style = document.createElement('style');
           style.textContent = `
             :host {
               position: fixed;
@@ -330,8 +302,8 @@ class ScriptInjector {
             }
           `;
 
-          const modal = document.createElement("div");
-          modal.className = "modal";
+          const modal = document.createElement('div');
+          modal.className = 'modal';
           modal.innerHTML = `
             <h3>CodeTweak Script Confirmation</h3>
             <p>Allow "<strong></strong>" to run on <strong></strong>?</p>
@@ -341,7 +313,7 @@ class ScriptInjector {
             </div>
           `;
 
-          const strongs = modal.querySelectorAll("strong");
+          const strongs = modal.querySelectorAll('strong');
           strongs[0].textContent = scriptName;
           strongs[1].textContent = domain;
 
@@ -355,12 +327,12 @@ class ScriptInjector {
             }
           };
 
-          shadow.getElementById("allow-btn").addEventListener("click", () => {
+          shadow.getElementById('allow-btn').addEventListener('click', () => {
             cleanup();
             resolve(true);
           });
 
-          shadow.getElementById("deny-btn").addEventListener("click", () => {
+          shadow.getElementById('deny-btn').addEventListener('click', () => {
             cleanup();
             resolve(false);
           });
@@ -372,23 +344,12 @@ class ScriptInjector {
     return results[0].result;
   }
 
-  async injectMatchingScripts(
-    url,
-    runAt,
-    tabId,
-    tabScripts,
-    getFilteredScripts,
-    settings
-  ) {
+  async injectMatchingScripts(url, runAt, tabId, tabScripts, getFilteredScripts, settings) {
     const matchingScripts = await getFilteredScripts(url, runAt);
-    const newScripts = matchingScripts.filter(
-      (script) => !tabScripts.has(script.id)
-    );
+    const newScripts = matchingScripts.filter((script) => !tabScripts.has(script.id));
 
     if (settings.confirmFirstRun) {
-      const { scriptPermissions = {} } = await chrome.storage.local.get(
-        "scriptPermissions"
-      );
+      const { scriptPermissions = {} } = await chrome.storage.local.get('scriptPermissions');
       const domain = new URL(url).hostname;
 
       for (const script of newScripts) {
@@ -398,11 +359,7 @@ class ScriptInjector {
           tabScripts.add(script.id);
           await this.injectScript(tabId, script, settings);
         } else {
-          const confirmed = await this.askForConfirmation(
-            tabId,
-            script.name,
-            domain
-          );
+          const confirmed = await this.askForConfirmation(tabId, script.name, domain);
 
           if (confirmed) {
             allowedDomains.push(domain);
@@ -425,7 +382,7 @@ class ScriptInjector {
     if (details.frameId !== 0) return;
 
     try {
-      const { settings = {} } = await chrome.storage.local.get("settings");
+      const { settings = {} } = await chrome.storage.local.get('settings');
       const { url, tabId } = details;
 
       if (!this.executedScripts.has(tabId)) {
@@ -438,16 +395,9 @@ class ScriptInjector {
         tabScripts.clear();
       }
 
-      await this.injectMatchingScripts(
-        url,
-        runAt,
-        tabId,
-        tabScripts,
-        getFilteredScripts,
-        settings
-      );
+      await this.injectMatchingScripts(url, runAt, tabId, tabScripts, getFilteredScripts, settings);
     } catch (error) {
-      console.error("CodeTweak: Script injection error:", error);
+      console.error('CodeTweak: Script injection error:', error);
     }
   }
 
@@ -457,31 +407,31 @@ class ScriptInjector {
         target: { tabId },
         world: EXECUTION_WORLDS.MAIN,
         func: (name) => {
-          const notification = document.createElement("div");
+          const notification = document.createElement('div');
           notification.textContent = `✓ ${name}`;
 
           Object.assign(notification.style, {
-            position: "fixed",
-            bottom: "16px",
-            right: "16px",
-            zIndex: "999999",
-            background: "rgba(33, 150, 243, 0.95)",
-            color: "white",
-            padding: "6px 12px",
-            borderRadius: "8px",
-            fontSize: "12px",
-            fontFamily: "system-ui, sans-serif",
-            pointerEvents: "none",
-            boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+            position: 'fixed',
+            bottom: '16px',
+            right: '16px',
+            zIndex: '999999',
+            background: 'rgba(33, 150, 243, 0.95)',
+            color: 'white',
+            padding: '6px 12px',
+            borderRadius: '8px',
+            fontSize: '12px',
+            fontFamily: 'system-ui, sans-serif',
+            pointerEvents: 'none',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
           });
 
           document.body.appendChild(notification);
           setTimeout(() => notification.remove(), 2000);
         },
-        args: [scriptName || "Unknown script"],
+        args: [scriptName || 'Unknown script'],
       })
       .catch((error) => {
-        console.error("CodeTweak: showNotification failed:", error);
+        console.error('CodeTweak: showNotification failed:', error);
       });
   }
 
@@ -492,16 +442,8 @@ class ScriptInjector {
 
 const scriptInjector = new ScriptInjector();
 
-export async function injectScriptsForStage(
-  details,
-  runAt,
-  getFilteredScripts
-) {
-  return scriptInjector.injectScriptsForStage(
-    details,
-    runAt,
-    getFilteredScripts
-  );
+export async function injectScriptsForStage(details, runAt, getFilteredScripts) {
+  return scriptInjector.injectScriptsForStage(details, runAt, getFilteredScripts);
 }
 
 export function showNotification(tabId, scriptName) {

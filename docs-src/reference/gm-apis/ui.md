@@ -13,6 +13,7 @@ GM_addStyle(css: string): HTMLStyleElement
 ```
 
 ### Implementation Note
+
 CodeTweak appends the `<style>` tag to `document.head` or `document.documentElement` if `head` is not yet available (e.g., in `document-start` scripts).
 
 ---
@@ -30,10 +31,12 @@ GM_addElement(tag: string, attributes?: object): Node
 ```
 
 ### Supported Attributes
+
 CodeTweak automatically handles several attribute types:
--   **style**: If provided as a string, it is applied via `el.style.cssText`.
--   **Properties**: If the key exists on the element (e.g., `textContent`, `onclick`), it is assigned directly.
--   **Attributes**: Otherwise, it is set using `el.setAttribute`.
+
+- **style**: If provided as a string, it is applied via `el.style.cssText`.
+- **Properties**: If the key exists on the element (e.g., `textContent`, `onclick`), it is assigned directly.
+- **Attributes**: Otherwise, it is set using `el.setAttribute`.
 
 ---
 
@@ -47,12 +50,13 @@ GM_notification(text: string, title?: string, image?: string, ondone?: Function)
 ```
 
 ### Options
--   **text**: The body message of the notification.
--   **title**: The header title.
--   **image**: A URL for an icon image.
--   **timeout**: How long to show the notification (in milliseconds).
--   **onclick**: Callback when the notification is clicked.
--   **ondone**: Callback when the notification is closed.
+
+- **text**: The body message of the notification.
+- **title**: The header title.
+- **image**: A URL for an icon image.
+- **timeout**: How long to show the notification (in milliseconds).
+- **onclick**: Callback when the notification is clicked.
+- **ondone**: Callback when the notification is closed.
 
 ---
 
@@ -65,9 +69,10 @@ GM_openInTab(url: string, options?: object | boolean): void
 ```
 
 ### Options
--   **active**: If `true`, the new tab will be focused immediately.
--   **insert**: If `true`, the tab will be opened next to the current one.
--   **setParent**: If `true`, closing the new tab will return focus to the original tab.
+
+- **active**: If `true`, the new tab will be focused immediately.
+- **insert**: If `true`, the tab will be opened next to the current one.
+- **setParent**: If `true`, closing the new tab will return focus to the original tab.
 
 ---
 
@@ -81,9 +86,9 @@ Register custom actions that appear in the CodeTweak extension menu when your sc
 GM_registerMenuCommand(caption: string, onClick: () => void, accessKey?: string): string
 ```
 
--   **caption**: The text to display in the menu.
--   **onClick**: The function that runs when the command is selected.
--   **accessKey**: A keyboard shortcut (if supported by the browser).
+- **caption**: The text to display in the menu.
+- **onClick**: The function that runs when the command is selected.
+- **accessKey**: A keyboard shortcut (if supported by the browser).
 
 ### GM_unregisterMenuCommand
 

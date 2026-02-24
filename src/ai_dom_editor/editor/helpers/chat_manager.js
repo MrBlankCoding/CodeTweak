@@ -40,8 +40,12 @@ export class ChatManager {
         this.messages = history.messages;
         this.editor.uiManager.hideWelcomeMessage();
 
-        history.messages.forEach(msg => {
-          const messageEl = this.editor.uiManager.createMessageElement(msg.role, msg.text, msg.data || {});
+        history.messages.forEach((msg) => {
+          const messageEl = this.editor.uiManager.createMessageElement(
+            msg.role,
+            msg.text,
+            msg.data || {}
+          );
           this.editor.elements.messages.appendChild(messageEl);
         });
 
@@ -66,8 +70,8 @@ export class ChatManager {
           id: this.scriptId,
           url: this.currentSiteUrl,
           messages: this.messages,
-          lastUpdated: Date.now()
-        }
+          lastUpdated: Date.now(),
+        },
       });
     } catch (error) {
       console.error('Error saving chat history:', error);
@@ -75,7 +79,10 @@ export class ChatManager {
   }
 
   getPreviousCode() {
-    const lastAssistantMessage = this.messages.slice().reverse().find(msg => msg.role === 'assistant' && msg.data && msg.data.code);
+    const lastAssistantMessage = this.messages
+      .slice()
+      .reverse()
+      .find((msg) => msg.role === 'assistant' && msg.data && msg.data.code);
     return lastAssistantMessage ? lastAssistantMessage.data.code : null;
   }
 

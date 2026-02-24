@@ -1,12 +1,12 @@
-import { EditorState, Compartment } from "@codemirror/state";
-import { EditorView, keymap, lineNumbers } from "@codemirror/view";
-import { basicSetup } from "codemirror";
-import { javascript } from "@codemirror/lang-javascript";
-import { defaultKeymap, indentWithTab } from "@codemirror/commands";
+import { EditorState, Compartment } from '@codemirror/state';
+import { EditorView, keymap, lineNumbers } from '@codemirror/view';
+import { basicSetup } from 'codemirror';
+import { javascript } from '@codemirror/lang-javascript';
+import { defaultKeymap, indentWithTab } from '@codemirror/commands';
 import { parseUserScriptMetadata } from '../utils/metadataParser.js';
-import { autocompletion, closeBrackets } from "@codemirror/autocomplete";
-import { bracketMatching } from "@codemirror/language";
-import { linter, lintGutter } from "@codemirror/lint";
+import { autocompletion, closeBrackets } from '@codemirror/autocomplete';
+import { bracketMatching } from '@codemirror/language';
+import { linter, lintGutter } from '@codemirror/lint';
 import { showMinimap } from '@replit/codemirror-minimap';
 import { oneDark } from '@codemirror/theme-one-dark';
 
@@ -17,17 +17,17 @@ export class CodeEditorManager {
     this.config = config;
     this.gmApiDefinitions = gmApiDefinitions;
     this.codeEditor = null;
-    
+
     this.defaultSettings = {
       fontSize: 14,
       tabSize: 2,
       lineNumbers: true,
       lineWrapping: false,
       matchBrackets: true,
-      minimap: true
+      minimap: true,
     };
-    
-    this.currentSettings = {...this.defaultSettings};
+
+    this.currentSettings = { ...this.defaultSettings };
     this.lint = new Compartment();
     this.tabSize = new Compartment();
     this.lineNumbers = new Compartment();
@@ -38,13 +38,13 @@ export class CodeEditorManager {
     this.LARGE_FILE_LINE_COUNT = 3000;
     this.HUGE_FILE_LINE_COUNT = 10000;
     this.LARGE_FILE_CHAR_COUNT = 200_000; // ~200 KB text
-    this.HUGE_FILE_CHAR_COUNT = 800_000;  // ~800 KB text
+    this.HUGE_FILE_CHAR_COUNT = 800_000; // ~800 KB text
     this.currentPerfTier = 'normal'; // 'normal' | 'large' | 'huge'
     this._perfCheckTimer = null;
 
     chrome.storage.onChanged.addListener((changes, namespace) => {
       if (namespace === 'local' && changes.editorSettings) {
-        this.currentSettings = {...this.defaultSettings, ...changes.editorSettings.newValue};
+        this.currentSettings = { ...this.defaultSettings, ...changes.editorSettings.newValue };
         this.applySettings(this.currentSettings);
       }
     });
@@ -52,7 +52,7 @@ export class CodeEditorManager {
 
   async initializeCodeEditor() {
     if (!this.elements.codeEditor) {
-      throw new Error("Code editor element not found");
+      throw new Error('Code editor element not found');
     }
 
     await this.loadSettings();
@@ -68,49 +68,53 @@ export class CodeEditorManager {
         autocompletion(),
         closeBrackets(),
         lintGutter(),
-        
+
         // Settings compartments
         this.tabSize.of(EditorState.tabSize.of(this.currentSettings.tabSize)),
         this.lineNumbers.of(this.currentSettings.lineNumbers ? [lineNumbers()] : []),
         this.lineWrapping.of(this.currentSettings.lineWrapping ? EditorView.lineWrapping : []),
         this.matchBrackets.of(this.currentSettings.matchBrackets ? bracketMatching() : []),
-        this.minimap.of(this.currentSettings.minimap ? showMinimap.compute(['doc'], () => {
-          return {
-            create: () => {
-              const dom = document.createElement('div');
-              return { dom };
-            },
-            displayText: 'blocks',
-            showOverlay: 'always'
-          };
-        }) : []),
+        this.minimap.of(
+          this.currentSettings.minimap
+            ? showMinimap.compute(['doc'], () => {
+                return {
+                  create: () => {
+                    const dom = document.createElement('div');
+                    return { dom };
+                  },
+                  displayText: 'blocks',
+                  showOverlay: 'always',
+                };
+              })
+            : []
+        ),
         EditorView.updateListener.of((update) => {
-            if (update.docChanged) {
-                this.onChangeCallback?.();
-                if (this._perfCheckTimer) clearTimeout(this._perfCheckTimer);
-                this._perfCheckTimer = setTimeout(() => this.applyLargeFileOptimizations(), 500);
+          if (update.docChanged) {
+            this.onChangeCallback?.();
+            if (this._perfCheckTimer) clearTimeout(this._perfCheckTimer);
+            this._perfCheckTimer = setTimeout(() => this.applyLargeFileOptimizations(), 500);
+          }
+          if (update.selectionSet) {
+            const cursor = update.state.selection.main;
+            if (this.elements.cursorInfo) {
+              const line = update.state.doc.lineAt(cursor.from);
+              this.elements.cursorInfo.textContent = `Line: ${line.number}, Col: ${cursor.from - line.from}`;
             }
-            if (update.selectionSet) {
-                const cursor = update.state.selection.main;
-                if (this.elements.cursorInfo) {
-                    const line = update.state.doc.lineAt(cursor.from);
-                    this.elements.cursorInfo.textContent = `Line: ${line.number}, Col: ${cursor.from - line.from}`;
-                }
-            }
-        })
-      ]
+          }
+        }),
+      ],
     });
 
     this.codeEditor = new EditorView({
       state: startState,
-      parent: this.elements.codeEditor.parentElement
+      parent: this.elements.codeEditor.parentElement,
     });
 
     this.elements.codeEditor.style.display = 'none';
 
     this.applyLargeFileOptimizations();
     this.setupEditorEventHandlers();
-    this.updateEditorLintAndAutocomplete(); 
+    this.updateEditorLintAndAutocomplete();
     this.state.codeEditor = this.codeEditor;
     this.applySettings(this.currentSettings);
 
@@ -143,7 +147,7 @@ export class CodeEditorManager {
 
     // Apply font size directly to the DOM
     this.codeEditor.dom.style.fontSize = `${currentSettings.fontSize}px`;
-    
+
     // Tab size is not performance-related
     effects.push(this.tabSize.reconfigure(EditorState.tabSize.of(currentSettings.tabSize)));
 
@@ -154,18 +158,24 @@ export class CodeEditorManager {
     // Line Wrapping
     const shouldWrap = isNormalTier && currentSettings.lineWrapping;
     effects.push(this.lineWrapping.reconfigure(shouldWrap ? EditorView.lineWrapping : []));
-    
+
     // Bracket Matching
     const shouldMatchBrackets = isNormalTier && currentSettings.matchBrackets;
     effects.push(this.matchBrackets.reconfigure(shouldMatchBrackets ? bracketMatching() : []));
-    
+
     // Minimap
     const shouldShowMinimap = isNormalTier && currentSettings.minimap;
-    effects.push(this.minimap.reconfigure(shouldShowMinimap ? showMinimap.compute(['doc'], () => ({
-      create: () => ({ dom: document.createElement('div') }),
-      displayText: 'blocks',
-      showOverlay: 'always'
-    })) : []));
+    effects.push(
+      this.minimap.reconfigure(
+        shouldShowMinimap
+          ? showMinimap.compute(['doc'], () => ({
+              create: () => ({ dom: document.createElement('div') }),
+              displayText: 'blocks',
+              showOverlay: 'always',
+            }))
+          : []
+      )
+    );
 
     // Line Numbers
     const shouldShowLineNumbers = !isHugeTier && currentSettings.lineNumbers;
@@ -173,18 +183,20 @@ export class CodeEditorManager {
 
     // Linting
     const shouldLint = isNormalTier && this.state.lintingEnabled;
-    effects.push(this.lint.reconfigure(linter(this.getLintOptions(shouldLint, this.getEnabledGmApis()))));
-    
+    effects.push(
+      this.lint.reconfigure(linter(this.getLintOptions(shouldLint, this.getEnabledGmApis())))
+    );
+
     if (effects.length > 0) {
       this.codeEditor.dispatch({ effects });
     }
-    
+
     this.updatePerfBadge(currentPerfTier);
   }
 
   applyPerformanceTier(tier) {
     if (!this.codeEditor || tier === this.currentPerfTier) return;
-    
+
     this.currentPerfTier = tier;
     this.reconfigureExtensions();
   }
@@ -217,45 +229,51 @@ export class CodeEditorManager {
     }
   }
 
-        getEditorKeybindings() {
+  getEditorKeybindings() {
+    return keymap.of([
+      ...defaultKeymap,
 
-          return keymap.of([
+      indentWithTab,
 
-              ...defaultKeymap,
+      {
+        key: 'Ctrl-s',
+        run: () => {
+          this.onSaveCallback?.();
+          return true;
+        },
+      },
 
-              indentWithTab,
+      {
+        key: 'Cmd-s',
+        run: () => {
+          this.onSaveCallback?.();
+          return true;
+        },
+      },
 
-              { key: "Ctrl-s", run: () => { this.onSaveCallback?.(); return true; } },
+      {
+        key: 'F11',
+        run: (view) => {
+          if (view.dom.requestFullscreen) {
+            view.dom.requestFullscreen();
+          }
 
-              { key: "Cmd-s", run: () => { this.onSaveCallback?.(); return true; } },
+          return true;
+        },
+      },
 
-              { key: "F11", run: (view) => {
+      {
+        key: 'Escape',
+        run: () => {
+          if (document.fullscreenElement) {
+            document.exitFullscreen();
+          }
 
-                  if (view.dom.requestFullscreen) {
-
-                      view.dom.requestFullscreen();
-
-                  }
-
-                  return true;
-
-              }},
-
-              { key: "Escape", run: () => {
-
-                  if (document.fullscreenElement) {
-
-                      document.exitFullscreen();
-
-                  }
-
-                  return true;
-
-              }},
-
-          ]);
-
-        }
+          return true;
+        },
+      },
+    ]);
+  }
 
   toggleMinimap() {
     // Minimap functionality is not available out-of-the-box in CodeMirror 6.
@@ -266,9 +284,9 @@ export class CodeEditorManager {
     return new Promise((resolve) => {
       chrome.storage.local.get(['editorSettings'], (result) => {
         if (result.editorSettings) {
-          this.currentSettings = {...this.defaultSettings, ...result.editorSettings};
+          this.currentSettings = { ...this.defaultSettings, ...result.editorSettings };
         } else {
-          this.currentSettings = {...this.defaultSettings};
+          this.currentSettings = { ...this.defaultSettings };
         }
         resolve(this.currentSettings);
       });
@@ -276,7 +294,7 @@ export class CodeEditorManager {
   }
 
   saveSettings(settings) {
-    this.currentSettings = {...this.currentSettings, ...settings};
+    this.currentSettings = { ...this.currentSettings, ...settings };
     chrome.storage.local.set({ editorSettings: this.currentSettings });
     this.applySettings(settings);
   }
@@ -288,8 +306,8 @@ export class CodeEditorManager {
   }
 
   resetToDefaultSettings() {
-    this.saveSettings({...this.defaultSettings});
-    return {...this.defaultSettings};
+    this.saveSettings({ ...this.defaultSettings });
+    return { ...this.defaultSettings };
   }
 
   parseUserScriptHeader(content) {
@@ -298,21 +316,23 @@ export class CodeEditorManager {
 
   async handlePaste(event) {
     if (!this.onImportCallback) return;
-    
+
     try {
       const clipboardData = event.clipboardData || window.clipboardData;
       const pastedText = clipboardData.getData('text/plain');
-      
+
       if (pastedText.includes('==UserScript==') && pastedText.includes('==/UserScript==')) {
         const metadata = this.parseUserScriptHeader(pastedText);
         if (metadata) {
           event.preventDefault();
-          
-          const shouldImport = confirm('This looks like a UserScript. Would you like to import its metadata?');
+
+          const shouldImport = confirm(
+            'This looks like a UserScript. Would you like to import its metadata?'
+          );
           if (shouldImport) {
             this.onImportCallback({
               code: pastedText,
-              ...metadata
+              ...metadata,
             });
             return;
           }
@@ -338,19 +358,16 @@ export class CodeEditorManager {
 
     try {
       const enabledApiNames = this.getEnabledGmApis();
-      const lintOptions = this.getLintOptions(
-        this.state.lintingEnabled,
-        enabledApiNames
-      );
+      const lintOptions = this.getLintOptions(this.state.lintingEnabled, enabledApiNames);
       this.codeEditor.dispatch({
-          effects: this.lint.reconfigure(linter(lintOptions))
+        effects: this.lint.reconfigure(linter(lintOptions)),
       });
     } catch (error) {
       console.warn('Failed to update linting configuration:', error);
       // Try to disable linting as fallback
       try {
         this.codeEditor.dispatch({
-            effects: this.lint.reconfigure(linter(() => []))
+          effects: this.lint.reconfigure(linter(() => [])),
         });
       } catch (fallbackError) {
         console.error('Failed to apply fallback linting:', fallbackError);
@@ -371,39 +388,39 @@ export class CodeEditorManager {
     });
 
     return (_view) => {
-        // JSHINT is loaded globally via script tag in editor.html
-        /* global JSHINT */
-        if (typeof JSHINT === 'undefined') return [];
-        JSHINT(_view.state.doc.toString(), {
-            esversion: 11,
-            asi: true,
-            browser: true,
-            devel: true,
-            undef: true,
-            unused: true,
-            curly: true,
-            eqeqeq: true,
-            laxbreak: true,
-            loopfunc: true,
-            sub: true,
-            shadow: false,
-            strict: true,
-            globals,
-        });
+      // JSHINT is loaded globally via script tag in editor.html
+      /* global JSHINT */
+      if (typeof JSHINT === 'undefined') return [];
+      JSHINT(_view.state.doc.toString(), {
+        esversion: 11,
+        asi: true,
+        browser: true,
+        devel: true,
+        undef: true,
+        unused: true,
+        curly: true,
+        eqeqeq: true,
+        laxbreak: true,
+        loopfunc: true,
+        sub: true,
+        shadow: false,
+        strict: true,
+        globals,
+      });
 
-        return JSHINT.errors.map(err => ({
-            from: this.codeEditor.state.doc.line(err.line).from + err.character - 1,
-            to: this.codeEditor.state.doc.line(err.line).from + err.character,
-            message: err.reason,
-            severity: err.code?.startsWith("E") ? "error" : "warning",
-        }));
+      return JSHINT.errors.map((err) => ({
+        from: this.codeEditor.state.doc.line(err.line).from + err.character - 1,
+        to: this.codeEditor.state.doc.line(err.line).from + err.character,
+        message: err.reason,
+        severity: err.code?.startsWith('E') ? 'error' : 'warning',
+      }));
     };
   }
 
   toggleLinting(enabled) {
     this.state.lintingEnabled = enabled;
     this.updateEditorLintAndAutocomplete();
-    localStorage.setItem("lintingEnabled", this.state.lintingEnabled);
+    localStorage.setItem('lintingEnabled', this.state.lintingEnabled);
     return this.state.lintingEnabled;
   }
 
@@ -419,13 +436,13 @@ export class CodeEditorManager {
   }
 
   getValue() {
-    return this.codeEditor ? this.codeEditor.state.doc.toString() : "";
+    return this.codeEditor ? this.codeEditor.state.doc.toString() : '';
   }
 
   setValue(code) {
     if (this.codeEditor) {
       this.codeEditor.dispatch({
-        changes: {from: 0, to: this.codeEditor.state.doc.length, insert: code}
+        changes: { from: 0, to: this.codeEditor.state.doc.length, insert: code },
       });
       this.applyLargeFileOptimizations();
     }
@@ -444,7 +461,7 @@ export class CodeEditorManager {
   setChangeCallback(callback) {
     this.onChangeCallback = callback;
   }
-  
+
   setImportCallback(callback) {
     this.onImportCallback = callback;
   }

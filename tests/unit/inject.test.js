@@ -2,11 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 function makeChromeMock({ failMain = false } = {}) {
   const executeScript = vi.fn(async (payload) => {
-    if (
-      failMain &&
-      payload.func?.name === 'createWorldExecutor' &&
-      payload.world === 'MAIN'
-    ) {
+    if (failMain && payload.func?.name === 'createWorldExecutor' && payload.world === 'MAIN') {
       throw new TypeError('main failed');
     }
     if (payload.func?.name === 'createWorldExecutor') {

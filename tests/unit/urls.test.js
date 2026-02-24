@@ -24,7 +24,9 @@ describe('urls utilities', () => {
   it('generates match patterns for scopes', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     expect(generateUrlMatchPattern('example.com', 'domain')).toBe('https://example.com/*');
-    expect(generateUrlMatchPattern('https://app.example.com', 'subdomain')).toBe('https://*.example.com/*');
+    expect(generateUrlMatchPattern('https://app.example.com', 'subdomain')).toBe(
+      'https://*.example.com/*'
+    );
     expect(generateUrlMatchPattern('https://example.com', 'exact')).toBe('https://example.com');
     expect(generateUrlMatchPattern('::::')).toBeNull();
     expect(warnSpy).toHaveBeenCalled();

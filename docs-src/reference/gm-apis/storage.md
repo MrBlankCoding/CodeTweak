@@ -5,10 +5,12 @@ CodeTweak provides a persistent storage system that allows scripts to save data 
 ## Implementation Details
 
 CodeTweak uses a **dual-layer storage system**:
+
 1.  **Local Cache**: For synchronous access, values are cached in the script's execution context.
 2.  **Extension Storage**: The source of truth is stored in the extension's background process, ensuring data persists even if the tab is closed.
 
 ### Synchronous vs. Asynchronous
+
 - `GM_getValue` (Sync): Returns the cached value immediately. If the value isn't in the cache yet, it returns the default value and triggers an asynchronous fetch to update the cache for the next call.
 - `GM.getValue` (Async): Always waits for the background process to return the latest value.
 

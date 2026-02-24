@@ -122,7 +122,9 @@
   color: var(--text-primary);
   font-size: var(--text-sm);
   font-family: var(--font-sans);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .setting-input {
@@ -155,7 +157,7 @@
   background: var(--bg-hover);
 }
 
-.setting-checkbox input[type="checkbox"] {
+.setting-checkbox input[type='checkbox'] {
   margin: 0;
   accent-color: var(--primary);
 }
@@ -174,7 +176,9 @@
   font-size: var(--text-sm);
   font-weight: var(--button-font-weight);
   cursor: pointer;
-  transition: background 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -213,7 +217,11 @@
   align-items: center;
   gap: var(--space-sm);
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .help-button:hover {

@@ -30,7 +30,9 @@ describe('ElementSelector core', () => {
     expect(selector.elements.tooltip).toBeTruthy();
 
     selector.buildBreadcrumbs(el);
-    expect(selector.elements.breadcrumbs?.querySelectorAll('.ctwk-crumb').length).toBeGreaterThan(0);
+    expect(selector.elements.breadcrumbs?.querySelectorAll('.ctwk-crumb').length).toBeGreaterThan(
+      0
+    );
 
     selector.cleanup();
     expect(selector.elements.tooltip).toBeNull();

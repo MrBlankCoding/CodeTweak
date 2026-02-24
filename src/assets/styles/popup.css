@@ -247,18 +247,18 @@ header .buttons button span:not(.btn-icon) {
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-primary);
   border-radius: 34px;
-  transition: .4s;
+  transition: 0.4s;
 }
 
 .toggle-slider:before {
   position: absolute;
-  content: "";
+  content: '';
   height: 14px;
   width: 14px;
   left: 3px;
   bottom: 2px;
   background-color: var(--text-primary);
-  transition: .4s;
+  transition: 0.4s;
   border-radius: 50%;
 }
 

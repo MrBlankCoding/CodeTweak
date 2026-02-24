@@ -171,12 +171,24 @@ describe('background', () => {
       ],
     });
 
-    await expect(sendRuntimeMessage(listeners, { action: 'scriptsUpdated' })).resolves.toEqual({ success: true });
-    await expect(sendRuntimeMessage(listeners, { action: 'getAllScripts' })).resolves.toHaveProperty('scripts');
-    await expect(sendRuntimeMessage(listeners, { action: 'getScriptContent', scriptName: 'Script 1' })).resolves.toEqual({ code: 'console.log(1)' });
-    await expect(sendRuntimeMessage(listeners, { action: 'getScriptContent', scriptName: 'Missing' })).resolves.toHaveProperty('error');
-    await expect(sendRuntimeMessage(listeners, { action: 'openAISettings' })).resolves.toEqual({ success: true });
-    await expect(sendRuntimeMessage(listeners, { action: 'unknown' })).resolves.toEqual({ error: 'Unknown action' });
+    await expect(sendRuntimeMessage(listeners, { action: 'scriptsUpdated' })).resolves.toEqual({
+      success: true,
+    });
+    await expect(
+      sendRuntimeMessage(listeners, { action: 'getAllScripts' })
+    ).resolves.toHaveProperty('scripts');
+    await expect(
+      sendRuntimeMessage(listeners, { action: 'getScriptContent', scriptName: 'Script 1' })
+    ).resolves.toEqual({ code: 'console.log(1)' });
+    await expect(
+      sendRuntimeMessage(listeners, { action: 'getScriptContent', scriptName: 'Missing' })
+    ).resolves.toHaveProperty('error');
+    await expect(sendRuntimeMessage(listeners, { action: 'openAISettings' })).resolves.toEqual({
+      success: true,
+    });
+    await expect(sendRuntimeMessage(listeners, { action: 'unknown' })).resolves.toEqual({
+      error: 'Unknown action',
+    });
 
     expect(chrome.tabs.create).toHaveBeenCalled();
   });
@@ -186,21 +198,30 @@ describe('background', () => {
 
     const add = await sendRuntimeMessage(
       listeners,
-      { type: 'GM_API_REQUEST', payload: { action: 'addValueChangeListener', scriptId: 's1', name: 'k' } },
+      {
+        type: 'GM_API_REQUEST',
+        payload: { action: 'addValueChangeListener', scriptId: 's1', name: 'k' },
+      },
       { tab: { id: 2 } }
     );
     expect(add).toEqual({ result: null });
 
     const setRes = await sendRuntimeMessage(
       listeners,
-      { type: 'GM_API_REQUEST', payload: { action: 'setValue', scriptId: 's1', name: 'k', value: 42 } },
+      {
+        type: 'GM_API_REQUEST',
+        payload: { action: 'setValue', scriptId: 's1', name: 'k', value: 42 },
+      },
       { tab: { id: 1 } }
     );
     expect(setRes).toEqual({ result: null });
 
     const getRes = await sendRuntimeMessage(
       listeners,
-      { type: 'GM_API_REQUEST', payload: { action: 'getValue', scriptId: 's1', name: 'k', defaultValue: 0 } },
+      {
+        type: 'GM_API_REQUEST',
+        payload: { action: 'getValue', scriptId: 's1', name: 'k', defaultValue: 0 },
+      },
       { tab: { id: 1 } }
     );
     expect(getRes).toEqual({ result: 42 });
@@ -214,13 +235,24 @@ describe('background', () => {
 
     await sendRuntimeMessage(
       listeners,
-      { type: 'GM_API_REQUEST', payload: { action: 'setClipboard', scriptId: 's1', data: 'copy me' } },
+      {
+        type: 'GM_API_REQUEST',
+        payload: { action: 'setClipboard', scriptId: 's1', data: 'copy me' },
+      },
       { tab: { id: 1 } }
     );
 
     const dlRes = await sendRuntimeMessage(
       listeners,
-      { type: 'GM_API_REQUEST', payload: { action: 'download', scriptId: 's1', url: 'https://example.com/f.js', name: 'f.js' } },
+      {
+        type: 'GM_API_REQUEST',
+        payload: {
+          action: 'download',
+          scriptId: 's1',
+          url: 'https://example.com/f.js',
+          name: 'f.js',
+        },
+      },
       { tab: { id: 1 } }
     );
     expect(dlRes).toEqual({ result: { downloadId: 123 } });
@@ -229,7 +261,16 @@ describe('background', () => {
       listeners,
       {
         type: 'GM_API_REQUEST',
-        payload: { action: 'xmlhttpRequest', scriptId: 's1', details: { url: 'https://example.com/a', method: 'POST', data: 'x', responseType: 'json' } },
+        payload: {
+          action: 'xmlhttpRequest',
+          scriptId: 's1',
+          details: {
+            url: 'https://example.com/a',
+            method: 'POST',
+            data: 'x',
+            responseType: 'json',
+          },
+        },
       },
       { tab: { id: 1 } }
     );
@@ -242,7 +283,9 @@ describe('background', () => {
   });
 
   it('stores, gets, and clears script errors', async () => {
-    const { listeners, storageData } = await setupBackground({ settings: { enhancedDebugging: true } });
+    const { listeners, storageData } = await setupBackground({
+      settings: { enhancedDebugging: true },
+    });
 
     await sendRuntimeMessage(listeners, {
       type: 'SCRIPT_ERROR',
@@ -264,7 +307,11 @@ describe('background', () => {
     const { listeners, injectSpies, chrome } = await setupBackground();
 
     listeners.webNavigation.onCommitted[0]({ tabId: 1, frameId: 0, url: 'https://example.com' });
-    listeners.webNavigation.onDOMContentLoaded[0]({ tabId: 1, frameId: 0, url: 'https://example.com' });
+    listeners.webNavigation.onDOMContentLoaded[0]({
+      tabId: 1,
+      frameId: 0,
+      url: 'https://example.com',
+    });
     listeners.webNavigation.onCompleted[0]({ tabId: 1, frameId: 0, url: 'https://example.com' });
 
     expect(injectSpies.clearInjectedCoreScriptsForTab).toHaveBeenCalledWith(1);
@@ -359,7 +406,10 @@ describe('background', () => {
     await expect(
       sendRuntimeMessage(
         listeners,
-        { type: 'GM_API_REQUEST', payload: { action: 'notification', scriptId: 's1', details: { text: 'a' } } },
+        {
+          type: 'GM_API_REQUEST',
+          payload: { action: 'notification', scriptId: 's1', details: { text: 'a' } },
+        },
         { tab: { id: 1 } }
       )
     ).resolves.toEqual({ result: null });
@@ -373,7 +423,10 @@ describe('background', () => {
     await expect(
       sendRuntimeMessage(
         listeners,
-        { type: 'GM_API_REQUEST', payload: { action: 'download', scriptId: 's1', url: 'https://x', name: 'x' } },
+        {
+          type: 'GM_API_REQUEST',
+          payload: { action: 'download', scriptId: 's1', url: 'https://x', name: 'x' },
+        },
         { tab: { id: 1 } }
       )
     ).resolves.toEqual({ error: 'download failed' });
@@ -381,7 +434,10 @@ describe('background', () => {
     await expect(
       sendRuntimeMessage(
         listeners,
-        { type: 'GM_API_REQUEST', payload: { action: 'xmlhttpRequest', scriptId: 's1', details: { url: 'https://x' } } },
+        {
+          type: 'GM_API_REQUEST',
+          payload: { action: 'xmlhttpRequest', scriptId: 's1', details: { url: 'https://x' } },
+        },
         { tab: { id: 1 } }
       )
     ).resolves.toEqual({ error: 'Cross-origin requests are disabled by a security setting.' });

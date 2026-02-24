@@ -112,7 +112,9 @@ body {
   justify-content: space-between;
   gap: 10px;
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .api-key-item:hover {
@@ -258,7 +260,7 @@ small {
   gap: 10px;
 }
 
-.range-wrap input[type="range"] {
+.range-wrap input[type='range'] {
   padding: 0;
   border: none;
   box-shadow: none;

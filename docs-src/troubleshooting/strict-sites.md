@@ -12,8 +12,8 @@ Some sites use strict CSP or dynamic page bootstrapping.
 ## Diagnostic pattern
 
 ```javascript
-const el = document.querySelector("#target");
-console.log("target found:", Boolean(el), location.href);
+const el = document.querySelector('#target');
+console.log('target found:', Boolean(el), location.href);
 ```
 
 ## If behavior is inconsistent

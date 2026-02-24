@@ -7,7 +7,10 @@
     "esbuild": "0.25.12",
     "eslint": "9.39.1",
     "globals": "16.5.0",
+    "husky": "^9.1.7",
     "jsdom": "^28.1.0",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.8.1",
     "vitepress": "^1.6.4",
     "vitest": "^4.0.18"
   },
@@ -15,13 +18,21 @@
     "build": "npm run build:chrome",
     "build:chrome": "node buildScripts/build-chrome.js --browser=chrome --production",
     "build:firefox": "node buildScripts/build-firefox.js --production",
-    "lint": "eslint .",
+    "lint": "eslint src tests buildScripts",
     "docs:dev": "vitepress dev docs-src",
     "docs:build": "vitepress build docs-src",
     "docs:preview": "vitepress preview docs-src",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test:unit": "vitest run tests/unit",
+    "test:changed": "vitest related --run --passWithNoTests",
+    "test:gm": "vitest run tests/unit/gm_*.test.js tests/unit/gm*.test.js",
+    "test:runtime": "vitest run tests/unit/background.test.js tests/unit/inject.test.js tests/unit/worldExecutors.test.js tests/unit/content_bridge.test.js tests/unit/offscreen.test.js",
+    "prepare": "husky",
+    "precommit:run": "lint-staged && npm run test:changed"
   },
   "dependencies": {
     "@babel/runtime": "7.28.4",
@@ -38,5 +49,14 @@
     "codemirror": "^6.0.2",
     "feather-icons": "4.29.2",
     "marked": "^17.0.0"
+  },
+  "lint-staged": {
+    "*.{js,mjs,cjs}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml,css,html}": [
+      "prettier --write"
+    ]
   }
 }

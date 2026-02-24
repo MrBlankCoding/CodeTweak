@@ -1,10 +1,10 @@
-import { urlMatchesPattern } from "../utils/urls.js";
+import { urlMatchesPattern } from '../utils/urls.js';
 import {
   injectScriptsForStage,
   INJECTION_TYPES,
   clearInjectedCoreScriptsForTab,
-} from "../utils/inject.js";
-import { parseUserScriptMetadata } from "../utils/metadataParser.js";
+} from '../utils/inject.js';
+import { parseUserScriptMetadata } from '../utils/metadataParser.js';
 
 class BackgroundState {
   constructor() {
@@ -23,9 +23,7 @@ class BackgroundState {
   }
 
   isCacheValid() {
-    return (
-      this.scriptCache && Date.now() - this.lastCacheUpdate <= this.cacheTtl
-    );
+    return this.scriptCache && Date.now() - this.lastCacheUpdate <= this.cacheTtl;
   }
 
   cleanupTab(tabId) {
@@ -41,15 +39,11 @@ class BackgroundState {
 const state = new BackgroundState();
 
 function isIgnorableTabError(error) {
-  const ignorableMessages = [
-    "No tab with id",
-    "Invalid tab ID",
-    "Receiving end does not exist",
-  ];
+  const ignorableMessages = ['No tab with id', 'Invalid tab ID', 'Receiving end does not exist'];
   return ignorableMessages.some((msg) => error.message?.includes(msg));
 }
 
-function safeSetBadge(tabId, text = "", color = "#007bff") {
+function safeSetBadge(tabId, text = '', color = '#007bff') {
   chrome.action.setBadgeText({ tabId, text }).catch((err) => {
     if (!isIgnorableTabError(err)) {
       console.warn(`Error setting badge for tab ${tabId}:`, err.message);
@@ -68,7 +62,7 @@ function notifyPorts(action) {
     try {
       port.postMessage({ action });
     } catch (error) {
-      console.warn("Failed to notify port:", error);
+      console.warn('Failed to notify port:', error);
       disconnectedPorts.push(port);
     }
   }
@@ -78,12 +72,9 @@ function notifyPorts(action) {
 
 async function setupOffscreenDocument() {
   const offscreenApi = chrome.offscreen;
-  const hasDocumentFn = offscreenApi?.["hasDocument"];
-  const createDocumentFn = offscreenApi?.["createDocument"];
-  if (
-    typeof hasDocumentFn !== "function" ||
-    typeof createDocumentFn !== "function"
-  ) {
+  const hasDocumentFn = offscreenApi?.['hasDocument'];
+  const createDocumentFn = offscreenApi?.['createDocument'];
+  if (typeof hasDocumentFn !== 'function' || typeof createDocumentFn !== 'function') {
     return;
   }
 
@@ -97,9 +88,9 @@ async function setupOffscreenDocument() {
   }
 
   state.creatingOffscreenDocument = createDocumentFn.call(offscreenApi, {
-    url: "offscreen/offscreen.html",
-    reasons: ["CLIPBOARD"],
-    justification: "Clipboard access",
+    url: 'offscreen/offscreen.html',
+    reasons: ['CLIPBOARD'],
+    justification: 'Clipboard access',
   });
 
   await state.creatingOffscreenDocument;
@@ -107,16 +98,16 @@ async function setupOffscreenDocument() {
 }
 
 function normalizeStackTrace(stack) {
-  if (!stack) return "";
+  if (!stack) return '';
   return stack
-    .replace(/blob:[^\s)]+/g, "blob:URL")
-    .replace(/:\d+:\d+/g, "")
-    .replace(/at\s+blob:URL/g, "at blob:URL")
+    .replace(/blob:[^\s)]+/g, 'blob:URL')
+    .replace(/:\d+:\d+/g, '')
+    .replace(/at\s+blob:URL/g, 'at blob:URL')
     .trim();
 }
 
 async function getFilteredScripts(url, runAt = null) {
-  if (!url?.startsWith("http")) {
+  if (!url?.startsWith('http')) {
     return [];
   }
 
@@ -133,7 +124,7 @@ async function getFilteredScripts(url, runAt = null) {
 }
 
 async function refreshScriptCache() {
-  const { scripts = [] } = await chrome.storage.local.get("scripts");
+  const { scripts = [] } = await chrome.storage.local.get('scripts');
 
   state.scriptCache = scripts.map((script) => ({
     ...script,
@@ -146,7 +137,7 @@ async function refreshScriptCache() {
 }
 
 async function updateBadgeForTab(tabId, url) {
-  if (!url?.startsWith("http")) {
+  if (!url?.startsWith('http')) {
     safeSetBadge(tabId);
     return;
   }
@@ -154,7 +145,7 @@ async function updateBadgeForTab(tabId, url) {
   try {
     const scriptsToRun = await getFilteredScripts(url);
     const count = scriptsToRun.length;
-    safeSetBadge(tabId, count > 0 ? count.toString() : "");
+    safeSetBadge(tabId, count > 0 ? count.toString() : '');
   } catch (error) {
     console.error(`Error updating badge for tab ${tabId}:`, error);
     safeSetBadge(tabId);
@@ -175,50 +166,48 @@ async function updateAllTabBadges() {
 
 async function handleScriptCreation(url, template) {
   try {
-    const { scripts = [] } = await chrome.storage.local.get("scripts");
-    const existing = scripts.find((s) =>
-      s.targetUrls?.some((t) => urlMatchesPattern(url, t))
-    );
+    const { scripts = [] } = await chrome.storage.local.get('scripts');
+    const existing = scripts.find((s) => s.targetUrls?.some((t) => urlMatchesPattern(url, t)));
 
     if (existing) {
-      const lines = existing.code.split("\n");
+      const lines = existing.code.split('\n');
       let insertIndex = lines.length - 1;
 
       // Find insertion point (skip empty lines and closing IIFE)
       while (
         insertIndex > 0 &&
-        (!lines[insertIndex].trim() || lines[insertIndex].trim() === "})();")
+        (!lines[insertIndex].trim() || lines[insertIndex].trim() === '})();')
       ) {
         insertIndex--;
       }
 
       const newLines = [
-        "",
-        "  // Added by element selector",
+        '',
+        '  // Added by element selector',
         ...template
           .trim()
-          .split("\n")
-          .map((line) => "  " + line),
-        "",
+          .split('\n')
+          .map((line) => '  ' + line),
+        '',
       ];
 
       lines.splice(insertIndex + 1, 0, ...newLines);
-      existing.code = lines.join("\n");
+      existing.code = lines.join('\n');
       existing.updatedAt = new Date().toISOString();
 
       await chrome.storage.local.set({ scripts });
-      chrome.runtime.sendMessage({ action: "scriptsUpdated" });
+      chrome.runtime.sendMessage({ action: 'scriptsUpdated' });
       chrome.tabs.create({
-        url: `${chrome.runtime.getURL("editor/editor.html")}?id=${existing.id}`,
+        url: `${chrome.runtime.getURL('editor/editor.html')}?id=${existing.id}`,
       });
     } else {
       const params = new URLSearchParams({ targetUrl: url, template });
       chrome.tabs.create({
-        url: `${chrome.runtime.getURL("editor/editor.html")}?${params}`,
+        url: `${chrome.runtime.getURL('editor/editor.html')}?${params}`,
       });
     }
   } catch (error) {
-    console.error("Script creation error:", error);
+    console.error('Script creation error:', error);
   }
 }
 
@@ -233,31 +222,29 @@ async function handleGreasyForkInstall(url) {
 
     await chrome.storage.local.set({ [key]: { code, sourceUrl: url } });
     chrome.tabs.create({
-      url: `${chrome.runtime.getURL("editor/editor.html")}?importId=${tempId}`,
+      url: `${chrome.runtime.getURL('editor/editor.html')}?importId=${tempId}`,
     });
   } catch (err) {
-    console.error("GreasyFork install fetch error:", err);
+    console.error('GreasyFork install fetch error:', err);
   }
 }
 
 async function storeScriptError(scriptId, error) {
   try {
-    const { settings = {} } = await chrome.storage.local.get("settings");
+    const { settings = {} } = await chrome.storage.local.get('settings');
     if (!settings.enhancedDebugging) {
       return;
     }
 
     const storageKey = `scriptErrors_${scriptId}`;
-    const { [storageKey]: existingErrors = [] } =
-      await chrome.storage.local.get(storageKey);
+    const { [storageKey]: existingErrors = [] } = await chrome.storage.local.get(storageKey);
     const normalizedNewStack = normalizeStackTrace(error.stack);
 
     // Check for duplicates
     const isDuplicate = existingErrors.some((existingError) => {
       const normalizedExistingStack = normalizeStackTrace(existingError.stack);
       return (
-        existingError.message === error.message &&
-        normalizedExistingStack === normalizedNewStack
+        existingError.message === error.message && normalizedExistingStack === normalizedNewStack
       );
     });
 
@@ -270,7 +257,7 @@ async function storeScriptError(scriptId, error) {
 
     chrome.runtime
       .sendMessage({
-        type: "SCRIPT_ERROR_UPDATE",
+        type: 'SCRIPT_ERROR_UPDATE',
         scriptId,
         error,
       })
@@ -278,7 +265,7 @@ async function storeScriptError(scriptId, error) {
         // Editor might not be open, ignore
       });
   } catch (err) {
-    console.error("[CodeTweak] Failed to store script error:", err);
+    console.error('[CodeTweak] Failed to store script error:', err);
   }
 }
 
@@ -287,10 +274,9 @@ async function clearScriptErrors(scriptId) {
     const storageKey = `scriptErrors_${scriptId}`;
     await chrome.storage.local.remove(storageKey);
   } catch (err) {
-    console.error("Failed to clear script errors:", err);
+    console.error('Failed to clear script errors:', err);
   }
 }
-
 
 class GMAPIHandler {
   constructor(scriptId, sender) {
@@ -309,7 +295,7 @@ class GMAPIHandler {
   }
 
   async setValue({ name, value }) {
-    if (typeof name !== 'string') return { error: "Name must be a string" };
+    if (typeof name !== 'string') return { error: 'Name must be a string' };
     const values = await this.getStorage();
     const oldValue = values[name];
     values[name] = value;
@@ -326,7 +312,7 @@ class GMAPIHandler {
   }
 
   async deleteValue({ name }) {
-    if (typeof name !== 'string') return { error: "Name must be a string" };
+    if (typeof name !== 'string') return { error: 'Name must be a string' };
     const values = await this.getStorage();
     const oldValue = values[name];
     delete values[name];
@@ -343,7 +329,7 @@ class GMAPIHandler {
 
   addValueChangeListener({ name }) {
     const tabId = this.sender?.tab?.id;
-    if (!tabId || typeof name !== "string") {
+    if (!tabId || typeof name !== 'string') {
       return { result: null };
     }
 
@@ -356,7 +342,7 @@ class GMAPIHandler {
 
   removeValueChangeListener({ name }) {
     const tabId = this.sender?.tab?.id;
-    if (!tabId || typeof name !== "string") {
+    if (!tabId || typeof name !== 'string') {
       return { result: null };
     }
 
@@ -378,7 +364,7 @@ class GMAPIHandler {
     for (const tabId of listeners) {
       chrome.tabs
         .sendMessage(tabId, {
-          type: "GM_VALUE_CHANGED",
+          type: 'GM_VALUE_CHANGED',
           payload: {
             name,
             oldValue,
@@ -391,7 +377,7 @@ class GMAPIHandler {
   }
 
   async getSettings() {
-    const { settings = {} } = await chrome.storage.local.get("settings");
+    const { settings = {} } = await chrome.storage.local.get('settings');
     return { result: settings };
   }
 
@@ -404,18 +390,18 @@ class GMAPIHandler {
     } catch {
       return { error: `Invalid URL: ${details.url}` };
     }
-    
+
     return await handleCrossOriginXmlhttpRequest(details, this.sender.tab.id);
   }
 
   async notification({ details }) {
     const baseOptions = {
-      type: "basic",
-      title: details.title || "CodeTweak Notification",
-      message: details.text || "",
+      type: 'basic',
+      title: details.title || 'CodeTweak Notification',
+      message: details.text || '',
     };
 
-    const defaultIconUrl = chrome.runtime.getURL("assets/icons/icon128.png");
+    const defaultIconUrl = chrome.runtime.getURL('assets/icons/icon128.png');
     const createNotification = () =>
       new Promise((resolve) => {
         chrome.notifications.create({ ...baseOptions, iconUrl: defaultIconUrl }, () => {
@@ -433,20 +419,20 @@ class GMAPIHandler {
     const result = await createNotification();
 
     if (!result.ok) {
-      console.warn("[CodeTweak] Notification creation failed:", result.error);
+      console.warn('[CodeTweak] Notification creation failed:', result.error);
     }
 
     return { result: null };
   }
 
   async setClipboard({ data }) {
-    const text = typeof data === "string" ? data : String(data ?? "");
+    const text = typeof data === 'string' ? data : String(data ?? '');
 
-    if (chrome.offscreen?.["createDocument"] && chrome.offscreen?.["hasDocument"]) {
+    if (chrome.offscreen?.['createDocument'] && chrome.offscreen?.['hasDocument']) {
       await setupOffscreenDocument();
       chrome.runtime.sendMessage({
-        target: "offscreen",
-        type: "copy-to-clipboard",
+        target: 'offscreen',
+        type: 'copy-to-clipboard',
         data: text,
       });
       return { result: null };
@@ -457,7 +443,7 @@ class GMAPIHandler {
       return { result: null };
     }
 
-    return { error: "Clipboard API is unavailable in this browser." };
+    return { error: 'Clipboard API is unavailable in this browser.' };
   }
 
   async download({ url, name }) {
@@ -473,27 +459,26 @@ class GMAPIHandler {
   }
 }
 
-
 async function handleCrossOriginXmlhttpRequest(details) {
-  const { settings = {} } = await chrome.storage.local.get("settings");
+  const { settings = {} } = await chrome.storage.local.get('settings');
 
   if (!settings.allowExternalResources) {
     return {
-      error: "Cross-origin requests are disabled by a security setting.",
+      error: 'Cross-origin requests are disabled by a security setting.',
     };
   }
 
-  const { url, method = "GET", headers, data, responseType } = details;
+  const { url, method = 'GET', headers, data, responseType } = details;
 
   if (!url) {
-    console.error("CodeTweak: Cross-origin request failed: No URL provided.");
-    return { error: "No URL provided." };
+    console.error('CodeTweak: Cross-origin request failed: No URL provided.');
+    return { error: 'No URL provided.' };
   }
 
   const requestOptions = { method, headers };
 
   // Only add body for methods that support it
-  if (data && !["GET", "HEAD"].includes(method.toUpperCase())) {
+  if (data && !['GET', 'HEAD'].includes(method.toUpperCase())) {
     requestOptions.body = data;
   }
 
@@ -510,16 +495,16 @@ async function handleCrossOriginXmlhttpRequest(details) {
     const responseText = await responseClone.text();
 
     let responseData;
-    if (responseType === "blob") {
+    if (responseType === 'blob') {
       const blob = await response.blob();
       responseData = await new Promise((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result);
         reader.readAsDataURL(blob);
       });
-    } else if (responseType === "arraybuffer") {
+    } else if (responseType === 'arraybuffer') {
       responseData = await response.arrayBuffer();
-    } else if (responseType === "json") {
+    } else if (responseType === 'json') {
       responseData = JSON.parse(responseText);
     } else {
       responseData = responseText;
@@ -530,7 +515,7 @@ async function handleCrossOriginXmlhttpRequest(details) {
         readyState: 4,
         responseHeaders: Object.entries(responseHeaders)
           .map(([name, value]) => `${name}: ${value}`)
-          .join("\n"),
+          .join('\n'),
         responseText,
         response: responseData,
         status: response.status,
@@ -540,7 +525,7 @@ async function handleCrossOriginXmlhttpRequest(details) {
       },
     };
   } catch (error) {
-    console.error("CodeTweak: Cross-origin request failed:", {
+    console.error('CodeTweak: Cross-origin request failed:', {
       error,
       url,
       method,
@@ -548,7 +533,7 @@ async function handleCrossOriginXmlhttpRequest(details) {
     });
 
     let errorMessage = error.message;
-    if (error instanceof TypeError && error.message === "Failed to fetch") {
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
       errorMessage = `Network request failed. This could be due to a CORS issue, network error, or invalid URL. URL: ${url}`;
     }
 
@@ -559,7 +544,7 @@ async function handleCrossOriginXmlhttpRequest(details) {
 const messageHandlers = {
   scriptsUpdated: async () => {
     state.clearCache();
-    notifyPorts("scriptsUpdated");
+    notifyPorts('scriptsUpdated');
     updateAllTabBadges();
     return { success: true };
   },
@@ -583,13 +568,13 @@ const messageHandlers = {
 
   openAISettings: async () => {
     await chrome.tabs.create({
-      url: chrome.runtime.getURL("ai_dom_editor/settings/ai_settings.html"),
+      url: chrome.runtime.getURL('ai_dom_editor/settings/ai_settings.html'),
     });
     return { success: true };
   },
 
   createScriptFromAI: async (message) => {
-    const { scripts = [] } = await chrome.storage.local.get("scripts");
+    const { scripts = [] } = await chrome.storage.local.get('scripts');
     const metadata = parseUserScriptMetadata(message.script);
 
     const newScript = {
@@ -599,26 +584,26 @@ const messageHandlers = {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       targetUrls: metadata.matches || [message.url],
-      runAt: metadata.runAt || "document_idle",
-      name: metadata.name || "New AI Script",
+      runAt: metadata.runAt || 'document_idle',
+      name: metadata.name || 'New AI Script',
     };
 
     scripts.push(newScript);
     await chrome.storage.local.set({ scripts });
     state.clearCache();
-    notifyPorts("scriptsUpdated");
+    notifyPorts('scriptsUpdated');
     updateAllTabBadges();
 
     return { script: newScript };
   },
 
   aiSettingsUpdated: () => {
-    chrome.runtime.sendMessage({ action: "aiConfigUpdated" }).catch(() => {});
+    chrome.runtime.sendMessage({ action: 'aiConfigUpdated' }).catch(() => {});
     return { success: true };
   },
 
   getScriptContent: async (message) => {
-    const { scripts = [] } = await chrome.storage.local.get("scripts");
+    const { scripts = [] } = await chrome.storage.local.get('scripts');
     const script = scripts.find((s) => s.name === message.scriptName);
 
     if (script) {
@@ -629,7 +614,7 @@ const messageHandlers = {
   },
 
   getAllScripts: async () => {
-    const { scripts = [] } = await chrome.storage.local.get("scripts");
+    const { scripts = [] } = await chrome.storage.local.get('scripts');
     return { scripts };
   },
 
@@ -643,7 +628,7 @@ const messageHandlers = {
   },
 
   updateScript: async (message) => {
-    const { scripts = [] } = await chrome.storage.local.get("scripts");
+    const { scripts = [] } = await chrome.storage.local.get('scripts');
     const scriptIndex = scripts.findIndex((s) => s.id === message.scriptId);
 
     if (scriptIndex === -1) {
@@ -655,7 +640,7 @@ const messageHandlers = {
     await chrome.storage.local.set({ scripts });
 
     state.clearCache();
-    notifyPorts("scriptsUpdated");
+    notifyPorts('scriptsUpdated');
     updateAllTabBadges();
 
     // Reload tabs where the script is running
@@ -673,20 +658,20 @@ const messageHandlers = {
 };
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log("[CodeTweak] Message received:", message.type || message.action);
+  console.log('[CodeTweak] Message received:', message.type || message.action);
 
   // Handle GM API requests
-  if (message.type === "GM_API_REQUEST") {
+  if (message.type === 'GM_API_REQUEST') {
     if (!message.payload) {
-      console.error("[CodeTweak] GM_API_REQUEST received with no payload.");
-      sendResponse({ error: "Request payload is missing." });
+      console.error('[CodeTweak] GM_API_REQUEST received with no payload.');
+      sendResponse({ error: 'Request payload is missing.' });
       return false;
     }
 
     const { action, scriptId, ...payload } = message.payload;
     const handler = new GMAPIHandler(scriptId, sender);
 
-    if (typeof handler[action] === "function") {
+    if (typeof handler[action] === 'function') {
       Promise.resolve()
         .then(() => handler[action](payload))
         .then((response) => {
@@ -704,21 +689,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   // Handle script errors
-  if (message.type === "SCRIPT_ERROR") {
+  if (message.type === 'SCRIPT_ERROR') {
     storeScriptError(message.scriptId, message.error).then(() => {
       sendResponse({ success: true });
     });
     return true;
   }
 
-  if (message.type === "CLEAR_SCRIPT_ERRORS") {
+  if (message.type === 'CLEAR_SCRIPT_ERRORS') {
     clearScriptErrors(message.scriptId).then(() => {
       sendResponse({ success: true });
     });
     return true;
   }
 
-  if (message.type === "GET_SCRIPT_ERRORS") {
+  if (message.type === 'GET_SCRIPT_ERRORS') {
     const storageKey = `scriptErrors_${message.scriptId}`;
     chrome.storage.local.get(storageKey).then((result) => {
       sendResponse({ errors: result[storageKey] || [] });
@@ -739,42 +724,39 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   // Only send "Unknown action" if we didn't handle it above
-  if (message.type !== "offscreen-clipboard-response") {
-    sendResponse({ error: "Unknown action" });
+  if (message.type !== 'offscreen-clipboard-response') {
+    sendResponse({ error: 'Unknown action' });
   }
   return false;
 });
 
-
 chrome.contextMenus.removeAll(() => {
   chrome.contextMenus.create({
-    id: "selectElement",
-    title: "Select Element for Script",
-    contexts: ["page"],
+    id: 'selectElement',
+    title: 'Select Element for Script',
+    contexts: ['page'],
   });
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "selectElement") {
-    chrome.tabs.sendMessage(tab.id, { action: "startSelection" });
+  if (info.menuItemId === 'selectElement') {
+    chrome.tabs.sendMessage(tab.id, { action: 'startSelection' });
   }
 });
 
-
 chrome.runtime.onConnect.addListener((port) => {
-  if (port.name !== "CodeTweak" || state.ports.has(port)) return;
+  if (port.name !== 'CodeTweak' || state.ports.has(port)) return;
 
   state.ports.add(port);
   port.onDisconnect.addListener(() => state.ports.delete(port));
   port.onMessage.addListener(console.log);
 });
 
-
-const navigationEvents = ["onCommitted", "onDOMContentLoaded", "onCompleted"];
+const navigationEvents = ['onCommitted', 'onDOMContentLoaded', 'onCompleted'];
 
 navigationEvents.forEach((event, index) => {
   chrome.webNavigation[event].addListener((details) => {
-    if (event === "onCommitted" && details.frameId === 0) {
+    if (event === 'onCommitted' && details.frameId === 0) {
       clearInjectedCoreScriptsForTab(details.tabId);
     }
 
@@ -787,13 +769,12 @@ navigationEvents.forEach((event, index) => {
   });
 });
 
-
 chrome.tabs.onRemoved.addListener((tabId) => {
   state.cleanupTab(tabId);
 });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.status === "complete" && tab?.url) {
+  if (changeInfo.status === 'complete' && tab?.url) {
     updateBadgeForTab(tabId, tab.url);
   }
 });
@@ -804,11 +785,10 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
     updateBadgeForTab(tab.id, tab.url);
   } catch (error) {
     if (!isIgnorableTabError(error)) {
-      console.warn("Error getting activated tab:", error);
+      console.warn('Error getting activated tab:', error);
     }
   }
 });
-
 
 chrome.runtime.onInstalled.addListener(updateAllTabBadges);
 chrome.runtime.onStartup.addListener(updateAllTabBadges);

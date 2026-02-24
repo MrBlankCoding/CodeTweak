@@ -32,9 +32,7 @@ export class ElementSelector {
         position: fixed; left: 50%; transform: translateX(-50%); bottom: 16px; 
         background: rgba(17, 24, 39, 0.9); color: #e5e7eb; padding: 8px 12px; 
         border-radius: 8px; font: 500 13px/1.2 Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial; 
-        z-index: ${
-          this.config.Z_INDEX
-        }; display: flex; gap: 8px; align-items: center; 
+        z-index: ${this.config.Z_INDEX}; display: flex; gap: 8px; align-items: center; 
         box-shadow: 0 8px 30px rgba(0,0,0,.3); 
       }
       .ctwk-highlight { 
@@ -42,18 +40,14 @@ export class ElementSelector {
         background-color: rgba(78,161,255,.08) !important; cursor: crosshair !important; 
       }
       .ctwk-tooltip { 
-        position: fixed; z-index: ${
-          this.config.Z_INDEX
-        }; background: #111827; color: #d1d5db; 
+        position: fixed; z-index: ${this.config.Z_INDEX}; background: #111827; color: #d1d5db; 
         border: 1px solid rgba(148,163,184,.2); border-radius: 6px; padding: 4px 8px; 
         font: 500 12px/1.2 JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; 
         max-width: 60vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
         pointer-events: none; word-break: break-all; 
       }
       .ctwk-breadcrumbs { 
-        position: fixed; z-index: ${
-          this.config.Z_INDEX
-        }; left: 50%; transform: translateX(-50%); 
+        position: fixed; z-index: ${this.config.Z_INDEX}; left: 50%; transform: translateX(-50%); 
         bottom: 50px; background: rgba(17, 24, 39, 0.9); border: 1px solid rgba(148,163,184,.2); 
         color: #e5e7eb; border-radius: 999px; padding: 6px 10px; display: flex; gap: 6px; 
         align-items: center; box-shadow: 0 8px 30px rgba(0,0,0,.3); max-width: 80vw; 
@@ -69,28 +63,28 @@ export class ElementSelector {
   }
 
   initEventListeners() {
-    document.addEventListener("mousemove", this.boundHandleMouseMove, true);
-    document.addEventListener("click", this.boundHandleClick, true);
-    document.addEventListener("keydown", this.boundHandleKeyDown, true);
+    document.addEventListener('mousemove', this.boundHandleMouseMove, true);
+    document.addEventListener('click', this.boundHandleClick, true);
+    document.addEventListener('keydown', this.boundHandleKeyDown, true);
   }
 
   removeEventListeners() {
-    document.removeEventListener("mousemove", this.boundHandleMouseMove, true);
-    document.removeEventListener("click", this.boundHandleClick, true);
-    document.removeEventListener("keydown", this.boundHandleKeyDown, true);
+    document.removeEventListener('mousemove', this.boundHandleMouseMove, true);
+    document.removeEventListener('click', this.boundHandleClick, true);
+    document.removeEventListener('keydown', this.boundHandleKeyDown, true);
   }
 
   injectStylesOnce(menuStyles) {
     if (this.state.injected) return;
     this.state.injected = true;
-    const style = document.createElement("style");
-    style.setAttribute("data-codetweak", "element-selector");
+    const style = document.createElement('style');
+    style.setAttribute('data-codetweak', 'element-selector');
     style.textContent = this.styles;
     document.documentElement.appendChild(style);
 
     if (menuStyles) {
-      const menuStyleElement = document.createElement("style");
-      menuStyleElement.setAttribute("data-codetweak", "element-selector-menu");
+      const menuStyleElement = document.createElement('style');
+      menuStyleElement.setAttribute('data-codetweak', 'element-selector-menu');
       menuStyleElement.textContent = menuStyles;
       document.documentElement.appendChild(menuStyleElement);
     }
@@ -106,7 +100,7 @@ export class ElementSelector {
   }
 
   getUniqueSelector(el) {
-    if (!el || el.nodeType !== 1) return "";
+    if (!el || el.nodeType !== 1) return '';
     if (el.id) {
       const idSel = `#${CSS.escape(el.id)}`;
       try {
@@ -117,15 +111,15 @@ export class ElementSelector {
     }
 
     const attrPrefs = [
-      "data-testid",
-      "data-test",
-      "data-qa",
-      "aria-label",
-      "role",
-      "name",
-      "type",
-      "alt",
-      "title",
+      'data-testid',
+      'data-test',
+      'data-qa',
+      'aria-label',
+      'role',
+      'name',
+      'type',
+      'alt',
+      'title',
     ];
     const tag = el.tagName.toLowerCase();
 
@@ -142,7 +136,7 @@ export class ElementSelector {
     }
 
     const classes =
-      el.className && typeof el.className === "string"
+      el.className && typeof el.className === 'string'
         ? el.className.split(/\s+/).filter(Boolean)
         : [];
 
@@ -157,9 +151,7 @@ export class ElementSelector {
       }
 
       const limited = classes.slice(0, 2);
-      const comboSel = `${tag}${limited
-        .map((c) => `.${CSS.escape(c)}`)
-        .join("")}`;
+      const comboSel = `${tag}${limited.map((c) => `.${CSS.escape(c)}`).join('')}`;
       try {
         if (document.querySelectorAll(comboSel).length === 1) return comboSel;
       } catch {
@@ -185,9 +177,7 @@ export class ElementSelector {
 
       const parent = node.parentElement;
       if (parent) {
-        const siblings = Array.from(parent.children).filter(
-          (ch) => ch.tagName === node.tagName
-        );
+        const siblings = Array.from(parent.children).filter((ch) => ch.tagName === node.tagName);
         if (siblings.length > 1) {
           const idx = siblings.indexOf(node) + 1;
           part += `:nth-of-type(${idx})`;
@@ -200,33 +190,33 @@ export class ElementSelector {
       if (node === document.body) break;
     }
 
-    return parts.join(" > ");
+    return parts.join(' > ');
   }
 
   highlightElement(el) {
     this.clearHighlight();
     this.state.currentElement = el;
     if (this.state.currentElement) {
-      this.state.currentElement.classList.add("ctwk-highlight");
+      this.state.currentElement.classList.add('ctwk-highlight');
     }
   }
 
   clearHighlight() {
     if (this.state.currentElement) {
-      this.state.currentElement.classList.remove("ctwk-highlight");
+      this.state.currentElement.classList.remove('ctwk-highlight');
       this.state.currentElement = null;
     }
   }
 
   updateTooltip(x, y) {
     if (!this.elements.tooltip) {
-      this.elements.tooltip = document.createElement("div");
-      this.elements.tooltip.className = "ctwk-tooltip";
+      this.elements.tooltip = document.createElement('div');
+      this.elements.tooltip.className = 'ctwk-tooltip';
       document.body.appendChild(this.elements.tooltip);
     }
 
     const selector = this.getUniqueSelector(this.state.currentElement);
-    this.elements.tooltip.textContent = selector || "";
+    this.elements.tooltip.textContent = selector || '';
 
     const { left, top } = this.clampToViewport(
       x + this.config.TOOLTIP_PADDING,
@@ -244,8 +234,8 @@ export class ElementSelector {
   buildBreadcrumbs(el) {
     this.removeBreadcrumbs();
 
-    this.elements.breadcrumbs = document.createElement("div");
-    this.elements.breadcrumbs.className = "ctwk-breadcrumbs";
+    this.elements.breadcrumbs = document.createElement('div');
+    this.elements.breadcrumbs.className = 'ctwk-breadcrumbs';
 
     const chain = this.buildElementChain(el);
 
@@ -275,14 +265,14 @@ export class ElementSelector {
     const label = node.id
       ? `${tag}#${node.id}`
       : node.className
-      ? `${tag}.${String(node.className).split(/\s+/).filter(Boolean)[0] || ""}`
-      : tag;
+        ? `${tag}.${String(node.className).split(/\s+/).filter(Boolean)[0] || ''}`
+        : tag;
 
-    const crumb = document.createElement("button");
-    crumb.type = "button";
-    crumb.className = "ctwk-crumb";
+    const crumb = document.createElement('button');
+    crumb.type = 'button';
+    crumb.className = 'ctwk-crumb';
     crumb.textContent = label;
-    crumb.addEventListener("click", (e) => {
+    crumb.addEventListener('click', (e) => {
       e.stopPropagation();
       this.highlightElement(node);
     });
@@ -335,10 +325,7 @@ export class ElementSelector {
 
   isUIElement(element) {
     if (!element) return false;
-    const uiElements = [
-      this.elements.breadcrumbs,
-      this.elements.tooltip,
-    ].filter(Boolean);
+    const uiElements = [this.elements.breadcrumbs, this.elements.tooltip].filter(Boolean);
     return uiElements.some((uiEl) => uiEl.contains && uiEl.contains(element));
   }
 
@@ -366,7 +353,7 @@ export class ElementSelector {
   }
 
   handleKeyDown(e) {
-    if (e.key === "Escape" || e.key === "Esc") {
+    if (e.key === 'Escape' || e.key === 'Esc') {
       e.preventDefault();
       e.stopPropagation();
       if (e.stopImmediatePropagation) e.stopImmediatePropagation();
@@ -379,7 +366,7 @@ export class ElementSelector {
 
     if (!this.state.isSelecting) return;
 
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       e.preventDefault();
       e.stopPropagation();
       if (this.onSelect) {

@@ -1,26 +1,20 @@
-import feather from "feather-icons";
-import { UIManager, StorageManager, FormValidator } from "./editor_managers.js";
-import { CodeEditorManager } from "./editor_settings.js";
-import {
-  buildMetadata,
-  parseUserScriptMetadata,
-} from "../utils/metadataParser.js";
-import {
-  GM_API_DEFINITIONS,
-  getApiElementIds,
-} from "../GM/gmApiDefinitions.js";
-import { applyTranslations } from "../utils/i18n.js";
-import ScriptAnalyzer from "../utils/scriptAnalyzer.js";
+import feather from 'feather-icons';
+import { UIManager, StorageManager, FormValidator } from './editor_managers.js';
+import { CodeEditorManager } from './editor_settings.js';
+import { buildMetadata, parseUserScriptMetadata } from '../utils/metadataParser.js';
+import { GM_API_DEFINITIONS, getApiElementIds } from '../GM/gmApiDefinitions.js';
+import { applyTranslations } from '../utils/i18n.js';
+import ScriptAnalyzer from '../utils/scriptAnalyzer.js';
 
 class ScriptEditor {
   constructor() {
     this.config = {
       RUN_MODES: {
-        DOCUMENT_START: "document_start",
-        DOCUMENT_END: "document_end",
-        DOCUMENT_IDLE: "document_idle",
+        DOCUMENT_START: 'document_start',
+        DOCUMENT_END: 'document_end',
+        DOCUMENT_IDLE: 'document_idle',
       },
-      DEFAULT_VERSION: "1.0.0",
+      DEFAULT_VERSION: '1.0.0',
       SIDEBAR_BREAKPOINT: 900,
       AUTOSAVE_DELAY: 1220,
       STATUS_TIMEOUT: 2000,
@@ -31,8 +25,8 @@ class ScriptEditor {
       scriptId: null,
       hasUnsavedChanges: false,
       isSidebarVisible: window.innerWidth > this.config.SIDEBAR_BREAKPOINT,
-      lintingEnabled: localStorage.getItem("lintingEnabled") === "true",
-      isAutosaveEnabled: localStorage.getItem("autosaveEnabled") === "true",
+      lintingEnabled: localStorage.getItem('lintingEnabled') === 'true',
+      isAutosaveEnabled: localStorage.getItem('autosaveEnabled') === 'true',
       autosaveTimeout: null,
       headerSyncTimeout: null,
       sidebarSyncTimeout: null,
@@ -45,7 +39,6 @@ class ScriptEditor {
     this.ui = new UIManager(this.elements, this.state, this.config);
     this.storage = new StorageManager();
     this.validator = new FormValidator(this.elements);
-    // Use centralized API definitions
     this.gmApiDefinitions = GM_API_DEFINITIONS;
 
     // Init code mirror
@@ -68,9 +61,9 @@ class ScriptEditor {
           try {
             await this.saveScript(true);
           } catch (error) {
-            console.error("Autosave failed:", error);
+            console.error('Autosave failed:', error);
             if (this.ui && this.ui.showStatusMessage) {
-              this.ui.showStatusMessage("Autosave failed", "error");
+              this.ui.showStatusMessage('Autosave failed', 'error');
             }
           }
         }
@@ -84,7 +77,6 @@ class ScriptEditor {
     }
 
     this.state.headerSyncTimeout = setTimeout(() => {
-      // Skip if we're currently updating from sidebar to prevent loops
       if (!this.state.isUpdatingFromSidebar) {
         this.syncHeaderToSidebar();
       }
@@ -104,30 +96,20 @@ class ScriptEditor {
   syncHeaderToSidebar() {
     try {
       const currentCode = this.codeEditorManager.getValue();
-      const headerMatch = currentCode.match(
-        /\/\/ ==UserScript==[\s\S]*?\/\/ ==\/UserScript==/
-      );
+      const headerMatch = currentCode.match(/\/\/ ==UserScript==[\s\S]*?\/\/ ==\/UserScript==/);
 
       if (!headerMatch) return; // No header found
 
       const metadata = parseUserScriptMetadata(headerMatch[0]);
-
-      // Overwrite sidebar fields with header metadata
       if (metadata.name) this.elements.scriptName.value = metadata.name;
       if (metadata.author) this.elements.scriptAuthor.value = metadata.author;
-      if (metadata.version)
-        this.elements.scriptVersion.value = metadata.version;
-      if (metadata.description)
-        this.elements.scriptDescription.value = metadata.description;
-      if (metadata.license)
-        this.elements.scriptLicense.value = metadata.license;
+      if (metadata.version) this.elements.scriptVersion.value = metadata.version;
+      if (metadata.description) this.elements.scriptDescription.value = metadata.description;
+      if (metadata.license) this.elements.scriptLicense.value = metadata.license;
       if (metadata.icon) this.elements.scriptIcon.value = metadata.icon;
-      if (metadata.runAt)
-        this.elements.runAt.value = metadata.runAt.replace(/-/g, "_");
-
-      // Update target URLs (replace list with header values)
+      if (metadata.runAt) this.elements.runAt.value = metadata.runAt.replace(/-/g, '_');
       if (this.elements.urlList) {
-        this.elements.urlList.innerHTML = "";
+        this.elements.urlList.innerHTML = '';
       }
       if (Array.isArray(metadata.matches) && metadata.matches.length > 0) {
         metadata.matches.forEach((match) => {
@@ -135,7 +117,6 @@ class ScriptEditor {
         });
       }
 
-      // Reset and update GM API checkboxes to reflect @grant
       if (this.gmApiDefinitions) {
         Object.values(this.gmApiDefinitions).forEach((def) => {
           const el = this.elements[def.el];
@@ -151,12 +132,10 @@ class ScriptEditor {
         });
       }
       this.updateApiCount();
-      // Update dependent sections visibility after grants change
       this.updateSectionVisibility();
 
-      // Update resources (replace list with header values)
       if (this.elements.resourceList) {
-        this.elements.resourceList.innerHTML = "";
+        this.elements.resourceList.innerHTML = '';
       }
       if (Array.isArray(metadata.resources) && metadata.resources.length > 0) {
         metadata.resources.forEach((resource) => {
@@ -164,9 +143,8 @@ class ScriptEditor {
         });
       }
 
-      // Update required scripts from @require (replace list)
       if (this.elements.requireList) {
-        this.elements.requireList.innerHTML = "";
+        this.elements.requireList.innerHTML = '';
       }
       if (Array.isArray(metadata.requires) && metadata.requires.length > 0) {
         metadata.requires.forEach((url) => this.ui.addRequireToList(url));
@@ -179,9 +157,7 @@ class ScriptEditor {
   syncSidebarToHeader() {
     try {
       const currentCode = this.codeEditorManager.getValue();
-      const headerMatch = currentCode.match(
-        /\/\/ ==UserScript==[\s\S]*?\/\/ ==\/UserScript==/
-      );
+      const headerMatch = currentCode.match(/\/\/ ==UserScript==[\s\S]*?\/\/ ==\/UserScript==/);
 
       const scriptData = this.gatherScriptData();
       const newMetadata = buildMetadata(scriptData);
@@ -190,7 +166,7 @@ class ScriptEditor {
       if (headerMatch) {
         newCode = currentCode.replace(headerMatch[0], newMetadata);
       } else {
-        newCode = newMetadata + "\n\n" + currentCode;
+        newCode = newMetadata + '\n\n' + currentCode;
       }
 
       if (newCode !== currentCode) {
@@ -214,54 +190,54 @@ class ScriptEditor {
 
   cacheElements() {
     const elementIds = [
-      "pageTitle",
-      "settingsBtn",
-      "closeSettings",
-      "scriptName",
-      "scriptAuthor",
-      "scriptLicense",
-      "scriptIcon",
-      "iconPreview",
-      "targetUrl",
-      "runAt",
-      "injectInto",
-      "scriptVersion",
-      "scriptDescription",
-      "saveBtn",
-      "waitForSelector",
-      "statusMessage",
-      "lintBtn",
-      "lintBtnText",
-      "cursorInfo",
-      "scriptStatusBadge",
-      "autosaveBtn",
-      "autosaveBtnText",
-      "codeEditor",
-      "minimap",
+      'pageTitle',
+      'settingsBtn',
+      'closeSettings',
+      'scriptName',
+      'scriptAuthor',
+      'scriptLicense',
+      'scriptIcon',
+      'iconPreview',
+      'targetUrl',
+      'runAt',
+      'injectInto',
+      'scriptVersion',
+      'scriptDescription',
+      'saveBtn',
+      'waitForSelector',
+      'statusMessage',
+      'lintBtn',
+      'lintBtnText',
+      'cursorInfo',
+      'scriptStatusBadge',
+      'autosaveBtn',
+      'autosaveBtnText',
+      'codeEditor',
+      'minimap',
       ...getApiElementIds(), // All GM API checkboxes
-      "apiSearch",
-      "apiCountBadge",
-      "addUrlBtn",
-      "urlList",
-      "targetUrl",
-      "patternBaseUrl",
-      "patternScope",
-      "generatePatternBtn",
-      "generatedPattern",
-      "generatedPatternGroup",
-      "insertPatternBtn",
-      "addResourceBtn",
-      "resourceName",
-      "resourceURL",
-      "resourceList",
-      "addRequireBtn",
-      "requireURL",
-      "requireList",
-      "helpButton",
-      "generateHeaderBtn",
-      "errorLogContainer",
-      "clearErrorsBtn",
-      "errorCountBadge",
+      'apiSearch',
+      'apiCountBadge',
+      'addUrlBtn',
+      'urlList',
+      'targetUrl',
+      'patternBaseUrl',
+      'patternScope',
+      'generatePatternBtn',
+      'generatedPattern',
+      'generatedPatternGroup',
+      'insertPatternBtn',
+      'addResourceBtn',
+      'resourceName',
+      'resourceURL',
+      'resourceList',
+      'addRequireBtn',
+      'requireURL',
+      'requireList',
+      'helpButton',
+      'generateHeaderBtn',
+      'errorLogContainer',
+      'clearErrorsBtn',
+      'errorCountBadge',
     ];
 
     const elements = {};
@@ -269,17 +245,15 @@ class ScriptEditor {
       elements[id] = document.getElementById(id);
     });
 
-    elements.sidebar = document.querySelector(".sidebar");
-    elements.sidebarIconBar = document.querySelector(".sidebar-icon-bar");
-    elements.sidebarContentArea = document.querySelector(
-      ".sidebar-content-area"
-    );
-    elements.sidebarIconBtns = document.querySelectorAll(".sidebar-icon-btn");
-    elements.sidebarPanels = document.querySelectorAll(".sidebar-panel");
-    elements.sectionToggles = document.querySelectorAll(".section-toggle");
-    elements.mainContent = document.querySelector(".main-content");
-    elements.settingsModal = document.getElementById("settingsModal");
-    elements.requiresSection = document.getElementById("requiresSection");
+    elements.sidebar = document.querySelector('.sidebar');
+    elements.sidebarIconBar = document.querySelector('.sidebar-icon-bar');
+    elements.sidebarContentArea = document.querySelector('.sidebar-content-area');
+    elements.sidebarIconBtns = document.querySelectorAll('.sidebar-icon-btn');
+    elements.sidebarPanels = document.querySelectorAll('.sidebar-panel');
+    elements.sectionToggles = document.querySelectorAll('.section-toggle');
+    elements.mainContent = document.querySelector('.main-content');
+    elements.settingsModal = document.getElementById('settingsModal');
+    elements.requiresSection = document.getElementById('requiresSection');
     elements.status = null;
 
     return elements;
@@ -288,10 +262,8 @@ class ScriptEditor {
   async init() {
     try {
       this.setDefaultValues();
-      this.state.isAutosaveEnabled =
-        localStorage.getItem("autosaveEnabled") !== "false";
-      this.state.lintingEnabled =
-        localStorage.getItem("lintingEnabled") !== "false";
+      this.state.isAutosaveEnabled = localStorage.getItem('autosaveEnabled') !== 'false';
+      this.state.lintingEnabled = localStorage.getItem('lintingEnabled') !== 'false';
 
       // Setup error logging
       this.setupErrorLog();
@@ -307,9 +279,7 @@ class ScriptEditor {
         this._debouncedHeaderSync();
         this.updateSectionVisibility();
       });
-      this.codeEditorManager.setImportCallback((importData) =>
-        this.handleScriptImport(importData)
-      );
+      this.codeEditorManager.setImportCallback((importData) => this.handleScriptImport(importData));
 
       this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
 
@@ -320,10 +290,10 @@ class ScriptEditor {
       this.registerEventListeners();
 
       // Listen for Ctrl+S / Cmd+S via KeyboardManager
-      if (this.ui && typeof this.ui.on === "function") {
-        this.ui.on("saveRequested", async () => {
+      if (this.ui && typeof this.ui.on === 'function') {
+        this.ui.on('saveRequested', async () => {
           await this.saveScript();
-          this.ui.showStatusMessage("Script saved!", "success", 2000);
+          this.ui.showStatusMessage('Script saved!', 'success', 2000);
         });
       }
       this.setupBackgroundConnection();
@@ -332,8 +302,8 @@ class ScriptEditor {
 
       setTimeout(() => this.codeEditorManager.focus(), 100);
     } catch (error) {
-      console.error("Failed to initialize editor:", error);
-      this.ui.showStatusMessage("Failed to initialize editor", "error");
+      console.error('Failed to initialize editor:', error);
+      this.ui.showStatusMessage('Failed to initialize editor', 'error');
     }
   }
 
@@ -345,11 +315,11 @@ class ScriptEditor {
 
   async parseUrlParams() {
     const urlParams = new URLSearchParams(window.location.search);
-    this.state.scriptId = urlParams.get("id");
-    const initialTargetUrl = urlParams.get("targetUrl");
-    const template = urlParams.get("template");
-    const importId = urlParams.get("importId");
-    const aiScriptId = urlParams.get("aiScriptId");
+    this.state.scriptId = urlParams.get('id');
+    const initialTargetUrl = urlParams.get('targetUrl');
+    const template = urlParams.get('template');
+    const importId = urlParams.get('importId');
+    const aiScriptId = urlParams.get('aiScriptId');
     this.state.isEditMode = Boolean(this.state.scriptId);
 
     if (initialTargetUrl && this.elements.targetUrl) {
@@ -405,13 +375,10 @@ class ScriptEditor {
 
       this.populateFormWithScript(scriptData);
       this.codeEditorManager.setValue(code);
-      this.ui.showStatusMessage(
-        "Script metadata imported successfully",
-        "success"
-      );
+      this.ui.showStatusMessage('Script metadata imported successfully', 'success');
     } catch (error) {
-      console.error("Error handling script import:", error);
-      this.ui.showStatusMessage("Failed to import script metadata", "error");
+      console.error('Error handling script import:', error);
+      this.ui.showStatusMessage('Failed to import script metadata', 'error');
     }
   }
 
@@ -430,8 +397,8 @@ class ScriptEditor {
 
       await chrome.storage.local.remove(key);
     } catch (err) {
-      console.error("Error loading imported script:", err);
-      this.ui.showStatusMessage("Failed to load imported script", "error");
+      console.error('Error loading imported script:', err);
+      this.ui.showStatusMessage('Failed to load imported script', 'error');
     }
   }
 
@@ -444,9 +411,9 @@ class ScriptEditor {
 
       const { code, sourceUrl } = aiData;
       const enhanced = ScriptAnalyzer.validateAndEnhanceMetadata(code, {
-        url: sourceUrl || "",
-        hostname: sourceUrl ? new URL(sourceUrl).hostname : "",
-        userPrompt: "AI Generated Script",
+        url: sourceUrl || '',
+        hostname: sourceUrl ? new URL(sourceUrl).hostname : '',
+        userPrompt: 'AI Generated Script',
       });
 
       if (enhanced.warnings && enhanced.warnings.length > 0) {
@@ -458,17 +425,12 @@ class ScriptEditor {
 
         const fixedCount = enhanced.warnings.length;
         this.ui.showStatusMessage(
-          `AI script loaded: ${fixedCount} metadata issue${
-            fixedCount > 1 ? "s" : ""
-          } auto-fixed`,
-          "info"
+          `AI script loaded: ${fixedCount} metadata issue${fixedCount > 1 ? 's' : ''} auto-fixed`,
+          'info'
         );
       }
 
-      const enhancedCode = ScriptAnalyzer.rebuildWithEnhancedMetadata(
-        code,
-        enhanced
-      );
+      const enhancedCode = ScriptAnalyzer.rebuildWithEnhancedMetadata(code, enhanced);
 
       const metadata = parseUserScriptMetadata(enhancedCode);
       this.handleScriptImport({ code: enhancedCode, ...metadata });
@@ -476,8 +438,8 @@ class ScriptEditor {
       this.ui.updateScriptStatus(true);
       await chrome.storage.local.remove(key);
     } catch (err) {
-      console.error("Error loading AI script:", err);
-      this.ui.showStatusMessage("Failed to load AI-generated script", "error");
+      console.error('Error loading AI script:', err);
+      this.ui.showStatusMessage('Failed to load AI-generated script', 'error');
     }
   }
 
@@ -492,52 +454,45 @@ class ScriptEditor {
   }
 
   hasRequireInCode() {
-    const code = this.codeEditorManager?.getValue() || "";
+    const code = this.codeEditorManager?.getValue() || '';
     return /@require\s+\S+/i.test(code);
   }
 
   hasResourceInCode() {
-    const code = this.codeEditorManager?.getValue() || "";
+    const code = this.codeEditorManager?.getValue() || '';
     return /@resource\s+\S+/i.test(code);
   }
 
   toggleResourcesSection() {
-    const resourcesPanel = document.getElementById("resources-panel");
-    const resourcesIconBtn = document.querySelector(
-      '[data-section="resources"]'
-    );
+    const resourcesPanel = document.getElementById('resources-panel');
+    const resourcesIconBtn = document.querySelector('[data-section="resources"]');
 
     const hasResourceApis =
-      this.elements.gmGetResourceText?.checked ||
-      this.elements.gmGetResourceURL?.checked;
+      this.elements.gmGetResourceText?.checked || this.elements.gmGetResourceURL?.checked;
     const hasResourcesInList = this.elements.resourceList?.children.length > 0;
     const hasResourceInCode = this.hasResourceInCode();
 
-    const shouldShow =
-      hasResourceApis || hasResourcesInList || hasResourceInCode;
+    const shouldShow = hasResourceApis || hasResourcesInList || hasResourceInCode;
 
     if (resourcesPanel) {
       if (shouldShow) {
-        resourcesPanel.classList.remove("hidden");
+        resourcesPanel.classList.remove('hidden');
       } else {
-        resourcesPanel.classList.add("hidden");
+        resourcesPanel.classList.add('hidden');
       }
     }
 
     // Update sidebar icon button visibility
     if (resourcesIconBtn) {
       if (shouldShow) {
-        resourcesIconBtn.style.display = "flex";
+        resourcesIconBtn.style.display = 'flex';
       } else {
-        resourcesIconBtn.style.display = "none";
-        if (resourcesIconBtn.classList.contains("active")) {
-          this.elements.sidebar?.classList.remove(
-            "expanded",
-            "has-active-panel"
-          );
-          resourcesIconBtn.classList.remove("active");
+        resourcesIconBtn.style.display = 'none';
+        if (resourcesIconBtn.classList.contains('active')) {
+          this.elements.sidebar?.classList.remove('expanded', 'has-active-panel');
+          resourcesIconBtn.classList.remove('active');
           if (this.elements.sidebarContentArea) {
-            this.elements.sidebarContentArea.style.display = "none";
+            this.elements.sidebarContentArea.style.display = 'none';
           }
         }
       }
@@ -545,7 +500,7 @@ class ScriptEditor {
   }
 
   toggleRequiredScriptsSection() {
-    const requiresPanel = document.getElementById("requires-panel");
+    const requiresPanel = document.getElementById('requires-panel');
     const requiresIconBtn = document.querySelector('[data-section="requires"]');
     const hasRequiresInList = this.elements.requireList?.children.length > 0;
     const hasRequireInCode = this.hasRequireInCode();
@@ -553,25 +508,22 @@ class ScriptEditor {
     const shouldShow = hasRequiresInList || hasRequireInCode;
     if (requiresPanel) {
       if (shouldShow) {
-        requiresPanel.classList.remove("hidden");
+        requiresPanel.classList.remove('hidden');
       } else {
-        requiresPanel.classList.add("hidden");
+        requiresPanel.classList.add('hidden');
       }
     }
 
     if (requiresIconBtn) {
       if (shouldShow) {
-        requiresIconBtn.style.display = "flex";
+        requiresIconBtn.style.display = 'flex';
       } else {
-        requiresIconBtn.style.display = "none";
-        if (requiresIconBtn.classList.contains("active")) {
-          this.elements.sidebar?.classList.remove(
-            "expanded",
-            "has-active-panel"
-          );
-          requiresIconBtn.classList.remove("active");
+        requiresIconBtn.style.display = 'none';
+        if (requiresIconBtn.classList.contains('active')) {
+          this.elements.sidebar?.classList.remove('expanded', 'has-active-panel');
+          requiresIconBtn.classList.remove('active');
           if (this.elements.sidebarContentArea) {
-            this.elements.sidebarContentArea.style.display = "none";
+            this.elements.sidebarContentArea.style.display = 'none';
           }
         }
       }
@@ -584,14 +536,11 @@ class ScriptEditor {
   }
 
   setupResourceApiListeners() {
-    const resourceCheckboxes = [
-      this.elements.gmGetResourceText,
-      this.elements.gmGetResourceURL,
-    ];
+    const resourceCheckboxes = [this.elements.gmGetResourceText, this.elements.gmGetResourceURL];
 
     resourceCheckboxes.forEach((checkbox) => {
       if (checkbox) {
-        checkbox.addEventListener("change", () => {
+        checkbox.addEventListener('change', () => {
           this.updateSectionVisibility();
         });
       }
@@ -599,21 +548,21 @@ class ScriptEditor {
   }
 
   registerEventListeners() {
-    this.ui.on("sidebarChanged", () => {
+    this.ui.on('sidebarChanged', () => {
       this.markAsUnsaved();
     });
 
-    this.ui.on("settingChanged", (settings) => {
+    this.ui.on('settingChanged', (settings) => {
       this.codeEditorManager.applySettings(settings);
     });
 
     this.setupSidebarIconHandlers();
-    this.elements.saveBtn?.addEventListener("click", (e) => {
+    this.elements.saveBtn?.addEventListener('click', (e) => {
       e.preventDefault();
       this.saveScript();
     });
 
-    this.elements.generateHeaderBtn?.addEventListener("click", (e) => {
+    this.elements.generateHeaderBtn?.addEventListener('click', (e) => {
       e.preventDefault();
       this.generateHeader();
     });
@@ -670,20 +619,18 @@ class ScriptEditor {
 
     formInputs.forEach((input) => {
       if (input) {
-        input.addEventListener("change", handleChange);
-        input.addEventListener("input", handleChange);
+        input.addEventListener('change', handleChange);
+        input.addEventListener('input', handleChange);
       }
     });
 
-    this.elements.scriptIcon?.addEventListener("input", () =>
-      this.updateIconPreview()
-    );
+    this.elements.scriptIcon?.addEventListener('input', () => this.updateIconPreview());
 
     // GM API checkboxes
     Object.values(this.gmApiDefinitions).forEach((api) => {
       const element = this.elements[api.el];
       if (element) {
-        element.addEventListener("change", () => {
+        element.addEventListener('change', () => {
           handleChange();
           this.updateApiCount();
         });
@@ -693,15 +640,13 @@ class ScriptEditor {
     this.setupResourceApiListeners();
     this.updateSectionVisibility();
     if (this.elements.apiSearch) {
-      this.elements.apiSearch.addEventListener("input", () => {
+      this.elements.apiSearch.addEventListener('input', () => {
         const query = this.elements.apiSearch.value.toLowerCase();
-        const checkboxes = this.elements.sidebar.querySelectorAll(
-          ".api-list .form-group-checkbox"
-        );
+        const checkboxes = this.elements.sidebar.querySelectorAll('.api-list .form-group-checkbox');
         checkboxes.forEach((cb) => {
-          const label = cb.querySelector("label").textContent.toLowerCase();
+          const label = cb.querySelector('label').textContent.toLowerCase();
           const shouldShow = label.includes(query);
-          cb.style.display = shouldShow ? "flex" : "none";
+          cb.style.display = shouldShow ? 'flex' : 'none';
         });
       });
     }
@@ -712,52 +657,45 @@ class ScriptEditor {
     const preview = this.elements.iconPreview;
     if (url) {
       preview.src = url;
-      preview.style.display = "block";
+      preview.style.display = 'block';
     } else {
-      preview.style.display = "none";
+      preview.style.display = 'none';
     }
   }
 
   setupSidebarIconHandlers() {
     const sidebarIconBtns = this.elements.sidebarIconBtns;
     if (!sidebarIconBtns) return;
-    this.elements.sidebar.classList.remove("expanded", "has-active-panel");
-    sidebarIconBtns.forEach((btn) => btn.classList.remove("active"));
-    this.elements.sidebarPanels.forEach((panel) =>
-      panel.classList.remove("active")
-    );
-    this.elements.sidebarContentArea.style.display = "none";
+    this.elements.sidebar.classList.remove('expanded', 'has-active-panel');
+    sidebarIconBtns.forEach((btn) => btn.classList.remove('active'));
+    this.elements.sidebarPanels.forEach((panel) => panel.classList.remove('active'));
+    this.elements.sidebarContentArea.style.display = 'none';
 
     sidebarIconBtns.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const section = btn.getAttribute("data-section");
+      btn.addEventListener('click', () => {
+        const section = btn.getAttribute('data-section');
         if (!section) return;
 
         const panel = document.getElementById(`${section}-panel`);
         if (!panel) return;
 
-        const isCurrentlyActive = btn.classList.contains("active");
+        const isCurrentlyActive = btn.classList.contains('active');
 
         if (isCurrentlyActive) {
           // Collapse sidebar completely
-          this.elements.sidebar.classList.remove(
-            "expanded",
-            "has-active-panel"
-          );
-          btn.classList.remove("active");
-          panel.classList.remove("active");
-          this.elements.sidebarContentArea.style.display = "none";
-          this.elements.sidebarContentArea.style.width = "0";
+          this.elements.sidebar.classList.remove('expanded', 'has-active-panel');
+          btn.classList.remove('active');
+          panel.classList.remove('active');
+          this.elements.sidebarContentArea.style.display = 'none';
+          this.elements.sidebarContentArea.style.width = '0';
         } else {
-          this.elements.sidebar.classList.add("has-active-panel", "expanded");
-          sidebarIconBtns.forEach((b) => b.classList.remove("active"));
-          btn.classList.add("active");
-          this.elements.sidebarPanels.forEach((p) =>
-            p.classList.remove("active")
-          );
-          panel.classList.add("active");
-          this.elements.sidebarContentArea.style.display = "flex";
-          this.elements.sidebarContentArea.style.width = "280px";
+          this.elements.sidebar.classList.add('has-active-panel', 'expanded');
+          sidebarIconBtns.forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+          this.elements.sidebarPanels.forEach((p) => p.classList.remove('active'));
+          panel.classList.add('active');
+          this.elements.sidebarContentArea.style.display = 'flex';
+          this.elements.sidebarContentArea.style.width = '280px';
         }
       });
     });
@@ -772,7 +710,7 @@ class ScriptEditor {
     try {
       const script = await this.storage.getScript(id);
       if (!script) {
-        this.ui.showStatusMessage("Script not found.", "error");
+        this.ui.showStatusMessage('Script not found.', 'error');
         return;
       }
 
@@ -781,27 +719,23 @@ class ScriptEditor {
       this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
       this.codeEditorManager.updateEditorLintAndAutocomplete();
     } catch (error) {
-      console.error("Error loading script:", error);
-      this.ui.showStatusMessage(
-        `Failed to load script: ${error.message}`,
-        "error"
-      );
+      console.error('Error loading script:', error);
+      this.ui.showStatusMessage(`Failed to load script: ${error.message}`, 'error');
     }
   }
 
   populateFormWithScript(script) {
-    this.elements.scriptName.value = script.name || "";
-    this.elements.scriptAuthor.value = script.author || "";
-    this.elements.runAt.value = script.runAt || "document_idle";
-    this.elements.injectInto.value = script.injectInto || "default";
-    this.elements.scriptVersion.value =
-      script.version || this.config.DEFAULT_VERSION;
-    this.elements.scriptDescription.value = script.description || "";
-    this.elements.scriptLicense.value = script.license || "";
-    this.elements.scriptIcon.value = script.icon || "";
-    this.codeEditorManager.setValue(script.code || "");
+    this.elements.scriptName.value = script.name || '';
+    this.elements.scriptAuthor.value = script.author || '';
+    this.elements.runAt.value = script.runAt || 'document_idle';
+    this.elements.injectInto.value = script.injectInto || 'default';
+    this.elements.scriptVersion.value = script.version || this.config.DEFAULT_VERSION;
+    this.elements.scriptDescription.value = script.description || '';
+    this.elements.scriptLicense.value = script.license || '';
+    this.elements.scriptIcon.value = script.icon || '';
+    this.codeEditorManager.setValue(script.code || '');
     if (this.elements.urlList) {
-      this.elements.urlList.innerHTML = "";
+      this.elements.urlList.innerHTML = '';
     }
 
     script.targetUrls?.forEach((url) => this.ui.addUrlToList(url));
@@ -818,16 +752,14 @@ class ScriptEditor {
     this.updateSectionVisibility();
     this.updateIconPreview();
     if (this.elements.resourceList) {
-      this.elements.resourceList.innerHTML = "";
+      this.elements.resourceList.innerHTML = '';
       if (script.resources && Array.isArray(script.resources)) {
-        script.resources.forEach((res) =>
-          this.ui.addResourceToList(res.name, res.url)
-        );
+        script.resources.forEach((res) => this.ui.addResourceToList(res.name, res.url));
       }
     }
 
     if (this.elements.requireList) {
-      this.elements.requireList.innerHTML = "";
+      this.elements.requireList.innerHTML = '';
       if (Array.isArray(script.requires)) {
         script.requires.forEach((url) => this.ui.addRequireToList(url));
       }
@@ -839,7 +771,7 @@ class ScriptEditor {
   }
 
   gatherScriptData() {
-    const urlList = Array.from(document.querySelectorAll(".url-item")).map(
+    const urlList = Array.from(document.querySelectorAll('.url-item')).map(
       (item) => item.dataset.url
     );
 
@@ -850,15 +782,14 @@ class ScriptEditor {
 
     const scriptData = {
       name: this.elements.scriptName.value.trim(),
-      author: this.elements.scriptAuthor.value.trim() || "Anonymous",
+      author: this.elements.scriptAuthor.value.trim() || 'Anonymous',
       targetUrls: urlList,
       runAt: this.elements.runAt.value,
       injectInto: this.elements.injectInto.value,
-      version:
-        this.elements.scriptVersion.value.trim() || this.config.DEFAULT_VERSION,
+      version: this.elements.scriptVersion.value.trim() || this.config.DEFAULT_VERSION,
       description: this.elements.scriptDescription.value.trim(),
-      license: this.elements.scriptLicense?.value.trim() || "",
-      icon: this.elements.scriptIcon?.value.trim() || "",
+      license: this.elements.scriptLicense?.value.trim() || '',
+      icon: this.elements.scriptIcon?.value.trim() || '',
       code: this.codeEditorManager.getValue(),
       enabled: true,
       updatedAt: new Date().toISOString(),
@@ -869,34 +800,26 @@ class ScriptEditor {
     scriptData.gmGetValue = this.elements.gmGetValue?.checked || false;
     scriptData.gmDeleteValue = this.elements.gmDeleteValue?.checked || false;
     scriptData.gmListValues = this.elements.gmListValues?.checked || false;
-    scriptData.gmAddValueChangeListener =
-      this.elements.gmAddValueChangeListener?.checked || false;
+    scriptData.gmAddValueChangeListener = this.elements.gmAddValueChangeListener?.checked || false;
     scriptData.gmRemoveValueChangeListener =
       this.elements.gmRemoveValueChangeListener?.checked || false;
     scriptData.gmOpenInTab = this.elements.gmOpenInTab?.checked || false;
     scriptData.gmNotification = this.elements.gmNotification?.checked || false;
-    scriptData.gmGetResourceText =
-      this.elements.gmGetResourceText?.checked || false;
-    scriptData.gmGetResourceURL =
-      this.elements.gmGetResourceURL?.checked || false;
+    scriptData.gmGetResourceText = this.elements.gmGetResourceText?.checked || false;
+    scriptData.gmGetResourceURL = this.elements.gmGetResourceURL?.checked || false;
     scriptData.gmSetClipboard = this.elements.gmSetClipboard?.checked || false;
     scriptData.gmDownload = this.elements.gmDownload?.checked || false;
     scriptData.gmAddStyle = this.elements.gmAddStyle?.checked || false;
     scriptData.gmAddElement = this.elements.gmAddElement?.checked || false;
-    scriptData.gmRegisterMenuCommand =
-      this.elements.gmRegisterMenuCommand?.checked || false;
-    scriptData.gmUnregisterMenuCommand =
-      this.elements.gmUnregisterMenuCommand?.checked || false;
-    scriptData.gmXmlhttpRequest =
-      this.elements.gmXmlhttpRequest?.checked || false;
+    scriptData.gmRegisterMenuCommand = this.elements.gmRegisterMenuCommand?.checked || false;
+    scriptData.gmUnregisterMenuCommand = this.elements.gmUnregisterMenuCommand?.checked || false;
+    scriptData.gmXmlhttpRequest = this.elements.gmXmlhttpRequest?.checked || false;
     scriptData.unsafeWindow = this.elements.unsafeWindow?.checked || false;
     scriptData.gmLog = this.elements.gmLog?.checked || false;
 
     scriptData.resources = [];
     if (this.elements.resourceList) {
-      const items = Array.from(
-        this.elements.resourceList.querySelectorAll(".resource-item")
-      );
+      const items = Array.from(this.elements.resourceList.querySelectorAll('.resource-item'));
       items.forEach((item) => {
         scriptData.resources.push({
           name: item.dataset.name,
@@ -907,9 +830,7 @@ class ScriptEditor {
 
     scriptData.requires = [];
     if (this.elements.requireList) {
-      const reqItems = Array.from(
-        this.elements.requireList.querySelectorAll(".require-item")
-      );
+      const reqItems = Array.from(this.elements.requireList.querySelectorAll('.require-item'));
       reqItems.forEach((item) => {
         scriptData.requires.push(item.dataset.url);
       });
@@ -923,10 +844,8 @@ class ScriptEditor {
       if (!this.validator.validateForm()) return null;
 
       const scriptData = this.gatherScriptData();
-      if (!scriptData.name || scriptData.name.trim() === "") {
-        scriptData.name = `Untitled Script ${new Date()
-          .toISOString()
-          .slice(0, 10)}`;
+      if (!scriptData.name || scriptData.name.trim() === '') {
+        scriptData.name = `Untitled Script ${new Date().toISOString().slice(0, 10)}`;
       }
 
       const isNewScript = !this.state.scriptId;
@@ -941,8 +860,7 @@ class ScriptEditor {
             try {
               const response = await fetch(resource.url);
               if (response.ok) {
-                scriptData.resourceContents[resource.name] =
-                  await response.text();
+                scriptData.resourceContents[resource.name] = await response.text();
               } else {
                 console.error(
                   `Failed to fetch resource '${resource.name}' from ${resource.url}: ${response.status} ${response.statusText}`
@@ -950,10 +868,7 @@ class ScriptEditor {
                 scriptData.resourceContents[resource.name] = null;
               }
             } catch (error) {
-              console.error(
-                `Error fetching resource '${resource.name}':`,
-                error
-              );
+              console.error(`Error fetching resource '${resource.name}':`, error);
               scriptData.resourceContents[resource.name] = null;
             }
           })
@@ -971,8 +886,8 @@ class ScriptEditor {
       this.ui.updateScriptStatus(false);
       if (isNewScript) {
         const newUrl = new URL(window.location);
-        newUrl.searchParams.set("id", savedScript.id);
-        window.history.pushState({}, "", newUrl);
+        newUrl.searchParams.set('id', savedScript.id);
+        window.history.pushState({}, '', newUrl);
         this.state.isEditMode = true;
       }
 
@@ -980,8 +895,8 @@ class ScriptEditor {
 
       if (!quiet) {
         this.ui.showStatusMessage(
-          `Script ${isNewScript ? "created" : "saved"} successfully`,
-          "success"
+          `Script ${isNewScript ? 'created' : 'saved'} successfully`,
+          'success'
         );
 
         setTimeout(() => {
@@ -993,16 +908,13 @@ class ScriptEditor {
 
       return savedScript;
     } catch (error) {
-      console.error("Error saving script:", error);
-      const errorMessage = error.message || "Unknown error occurred";
-      this.ui.showStatusMessage(
-        `Failed to save script: ${errorMessage}`,
-        "error"
-      );
+      console.error('Error saving script:', error);
+      const errorMessage = error.message || 'Unknown error occurred';
+      this.ui.showStatusMessage(`Failed to save script: ${errorMessage}`, 'error');
 
       setTimeout(() => {
         if (this.state.hasUnsavedChanges) {
-          this.ui.showStatusMessage("Unsaved changes", "warning");
+          this.ui.showStatusMessage('Unsaved changes', 'warning');
         } else {
           this.ui.clearStatusMessage();
         }
@@ -1016,68 +928,56 @@ class ScriptEditor {
     if (!this.state.isEditMode) {
       this.state.isEditMode = true;
       this.state.scriptId = savedScript.id;
-      window.history.replaceState(
-        {},
-        "",
-        `../editor/editor.html?id=${savedScript.id}`
-      );
+      window.history.replaceState({}, '', `../editor/editor.html?id=${savedScript.id}`);
     }
   }
 
   async notifyBackgroundScript() {
     try {
       await new Promise((resolve) => {
-        chrome.runtime.sendMessage({ action: "scriptsUpdated" }, () => {
+        chrome.runtime.sendMessage({ action: 'scriptsUpdated' }, () => {
           if (chrome.runtime.lastError) {
-            console.warn("Background sync warning:", chrome.runtime.lastError);
+            console.warn('Background sync warning:', chrome.runtime.lastError);
           }
           resolve();
         });
       });
     } catch (error) {
-      console.warn("Background sync warning:", error);
+      console.warn('Background sync warning:', error);
     }
   }
 
   // Connect to backround.js
   setupBackgroundConnection() {
     try {
-      const port = chrome.runtime.connect({ name: "CodeTweak" });
+      const port = chrome.runtime.connect({ name: 'CodeTweak' });
       port.onDisconnect.addListener(() => {
-        console.log("Background connection closed, will reconnect when needed");
+        console.log('Background connection closed, will reconnect when needed');
       });
     } catch (error) {
-      console.warn("Initial background connection failed:", error);
+      console.warn('Initial background connection failed:', error);
     }
   }
 
   updateApiCount() {
-    const apiCheckboxes = Object.values(this.gmApiDefinitions).map(
-      (api) => this.elements[api.el]
-    );
-    const checkedCount = apiCheckboxes.filter(
-      (checkbox) => checkbox && checkbox.checked
-    ).length;
+    const apiCheckboxes = Object.values(this.gmApiDefinitions).map((api) => this.elements[api.el]);
+    const checkedCount = apiCheckboxes.filter((checkbox) => checkbox && checkbox.checked).length;
 
     if (this.elements.apiCountBadge) {
       this.elements.apiCountBadge.textContent = checkedCount;
-      this.elements.apiCountBadge.style.display =
-        checkedCount > 0 ? "inline" : "none";
+      this.elements.apiCountBadge.style.display = checkedCount > 0 ? 'inline' : 'none';
     }
   }
 
   setupErrorLog() {
     chrome.runtime.onMessage.addListener((message) => {
-      if (
-        message.type === "SCRIPT_ERROR_UPDATE" &&
-        message.scriptId === this.state.scriptId
-      ) {
+      if (message.type === 'SCRIPT_ERROR_UPDATE' && message.scriptId === this.state.scriptId) {
         this.loadScriptErrors();
       }
     });
 
     if (this.elements.clearErrorsBtn) {
-      this.elements.clearErrorsBtn.addEventListener("click", () => {
+      this.elements.clearErrorsBtn.addEventListener('click', () => {
         this.clearScriptErrors();
       });
     }
@@ -1096,7 +996,7 @@ class ScriptEditor {
     try {
       const response = await new Promise((resolve) => {
         chrome.runtime.sendMessage(
-          { type: "GET_SCRIPT_ERRORS", scriptId: this.state.scriptId },
+          { type: 'GET_SCRIPT_ERRORS', scriptId: this.state.scriptId },
           resolve
         );
       });
@@ -1104,10 +1004,7 @@ class ScriptEditor {
       const errors = response?.errors || [];
       this.displayErrors(errors);
     } catch (error) {
-      console.error(
-        "[CodeTweak Error Log] Failed to load script errors:",
-        error
-      );
+      console.error('[CodeTweak Error Log] Failed to load script errors:', error);
     }
   }
 
@@ -1116,16 +1013,16 @@ class ScriptEditor {
     const badge = this.elements.errorCountBadge;
 
     if (!container) {
-      console.error("[CodeTweak Error Log] Error log container not found!");
+      console.error('[CodeTweak Error Log] Error log container not found!');
       return;
     }
 
     if (badge) {
       if (errors.length > 0) {
         badge.textContent = errors.length;
-        badge.classList.remove("hidden");
+        badge.classList.remove('hidden');
       } else {
-        badge.classList.add("hidden");
+        badge.classList.add('hidden');
       }
     }
 
@@ -1133,14 +1030,14 @@ class ScriptEditor {
     container.replaceChildren();
 
     if (errors.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "error-log-empty";
-      const icon = document.createElement("i");
-      icon.setAttribute("data-feather", "check-circle");
-      const title = document.createElement("p");
-      title.textContent = "No errors detected";
-      const subtitle = document.createElement("small");
-      subtitle.textContent = "Errors will appear here when your script runs";
+      const empty = document.createElement('div');
+      empty.className = 'error-log-empty';
+      const icon = document.createElement('i');
+      icon.setAttribute('data-feather', 'check-circle');
+      const title = document.createElement('p');
+      title.textContent = 'No errors detected';
+      const subtitle = document.createElement('small');
+      subtitle.textContent = 'Errors will appear here when your script runs';
       empty.appendChild(icon);
       empty.appendChild(title);
       empty.appendChild(subtitle);
@@ -1150,52 +1047,52 @@ class ScriptEditor {
     }
 
     errors.forEach((error, index) => {
-      const errorItem = document.createElement("div");
-      errorItem.className = `error-log-item ${error.type || "error"}`;
+      const errorItem = document.createElement('div');
+      errorItem.className = `error-log-item ${error.type || 'error'}`;
       if (error.resolved) {
-        errorItem.classList.add("resolved");
+        errorItem.classList.add('resolved');
       }
 
-      const timestamp = new Date(error.timestamp).toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
+      const timestamp = new Date(error.timestamp).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
       });
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
       checkbox.checked = Boolean(error.resolved);
       checkbox.dataset.errorIndex = String(index);
-      checkbox.title = "Mark as resolved";
+      checkbox.title = 'Mark as resolved';
 
-      const header = document.createElement("div");
-      header.className = "error-log-header";
-      const type = document.createElement("span");
-      type.className = "error-log-type";
-      type.textContent = error.type || "error";
-      const time = document.createElement("span");
-      time.className = "error-log-timestamp";
+      const header = document.createElement('div');
+      header.className = 'error-log-header';
+      const type = document.createElement('span');
+      type.className = 'error-log-type';
+      type.textContent = error.type || 'error';
+      const time = document.createElement('span');
+      time.className = 'error-log-timestamp';
       time.textContent = timestamp;
       header.appendChild(type);
       header.appendChild(time);
 
-      const message = document.createElement("div");
-      message.className = "error-log-message";
-      message.textContent = error.message || "";
+      const message = document.createElement('div');
+      message.className = 'error-log-message';
+      message.textContent = error.message || '';
 
       errorItem.appendChild(checkbox);
       errorItem.appendChild(header);
       errorItem.appendChild(message);
 
       if (error.stack) {
-        const stackEl = document.createElement("div");
-        stackEl.className = "error-log-stack";
+        const stackEl = document.createElement('div');
+        stackEl.className = 'error-log-stack';
         stackEl.textContent = error.stack;
         errorItem.appendChild(stackEl);
       }
 
       // Add checkbox event listener
-      checkbox.addEventListener("change", (e) => {
+      checkbox.addEventListener('change', (e) => {
         if (e.target.checked) {
           e.target.disabled = true;
           this.toggleErrorResolved(index);
@@ -1216,19 +1113,16 @@ class ScriptEditor {
     try {
       await new Promise((resolve) => {
         chrome.runtime.sendMessage(
-          { type: "CLEAR_SCRIPT_ERRORS", scriptId: this.state.scriptId },
+          { type: 'CLEAR_SCRIPT_ERRORS', scriptId: this.state.scriptId },
           resolve
         );
       });
 
       this.displayErrors([]);
-      this.ui.showStatusMessage("Errors cleared", "success");
+      this.ui.showStatusMessage('Errors cleared', 'success');
     } catch (error) {
-      console.error(
-        "[CodeTweak Error Log] Failed to clear script errors:",
-        error
-      );
-      this.ui.showStatusMessage("Failed to clear errors", "error");
+      console.error('[CodeTweak Error Log] Failed to clear script errors:', error);
+      this.ui.showStatusMessage('Failed to clear errors', 'error');
     }
   }
 
@@ -1238,7 +1132,7 @@ class ScriptEditor {
     try {
       const response = await new Promise((resolve) => {
         chrome.runtime.sendMessage(
-          { type: "GET_SCRIPT_ERRORS", scriptId: this.state.scriptId },
+          { type: 'GET_SCRIPT_ERRORS', scriptId: this.state.scriptId },
           resolve
         );
       });
@@ -1257,12 +1151,12 @@ class ScriptEditor {
         }, 300);
       }
     } catch (error) {
-      console.error("[CodeTweak Error Log] Failed to dismiss error:", error);
+      console.error('[CodeTweak Error Log] Failed to dismiss error:', error);
     }
   }
 
   escapeHtml(text) {
-    const div = document.createElement("div");
+    const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
   }
@@ -1274,16 +1168,16 @@ class ScriptEditor {
       const content = `${metadata}\n\n${scriptData.code}`;
 
       const fileNameSafe =
-        (scriptData.name || "script")
-          .replace(/[^a-z0-9_-]+/gi, "_")
-          .replace(/_{2,}/g, "_")
-          .replace(/^_|_$/g, "") || "script";
+        (scriptData.name || 'script')
+          .replace(/[^a-z0-9_-]+/gi, '_')
+          .replace(/_{2,}/g, '_')
+          .replace(/^_|_$/g, '') || 'script';
 
       const blob = new Blob([content], {
-        type: "text/javascript;charset=utf-8",
+        type: 'text/javascript;charset=utf-8',
       });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
+      const a = document.createElement('a');
       a.href = url;
       a.download = `${fileNameSafe}.user.js`;
       document.body.appendChild(a);
@@ -1291,10 +1185,10 @@ class ScriptEditor {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      this.ui.showStatusMessage("Script exported", "success");
+      this.ui.showStatusMessage('Script exported', 'success');
     } catch (err) {
-      console.error("Export failed:", err);
-      this.ui.showStatusMessage("Export failed", "error");
+      console.error('Export failed:', err);
+      this.ui.showStatusMessage('Export failed', 'error');
     }
   }
 
@@ -1310,45 +1204,45 @@ class ScriptEditor {
       let newCode;
       if (existingHeaderMatch) {
         newCode = currentCode.replace(existingHeaderMatch[0], metadata);
-        this.ui.showStatusMessage("Metadata updated", "success");
+        this.ui.showStatusMessage('Metadata updated', 'success');
       } else {
-        newCode = metadata + "\n\n" + currentCode;
-        this.ui.showStatusMessage("Metadata generated", "success");
+        newCode = metadata + '\n\n' + currentCode;
+        this.ui.showStatusMessage('Metadata generated', 'success');
       }
 
       this.codeEditorManager.setValue(newCode);
       this.markAsDirty();
     } catch (err) {
-      console.error("Generate header failed:", err);
-      this.ui.showStatusMessage("Failed to generate header", "error");
+      console.error('Generate header failed:', err);
+      this.ui.showStatusMessage('Failed to generate header', 'error');
     }
   }
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
+document.addEventListener('DOMContentLoaded', async () => {
   setupHelpModalTabs();
   await applyTranslations();
   feather.replace();
 
   const editor = new ScriptEditor();
   editor.init().catch((error) => {
-    console.error("Failed to initialize script editor:", error);
+    console.error('Failed to initialize script editor:', error);
   });
 });
 
 function setupHelpModalTabs() {
-  const tabButtons = document.querySelectorAll(".help-tab");
-  const tabContents = document.querySelectorAll(".help-tab-content");
+  const tabButtons = document.querySelectorAll('.help-tab');
+  const tabContents = document.querySelectorAll('.help-tab-content');
   if (!tabButtons.length || !tabContents.length) return;
 
   tabButtons.forEach((btn) => {
-    btn.addEventListener("click", function () {
-      tabButtons.forEach((b) => b.classList.remove("active"));
-      tabContents.forEach((c) => c.classList.remove("active"));
-      btn.classList.add("active");
-      const tab = btn.getAttribute("data-tab");
-      const content = document.getElementById("help-tab-" + tab);
-      if (content) content.classList.add("active");
+    btn.addEventListener('click', function () {
+      tabButtons.forEach((b) => b.classList.remove('active'));
+      tabContents.forEach((c) => c.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.getAttribute('data-tab');
+      const content = document.getElementById('help-tab-' + tab);
+      if (content) content.classList.add('active');
     });
   });
 }

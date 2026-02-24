@@ -1,4 +1,4 @@
-@import "../global_theme.css";
+@import '../global_theme.css';
 
 * {
   margin: 0;
@@ -308,7 +308,7 @@ body {
 }
 .message-text pre,
 .message-text code {
-  font-family: "JetBrains Mono", "Fira Mono", "Consolas", monospace;
+  font-family: 'JetBrains Mono', 'Fira Mono', 'Consolas', monospace;
   font-size: 0.93em;
 }
 .message-text pre {
@@ -421,7 +421,7 @@ body {
   padding: 0.75rem;
   max-height: 250px;
   overflow-y: auto;
-  font-family: "JetBrains Mono", monospace;
+  font-family: 'JetBrains Mono', monospace;
   font-size: 0.8125rem;
   line-height: 1.4;
 }

@@ -15,8 +15,8 @@
 // @run-at document-end
 // ==/UserScript==
 
-const button = document.querySelector("button.buy");
-if (button) button.textContent = "Buy now";
+const button = document.querySelector('button.buy');
+if (button) button.textContent = 'Buy now';
 ```
 
 ## Pick the right timing

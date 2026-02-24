@@ -15,10 +15,7 @@
     "clipboardWrite",
     "downloads"
   ],
-  "host_permissions": [
-    "http://*/*",
-    "https://*/*"
-  ],
+  "host_permissions": ["http://*/*", "https://*/*"],
   "background": {
     "service_worker": "background/background.js",
     "type": "module"

@@ -1,34 +1,28 @@
-import { build } from "esbuild";
-import {
-  rmSync,
-  mkdirSync,
-  cpSync,
-  writeFileSync,
-  createWriteStream,
-} from "fs";
-import { join } from "path";
-import process from "process";
-import archiver from "archiver";
+import { build } from 'esbuild';
+import { rmSync, mkdirSync, cpSync, writeFileSync, createWriteStream } from 'fs';
+import { join } from 'path';
+import process from 'process';
+import archiver from 'archiver';
 
 const args = process.argv.slice(2);
-const isProduction = args.includes("--production");
-const browserFlag = args.find((arg) => arg.startsWith("--browser="));
-const browser = browserFlag ? browserFlag.split("=")[1] : "chrome";
+const isProduction = args.includes('--production');
+const browserFlag = args.find((arg) => arg.startsWith('--browser='));
+const browser = browserFlag ? browserFlag.split('=')[1] : 'chrome';
 
 const outdir = `build/${browser}`;
 rmSync(outdir, { recursive: true, force: true });
 mkdirSync(outdir, { recursive: true });
 
 const staticDirs = [
-  "assets",
-  "dashboard",
-  "editor",
-  "offscreen",
-  "popup",
-  "GM",
-  "utils",
-  "ai_dom_editor",
-  "_locales",
+  'assets',
+  'dashboard',
+  'editor',
+  'offscreen',
+  'popup',
+  'GM',
+  'utils',
+  'ai_dom_editor',
+  '_locales',
 ];
 for (const dir of staticDirs) {
   cpSync(`src/${dir}`, join(outdir, dir), { recursive: true });
@@ -36,109 +30,107 @@ for (const dir of staticDirs) {
 
 const manifest = {
   manifest_version: 3,
-  name: "__MSG_appName__",
-  version: "1.0.0",
-  description: "__MSG_appDescription__",
-  default_locale: "en",
+  name: '__MSG_appName__',
+  version: '1.0.0',
+  description: '__MSG_appDescription__',
+  default_locale: 'en',
   permissions: [
-    "storage",
-    "tabs",
-    "scripting",
-    "webNavigation",
-    "contextMenus",
-    "notifications",
-    "offscreen",
-    "clipboardWrite",
-    "downloads",
+    'storage',
+    'tabs',
+    'scripting',
+    'webNavigation',
+    'contextMenus',
+    'notifications',
+    'offscreen',
+    'clipboardWrite',
+    'downloads',
   ],
-  host_permissions: ["http://*/*", "https://*/*"],
+  host_permissions: ['http://*/*', 'https://*/*'],
   background: {
-    service_worker: "background/background.js",
-    type: "module",
+    service_worker: 'background/background.js',
+    type: 'module',
   },
   action: {
-    default_popup: "popup/popup.html",
+    default_popup: 'popup/popup.html',
     default_icon: {
-      16: "assets/icons/icon16.png",
-      48: "assets/icons/icon48.png",
-      128: "assets/icons/icon128.png",
+      16: 'assets/icons/icon16.png',
+      48: 'assets/icons/icon48.png',
+      128: 'assets/icons/icon128.png',
     },
   },
   icons: {
-    16: "assets/icons/icon16.png",
-    48: "assets/icons/icon48.png",
-    128: "assets/icons/icon128.png",
+    16: 'assets/icons/icon16.png',
+    48: 'assets/icons/icon48.png',
+    128: 'assets/icons/icon128.png',
   },
   content_scripts: [
     {
-      matches: ["http://*/*", "https://*/*"],
-      js: ["elementSelector/main.js"],
-      css: ["assets/styles/elementSelector.css"],
-      run_at: "document_start",
+      matches: ['http://*/*', 'https://*/*'],
+      js: ['elementSelector/main.js'],
+      css: ['assets/styles/elementSelector.css'],
+      run_at: 'document_start',
     },
     {
-      matches: ["http://*/*", "https://*/*"],
-      js: ["utils/content_bridge.js"],
-      run_at: "document_start",
-      world: "ISOLATED",
+      matches: ['http://*/*', 'https://*/*'],
+      js: ['utils/content_bridge.js'],
+      run_at: 'document_start',
+      world: 'ISOLATED',
     },
     {
-      matches: ["http://*/*", "https://*/*"],
-      js: ["ai_dom_editor/editor/ai_dom_content.js", "ai_dom_editor/sidebar/ai_dom_sidebar.js"],
-      run_at: "document_idle",
+      matches: ['http://*/*', 'https://*/*'],
+      js: ['ai_dom_editor/editor/ai_dom_content.js', 'ai_dom_editor/sidebar/ai_dom_sidebar.js'],
+      run_at: 'document_idle',
     },
     {
-      matches: ["https://greasyfork.org/*"],
-      js: ["utils/greasyfork_interceptor.js"],
-      run_at: "document_start",
+      matches: ['https://greasyfork.org/*'],
+      js: ['utils/greasyfork_interceptor.js'],
+      run_at: 'document_start',
     },
   ],
   web_accessible_resources: [
     {
-      resources: ["utils/*", "GM/*", "ai_dom_editor/*"],
-      matches: ["<all_urls>"],
+      resources: ['utils/*', 'GM/*', 'ai_dom_editor/*'],
+      matches: ['<all_urls>'],
     },
   ],
 };
 
-writeFileSync(join(outdir, "manifest.json"), JSON.stringify(manifest, null, 2));
+writeFileSync(join(outdir, 'manifest.json'), JSON.stringify(manifest, null, 2));
 await build({
   entryPoints: [
-    "src/background/background.js",
-    "src/utils/content_bridge.js",
-    "src/elementSelector/main.js",
-    "src/GM/gm_core.js",
-    "src/utils/greasyfork_interceptor.js",
-    "src/utils/inject.js",
-    "src/utils/urls.js",
-    "src/popup/popup.js",
-    "src/editor/editor.js",
-    "src/dashboard/dashboard.js",
-    "src/ai_dom_editor/editor/ai_dom_content.js",
-    "src/ai_dom_editor/sidebar/ai_dom_sidebar.js",
-    "src/ai_dom_editor/editor/ai_dom_editor.js",
-    "src/ai_dom_editor/settings/ai_settings.js",
+    'src/background/background.js',
+    'src/utils/content_bridge.js',
+    'src/elementSelector/main.js',
+    'src/GM/gm_core.js',
+    'src/utils/greasyfork_interceptor.js',
+    'src/utils/inject.js',
+    'src/utils/urls.js',
+    'src/popup/popup.js',
+    'src/editor/editor.js',
+    'src/dashboard/dashboard.js',
+    'src/ai_dom_editor/editor/ai_dom_content.js',
+    'src/ai_dom_editor/sidebar/ai_dom_sidebar.js',
+    'src/ai_dom_editor/editor/ai_dom_editor.js',
+    'src/ai_dom_editor/settings/ai_settings.js',
   ],
   bundle: true,
   outdir,
-  logLevel: "info",
-  platform: "browser",
+  logLevel: 'info',
+  platform: 'browser',
   define: {
-    "process.env.BROWSER": JSON.stringify(browser),
+    'process.env.BROWSER': JSON.stringify(browser),
   },
 });
 if (isProduction) {
   const archiveName = `codetweak-${browser}.zip`;
-  const output = createWriteStream(join("build", archiveName));
-  const archive = archiver("zip", { zlib: { level: 9 } });
+  const output = createWriteStream(join('build', archiveName));
+  const archive = archiver('zip', { zlib: { level: 9 } });
 
-  output.on("close", () => {
-    console.log(
-      `Successfully created ${archiveName} (${archive.pointer()} bytes)`
-    );
+  output.on('close', () => {
+    console.log(`Successfully created ${archiveName} (${archive.pointer()} bytes)`);
   });
 
-  archive.on("error", (err) => {
+  archive.on('error', (err) => {
     throw err;
   });
 

@@ -7,7 +7,11 @@ async function setupOffscreen() {
 
   global.chrome = {
     runtime: {
-      onMessage: { addListener: (fn) => { handler = fn; } },
+      onMessage: {
+        addListener: (fn) => {
+          handler = fn;
+        },
+      },
       sendMessage,
     },
   };

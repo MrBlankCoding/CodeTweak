@@ -5,20 +5,20 @@ chrome.runtime.onMessage.addListener(async (request) => {
 
   try {
     await navigator.clipboard.writeText(request.data);
-    
+
     chrome.runtime.sendMessage({
       type: 'offscreen-clipboard-response',
       success: true,
-      requestId: request.requestId
+      requestId: request.requestId,
     });
   } catch (error) {
     console.error('Failed to copy to clipboard:', error);
-    
+
     chrome.runtime.sendMessage({
       type: 'offscreen-clipboard-response',
       success: false,
       error: error.message,
-      requestId: request.requestId
+      requestId: request.requestId,
     });
   }
 });

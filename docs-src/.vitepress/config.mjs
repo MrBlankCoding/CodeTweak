@@ -12,7 +12,7 @@ export default defineConfig({
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
       { text: 'API', link: '/reference/gm-apis' },
-      { text: 'Troubleshooting', link: '/troubleshooting/common-issues' }
+      { text: 'Troubleshooting', link: '/troubleshooting/common-issues' },
     ],
     sidebar: [
       {
@@ -24,45 +24,43 @@ export default defineConfig({
           { text: 'Writing Userscripts', link: '/guide/writing-userscripts' },
           { text: 'Manage Scripts', link: '/guide/dashboard' },
           { text: 'Install From Greasy Fork', link: '/guide/greasyfork' },
-          { text: 'Privacy and Permissions', link: '/guide/privacy' }
-        ]
+          { text: 'Privacy and Permissions', link: '/guide/privacy' },
+        ],
       },
       {
         text: 'Reference',
         items: [
-          { 
-            text: 'GM APIs', 
+          {
+            text: 'GM APIs',
             link: '/reference/gm-apis',
             items: [
               { text: 'Storage & Data', link: '/reference/gm-apis/storage' },
               { text: 'UI & Elements', link: '/reference/gm-apis/ui' },
               { text: 'Network & Clipboard', link: '/reference/gm-apis/network' },
               { text: 'Resources', link: '/reference/gm-apis/resources' },
-              { text: 'Advanced & Utility', link: '/reference/gm-apis/advanced' }
-            ]
+              { text: 'Advanced & Utility', link: '/reference/gm-apis/advanced' },
+            ],
           },
           { text: 'Run Timing', link: '/reference/run-timing' },
-          { text: 'Match Patterns', link: '/reference/match-patterns' }
-        ]
+          { text: 'Match Patterns', link: '/reference/match-patterns' },
+        ],
       },
       {
         text: 'Troubleshooting',
         items: [
           { text: 'Common Issues', link: '/troubleshooting/common-issues' },
-          { text: 'Strict Sites', link: '/troubleshooting/strict-sites' }
-        ]
-      }
+          { text: 'Strict Sites', link: '/troubleshooting/strict-sites' },
+        ],
+      },
     ],
-    socialLinks: [
-      { icon: 'github', link: 'https://github.com/MrBlankCoding/CodeTweak' }
-    ],
+    socialLinks: [{ icon: 'github', link: 'https://github.com/MrBlankCoding/CodeTweak' }],
     search: {
-      provider: 'local'
+      provider: 'local',
     },
     footer: {
       message: 'MIT License',
-      copyright: 'Copyright © CodeTweak Contributors'
-    }
+      copyright: 'Copyright © CodeTweak Contributors',
+    },
   },
-  srcExclude: ['README.md']
+  srcExclude: ['README.md'],
 });

@@ -21,17 +21,21 @@ Browse the available APIs by category:
 CodeTweak supports both the traditional **synchronous** Greasemonkey 3 style and the **asynchronous** Greasemonkey 4 style:
 
 ### Synchronous (GM3 Style)
+
 Most functions are prefixed with `GM_` and return values immediately.
+
 ```javascript
-const value = GM_getValue("key", "default");
-GM_setValue("key", "new value");
+const value = GM_getValue('key', 'default');
+GM_setValue('key', 'new value');
 ```
 
 ### Asynchronous (GM4 Style)
+
 All functions are available under the `GM` object and return a `Promise`.
+
 ```javascript
-const value = await GM.getValue("key", "default");
-await GM.setValue("key", "new value");
+const value = await GM.getValue('key', 'default');
+await GM.setValue('key', 'new value');
 ```
 
 ---

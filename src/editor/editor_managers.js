@@ -1,5 +1,5 @@
 import feather from 'feather-icons';
-import { generateUrlMatchPattern } from "../utils/urls.js";
+import { generateUrlMatchPattern } from '../utils/urls.js';
 
 class BaseUIComponent {
   constructor(elements, eventBus) {
@@ -101,9 +101,11 @@ export class ModalManager extends BaseUIComponent {
       modal.classList.add('show');
       modal.style.display = 'flex';
       document.body.classList.add('modal-open');
-      const focusable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+      const focusable = modal.querySelector(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
       if (focusable) focusable.focus();
-      
+
       this.emit('modalOpened', { type: modalType });
     }
   }
@@ -116,12 +118,12 @@ export class ModalManager extends BaseUIComponent {
         document.body.style.overflow = '';
         document.body.classList.remove('modal-open');
       }
-      
+
       modal.classList.remove('show');
       setTimeout(() => {
         modal.style.display = 'none';
       }, 200);
-      
+
       this.emit('modalClosed', { type: modalType });
     }
   }
@@ -222,7 +224,7 @@ export class SettingsManager extends BaseUIComponent {
       matchBrackets: document.getElementById('matchBrackets'),
       minimap: document.getElementById('minimap'),
       lintingEnabled: document.getElementById('lintingEnabled'),
-      autosaveEnabled: document.getElementById('autosaveEnabled')
+      autosaveEnabled: document.getElementById('autosaveEnabled'),
     };
   }
 
@@ -235,7 +237,7 @@ export class SettingsManager extends BaseUIComponent {
   setupInstantApplyListeners() {
     const { settingsInputs } = this;
 
-    // Font size 
+    // Font size
     if (settingsInputs.fontSize) {
       this.addEventListener(settingsInputs.fontSize, 'input', () => {
         const value = parseInt(settingsInputs.fontSize.value, 10);
@@ -250,18 +252,18 @@ export class SettingsManager extends BaseUIComponent {
     // Tab size
     if (settingsInputs.tabSize) {
       this.addEventListener(settingsInputs.tabSize, 'input', () => {
-        this.emit('settingChanged', { 
-          tabSize: parseInt(settingsInputs.tabSize.value, 10) 
+        this.emit('settingChanged', {
+          tabSize: parseInt(settingsInputs.tabSize.value, 10),
         });
       });
     }
 
     // Boolean settings
-    ['lineNumbers', 'lineWrapping', 'matchBrackets', 'minimap'].forEach(setting => {
+    ['lineNumbers', 'lineWrapping', 'matchBrackets', 'minimap'].forEach((setting) => {
       if (settingsInputs[setting]) {
         this.addEventListener(settingsInputs[setting], 'change', () => {
-          this.emit('settingChanged', { 
-            [setting]: settingsInputs[setting].checked 
+          this.emit('settingChanged', {
+            [setting]: settingsInputs[setting].checked,
           });
         });
       }
@@ -337,11 +339,16 @@ export class SettingsManager extends BaseUIComponent {
         const fontSizeValue = document.getElementById('fontSizeValue');
         if (fontSizeValue) fontSizeValue.textContent = settings.fontSize + 'px';
       }
-      if (settingsInputs.tabSize && settings.tabSize !== undefined) settingsInputs.tabSize.value = settings.tabSize;
-      if (settingsInputs.lineNumbers && settings.lineNumbers !== undefined) settingsInputs.lineNumbers.checked = !!settings.lineNumbers;
-      if (settingsInputs.lineWrapping && settings.lineWrapping !== undefined) settingsInputs.lineWrapping.checked = !!settings.lineWrapping;
-      if (settingsInputs.matchBrackets && settings.matchBrackets !== undefined) settingsInputs.matchBrackets.checked = !!settings.matchBrackets;
-      if (settingsInputs.minimap && settings.minimap !== undefined) settingsInputs.minimap.checked = !!settings.minimap;
+      if (settingsInputs.tabSize && settings.tabSize !== undefined)
+        settingsInputs.tabSize.value = settings.tabSize;
+      if (settingsInputs.lineNumbers && settings.lineNumbers !== undefined)
+        settingsInputs.lineNumbers.checked = !!settings.lineNumbers;
+      if (settingsInputs.lineWrapping && settings.lineWrapping !== undefined)
+        settingsInputs.lineWrapping.checked = !!settings.lineWrapping;
+      if (settingsInputs.matchBrackets && settings.matchBrackets !== undefined)
+        settingsInputs.matchBrackets.checked = !!settings.matchBrackets;
+      if (settingsInputs.minimap && settings.minimap !== undefined)
+        settingsInputs.minimap.checked = !!settings.minimap;
       if (settingsInputs.lintingEnabled) {
         settingsInputs.lintingEnabled.checked = localStorage.getItem('lintingEnabled') === 'true';
       }
@@ -373,7 +380,7 @@ export class SettingsManager extends BaseUIComponent {
         lineNumbers: !!settingsInputs.lineNumbers?.checked,
         lineWrapping: !!settingsInputs.lineWrapping?.checked,
         matchBrackets: !!settingsInputs.matchBrackets?.checked,
-        minimap: !!settingsInputs.minimap?.checked
+        minimap: !!settingsInputs.minimap?.checked,
       };
 
       // save
@@ -381,20 +388,20 @@ export class SettingsManager extends BaseUIComponent {
       this.emit('settingsSaved', newSettings);
       this.emit('settingChanged', newSettings);
       this.emit('showStatus', { message: 'Settings saved successfully', type: 'success' });
-      
+
       const modal = document.getElementById('settingsModal');
       if (modal) {
         modal.classList.remove('show');
         modal.style.display = 'none';
         document.body.style.overflow = '';
       }
-      
+
       return true;
     } catch (error) {
       console.error('Failed to save settings:', error);
-      this.emit('showStatus', { 
+      this.emit('showStatus', {
         message: 'Failed to save settings: ' + (error.message || 'Unknown error'),
-        type: 'error' 
+        type: 'error',
       });
       return false;
     }
@@ -426,7 +433,7 @@ export class SettingsManager extends BaseUIComponent {
       lineNumbers: true,
       lineWrapping: false,
       matchBrackets: true,
-      minimap: true
+      minimap: true,
     });
   }
 }
@@ -434,7 +441,7 @@ export class SettingsManager extends BaseUIComponent {
 export class URLManager extends BaseUIComponent {
   constructor(elements, eventBus) {
     super(elements, eventBus);
-    this.statusManager = elements.statusManager || elements.status; 
+    this.statusManager = elements.statusManager || elements.status;
     this.setupEventListeners();
   }
 
@@ -465,24 +472,24 @@ export class URLManager extends BaseUIComponent {
     }
 
     if (this.elements.generatePatternBtn) {
-      this.elements.generatePatternBtn.addEventListener("click", () => {
+      this.elements.generatePatternBtn.addEventListener('click', () => {
         const base = this.elements.patternBaseUrl.value.trim();
         const scope = this.elements.patternScope.value;
         const pattern = generateUrlMatchPattern(base, scope);
         if (pattern) {
-          this.elements.generatedPattern.value = pattern + (scope === "exact" ? "" : "");
-          this.elements.generatedPatternGroup.classList.remove("hidden");
+          this.elements.generatedPattern.value = pattern + (scope === 'exact' ? '' : '');
+          this.elements.generatedPatternGroup.classList.remove('hidden');
         }
       });
     }
 
     if (this.elements.insertPatternBtn) {
-      this.elements.insertPatternBtn.addEventListener("click", () => {
+      this.elements.insertPatternBtn.addEventListener('click', () => {
         const pattern = this.elements.generatedPattern.value.trim();
         if (pattern) {
           this.addUrlToList(pattern);
-          this.elements.generatedPatternGroup.classList.add("hidden");
-          this.elements.patternBaseUrl.value = "";
+          this.elements.generatedPatternGroup.classList.add('hidden');
+          this.elements.patternBaseUrl.value = '';
         }
       });
     }
@@ -511,25 +518,26 @@ export class URLManager extends BaseUIComponent {
 
   addUrlToList(url) {
     if (this.elements.urlList) {
-      const existing = Array.from(this.elements.urlList.querySelectorAll('.url-item'))
-        .some(item => item.dataset.url === url);
+      const existing = Array.from(this.elements.urlList.querySelectorAll('.url-item')).some(
+        (item) => item.dataset.url === url
+      );
       if (existing) {
         return false;
       }
     }
 
     try {
-    const urlItem = document.createElement('div');
-    urlItem.className = 'url-item';
-    urlItem.dataset.url = url;
-    const span = document.createElement('span');
-    span.textContent = url;
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'remove-btn';
-    button.title = 'Remove URL';
+      const urlItem = document.createElement('div');
+      urlItem.className = 'url-item';
+      urlItem.dataset.url = url;
+      const span = document.createElement('span');
+      span.textContent = url;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'remove-btn';
+      button.title = 'Remove URL';
       const icon = document.createElement('i');
-    icon.setAttribute('data-feather', 'x');
+      icon.setAttribute('data-feather', 'x');
       button.appendChild(icon);
       urlItem.appendChild(span);
       urlItem.appendChild(button);
@@ -548,14 +556,14 @@ export class URLManager extends BaseUIComponent {
 
   removeUrl(urlItem) {
     if (!urlItem) return;
-    
+
     const url = urlItem.dataset?.url;
     if (urlItem.remove) {
       urlItem.remove();
     } else if (urlItem.parentNode) {
       urlItem.parentNode.removeChild(urlItem);
     }
-    
+
     if (url) {
       this.emit('urlRemoved', { url });
       this.emit('sidebarChanged');
@@ -563,12 +571,14 @@ export class URLManager extends BaseUIComponent {
   }
 
   getUrls() {
-    return Array.from(this.elements.urlList.querySelectorAll('.url-item'))
-      .map(item => item.dataset.url);
+    return Array.from(this.elements.urlList.querySelectorAll('.url-item')).map(
+      (item) => item.dataset.url
+    );
   }
 
   isValidUrl(url) {
-    const errorMessage = 'Please enter a valid URL in this format: https://example.com (include http:// or https://';
+    const errorMessage =
+      'Please enter a valid URL in this format: https://example.com (include http:// or https://';
     try {
       if (!url.match(/^https?:\/\//i)) {
         if (this.statusManager) {
@@ -576,7 +586,7 @@ export class URLManager extends BaseUIComponent {
         }
         return false;
       }
-      
+
       new URL(url);
       return true;
     } catch {
@@ -620,15 +630,15 @@ export class RequireManager extends BaseUIComponent {
   }
 
   addRequireToList(url) {
-  if (!url) return;
-  const item = document.createElement('li');
-  item.className = 'require-item';
-  item.dataset.url = url;
-  const span = document.createElement('span');
-  span.textContent = url;
-  const button = document.createElement('button');
-  button.className = 'remove-require-btn';
-  button.title = 'Remove Required Script';
+    if (!url) return;
+    const item = document.createElement('li');
+    item.className = 'require-item';
+    item.dataset.url = url;
+    const span = document.createElement('span');
+    span.textContent = url;
+    const button = document.createElement('button');
+    button.className = 'remove-require-btn';
+    button.title = 'Remove Required Script';
     button.textContent = '×';
     item.appendChild(span);
     item.appendChild(button);
@@ -645,7 +655,9 @@ export class RequireManager extends BaseUIComponent {
   }
 
   getRequires() {
-    return Array.from(this.elements.requireList.querySelectorAll('.require-item')).map(i => i.dataset.url);
+    return Array.from(this.elements.requireList.querySelectorAll('.require-item')).map(
+      (i) => i.dataset.url
+    );
   }
 }
 
@@ -677,7 +689,7 @@ export class ResourceManager extends BaseUIComponent {
   addCurrentResource() {
     const name = this.elements.resourceName.value.trim();
     const url = this.elements.resourceURL.value.trim();
-    
+
     if (name && url) {
       this.addResourceToList(name, url);
       this.elements.resourceName.value = '';
@@ -694,9 +706,8 @@ export class ResourceManager extends BaseUIComponent {
     resourceItem.dataset.name = name;
     resourceItem.dataset.url = url;
     // Truncate URL for display (keep first 30 and last 20 chars for long URLs)
-    const displayUrl = url.length > 60
-      ? `${url.substring(0, 30)}...${url.substring(url.length - 20)}`
-      : url;
+    const displayUrl =
+      url.length > 60 ? `${url.substring(0, 30)}...${url.substring(url.length - 20)}` : url;
 
     const contentDiv = document.createElement('div');
     contentDiv.className = 'resource-item-content';
@@ -739,21 +750,21 @@ export class ResourceManager extends BaseUIComponent {
 
   toggleResourceSection() {
     const section = document.getElementById('resourcesSection');
-    const shouldShow = 
-      this.elements.gmGetResourceText?.checked ||
-      this.elements.gmGetResourceURL?.checked;
-    
+    const shouldShow =
+      this.elements.gmGetResourceText?.checked || this.elements.gmGetResourceURL?.checked;
+
     if (section) {
       section.classList.toggle('hidden', !shouldShow);
     }
   }
 
   getResources() {
-    return Array.from(this.elements.resourceList.querySelectorAll('.resource-item'))
-      .map(item => ({
+    return Array.from(this.elements.resourceList.querySelectorAll('.resource-item')).map(
+      (item) => ({
         name: item.dataset.name,
-        url: item.dataset.url
-      }));
+        url: item.dataset.url,
+      })
+    );
   }
 }
 
@@ -765,11 +776,16 @@ export class FormManager extends BaseUIComponent {
 
   setupEventListeners() {
     const formElements = [
-      'scriptName', 'scriptAuthor', 'scriptVersion', 'scriptDescription', 
-      'runAt', 'waitForSelector', 'scriptResources'
+      'scriptName',
+      'scriptAuthor',
+      'scriptVersion',
+      'scriptDescription',
+      'runAt',
+      'waitForSelector',
+      'scriptResources',
     ];
 
-    formElements.forEach(elementKey => {
+    formElements.forEach((elementKey) => {
       const element = this.elements[elementKey];
       if (element) {
         const eventType = element.type === 'checkbox' ? 'change' : 'input';
@@ -787,7 +803,7 @@ export class FormManager extends BaseUIComponent {
       version: this.elements.scriptVersion?.value?.trim() || '1.0',
       description: this.elements.scriptDescription?.value?.trim() || '',
       runAt: this.elements.runAt?.value || 'document-end',
-      waitForSelector: this.elements.waitForSelector?.value?.trim() || ''
+      waitForSelector: this.elements.waitForSelector?.value?.trim() || '',
     };
   }
 
@@ -795,9 +811,11 @@ export class FormManager extends BaseUIComponent {
     if (this.elements.scriptName) this.elements.scriptName.value = data.name || '';
     if (this.elements.scriptAuthor) this.elements.scriptAuthor.value = data.author || '';
     if (this.elements.scriptVersion) this.elements.scriptVersion.value = data.version || '1.0';
-    if (this.elements.scriptDescription) this.elements.scriptDescription.value = data.description || '';
+    if (this.elements.scriptDescription)
+      this.elements.scriptDescription.value = data.description || '';
     if (this.elements.runAt) this.elements.runAt.value = data.runAt || 'document-end';
-    if (this.elements.waitForSelector) this.elements.waitForSelector.value = data.waitForSelector || '';
+    if (this.elements.waitForSelector)
+      this.elements.waitForSelector.value = data.waitForSelector || '';
   }
 
   validate() {
@@ -809,10 +827,10 @@ export class FormManager extends BaseUIComponent {
     }
 
     // Could add more valadation
-    
+
     return {
       isValid: errors.length === 0,
-      errors
+      errors,
     };
   }
 }
@@ -825,19 +843,22 @@ export class UIManager {
     this.eventBus = new EventBus();
     this.components = {};
     this.hasUnsavedChanges = false;
-    
+
     this.initializeComponents();
     this.setupGlobalEventListeners();
     this.setupButtonEventListeners();
   }
 
   initializeComponents() {
-    this.components.modal = new ModalManager({
-      settingsBtn: this.elements.settingsBtn,
-      closeSettings: this.elements.closeSettings,
-      settingsModal: this.elements.settingsModal,
-      helpButton: document.getElementById('helpButton')
-    }, this.eventBus);
+    this.components.modal = new ModalManager(
+      {
+        settingsBtn: this.elements.settingsBtn,
+        closeSettings: this.elements.closeSettings,
+        settingsModal: this.elements.settingsModal,
+        helpButton: document.getElementById('helpButton'),
+      },
+      this.eventBus
+    );
     this.components.sidebar = new SidebarManager(this.elements, this.eventBus, this.config);
     this.components.status = new StatusManager(this.elements, this.eventBus);
     this.components.settings = new SettingsManager(this.elements, this.eventBus);
@@ -887,13 +908,19 @@ export class UIManager {
   }
 
   setupSettingsModal(callbacks) {
-    if (this.components.settings && typeof this.components.settings.setupModalListeners === 'function') {
+    if (
+      this.components.settings &&
+      typeof this.components.settings.setupModalListeners === 'function'
+    ) {
       this.components.settings.setupModalListeners(callbacks);
     }
   }
 
   setupResourceManagement(callbacks) {
-    if (this.components.resource && typeof this.components.resource.setupEventListeners === 'function') {
+    if (
+      this.components.resource &&
+      typeof this.components.resource.setupEventListeners === 'function'
+    ) {
       this.components.resource.setupEventListeners(callbacks);
     }
   }
@@ -906,9 +933,12 @@ export class UIManager {
   emit(eventName, data) {
     this.eventBus.emit(eventName, data);
   }
-  
+
   addResourceToList(name, url) {
-    if (this.components.resource && typeof this.components.resource.addResourceToList === 'function') {
+    if (
+      this.components.resource &&
+      typeof this.components.resource.addResourceToList === 'function'
+    ) {
       this.components.resource.addResourceToList(name, url);
     } else {
       console.warn('ResourceManager not properly initialized');
@@ -926,7 +956,7 @@ export class UIManager {
   }
 
   destroy() {
-    Object.values(this.components).forEach(component => {
+    Object.values(this.components).forEach((component) => {
       if (component.destroy) {
         component.destroy();
       }
@@ -954,7 +984,10 @@ export class UIManager {
 
   // Proxies for backwords compatability
   initializeCollapsibleSections() {
-    if (this.components.sidebar && typeof this.components.sidebar.initializeCollapsibleSections === 'function') {
+    if (
+      this.components.sidebar &&
+      typeof this.components.sidebar.initializeCollapsibleSections === 'function'
+    ) {
       this.components.sidebar.initializeCollapsibleSections();
     }
   }
@@ -997,7 +1030,7 @@ class EventBus {
 
   emit(eventName, data = {}) {
     if (this.events.has(eventName)) {
-      this.events.get(eventName).forEach(handler => {
+      this.events.get(eventName).forEach((handler) => {
         try {
           handler(data);
         } catch (error) {
@@ -1016,7 +1049,7 @@ export class StorageManager {
   async getScript(id) {
     try {
       const { [this.storageKey]: scripts = [] } = await chrome.storage.local.get(this.storageKey);
-      return scripts.find(script => script.id === id) || null;
+      return scripts.find((script) => script.id === id) || null;
     } catch (error) {
       console.error('Failed to get script:', error);
       return null;
@@ -1029,7 +1062,7 @@ export class StorageManager {
       const now = new Date().toISOString();
 
       if (isEditMode && scriptId) {
-        const scriptIndex = scripts.findIndex(script => script.id === scriptId);
+        const scriptIndex = scripts.findIndex((script) => script.id === scriptId);
         if (scriptIndex === -1) {
           throw new Error('Script not found for editing');
         }
@@ -1039,7 +1072,7 @@ export class StorageManager {
           ...scriptData,
           id: scriptId,
           createdAt: existingScript.createdAt || now,
-          updatedAt: now
+          updatedAt: now,
         };
 
         scripts[scriptIndex] = updatedScript;
@@ -1050,7 +1083,7 @@ export class StorageManager {
           ...scriptData,
           id: this.generateUniqueId(),
           createdAt: now,
-          updatedAt: now
+          updatedAt: now,
         };
 
         scripts.push(newScript);
@@ -1066,7 +1099,7 @@ export class StorageManager {
   async deleteScript(id) {
     try {
       const { [this.storageKey]: scripts = [] } = await chrome.storage.local.get(this.storageKey);
-      const filteredScripts = scripts.filter(script => script.id !== id);
+      const filteredScripts = scripts.filter((script) => script.id !== id);
       await chrome.storage.local.set({ [this.storageKey]: filteredScripts });
       return true;
     } catch (error) {
@@ -1102,20 +1135,20 @@ export class FormValidator {
       this.validateRunAt(),
       this.validateIconUrl(),
       this.validateRequireUrls(),
-      this.validateResources()
+      this.validateResources(),
     ];
 
     return validations.every((validation) => validation.isValid);
   }
 
   validateTargetUrls() {
-    const urlList = Array.from(document.querySelectorAll(".url-item")).map(
+    const urlList = Array.from(document.querySelectorAll('.url-item')).map(
       (item) => item.dataset.url
     );
     const currentUrl = this.elements.targetUrl.value.trim();
 
     if (urlList.length === 0 && !currentUrl) {
-      this.showValidationError("Please add at least one target URL.");
+      this.showValidationError('Please add at least one target URL.');
       return { isValid: false };
     }
     // Validate propper URL
@@ -1123,7 +1156,7 @@ export class FormValidator {
       try {
         new URL(currentUrl);
       } catch {
-        this.showValidationError("The target URL must be a valid http(s) URL.");
+        this.showValidationError('The target URL must be a valid http(s) URL.');
         return { isValid: false };
       }
     }
@@ -1131,7 +1164,7 @@ export class FormValidator {
   }
 
   validateRunAt() {
-    const allowed = new Set(["document_start", "document_end", "document_idle"]);
+    const allowed = new Set(['document_start', 'document_end', 'document_idle']);
     const runAt = this.elements.runAt?.value;
     if (runAt && !allowed.has(runAt)) {
       this.showValidationError("Invalid 'Run at' value selected.");
@@ -1143,43 +1176,49 @@ export class FormValidator {
   validateIconUrl() {
     const icon = this.elements.scriptIcon?.value?.trim();
     if (!icon) return { isValid: true };
-    
+
     // Allow data URLs (starts with data:image/)
     if (icon.startsWith('data:image/')) {
       // Basic validation for data URL format
       if (!/^data:image\/[a-z+]+;base64,/.test(icon)) {
-        this.showValidationError("Invalid data URL format for icon. Must be a valid base64-encoded image.");
+        this.showValidationError(
+          'Invalid data URL format for icon. Must be a valid base64-encoded image.'
+        );
         return { isValid: false };
       }
       return { isValid: true };
     }
-    
+
     // Otherwise validate as regular HTTP/HTTPS URL
     try {
       const u = new URL(icon);
-      if (u.protocol !== "http:" && u.protocol !== "https:") {
-        this.showValidationError("Icon URL must be a valid http:// or https:// URL, or a data:image/ URL");
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+        this.showValidationError(
+          'Icon URL must be a valid http:// or https:// URL, or a data:image/ URL'
+        );
         return { isValid: false };
       }
       return { isValid: true };
     } catch {
-      this.showValidationError("Invalid icon URL. Must be a valid http://, https://, or data:image/ URL");
+      this.showValidationError(
+        'Invalid icon URL. Must be a valid http://, https://, or data:image/ URL'
+      );
       return { isValid: false };
     }
   }
 
   validateRequireUrls() {
-    const items = Array.from(document.querySelectorAll(".require-item"));
+    const items = Array.from(document.querySelectorAll('.require-item'));
     for (const item of items) {
       const url = item.dataset.url?.trim();
       if (!url) {
-        this.showValidationError("A required script entry is missing its URL.");
+        this.showValidationError('A required script entry is missing its URL.');
         return { isValid: false };
       }
       try {
         new URL(url);
       } catch {
-        this.showValidationError("One of the required script URLs is invalid.");
+        this.showValidationError('One of the required script URLs is invalid.');
         return { isValid: false };
       }
     }
@@ -1187,22 +1226,22 @@ export class FormValidator {
   }
 
   validateResources() {
-    const items = Array.from(document.querySelectorAll(".resource-item"));
+    const items = Array.from(document.querySelectorAll('.resource-item'));
     for (const item of items) {
       const name = item.dataset.name?.trim();
       const url = item.dataset.url?.trim();
       if (!name) {
-        this.showValidationError("A resource is missing its name.");
+        this.showValidationError('A resource is missing its name.');
         return { isValid: false };
       }
       if (!url) {
-        this.showValidationError("A resource is missing its URL.");
+        this.showValidationError('A resource is missing its URL.');
         return { isValid: false };
       }
       try {
         new URL(url);
       } catch {
-        this.showValidationError("One of the resource URLs is invalid.");
+        this.showValidationError('One of the resource URLs is invalid.');
         return { isValid: false };
       }
     }
@@ -1212,7 +1251,7 @@ export class FormValidator {
   showValidationError(message) {
     const statusMessage = this.elements.statusMessage;
     statusMessage.textContent = message;
-    statusMessage.className = "status-message error";
-    statusMessage.style.display = "block";
+    statusMessage.className = 'status-message error';
+    statusMessage.style.display = 'block';
   }
 }

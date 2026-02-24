@@ -6,7 +6,9 @@
   height: 100vh;
   background: var(--bg-primary);
 }
-.main-content.sidebar-hidden { grid-template-columns: 0 1fr; }
+.main-content.sidebar-hidden {
+  grid-template-columns: 0 1fr;
+}
 
 .header {
   display: grid;
@@ -32,8 +34,15 @@
 }
 
 .header-left,
-.header-right { display: flex; align-items: center; gap: var(--space-md); }
-.header-center { display: flex; justify-content: center; }
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+.header-center {
+  display: flex;
+  justify-content: center;
+}
 
 .page-title {
   display: flex;
@@ -68,8 +77,14 @@
 }
 
 .header-actions,
-.status-info { display: flex; align-items: center; gap: var(--space-md); }
-.status-info { gap: var(--space-sm); }
+.status-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+.status-info {
+  gap: var(--space-sm);
+}
 
 .status-badge {
   display: flex;
@@ -94,8 +109,13 @@
   animation: pulse 2s infinite;
 }
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .save-btn {
@@ -127,10 +147,18 @@
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
   transition: left var(--transition-slower);
 }
-.save-btn:hover { box-shadow: var(--shadow-lg); }
-.save-btn:hover::before { left: 100%; }
-.save-btn:active { box-shadow: var(--shadow-md); }
-.save-btn:focus-visible { box-shadow: var(--shadow-focus), var(--shadow-lg); }
+.save-btn:hover {
+  box-shadow: var(--shadow-lg);
+}
+.save-btn:hover::before {
+  left: 100%;
+}
+.save-btn:active {
+  box-shadow: var(--shadow-md);
+}
+.save-btn:focus-visible {
+  box-shadow: var(--shadow-focus), var(--shadow-lg);
+}
 
 .perf-badge {
   display: inline-flex;
@@ -162,7 +190,9 @@
   box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
 }
 
-.hidden { display: none !important; }
+.hidden {
+  display: none !important;
+}
 
 .sr-only {
   position: absolute !important;
@@ -176,8 +206,16 @@
   border: 0 !important;
 }
 
-.animate-fade-in { animation: fadeIn var(--transition-normal) ease-out; }
+.animate-fade-in {
+  animation: fadeIn var(--transition-normal) ease-out;
+}
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-var(--space-sm)); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-var(--space-sm));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

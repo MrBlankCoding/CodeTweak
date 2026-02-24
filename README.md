@@ -28,8 +28,8 @@ npm run build:chrome
 ```
 
 Output: `build/chrome`
-- Chrome package: `build/codetweak-chrome.zip`
 
+- Chrome package: `build/codetweak-chrome.zip`
 
 ## Development
 
@@ -64,8 +64,8 @@ npm run docs:build
 // ==/UserScript==
 
 (async () => {
-  document.body.setAttribute("data-codetweak", "ready");
-  await GM_setValue("lastRun", Date.now());
+  document.body.setAttribute('data-codetweak', 'ready');
+  await GM_setValue('lastRun', Date.now());
 })();
 ```
 

@@ -14,7 +14,11 @@ async function setupBridge({ hasSendMessage = true, lastError = null } = {}) {
     runtime: {
       id: 'ext-1',
       lastError,
-      onMessage: { addListener: (fn) => { runtimeMessageListener = fn; } },
+      onMessage: {
+        addListener: (fn) => {
+          runtimeMessageListener = fn;
+        },
+      },
       sendMessage,
     },
   };
@@ -36,10 +40,12 @@ describe('content_bridge', () => {
 
   it('forwards SCRIPT_ERROR events to runtime', async () => {
     const { sendMessage } = await setupBridge();
-    window.dispatchEvent(new MessageEvent('message', {
-      source: window,
-      data: { type: 'SCRIPT_ERROR', scriptId: 's1', error: { message: 'boom' } },
-    }));
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        source: window,
+        data: { type: 'SCRIPT_ERROR', scriptId: 's1', error: { message: 'boom' } },
+      })
+    );
 
     expect(sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'SCRIPT_ERROR', scriptId: 's1' }),
@@ -50,16 +56,18 @@ describe('content_bridge', () => {
   it('bridges GM_API_REQUEST to background and returns response', async () => {
     const { postSpy, sendMessage } = await setupBridge();
 
-    window.dispatchEvent(new MessageEvent('message', {
-      source: window,
-      data: {
-        type: 'GM_API_REQUEST',
-        extensionId: 'ext-1',
-        messageId: 'm1',
-        action: 'getValue',
-        payload: { name: 'x' },
-      },
-    }));
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        source: window,
+        data: {
+          type: 'GM_API_REQUEST',
+          extensionId: 'ext-1',
+          messageId: 'm1',
+          action: 'getValue',
+          payload: { name: 'x' },
+        },
+      })
+    );
 
     expect(sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'GM_API_REQUEST' }),
@@ -74,35 +82,43 @@ describe('content_bridge', () => {
   it('returns error when runtime sendMessage is unavailable or payload unserializable', async () => {
     const { postSpy } = await setupBridge({ hasSendMessage: false });
 
-    window.dispatchEvent(new MessageEvent('message', {
-      source: window,
-      data: {
-        type: 'GM_API_REQUEST',
-        extensionId: 'ext-1',
-        messageId: 'm2',
-        action: 'getValue',
-        payload: { name: 'x' },
-      },
-    }));
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        source: window,
+        data: {
+          type: 'GM_API_REQUEST',
+          extensionId: 'ext-1',
+          messageId: 'm2',
+          action: 'getValue',
+          payload: { name: 'x' },
+        },
+      })
+    );
 
     expect(postSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'GM_API_RESPONSE', messageId: 'm2', error: expect.stringContaining('invalidated') }),
+      expect.objectContaining({
+        type: 'GM_API_RESPONSE',
+        messageId: 'm2',
+        error: expect.stringContaining('invalidated'),
+      }),
       '*'
     );
 
     const setup2 = await setupBridge();
     const circular = {};
     circular.self = circular;
-    window.dispatchEvent(new MessageEvent('message', {
-      source: window,
-      data: {
-        type: 'GM_API_REQUEST',
-        extensionId: 'ext-1',
-        messageId: 'm3',
-        action: 'setValue',
-        payload: circular,
-      },
-    }));
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        source: window,
+        data: {
+          type: 'GM_API_REQUEST',
+          extensionId: 'ext-1',
+          messageId: 'm3',
+          action: 'setValue',
+          payload: circular,
+        },
+      })
+    );
 
     expect(setup2.postSpy).toHaveBeenCalledWith(
       expect.objectContaining({ messageId: 'm3', error: 'Request payload is not serializable.' }),

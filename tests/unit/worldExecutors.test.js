@@ -28,7 +28,8 @@ function setupBridgeMocks() {
 
 describe('createWorldExecutor', () => {
   it('creates bridge, exposes GM_info, and executes userscript', () => {
-    const { ctor, executeUserScriptWithDependencies, initializeCache, registerAll } = setupBridgeMocks();
+    const { ctor, executeUserScriptWithDependencies, initializeCache, registerAll } =
+      setupBridgeMocks();
 
     const script = { name: 'T', runAt: 'document_start', resources: [] };
     createWorldExecutor(

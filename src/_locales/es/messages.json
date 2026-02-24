@@ -5,7 +5,7 @@
   "appDescription": {
     "message": "Crea y administra scripts JavaScript personalizados para cualquier sitio web"
   },
-  
+
   "sidebarScripts": {
     "message": "Scripts"
   },
@@ -21,7 +21,7 @@
   "sidebarBrowseScripts": {
     "message": "Explorar Scripts"
   },
-  
+
   "scriptsTitle": {
     "message": "Tus Scripts"
   },
@@ -79,7 +79,7 @@
   "scriptsCreateNew": {
     "message": "Crear Nuevo Script"
   },
-  
+
   "settingsTitle": {
     "message": "Configuración"
   },
@@ -171,7 +171,7 @@
   "aboutPrivacyLink": {
     "message": "Política de Privacidad"
   },
-  
+
   "greasyForkTitle": {
     "message": "Explorar Scripts de Greasy Fork"
   },
@@ -181,7 +181,7 @@
   "greasyForkSearchBtn": {
     "message": "Buscar"
   },
-  
+
   "popupReportIssue": {
     "message": "Reportar Problema"
   },
@@ -203,7 +203,7 @@
   "popupDisableScript": {
     "message": "Desactivar script"
   },
-  
+
   "editorUnsavedChanges": {
     "message": "Cambios Sin Guardar"
   },

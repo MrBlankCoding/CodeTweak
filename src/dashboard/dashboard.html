@@ -1,228 +1,288 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CodeTweak Dashboard</title>
-  <link rel="stylesheet" href="../assets/styles/dashboard/dashboard.css">
-  <link rel="stylesheet" href="../assets/styles/dashboard/d_sidebar.css">
-  <link rel="stylesheet" href="../assets/styles/dashboard/d_script_list.css">
-  <script src="../utils/theme_manager.js"></script>
-  <script type="module" src="dashboard.js"></script>
-</head>
-<body>
-  <div class="dashboard-layout">
-    <!-- Sidebar -->
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <h1 class="logo">CodeTweak</h1>
-      </div>
-      
-      <nav class="sidebar-nav">
-        <button class="nav-item active" data-tab="scripts">
-          <i data-feather="file-text"></i>
-          <span class="nav-label" data-i18n="sidebarScripts">Scripts</span>
-          <span class="nav-badge" id="scriptCount">0</span>
-        </button>
-        <button class="nav-item" data-tab="settings">
-          <i data-feather="settings"></i>
-          <span class="nav-label" data-i18n="sidebarSettings">Settings</span>
-        </button>
-        <button class="nav-item" data-tab="about">
-          <i data-feather="info"></i>
-          <span class="nav-label" data-i18n="sidebarAbout">About</span>
-        </button>
-      </nav>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CodeTweak Dashboard</title>
+    <link rel="stylesheet" href="../assets/styles/dashboard/dashboard.css" />
+    <link rel="stylesheet" href="../assets/styles/dashboard/d_sidebar.css" />
+    <link rel="stylesheet" href="../assets/styles/dashboard/d_script_list.css" />
+    <script src="../utils/theme_manager.js"></script>
+    <script type="module" src="dashboard.js"></script>
+  </head>
+  <body>
+    <div class="dashboard-layout">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <h1 class="logo">CodeTweak</h1>
+        </div>
 
-      <div class="sidebar-actions">
-        <button id="createScriptBtn" class="btn-new">
-          <i data-feather="plus"></i>
-          <span data-i18n="sidebarNewScript">New Script</span>
-        </button>
-        <button id="greasyforkBtn" class="btn-browse">
-          <i data-feather="search"></i>
-          <span data-i18n="sidebarBrowseScripts">Browse Scripts</span>
-        </button>
-      </div>
-    </aside>
+        <nav class="sidebar-nav">
+          <button class="nav-item active" data-tab="scripts">
+            <i data-feather="file-text"></i>
+            <span class="nav-label" data-i18n="sidebarScripts">Scripts</span>
+            <span class="nav-badge" id="scriptCount">0</span>
+          </button>
+          <button class="nav-item" data-tab="settings">
+            <i data-feather="settings"></i>
+            <span class="nav-label" data-i18n="sidebarSettings">Settings</span>
+          </button>
+          <button class="nav-item" data-tab="about">
+            <i data-feather="info"></i>
+            <span class="nav-label" data-i18n="sidebarAbout">About</span>
+          </button>
+        </nav>
 
-    <!-- Main Content -->
-    <main class="main-content">
-      <!-- Scripts Tab -->
-      <section class="tab-content active" id="scripts-tab">
-        <div class="content-header">
-          <h2 data-i18n="scriptsTitle">Your Scripts</h2>
-          <div class="header-actions">
-            <input type="text" id="scriptSearch" placeholder="Search scripts..." data-i18n-attr="placeholder" data-i18n="scriptsSearch" class="search-input">
-            <select id="websiteFilter" class="filter-select">
-              <option value="" data-i18n="scriptsAllWebsites">All Websites</option>
-            </select>
-            <select id="statusFilter" class="filter-select">
-              <option value="" data-i18n="scriptsAllStatus">All Status</option>
-              <option value="enabled" data-i18n="scriptsEnabled">Enabled</option>
-              <option value="disabled" data-i18n="scriptsDisabled">Disabled</option>
-            </select>
-            <select id="runAtFilter" class="filter-select">
-              <option value="" data-i18n="scriptsRunTiming">Run Timing</option>
-              <option value="document_start" data-i18n="scriptsPageStart">Page Start</option>
-              <option value="document_end" data-i18n="scriptsDomReady">DOM Ready</option>
-              <option value="document_idle" data-i18n="scriptsPageLoad">Page Load</option>
-            </select>
+        <div class="sidebar-actions">
+          <button id="createScriptBtn" class="btn-new">
+            <i data-feather="plus"></i>
+            <span data-i18n="sidebarNewScript">New Script</span>
+          </button>
+          <button id="greasyforkBtn" class="btn-browse">
+            <i data-feather="search"></i>
+            <span data-i18n="sidebarBrowseScripts">Browse Scripts</span>
+          </button>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <!-- Scripts Tab -->
+        <section class="tab-content active" id="scripts-tab">
+          <div class="content-header">
+            <h2 data-i18n="scriptsTitle">Your Scripts</h2>
+            <div class="header-actions">
+              <input
+                type="text"
+                id="scriptSearch"
+                placeholder="Search scripts..."
+                data-i18n-attr="placeholder"
+                data-i18n="scriptsSearch"
+                class="search-input"
+              />
+              <select id="websiteFilter" class="filter-select">
+                <option value="" data-i18n="scriptsAllWebsites">All Websites</option>
+              </select>
+              <select id="statusFilter" class="filter-select">
+                <option value="" data-i18n="scriptsAllStatus">All Status</option>
+                <option value="enabled" data-i18n="scriptsEnabled">Enabled</option>
+                <option value="disabled" data-i18n="scriptsDisabled">Disabled</option>
+              </select>
+              <select id="runAtFilter" class="filter-select">
+                <option value="" data-i18n="scriptsRunTiming">Run Timing</option>
+                <option value="document_start" data-i18n="scriptsPageStart">Page Start</option>
+                <option value="document_end" data-i18n="scriptsDomReady">DOM Ready</option>
+                <option value="document_idle" data-i18n="scriptsPageLoad">Page Load</option>
+              </select>
+            </div>
           </div>
-        </div>
 
-        <div class="scripts-table-header">
-          <div class="header-toggle"></div>
-          <div class="header-name" data-i18n="scriptsName">Name</div>
-          <div class="header-version" data-i18n="scriptsVersion">Version</div>
-          <div class="header-sites" data-i18n="scriptsSites">Sites</div>
-          <div class="header-features" data-i18n="scriptsFeatures">Features</div>
-          <div class="header-runat" data-i18n="scriptsRunAt">Run At</div>
-          <div class="header-actions" data-i18n="scriptsActions">Actions</div>
-        </div>
+          <div class="scripts-table-header">
+            <div class="header-toggle"></div>
+            <div class="header-name" data-i18n="scriptsName">Name</div>
+            <div class="header-version" data-i18n="scriptsVersion">Version</div>
+            <div class="header-sites" data-i18n="scriptsSites">Sites</div>
+            <div class="header-features" data-i18n="scriptsFeatures">Features</div>
+            <div class="header-runat" data-i18n="scriptsRunAt">Run At</div>
+            <div class="header-actions" data-i18n="scriptsActions">Actions</div>
+          </div>
 
-        <div class="scripts-list" id="scriptsList">
-          <!-- Scripts will be rendered here -->
-        </div>
+          <div class="scripts-list" id="scriptsList">
+            <!-- Scripts will be rendered here -->
+          </div>
 
-        <div class="empty-state" id="emptyState" style="display: none;">
-          <div class="empty-icon"><i data-feather="file-text"></i></div>
-          <h3 data-i18n="scriptsNoScripts">No Scripts Yet</h3>
-          <p data-i18n="scriptsNoScriptsDesc">Create your first script to get started</p>
-          <button id="emptyStateCreateBtn" class="btn-primary" data-i18n="scriptsCreateNew">Create New Script</button>
-        </div>
-      </section>
+          <div class="empty-state" id="emptyState" style="display: none">
+            <div class="empty-icon"><i data-feather="file-text"></i></div>
+            <h3 data-i18n="scriptsNoScripts">No Scripts Yet</h3>
+            <p data-i18n="scriptsNoScriptsDesc">Create your first script to get started</p>
+            <button id="emptyStateCreateBtn" class="btn-primary" data-i18n="scriptsCreateNew">
+              Create New Script
+            </button>
+          </div>
+        </section>
 
-      <!-- Settings Tab -->
-      <section class="tab-content" id="settings-tab">
-        <div class="content-header">
-          <h2 data-i18n="settingsTitle">Settings</h2>
-        </div>
-        <div class="settings-container">
-          <form id="settingsForm" class="settings-form">
-            <div class="settings-group">
-              <h3 data-i18n="settingsGeneral">General</h3>
-              <label class="setting-item">
-                <input type="checkbox" id="enableAllScripts" checked>
-                <span class="setting-label">
-                  <strong data-i18n="settingsEnableDefault">Enable scripts by default</strong>
-                  <small data-i18n="settingsEnableDefaultDesc">New scripts will be automatically enabled</small>
-                </span>
-              </label>
-              <label class="setting-item">
-                <input type="checkbox" id="showNotifications" checked>
-                <span class="setting-label">
-                  <strong data-i18n="settingsShowNotifications">Show notifications</strong>
-                  <small data-i18n="settingsShowNotificationsDesc">Display notifications when scripts run</small>
-                </span>
-              </label>
-              <label class="setting-item">
-                <input type="checkbox" id="enhancedDebugging">
-                <span class="setting-label">
-                  <strong data-i18n="settingsEnhancedDebugging">Enhanced Debugging</strong>
-                  <small data-i18n="settingsEnhancedDebuggingDesc">Log detailed script information to the console</small>
-                </span>
-              </label>
-              <div class="setting-item">
-                <span class="setting-label">
-                  <strong data-i18n="settingsLanguage">Language</strong>
-                  <small data-i18n="settingsLanguageDesc">Choose your preferred interface language</small>
-                </span>
-                <select id="languageSelector" class="language-selector">
-                  <option value="auto">Browser Default (Auto)</option>
-                  <option value="en">English</option>
-                  <option value="es">Español</option>
-                  <option value="fr">Français (French)</option>
-                </select>
-              </div>
-            </div>
-            <div class="settings-group">
-              <h3 data-i18n="settingsSecurity">Security</h3>
-              <label class="setting-item">
-                <input type="checkbox" id="allowExternalResources">
-                <span class="setting-label">
-                  <strong data-i18n="settingsAllowExternal">Allow external resources</strong>
-                  <small data-i18n="settingsAllowExternalDesc">Allow scripts to load resources from external URLs</small>
-                </span>
-              </label>
-              <label class="setting-item">
-                <input type="checkbox" id="confirmFirstRun">
-                <span class="setting-label">
-                  <strong data-i18n="settingsConfirmFirstRun">Confirm first run</strong>
-                  <small data-i18n="settingsConfirmFirstRunDesc">Ask for confirmation before a script runs on a website for the first time</small>
-                </span>
-              </label>
-            </div>
-            <div class="settings-group">
-              <h3 data-i18n="settingsTheme">Theme</h3>
-              <label class="setting-item">
-                <span class="setting-label">
-                  <strong data-i18n="settingsAccentColor">Accent Color</strong>
-                  <small data-i18n="settingsAccentColorDesc">Choose the accent color for the UI</small>
-                </span>
-                <input type="color" id="accentColor" value="#61afef">
-              </label>
-            </div>
-            <div class="settings-group">
-              <h3 data-i18n="settingsAi">AI Settings</h3>
-              <div class="setting-item">
+        <!-- Settings Tab -->
+        <section class="tab-content" id="settings-tab">
+          <div class="content-header">
+            <h2 data-i18n="settingsTitle">Settings</h2>
+          </div>
+          <div class="settings-container">
+            <form id="settingsForm" class="settings-form">
+              <div class="settings-group">
+                <h3 data-i18n="settingsGeneral">General</h3>
+                <label class="setting-item">
+                  <input type="checkbox" id="enableAllScripts" checked />
                   <span class="setting-label">
-                      <strong data-i18n="settingsAiConfigure">Configure AI Features</strong>
-                      <small data-i18n="settingsAiConfigureDesc">Open the settings page for the AI DOM Editor</small>
+                    <strong data-i18n="settingsEnableDefault">Enable scripts by default</strong>
+                    <small data-i18n="settingsEnableDefaultDesc"
+                      >New scripts will be automatically enabled</small
+                    >
                   </span>
-                  <a href="../ai_dom_editor/settings/ai_settings.html" class="btn-primary" id="aiSettingsLink" data-i18n="settingsAiConfigureButton">Configure</a>
+                </label>
+                <label class="setting-item">
+                  <input type="checkbox" id="showNotifications" checked />
+                  <span class="setting-label">
+                    <strong data-i18n="settingsShowNotifications">Show notifications</strong>
+                    <small data-i18n="settingsShowNotificationsDesc"
+                      >Display notifications when scripts run</small
+                    >
+                  </span>
+                </label>
+                <label class="setting-item">
+                  <input type="checkbox" id="enhancedDebugging" />
+                  <span class="setting-label">
+                    <strong data-i18n="settingsEnhancedDebugging">Enhanced Debugging</strong>
+                    <small data-i18n="settingsEnhancedDebuggingDesc"
+                      >Log detailed script information to the console</small
+                    >
+                  </span>
+                </label>
+                <div class="setting-item">
+                  <span class="setting-label">
+                    <strong data-i18n="settingsLanguage">Language</strong>
+                    <small data-i18n="settingsLanguageDesc"
+                      >Choose your preferred interface language</small
+                    >
+                  </span>
+                  <select id="languageSelector" class="language-selector">
+                    <option value="auto">Browser Default (Auto)</option>
+                    <option value="en">English</option>
+                    <option value="es">Español</option>
+                    <option value="fr">Français (French)</option>
+                  </select>
+                </div>
               </div>
-            </div>
-            <div class="settings-actions">
-              <button type="submit" class="btn-primary" data-i18n="settingsSaveSettings">Save Settings</button>
-              <button type="reset" class="btn-secondary" data-i18n="settingsResetDefaults">Reset Defaults</button>
-              <button type="button" id="exportAllBtn" class="btn-secondary" data-i18n="settingsExportAll">Export All</button>
-            </div>
-          </form>
-        </div>
-      </section>
+              <div class="settings-group">
+                <h3 data-i18n="settingsSecurity">Security</h3>
+                <label class="setting-item">
+                  <input type="checkbox" id="allowExternalResources" />
+                  <span class="setting-label">
+                    <strong data-i18n="settingsAllowExternal">Allow external resources</strong>
+                    <small data-i18n="settingsAllowExternalDesc"
+                      >Allow scripts to load resources from external URLs</small
+                    >
+                  </span>
+                </label>
+                <label class="setting-item">
+                  <input type="checkbox" id="confirmFirstRun" />
+                  <span class="setting-label">
+                    <strong data-i18n="settingsConfirmFirstRun">Confirm first run</strong>
+                    <small data-i18n="settingsConfirmFirstRunDesc"
+                      >Ask for confirmation before a script runs on a website for the first
+                      time</small
+                    >
+                  </span>
+                </label>
+              </div>
+              <div class="settings-group">
+                <h3 data-i18n="settingsTheme">Theme</h3>
+                <label class="setting-item">
+                  <span class="setting-label">
+                    <strong data-i18n="settingsAccentColor">Accent Color</strong>
+                    <small data-i18n="settingsAccentColorDesc"
+                      >Choose the accent color for the UI</small
+                    >
+                  </span>
+                  <input type="color" id="accentColor" value="#61afef" />
+                </label>
+              </div>
+              <div class="settings-group">
+                <h3 data-i18n="settingsAi">AI Settings</h3>
+                <div class="setting-item">
+                  <span class="setting-label">
+                    <strong data-i18n="settingsAiConfigure">Configure AI Features</strong>
+                    <small data-i18n="settingsAiConfigureDesc"
+                      >Open the settings page for the AI DOM Editor</small
+                    >
+                  </span>
+                  <a
+                    href="../ai_dom_editor/settings/ai_settings.html"
+                    class="btn-primary"
+                    id="aiSettingsLink"
+                    data-i18n="settingsAiConfigureButton"
+                    >Configure</a
+                  >
+                </div>
+              </div>
+              <div class="settings-actions">
+                <button type="submit" class="btn-primary" data-i18n="settingsSaveSettings">
+                  Save Settings
+                </button>
+                <button type="reset" class="btn-secondary" data-i18n="settingsResetDefaults">
+                  Reset Defaults
+                </button>
+                <button
+                  type="button"
+                  id="exportAllBtn"
+                  class="btn-secondary"
+                  data-i18n="settingsExportAll"
+                >
+                  Export All
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
 
-      <!-- About Tab -->
-      <section class="tab-content" id="about-tab">
-        <div class="content-header">
-          <h2 data-i18n="aboutTitle">About CodeTweak</h2>
-        </div>
-        <div class="about-content">
-          <p data-i18n="aboutDocsText">Documentation and guides available at:</p>
-          <a href="https://mrblankcoding.github.io/CodeTweak/index.html" target="_blank" rel="noopener">
-            https://mrblankcoding.github.io/CodeTweak/index.html
-          </a>
-          <p data-i18n="aboutPrivacyText">Privacy policy:</p>
-          <a href="https://mrblankcoding.github.io/CodeTweak/guide/privacy" target="_blank" rel="noopener" data-i18n="aboutPrivacyLink">Privacy Policy</a>
-        </div>
-      </section>
-    </main>
-  </div>
+        <!-- About Tab -->
+        <section class="tab-content" id="about-tab">
+          <div class="content-header">
+            <h2 data-i18n="aboutTitle">About CodeTweak</h2>
+          </div>
+          <div class="about-content">
+            <p data-i18n="aboutDocsText">Documentation and guides available at:</p>
+            <a
+              href="https://mrblankcoding.github.io/CodeTweak/index.html"
+              target="_blank"
+              rel="noopener"
+            >
+              https://mrblankcoding.github.io/CodeTweak/index.html
+            </a>
+            <p data-i18n="aboutPrivacyText">Privacy policy:</p>
+            <a
+              href="https://mrblankcoding.github.io/CodeTweak/guide/privacy"
+              target="_blank"
+              rel="noopener"
+              data-i18n="aboutPrivacyLink"
+              >Privacy Policy</a
+            >
+          </div>
+        </section>
+      </main>
+    </div>
 
-  <!-- Greasy Fork Modal -->
-  <div id="greasyforkModal" class="modal" aria-hidden="true">
-    <div class="modal-overlay"></div>
-    <div class="modal-container">
-      <div class="modal-header">
-        <h2 data-i18n="greasyForkTitle">Browse Greasy Fork Scripts</h2>
-        <button class="modal-close"><i data-feather="x"></i></button>
-      </div>
-      <div class="modal-content">
-        <div class="modal-search">
-          <input type="text" id="greasyforkSearch" placeholder="Search Greasy Fork..." data-i18n-attr="placeholder" data-i18n="greasyForkSearch" class="search-input">
-          <button id="greasyforkSearchBtn" class="btn-primary" data-i18n="greasyForkSearchBtn">Search</button>
+    <!-- Greasy Fork Modal -->
+    <div id="greasyforkModal" class="modal" aria-hidden="true">
+      <div class="modal-overlay"></div>
+      <div class="modal-container">
+        <div class="modal-header">
+          <h2 data-i18n="greasyForkTitle">Browse Greasy Fork Scripts</h2>
+          <button class="modal-close"><i data-feather="x"></i></button>
         </div>
-        <div id="greasyforkResults" class="modal-results"></div>
-        <div id="greasyforkLoading" class="loading-spinner" style="display: none;">
-          <div class="spinner"></div>
+        <div class="modal-content">
+          <div class="modal-search">
+            <input
+              type="text"
+              id="greasyforkSearch"
+              placeholder="Search Greasy Fork..."
+              data-i18n-attr="placeholder"
+              data-i18n="greasyForkSearch"
+              class="search-input"
+            />
+            <button id="greasyforkSearchBtn" class="btn-primary" data-i18n="greasyForkSearchBtn">
+              Search
+            </button>
+          </div>
+          <div id="greasyforkResults" class="modal-results"></div>
+          <div id="greasyforkLoading" class="loading-spinner" style="display: none">
+            <div class="spinner"></div>
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Notifications -->
-  <div class="notification-container" id="notifications"></div>
-  
-  
-</body>
+    <!-- Notifications -->
+    <div class="notification-container" id="notifications"></div>
+  </body>
 </html>

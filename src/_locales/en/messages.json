@@ -5,7 +5,7 @@
   "appDescription": {
     "message": "Create and manage custom JavaScript scripts for any website"
   },
-  
+
   "sidebarScripts": {
     "message": "Scripts"
   },
@@ -21,7 +21,7 @@
   "sidebarBrowseScripts": {
     "message": "Browse Scripts"
   },
-  
+
   "scriptsTitle": {
     "message": "Your Scripts"
   },
@@ -79,7 +79,7 @@
   "scriptsCreateNew": {
     "message": "Create New Script"
   },
-  
+
   "settingsTitle": {
     "message": "Settings"
   },
@@ -159,7 +159,7 @@
   "settingsAiConfigureButton": {
     "message": "Configure"
   },
-  
+
   "aboutTitle": {
     "message": "About CodeTweak"
   },
@@ -172,7 +172,7 @@
   "aboutPrivacyLink": {
     "message": "Privacy Policy"
   },
-  
+
   "greasyForkTitle": {
     "message": "Browse Greasy Fork Scripts"
   },
@@ -182,7 +182,7 @@
   "greasyForkSearchBtn": {
     "message": "Search"
   },
-  
+
   "popupReportIssue": {
     "message": "Report Issue"
   },
@@ -204,7 +204,7 @@
   "popupDisableScript": {
     "message": "Disable script"
   },
-  
+
   "editorUnsavedChanges": {
     "message": "Unsaved Changes"
   },

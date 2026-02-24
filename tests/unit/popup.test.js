@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-async function setupPopup({ scripts = [], menuCommands = [], tabUrl = 'https://example.com' } = {}) {
+async function setupPopup({
+  scripts = [],
+  menuCommands = [],
+  tabUrl = 'https://example.com',
+} = {}) {
   vi.resetModules();
 
   document.body.innerHTML = `
@@ -36,7 +40,11 @@ async function setupPopup({ scripts = [], menuCommands = [], tabUrl = 'https://e
       lastError: null,
       getURL: vi.fn((p) => `chrome-extension://id/${p}`),
       sendMessage: vi.fn(),
-      onMessage: { addListener: (fn) => { runtimeListener = fn; } },
+      onMessage: {
+        addListener: (fn) => {
+          runtimeListener = fn;
+        },
+      },
     },
     scripting: {
       executeScript: vi.fn(async () => [{ result: menuCommands }]),
@@ -67,7 +75,13 @@ describe('popup', () => {
   it('renders matching scripts and toggles enabled state', async () => {
     await setupPopup({
       scripts: [
-        { id: 's1', name: 'A', enabled: true, runAt: 'document_end', targetUrls: ['https://example.com/*'] },
+        {
+          id: 's1',
+          name: 'A',
+          enabled: true,
+          runAt: 'document_end',
+          targetUrls: ['https://example.com/*'],
+        },
       ],
     });
 
@@ -90,7 +104,9 @@ describe('popup', () => {
 
     document.getElementById('createScript').click();
     document.getElementById('openDashboard').click();
-    document.getElementById('reportIssue').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    document
+      .getElementById('reportIssue')
+      .dispatchEvent(new MouseEvent('click', { bubbles: true }));
     document.getElementById('aiEditorBtn').click();
 
     await new Promise((r) => setTimeout(r, 0));
@@ -115,7 +131,9 @@ describe('popup', () => {
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     await setupPopup({
       tabUrl: 'chrome://settings',
-      scripts: [{ id: 's1', name: 'A', enabled: true, runAt: 'document_end', targetUrls: ['*://*/*'] }],
+      scripts: [
+        { id: 's1', name: 'A', enabled: true, runAt: 'document_end', targetUrls: ['*://*/*'] },
+      ],
     });
 
     const section = document.getElementById('menuCommandSection');

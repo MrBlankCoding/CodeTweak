@@ -2,7 +2,7 @@ name: Build and Deploy Docs to Pages
 
 on:
   push:
-    branches: ["main"]
+    branches: ['main']
   workflow_dispatch:
 
 permissions:
@@ -11,7 +11,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: 'pages'
   cancel-in-progress: false
 
 jobs:
@@ -25,7 +25,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "npm"
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci

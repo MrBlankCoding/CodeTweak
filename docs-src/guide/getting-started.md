@@ -20,7 +20,7 @@ Follow [Install CodeTweak](/guide/installation).
 // @grant       none
 // ==/UserScript==
 
-console.log("CodeTweak script running");
+console.log('CodeTweak script running');
 ```
 
 4. Save.

@@ -5,14 +5,14 @@ class AIDOMContent {
     this.maxAttrLen = 80;
     this.maxChars = 45000;
     this.skipTags = new Set([
-      "script",
-      "style",
-      "noscript",
-      "meta",
-      "link",
-      "svg",
-      "path",
-      "iframe",
+      'script',
+      'style',
+      'noscript',
+      'meta',
+      'link',
+      'svg',
+      'path',
+      'iframe',
     ]);
 
     this.setupMessageListener();
@@ -26,7 +26,7 @@ class AIDOMContent {
     window.__ctwkAIDOMSummaryListener = true;
 
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-      if (message.action !== "collectDOMSummary") {
+      if (message.action !== 'collectDOMSummary') {
         return false;
       }
 
@@ -78,28 +78,28 @@ class AIDOMContent {
 
   _findRoot() {
     return (
-      document.querySelector("main") ||
+      document.querySelector('main') ||
       document.querySelector("[role='main']") ||
-      document.querySelector("article") ||
+      document.querySelector('article') ||
       document.body
     );
   }
 
   _collectLandmarks() {
     const selectors = [
-      "header",
-      "nav",
-      "main",
-      "article",
-      "section",
-      "aside",
-      "footer",
-      "form",
-      "button",
-      "a",
-      "input",
-      "select",
-      "textarea",
+      'header',
+      'nav',
+      'main',
+      'article',
+      'section',
+      'aside',
+      'footer',
+      'form',
+      'button',
+      'a',
+      'input',
+      'select',
+      'textarea',
     ];
 
     const landmarks = [];
@@ -144,16 +144,16 @@ class AIDOMContent {
     let score = 0;
     const tag = el.tagName.toLowerCase();
 
-    if (["button", "a", "input", "select", "textarea", "form"].includes(tag)) {
+    if (['button', 'a', 'input', 'select', 'textarea', 'form'].includes(tag)) {
       score += 90;
     }
 
-    if (["h1", "h2", "h3", "p", "article", "main", "nav"].includes(tag)) {
+    if (['h1', 'h2', 'h3', 'p', 'article', 'main', 'nav'].includes(tag)) {
       score += 50;
     }
 
     if (el.id) score += 25;
-    if (el.getAttribute("aria-label")) score += 20;
+    if (el.getAttribute('aria-label')) score += 20;
     if (el.getBoundingClientRect().top < window.innerHeight) score += 15;
 
     return score;
@@ -165,7 +165,7 @@ class AIDOMContent {
     const tag = el.tagName.toLowerCase();
     if (this.skipTags.has(tag)) return true;
 
-    if (el.id === "ctwk-ai-editor-sidebar" || el.closest?.("#ctwk-ai-editor-sidebar")) {
+    if (el.id === 'ctwk-ai-editor-sidebar' || el.closest?.('#ctwk-ai-editor-sidebar')) {
       return true;
     }
 
@@ -173,7 +173,7 @@ class AIDOMContent {
     if (rect.width < 2 && rect.height < 2) return true;
 
     const style = window.getComputedStyle(el);
-    if (style.display === "none" || style.visibility === "hidden") return true;
+    if (style.display === 'none' || style.visibility === 'hidden') return true;
 
     return false;
   }
@@ -201,15 +201,15 @@ class AIDOMContent {
   _extractAttributes(el) {
     const attrs = {};
     const keys = [
-      "id",
-      "class",
-      "name",
-      "type",
-      "role",
-      "aria-label",
-      "placeholder",
-      "href",
-      "data-testid",
+      'id',
+      'class',
+      'name',
+      'type',
+      'role',
+      'aria-label',
+      'placeholder',
+      'href',
+      'data-testid',
     ];
 
     for (const key of keys) {
@@ -219,11 +219,8 @@ class AIDOMContent {
       let normalized = value.trim();
       if (!normalized) continue;
 
-      if (key === "class") {
-        normalized = normalized
-          .split(/\s+/)
-          .slice(0, 4)
-          .join(" ");
+      if (key === 'class') {
+        normalized = normalized.split(/\s+/).slice(0, 4).join(' ');
       }
 
       attrs[key] = normalized.slice(0, this.maxAttrLen);
@@ -233,22 +230,22 @@ class AIDOMContent {
   }
 
   _extractText(el) {
-    let text = "";
+    let text = '';
 
     if (el.children.length === 0) {
-      text = (el.textContent || "").trim();
+      text = (el.textContent || '').trim();
     } else {
       for (const node of el.childNodes) {
         if (node.nodeType !== Node.TEXT_NODE) continue;
-        const segment = (node.textContent || "").trim();
+        const segment = (node.textContent || '').trim();
         if (!segment) continue;
         text += `${segment} `;
       }
       text = text.trim();
     }
 
-    if (!text) return "";
-    return text.replace(/\s+/g, " ").slice(0, this.maxTextLen);
+    if (!text) return '';
+    return text.replace(/\s+/g, ' ').slice(0, this.maxTextLen);
   }
 }
 

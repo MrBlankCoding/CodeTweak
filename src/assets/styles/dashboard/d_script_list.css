@@ -1,7 +1,10 @@
 /* Scripts Table Header */
 .scripts-table-header {
   display: grid;
-  grid-template-columns: 48px minmax(250px, 2fr) 100px minmax(150px, 1.5fr) minmax(150px, 1.5fr) 120px 100px;
+  grid-template-columns: 48px minmax(250px, 2fr) 100px minmax(150px, 1.5fr) minmax(
+      150px,
+      1.5fr
+    ) 120px 100px;
   gap: var(--space-md);
   padding: var(--space-sm) var(--space-md);
   background: var(--bg-tertiary);
@@ -22,7 +25,6 @@
   gap: 4px;
 }
 
-
 /* Scripts List */
 .scripts-list {
   flex: 1;
@@ -42,7 +44,10 @@
   flex-shrink: 0;
   padding: var(--space-md);
   display: grid;
-  grid-template-columns: 48px minmax(250px, 2fr) 100px minmax(150px, 1.5fr) minmax(150px, 1.5fr) 120px 100px;
+  grid-template-columns: 48px minmax(250px, 2fr) 100px minmax(150px, 1.5fr) minmax(
+      150px,
+      1.5fr
+    ) 120px 100px;
   gap: var(--space-md);
   align-items: center;
   transition: var(--transition-all);
@@ -187,7 +192,7 @@
 
 .toggle-slider:before {
   position: absolute;
-  content: "";
+  content: '';
   height: 14px;
   width: 14px;
   left: 2px;

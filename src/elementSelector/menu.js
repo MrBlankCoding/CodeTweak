@@ -57,13 +57,9 @@ export class ElementSelectorMenu {
         `document.querySelector(${JSON.stringify(
           selector
         )})?.style.setProperty('display', 'none', 'important');`,
-      remove: (selector) =>
-        `document.querySelector(${JSON.stringify(selector)})?.remove();`,
-      click: (selector) =>
-        `document.querySelector(${JSON.stringify(selector)})?.click();`,
-      observe: (
-        selector
-      ) => `const observer = new MutationObserver((mutations) => {
+      remove: (selector) => `document.querySelector(${JSON.stringify(selector)})?.remove();`,
+      click: (selector) => `document.querySelector(${JSON.stringify(selector)})?.click();`,
+      observe: (selector) => `const observer = new MutationObserver((mutations) => {
   const element = document.querySelector(${JSON.stringify(selector)});
   if (element) {
     console.log('Element changed:', element);
@@ -104,15 +100,15 @@ if (target) {
   }
 
   createMenuOverlay() {
-    this.elements.overlay = document.createElement("div");
-    this.elements.overlay.className = "ctwk-menu-overlay";
-    this.elements.overlay.addEventListener("click", () => this.cleanup());
+    this.elements.overlay = document.createElement('div');
+    this.elements.overlay.className = 'ctwk-menu-overlay';
+    this.elements.overlay.addEventListener('click', () => this.cleanup());
     document.body.appendChild(this.elements.overlay);
   }
 
   createMenuElement(x, y) {
-    this.elements.menu = document.createElement("div");
-    this.elements.menu.className = "ctwk-menu";
+    this.elements.menu = document.createElement('div');
+    this.elements.menu.className = 'ctwk-menu';
     this.elements.menu.style.left = `${x}px`;
     this.elements.menu.style.top = `${y}px`;
 
@@ -121,33 +117,33 @@ if (target) {
     this.elements.menu.appendChild(this.createMenuFooter());
 
     document.body.appendChild(this.elements.menu);
-    if (typeof feather !== "undefined" && feather.replace) {
+    if (typeof feather !== 'undefined' && feather.replace) {
       feather.replace();
     }
   }
 
   createMenuHeader() {
-    const header = document.createElement("div");
-    header.className = "ctwk-menu-header";
+    const header = document.createElement('div');
+    header.className = 'ctwk-menu-header';
     const selector = this.selector.getUniqueSelector(this.state.currentElement);
     const displayText = selector
       ? selector.length > 50
-        ? selector.slice(0, 50) + "…"
+        ? selector.slice(0, 50) + '…'
         : selector
-      : "No element selected";
+      : 'No element selected';
     header.textContent = displayText;
     return header;
   }
 
   createMenuBody() {
-    const body = document.createElement("div");
-    body.className = "ctwk-menu-body";
+    const body = document.createElement('div');
+    body.className = 'ctwk-menu-body';
     const menuItems = [
-      { text: "Copy Selector", action: "copy" },
-      { text: "Hide Element", action: "hide" },
-      { text: "Remove Element", action: "remove" },
-      { text: "Click Element", action: "click" },
-      { text: "Watch Changes", action: "observe" },
+      { text: 'Copy Selector', action: 'copy' },
+      { text: 'Hide Element', action: 'hide' },
+      { text: 'Remove Element', action: 'remove' },
+      { text: 'Click Element', action: 'click' },
+      { text: 'Watch Changes', action: 'observe' },
     ];
     menuItems.forEach(({ text, action }) => {
       const item = this.createMenuItem(text, action);
@@ -157,15 +153,15 @@ if (target) {
   }
 
   createMenuItem(text, action) {
-    const item = document.createElement("div");
-    item.className = "ctwk-menu-item";
+    const item = document.createElement('div');
+    item.className = 'ctwk-menu-item';
     item.tabIndex = 0;
-    const spanI = document.createElement("span");
-    spanI.className = "i";
-    const i = document.createElement("i");
-    i.setAttribute("data-feather", this.iconName(action));
+    const spanI = document.createElement('span');
+    spanI.className = 'i';
+    const i = document.createElement('i');
+    i.setAttribute('data-feather', this.iconName(action));
     spanI.appendChild(i);
-    const spanText = document.createElement("span");
+    const spanText = document.createElement('span');
     spanText.textContent = text;
     item.appendChild(spanI);
     item.appendChild(spanText);
@@ -175,9 +171,9 @@ if (target) {
       this.handleAction(action);
     };
 
-    item.addEventListener("click", handleAction);
-    item.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
+    item.addEventListener('click', handleAction);
+    item.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
         handleAction(e);
       }
@@ -186,28 +182,28 @@ if (target) {
   }
 
   createMenuFooter() {
-    const footer = document.createElement("div");
-    footer.className = "ctwk-menu-footer";
-    const span = document.createElement("span");
-    span.textContent = "Click item to execute · Esc: cancel";
+    const footer = document.createElement('div');
+    footer.className = 'ctwk-menu-footer';
+    const span = document.createElement('span');
+    span.textContent = 'Click item to execute · Esc: cancel';
     footer.appendChild(span);
     return footer;
   }
 
   iconName(action) {
     switch (action) {
-      case "copy":
-        return "copy";
-      case "hide":
-        return "eye-off";
-      case "remove":
-        return "trash-2";
-      case "click":
-        return "mouse-pointer";
-      case "observe":
-        return "watch";
+      case 'copy':
+        return 'copy';
+      case 'hide':
+        return 'eye-off';
+      case 'remove':
+        return 'trash-2';
+      case 'click':
+        return 'mouse-pointer';
+      case 'observe':
+        return 'watch';
       default:
-        return "circle";
+        return 'circle';
     }
   }
 
@@ -223,7 +219,7 @@ if (target) {
       );
       this.elements.menu.style.left = `${left}px`;
       this.elements.menu.style.top = `${top}px`;
-      this.elements.menu.querySelector(".ctwk-menu-item")?.focus();
+      this.elements.menu.querySelector('.ctwk-menu-item')?.focus();
     }, 0);
   }
 
@@ -246,7 +242,7 @@ if (target) {
       return;
     }
 
-    if (action === "copy") {
+    if (action === 'copy') {
       await this.copyToClipboard(selector);
       this.cleanup();
       return;
@@ -256,12 +252,12 @@ if (target) {
     if (template) {
       try {
         if (
-          typeof chrome !== "undefined" &&
+          typeof chrome !== 'undefined' &&
           chrome.runtime &&
-          typeof chrome.runtime.sendMessage === "function"
+          typeof chrome.runtime.sendMessage === 'function'
         ) {
           chrome.runtime.sendMessage({
-            action: "createScript",
+            action: 'createScript',
             data: {
               selector,
               template,
@@ -270,11 +266,11 @@ if (target) {
           });
         } else {
           console.warn(
-            "CodeTweak: chrome.runtime.sendMessage is not available; cannot send createScript message."
+            'CodeTweak: chrome.runtime.sendMessage is not available; cannot send createScript message.'
           );
         }
       } catch (error) {
-        console.error("CodeTweak: Failed to send message to extension", error);
+        console.error('CodeTweak: Failed to send message to extension', error);
       }
     }
     this.cleanup();
@@ -284,23 +280,23 @@ if (target) {
     try {
       await navigator.clipboard.writeText(text);
     } catch (error) {
-      console.debug("CodeTweak: Clipboard write failed", error);
+      console.debug('CodeTweak: Clipboard write failed', error);
       this.fallbackCopyToClipboard(text);
     }
   }
 
   fallbackCopyToClipboard(text) {
-    const textArea = document.createElement("textarea");
+    const textArea = document.createElement('textarea');
     textArea.value = text;
-    textArea.style.position = "fixed";
-    textArea.style.left = "-9999px";
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
     document.body.appendChild(textArea);
     textArea.focus();
     textArea.select();
     try {
-      document.execCommand("copy");
+      document.execCommand('copy');
     } catch (error) {
-      console.debug("CodeTweak: Fallback copy failed", error);
+      console.debug('CodeTweak: Fallback copy failed', error);
     }
     document.body.removeChild(textArea);
   }

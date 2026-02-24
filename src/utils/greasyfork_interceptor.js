@@ -12,14 +12,8 @@
       const href = anchor.href;
       if (!href || !/\.user\.js(\?|$)/i.test(href)) return;
 
-      if (
-        event.button !== 0 ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.shiftKey ||
-        event.altKey
-      ) {
-        return; 
+      if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
+        return;
       }
 
       event.preventDefault();
@@ -31,6 +25,6 @@
         console.warn('CodeTweak: GreasyFork intercept sendMessage failed:', err);
       }
     },
-    true 
+    true
   );
 })();
