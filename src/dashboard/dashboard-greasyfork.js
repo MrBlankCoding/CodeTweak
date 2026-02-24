@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 import { parseUserScriptMetadata } from '../utils/metadataParser.js';
 import { showNotification } from './dashboard-ui.js';
 function setupGreasyfork(elements) {
@@ -44,7 +45,7 @@ async function searchGreasyfork(elements) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Greasy Fork API error:', errorText);
+      logger.error('Greasy Fork API error:', errorText);
       throw new Error(`HTTP error ${response.status}: ${errorText}`);
     }
 
@@ -76,7 +77,7 @@ async function searchGreasyfork(elements) {
       });
     });
   } catch (error) {
-    console.error('Error searching Greasy Fork:', error);
+    logger.error('Error searching Greasy Fork:', error);
     const errorDiv = document.createElement('div');
     errorDiv.className = 'error-message';
     errorDiv.textContent = `Error searching Greasy Fork: ${error.message}. Please try again later.`;
@@ -206,11 +207,11 @@ async function importGreasyforkScript(codeUrl) {
       // Refresh the dashboard by reloading the page
       window.location.reload();
     } catch (error) {
-      console.error('Error saving script:', error);
+      logger.error('Error saving script:', error);
       throw error;
     }
   } catch (error) {
-    console.error('Error importing script:', error);
+    logger.error('Error importing script:', error);
     showNotification('Error importing script: ' + error.message, 'error');
   }
 }

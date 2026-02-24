@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 import feather from 'feather-icons';
 import {
   urlMatchesPattern,
@@ -23,7 +24,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     currentTabUrl = tab?.url || '';
   } catch (err) {
-    console.error('Error getting current tab:', err);
+    logger.error('Error getting current tab:', err);
   }
 
   createScriptBtn.addEventListener('click', () => {
@@ -230,7 +231,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           : getMessageSync('popupEnableScript');
       }
     } catch (err) {
-      console.error('Error toggling script:', err);
+      logger.error('Error toggling script:', err);
     }
   }
 
@@ -294,7 +295,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 try {
                   command.onClick();
                 } catch (error) {
-                  console.error(
+                  logger.error(
                     'CodeTweak: Menu command failed. Please ensure the menu command API is enabled in the editor settings.',
                     error
                   );
@@ -310,7 +311,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       feather.replace();
     } catch (error) {
-      console.error('Error loading menu commands:', error);
+      logger.error('Error loading menu commands:', error);
     }
   }
 });

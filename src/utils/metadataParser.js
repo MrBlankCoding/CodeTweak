@@ -1,3 +1,4 @@
+import logger from './logger.js';
 import { GM_API_DEFINITIONS } from '../GM/gmApiDefinitions.js';
 
 // Map classic style to ours
@@ -58,10 +59,10 @@ function parseUserScriptMetadata(content) {
           if (name) {
             metadata.resources.push({ name, url });
           } else {
-            console.warn(`CodeTweak: Could not parse @resource, no name found for URL: ${url}`);
+            logger.warn(`CodeTweak: Could not parse @resource, no name found for URL: ${url}`);
           }
         } else {
-          console.warn(`CodeTweak: Could not parse @resource, no valid URL found in: "${value}"`);
+          logger.warn(`CodeTweak: Could not parse @resource, no valid URL found in: "${value}"`);
         }
         break;
       }

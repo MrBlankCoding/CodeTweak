@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 (function () {
   'use strict';
 
@@ -26,7 +27,7 @@
               try {
                 listener(name, oldValue, newValue, remote);
               } catch (e) {
-                console.error('Error in value change listener:', e);
+                logger.error('Error in value change listener:', e);
               }
             }
           }
@@ -36,7 +37,7 @@
 
     async setValue(name, value) {
       if (typeof name !== 'string') {
-        console.warn('GM_setValue: name must be a string');
+        logger.warn('GM_setValue: name must be a string');
         return;
       }
       const resolvedValue = value instanceof Promise ? await value : value;
@@ -46,7 +47,7 @@
 
     getValue(name, defaultValue) {
       if (typeof name !== 'string') {
-        console.warn('GM_getValue: name must be a string');
+        logger.warn('GM_getValue: name must be a string');
         return defaultValue;
       }
       if (this.cache.has(name)) {
@@ -64,7 +65,7 @@
 
     async getValueAsync(name, defaultValue) {
       if (typeof name !== 'string') {
-        console.warn('GM.getValue: name must be a string');
+        logger.warn('GM.getValue: name must be a string');
         return defaultValue;
       }
       if (this.cache.has(name)) {
@@ -84,7 +85,7 @@
 
     async deleteValue(name) {
       if (typeof name !== 'string') {
-        console.warn('GM_deleteValue: name must be a string');
+        logger.warn('GM_deleteValue: name must be a string');
         return;
       }
       this.cache.delete(name);
@@ -227,7 +228,7 @@
             const details = normalizeDetails(textOrDetails, titleOrOnDone, image);
             this.bridge.call('notification', { details }).catch(() => {});
           } catch (e) {
-            console.warn(e.message);
+            logger.warn(e.message);
           }
         };
         window.GM.notification = (textOrDetails, titleOrOnDone, image) => {
@@ -244,7 +245,7 @@
       if (enabled.gmRegisterMenuCommand) {
         const fn = (caption, onClick, accessKey) => {
           if (typeof caption !== 'string' || typeof onClick !== 'function') {
-            console.warn(
+            logger.warn(
               'GM_registerMenuCommand: Expected (string caption, function onClick, [string accessKey])'
             );
             return null;
@@ -266,7 +267,7 @@
       if (enabled.gmUnregisterMenuCommand) {
         const fn = (commandId) => {
           if (typeof commandId !== 'string') {
-            console.warn('GM_unregisterMenuCommand: Expected string commandId');
+            logger.warn('GM_unregisterMenuCommand: Expected string commandId');
             return;
           }
 
@@ -285,7 +286,7 @@
       if (enabled.gmGetResourceText) {
         const syncFn = (name) => {
           if (typeof name !== 'string' || name === '') {
-            console.warn('GM_getResourceText: resource name must be a string');
+            logger.warn('GM_getResourceText: resource name must be a string');
             return null;
           }
           const text = this.resourceManager.getText(name);
@@ -298,7 +299,7 @@
       if (enabled.gmGetResourceURL) {
         const syncFn = (name) => {
           if (typeof name !== 'string' || name === '') {
-            console.warn('GM_getResourceURL: resource name must be a string');
+            logger.warn('GM_getResourceURL: resource name must be a string');
             return null;
           }
           const url = this.resourceManager.getURL(name);
@@ -314,7 +315,7 @@
       if (enabled.gmAddStyle) {
         const fn = (css) => {
           if (css == null) {
-            console.warn('GM_addStyle: css must be a string');
+            logger.warn('GM_addStyle: css must be a string');
             return null;
           }
           const style = document.createElement('style');
@@ -353,7 +354,7 @@
             }
 
             if (!parent || typeof parent.appendChild !== 'function' || typeof tag !== 'string') {
-              console.warn(
+              logger.warn(
                 'GM_addElement: parent must be a valid DOM node and tag must be a string'
               );
               return null;
@@ -385,7 +386,7 @@
             parent.appendChild(el);
             return el;
           } catch (err) {
-            console.error('GM_addElement: Failed to create or append element:', err);
+            logger.error('GM_addElement: Failed to create or append element:', err);
             return null;
           }
         };
@@ -428,13 +429,13 @@
 
             const supportedMethods = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'];
             if (!supportedMethods.includes(normalizedDetails.method)) {
-              console.warn(`GM_xmlhttpRequest: Unknown method "${normalizedDetails.method}"`);
+              logger.warn(`GM_xmlhttpRequest: Unknown method "${normalizedDetails.method}"`);
             }
 
             // Always use cross-origin handler (via background script) to bypass CORS reliably
             return this._handleCrossOriginXmlhttpRequest(normalizedDetails);
           } catch (error) {
-            console.error(
+            logger.error(
               `CodeTweak: GM_xmlhttpRequest failed due to an invalid URL: "${details.url}"`,
               error
             );
@@ -501,7 +502,7 @@
       try {
         callback(payload);
       } catch (error) {
-        console.error(`GM_xmlhttpRequest ${callbackName} callback failed:`, error);
+        logger.error(`GM_xmlhttpRequest ${callbackName} callback failed:`, error);
       }
     }
 
@@ -540,7 +541,7 @@
             normalized.response = new TextEncoder().encode(serialized).buffer;
           }
         } catch (error) {
-          console.error('CodeTweak: Failed to normalize arraybuffer response.', error);
+          logger.error('CodeTweak: Failed to normalize arraybuffer response.', error);
         }
       }
 
@@ -559,7 +560,7 @@
             });
           }
         } catch (error) {
-          console.error('CodeTweak: Failed to normalize blob response.', error);
+          logger.error('CodeTweak: Failed to normalize blob response.', error);
         }
       }
 
@@ -736,7 +737,7 @@
       }
 
       if (enabled.gmLog) {
-        const fn = (...args) => console.log(...args);
+        const fn = (...args) => logger.info(...args);
         window.GM_log = window.GM.log = fn;
       }
     }

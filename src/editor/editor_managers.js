@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 import feather from 'feather-icons';
 import { generateUrlMatchPattern } from '../utils/urls.js';
 
@@ -356,7 +357,7 @@ export class SettingsManager extends BaseUIComponent {
         settingsInputs.autosaveEnabled.checked = localStorage.getItem('autosaveEnabled') === 'true';
       }
     } catch (error) {
-      console.error('Failed to load settings:', error);
+      logger.error('Failed to load settings:', error);
     }
   }
 
@@ -366,7 +367,7 @@ export class SettingsManager extends BaseUIComponent {
       // Defer defaults to CodeEditorManager; return stored values only
       return result.editorSettings || {};
     } catch (error) {
-      console.error('Failed to load settings from storage:', error);
+      logger.error('Failed to load settings from storage:', error);
       return {};
     }
   }
@@ -398,7 +399,7 @@ export class SettingsManager extends BaseUIComponent {
 
       return true;
     } catch (error) {
-      console.error('Failed to save settings:', error);
+      logger.error('Failed to save settings:', error);
       this.emit('showStatus', {
         message: 'Failed to save settings: ' + (error.message || 'Unknown error'),
         type: 'error',
@@ -941,7 +942,7 @@ export class UIManager {
     ) {
       this.components.resource.addResourceToList(name, url);
     } else {
-      console.warn('ResourceManager not properly initialized');
+      logger.warn('ResourceManager not properly initialized');
     }
   }
 
@@ -1034,7 +1035,7 @@ class EventBus {
         try {
           handler(data);
         } catch (error) {
-          console.error(`Error in event handler for ${eventName}:`, error);
+          logger.error(`Error in event handler for ${eventName}:`, error);
         }
       });
     }
@@ -1051,7 +1052,7 @@ export class StorageManager {
       const { [this.storageKey]: scripts = [] } = await chrome.storage.local.get(this.storageKey);
       return scripts.find((script) => script.id === id) || null;
     } catch (error) {
-      console.error('Failed to get script:', error);
+      logger.error('Failed to get script:', error);
       return null;
     }
   }
@@ -1091,7 +1092,7 @@ export class StorageManager {
         return newScript;
       }
     } catch (error) {
-      console.error('Failed to save script:', error);
+      logger.error('Failed to save script:', error);
       throw error;
     }
   }
@@ -1103,7 +1104,7 @@ export class StorageManager {
       await chrome.storage.local.set({ [this.storageKey]: filteredScripts });
       return true;
     } catch (error) {
-      console.error('Failed to delete script:', error);
+      logger.error('Failed to delete script:', error);
       return false;
     }
   }
@@ -1113,7 +1114,7 @@ export class StorageManager {
       const { [this.storageKey]: scripts = [] } = await chrome.storage.local.get(this.storageKey);
       return scripts;
     } catch (error) {
-      console.error('Failed to get all scripts:', error);
+      logger.error('Failed to get all scripts:', error);
       return [];
     }
   }

@@ -1,3 +1,4 @@
+import logger from '../../../utils/logger.js';
 import feather from 'feather-icons';
 
 export class ChatManager {
@@ -56,7 +57,7 @@ export class ChatManager {
         this.editor.uiManager.showWelcomeMessage();
       }
     } catch (error) {
-      console.error('Error loading chat history:', error);
+      logger.error('Error loading chat history:', error);
     }
   }
 
@@ -74,7 +75,7 @@ export class ChatManager {
         },
       });
     } catch (error) {
-      console.error('Error saving chat history:', error);
+      logger.error('Error saving chat history:', error);
     }
   }
 

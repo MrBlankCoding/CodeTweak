@@ -1,3 +1,4 @@
+import logger from './logger.js';
 import { createWorldExecutor } from './worldExecutors.js';
 
 const INJECTION_TYPES = Object.freeze({
@@ -184,7 +185,7 @@ class ScriptInjector {
         await this.injectInWorld(tabId, config, EXECUTION_WORLDS.MAIN);
         return true;
       } catch (error) {
-        console.warn(
+        logger.warn(
           `CodeTweak: MAIN world injection failed for script '${config.id}', trying ISOLATED world:`,
           error?.message
         );
@@ -192,7 +193,7 @@ class ScriptInjector {
           await this.injectInWorld(tabId, config, EXECUTION_WORLDS.ISOLATED);
           return true;
         } catch (isolatedError) {
-          console.error(
+          logger.error(
             `CodeTweak: ISOLATED world injection also failed for script '${config.id}':`,
             isolatedError
           );
@@ -206,7 +207,7 @@ class ScriptInjector {
       await this.injectInWorld(tabId, config, world);
       return true;
     } catch (error) {
-      console.error(`CodeTweak: ${world} world injection failed for script '${config.id}':`, error);
+      logger.error(`CodeTweak: ${world} world injection failed for script '${config.id}':`, error);
       return false;
     }
   }
@@ -216,7 +217,7 @@ class ScriptInjector {
       const tab = await chrome.tabs.get(tabId);
 
       if (!tab || !chrome.runtime?.id) {
-        console.warn(`CodeTweak: Tab or extension runtime not available for ${script?.name}`);
+        logger.warn(`CodeTweak: Tab or extension runtime not available for ${script?.name}`);
         return false;
       }
 
@@ -235,7 +236,7 @@ class ScriptInjector {
 
       return injected;
     } catch (error) {
-      console.warn(`CodeTweak: Failed to inject script ${script?.name}:`, error);
+      logger.warn(`CodeTweak: Failed to inject script ${script?.name}:`, error);
       return false;
     }
   }
@@ -397,7 +398,7 @@ class ScriptInjector {
 
       await this.injectMatchingScripts(url, runAt, tabId, tabScripts, getFilteredScripts, settings);
     } catch (error) {
-      console.error('CodeTweak: Script injection error:', error);
+      logger.error('CodeTweak: Script injection error:', error);
     }
   }
 
@@ -431,7 +432,7 @@ class ScriptInjector {
         args: [scriptName || 'Unknown script'],
       })
       .catch((error) => {
-        console.error('CodeTweak: showNotification failed:', error);
+        logger.error('CodeTweak: showNotification failed:', error);
       });
   }
 

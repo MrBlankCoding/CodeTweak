@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 /* global feather */
 
 export class ElementSelectorMenu {
@@ -62,7 +63,7 @@ export class ElementSelectorMenu {
       observe: (selector) => `const observer = new MutationObserver((mutations) => {
   const element = document.querySelector(${JSON.stringify(selector)});
   if (element) {
-    console.log('Element changed:', element);
+    logger.info('Element changed:', element);
   }
 });
 
@@ -265,12 +266,12 @@ if (target) {
             },
           });
         } else {
-          console.warn(
+          logger.warn(
             'CodeTweak: chrome.runtime.sendMessage is not available; cannot send createScript message.'
           );
         }
       } catch (error) {
-        console.error('CodeTweak: Failed to send message to extension', error);
+        logger.error('CodeTweak: Failed to send message to extension', error);
       }
     }
     this.cleanup();
@@ -280,7 +281,7 @@ if (target) {
     try {
       await navigator.clipboard.writeText(text);
     } catch (error) {
-      console.debug('CodeTweak: Clipboard write failed', error);
+      logger.debug('CodeTweak: Clipboard write failed', error);
       this.fallbackCopyToClipboard(text);
     }
   }
@@ -296,7 +297,7 @@ if (target) {
     try {
       document.execCommand('copy');
     } catch (error) {
-      console.debug('CodeTweak: Fallback copy failed', error);
+      logger.debug('CodeTweak: Fallback copy failed', error);
     }
     document.body.removeChild(textArea);
   }

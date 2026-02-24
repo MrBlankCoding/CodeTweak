@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 import feather from 'feather-icons';
 import { UIManager, StorageManager, FormValidator } from './editor_managers.js';
 import { CodeEditorManager } from './editor_settings.js';
@@ -61,7 +62,7 @@ class ScriptEditor {
           try {
             await this.saveScript(true);
           } catch (error) {
-            console.error('Autosave failed:', error);
+            logger.error('Autosave failed:', error);
             if (this.ui && this.ui.showStatusMessage) {
               this.ui.showStatusMessage('Autosave failed', 'error');
             }
@@ -302,7 +303,7 @@ class ScriptEditor {
 
       setTimeout(() => this.codeEditorManager.focus(), 100);
     } catch (error) {
-      console.error('Failed to initialize editor:', error);
+      logger.error('Failed to initialize editor:', error);
       this.ui.showStatusMessage('Failed to initialize editor', 'error');
     }
   }
@@ -377,7 +378,7 @@ class ScriptEditor {
       this.codeEditorManager.setValue(code);
       this.ui.showStatusMessage('Script metadata imported successfully', 'success');
     } catch (error) {
-      console.error('Error handling script import:', error);
+      logger.error('Error handling script import:', error);
       this.ui.showStatusMessage('Failed to import script metadata', 'error');
     }
   }
@@ -397,7 +398,7 @@ class ScriptEditor {
 
       await chrome.storage.local.remove(key);
     } catch (err) {
-      console.error('Error loading imported script:', err);
+      logger.error('Error loading imported script:', err);
       this.ui.showStatusMessage('Failed to load imported script', 'error');
     }
   }
@@ -419,7 +420,7 @@ class ScriptEditor {
       if (enhanced.warnings && enhanced.warnings.length > 0) {
         enhanced.warnings.forEach((warning) => {
           if (warning.suggestion) {
-            console.log(`       ${warning.suggestion}`);
+            logger.info(`       ${warning.suggestion}`);
           }
         });
 
@@ -438,7 +439,7 @@ class ScriptEditor {
       this.ui.updateScriptStatus(true);
       await chrome.storage.local.remove(key);
     } catch (err) {
-      console.error('Error loading AI script:', err);
+      logger.error('Error loading AI script:', err);
       this.ui.showStatusMessage('Failed to load AI-generated script', 'error');
     }
   }
@@ -719,7 +720,7 @@ class ScriptEditor {
       this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
       this.codeEditorManager.updateEditorLintAndAutocomplete();
     } catch (error) {
-      console.error('Error loading script:', error);
+      logger.error('Error loading script:', error);
       this.ui.showStatusMessage(`Failed to load script: ${error.message}`, 'error');
     }
   }
@@ -862,13 +863,13 @@ class ScriptEditor {
               if (response.ok) {
                 scriptData.resourceContents[resource.name] = await response.text();
               } else {
-                console.error(
+                logger.error(
                   `Failed to fetch resource '${resource.name}' from ${resource.url}: ${response.status} ${response.statusText}`
                 );
                 scriptData.resourceContents[resource.name] = null;
               }
             } catch (error) {
-              console.error(`Error fetching resource '${resource.name}':`, error);
+              logger.error(`Error fetching resource '${resource.name}':`, error);
               scriptData.resourceContents[resource.name] = null;
             }
           })
@@ -908,7 +909,7 @@ class ScriptEditor {
 
       return savedScript;
     } catch (error) {
-      console.error('Error saving script:', error);
+      logger.error('Error saving script:', error);
       const errorMessage = error.message || 'Unknown error occurred';
       this.ui.showStatusMessage(`Failed to save script: ${errorMessage}`, 'error');
 
@@ -937,13 +938,13 @@ class ScriptEditor {
       await new Promise((resolve) => {
         chrome.runtime.sendMessage({ action: 'scriptsUpdated' }, () => {
           if (chrome.runtime.lastError) {
-            console.warn('Background sync warning:', chrome.runtime.lastError);
+            logger.warn('Background sync warning:', chrome.runtime.lastError);
           }
           resolve();
         });
       });
     } catch (error) {
-      console.warn('Background sync warning:', error);
+      logger.warn('Background sync warning:', error);
     }
   }
 
@@ -952,10 +953,10 @@ class ScriptEditor {
     try {
       const port = chrome.runtime.connect({ name: 'CodeTweak' });
       port.onDisconnect.addListener(() => {
-        console.log('Background connection closed, will reconnect when needed');
+        logger.info('Background connection closed, will reconnect when needed');
       });
     } catch (error) {
-      console.warn('Initial background connection failed:', error);
+      logger.warn('Initial background connection failed:', error);
     }
   }
 
@@ -1004,7 +1005,7 @@ class ScriptEditor {
       const errors = response?.errors || [];
       this.displayErrors(errors);
     } catch (error) {
-      console.error('[CodeTweak Error Log] Failed to load script errors:', error);
+      logger.error('[CodeTweak Error Log] Failed to load script errors:', error);
     }
   }
 
@@ -1013,7 +1014,7 @@ class ScriptEditor {
     const badge = this.elements.errorCountBadge;
 
     if (!container) {
-      console.error('[CodeTweak Error Log] Error log container not found!');
+      logger.error('[CodeTweak Error Log] Error log container not found!');
       return;
     }
 
@@ -1121,7 +1122,7 @@ class ScriptEditor {
       this.displayErrors([]);
       this.ui.showStatusMessage('Errors cleared', 'success');
     } catch (error) {
-      console.error('[CodeTweak Error Log] Failed to clear script errors:', error);
+      logger.error('[CodeTweak Error Log] Failed to clear script errors:', error);
       this.ui.showStatusMessage('Failed to clear errors', 'error');
     }
   }
@@ -1151,7 +1152,7 @@ class ScriptEditor {
         }, 300);
       }
     } catch (error) {
-      console.error('[CodeTweak Error Log] Failed to dismiss error:', error);
+      logger.error('[CodeTweak Error Log] Failed to dismiss error:', error);
     }
   }
 
@@ -1187,7 +1188,7 @@ class ScriptEditor {
 
       this.ui.showStatusMessage('Script exported', 'success');
     } catch (err) {
-      console.error('Export failed:', err);
+      logger.error('Export failed:', err);
       this.ui.showStatusMessage('Export failed', 'error');
     }
   }
@@ -1213,7 +1214,7 @@ class ScriptEditor {
       this.codeEditorManager.setValue(newCode);
       this.markAsDirty();
     } catch (err) {
-      console.error('Generate header failed:', err);
+      logger.error('Generate header failed:', err);
       this.ui.showStatusMessage('Failed to generate header', 'error');
     }
   }
@@ -1226,7 +1227,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const editor = new ScriptEditor();
   editor.init().catch((error) => {
-    console.error('Failed to initialize script editor:', error);
+    logger.error('Failed to initialize script editor:', error);
   });
 });
 

@@ -1,3 +1,4 @@
+import logger from './logger.js';
 export function urlMatchesPattern(url, pattern) {
   try {
     if (!url || !pattern) return false;
@@ -66,7 +67,7 @@ export function urlMatchesPattern(url, pattern) {
     const pathRegex = new RegExp(regexParts.join(''));
     return pathRegex.test(urlPath);
   } catch (e) {
-    console.warn('URL matching error:', e);
+    logger.warn('URL matching error:', e);
     return false;
   }
 }
@@ -99,7 +100,7 @@ export function generateUrlMatchPattern(baseUrl, scope = 'domain') {
         return `${scheme}://${hostPart}/*`;
     }
   } catch (e) {
-    console.warn('Failed to generate match pattern:', e);
+    logger.warn('Failed to generate match pattern:', e);
     return null;
   }
 }

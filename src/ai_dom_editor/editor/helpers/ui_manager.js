@@ -1,3 +1,4 @@
+import logger from '../../../utils/logger.js';
 import feather from 'feather-icons';
 import { marked } from 'marked';
 
@@ -400,7 +401,7 @@ export class UIManager {
 
   copyToClipboard(text) {
     navigator.clipboard.writeText(text).catch((err) => {
-      console.error('Failed to copy:', err);
+      logger.error('Failed to copy:', err);
     });
   }
 

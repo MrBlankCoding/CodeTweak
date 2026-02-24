@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 import { buildMetadata, extractMetadataBlock } from '../utils/metadataParser.js';
 import { ScriptAnalyzer } from '../utils/scriptAnalyzer.js';
 import { updateWebsiteFilterOptions, updateScriptsList, showNotification } from './dashboard-ui.js';
@@ -11,7 +12,7 @@ async function loadScripts(elements, state) {
     updateWebsiteFilterOptions(state.allScripts, elements.filters.websiteFilter);
     filterScripts(elements, state);
   } catch (error) {
-    console.error('Error loading scripts:', error);
+    logger.error('Error loading scripts:', error);
     showNotification('Error loading scripts', 'error');
   }
 }
@@ -62,7 +63,7 @@ async function toggleScript(scriptId, enabled) {
       showNotification(`Script ${enabled ? 'enabled' : 'disabled'}`, 'success');
     }
   } catch (error) {
-    console.error('Error toggling script:', error);
+    logger.error('Error toggling script:', error);
     showNotification('Error toggling script', 'error');
   }
 }
@@ -95,7 +96,7 @@ async function deleteScript(scriptId) {
     updateWebsiteFilterOptions(updatedScripts, elements.filters.websiteFilter);
     updateScriptsList(updatedScripts, elements);
   } catch (error) {
-    console.error('Error deleting script:', error);
+    logger.error('Error deleting script:', error);
     showNotification('Error deleting script', 'error');
   }
 }
@@ -141,7 +142,7 @@ async function loadSettings(settingsElements) {
       await chrome.storage.local.set({ settings });
     }
   } catch (error) {
-    console.error('Error loading settings:', error);
+    logger.error('Error loading settings:', error);
     showNotification('Error loading settings', 'error');
   }
 }
@@ -173,7 +174,7 @@ async function saveSettings(settingsElements) {
     // Reapply translations if language changed
     await applyTranslations();
   } catch (error) {
-    console.error('Error saving settings:', error);
+    logger.error('Error saving settings:', error);
     showNotification('Failed to save settings: ' + error.message, 'error');
   }
 }
@@ -240,7 +241,7 @@ async function checkForUpdates(script) {
       }
     }
   } catch (error) {
-    console.error('Error checking for updates:', error);
+    logger.error('Error checking for updates:', error);
     showNotification('Error checking for updates: ' + error.message, 'error');
   }
 }
@@ -292,7 +293,7 @@ function exportScript(script) {
 
     showNotification('Script exported', 'success');
   } catch (error) {
-    console.error('Export failed:', error);
+    logger.error('Export failed:', error);
     showNotification('Export failed', 'error');
   }
 }

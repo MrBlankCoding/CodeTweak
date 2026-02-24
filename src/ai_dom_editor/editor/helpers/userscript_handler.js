@@ -1,3 +1,4 @@
+import logger from '../../../utils/logger.js';
 import ScriptAnalyzer from '../../../utils/scriptAnalyzer.js';
 
 export class UserscriptHandler {
@@ -187,7 +188,7 @@ export class UserscriptHandler {
         },
         (response) => {
           if (response.error) {
-            console.error('Error creating script:', response.error);
+            logger.error('Error creating script:', response.error);
             this.editor.chatManager.addMessage(
               'assistant',
               `Error creating script: ${response.error}`,
@@ -205,7 +206,7 @@ export class UserscriptHandler {
         }
       );
     } catch (error) {
-      console.error('Error creating userscript:', error);
+      logger.error('Error creating userscript:', error);
       this.editor.chatManager.addMessage('assistant', `Error creating script: ${error.message}`, {
         type: 'text',
         error: true,
@@ -261,7 +262,7 @@ export class UserscriptHandler {
         (response) => {
           if (chrome.runtime.lastError || response?.error) {
             const errorMsg = chrome.runtime.lastError?.message || response.error;
-            console.error('Error updating script in background:', errorMsg);
+            logger.error('Error updating script in background:', errorMsg);
             this.editor.chatManager.addMessage('assistant', `Error updating script: ${errorMsg}`, {
               type: 'text',
               error: true,
@@ -285,7 +286,7 @@ export class UserscriptHandler {
         }
       );
     } catch (error) {
-      console.error('Error updating userscript:', error);
+      logger.error('Error updating userscript:', error);
       this.editor.chatManager.addMessage('assistant', `Error updating script: ${error.message}`, {
         type: 'text',
         error: true,

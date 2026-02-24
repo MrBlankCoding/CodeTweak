@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 import { EditorState, Compartment } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers } from '@codemirror/view';
 import { basicSetup } from 'codemirror';
@@ -339,7 +340,7 @@ export class CodeEditorManager {
         }
       }
     } catch (error) {
-      console.error('Error handling paste:', error);
+      logger.error('Error handling paste:', error);
     }
   }
 
@@ -363,14 +364,14 @@ export class CodeEditorManager {
         effects: this.lint.reconfigure(linter(lintOptions)),
       });
     } catch (error) {
-      console.warn('Failed to update linting configuration:', error);
+      logger.warn('Failed to update linting configuration:', error);
       // Try to disable linting as fallback
       try {
         this.codeEditor.dispatch({
           effects: this.lint.reconfigure(linter(() => [])),
         });
       } catch (fallbackError) {
-        console.error('Failed to apply fallback linting:', fallbackError);
+        logger.error('Failed to apply fallback linting:', fallbackError);
       }
     }
   }

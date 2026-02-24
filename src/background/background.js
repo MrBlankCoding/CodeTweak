@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 import { urlMatchesPattern } from '../utils/urls.js';
 import {
   injectScriptsForStage,
@@ -46,7 +47,7 @@ function isIgnorableTabError(error) {
 function safeSetBadge(tabId, text = '', color = '#007bff') {
   chrome.action.setBadgeText({ tabId, text }).catch((err) => {
     if (!isIgnorableTabError(err)) {
-      console.warn(`Error setting badge for tab ${tabId}:`, err.message);
+      logger.warn(`Error setting badge for tab ${tabId}:`, err.message);
     }
   });
 
@@ -62,7 +63,7 @@ function notifyPorts(action) {
     try {
       port.postMessage({ action });
     } catch (error) {
-      console.warn('Failed to notify port:', error);
+      logger.warn('Failed to notify port:', error);
       disconnectedPorts.push(port);
     }
   }
@@ -147,7 +148,7 @@ async function updateBadgeForTab(tabId, url) {
     const count = scriptsToRun.length;
     safeSetBadge(tabId, count > 0 ? count.toString() : '');
   } catch (error) {
-    console.error(`Error updating badge for tab ${tabId}:`, error);
+    logger.error(`Error updating badge for tab ${tabId}:`, error);
     safeSetBadge(tabId);
   }
 }
@@ -207,7 +208,7 @@ async function handleScriptCreation(url, template) {
       });
     }
   } catch (error) {
-    console.error('Script creation error:', error);
+    logger.error('Script creation error:', error);
   }
 }
 
@@ -225,7 +226,7 @@ async function handleGreasyForkInstall(url) {
       url: `${chrome.runtime.getURL('editor/editor.html')}?importId=${tempId}`,
     });
   } catch (err) {
-    console.error('GreasyFork install fetch error:', err);
+    logger.error('GreasyFork install fetch error:', err);
   }
 }
 
@@ -265,7 +266,7 @@ async function storeScriptError(scriptId, error) {
         // Editor might not be open, ignore
       });
   } catch (err) {
-    console.error('[CodeTweak] Failed to store script error:', err);
+    logger.error('[CodeTweak] Failed to store script error:', err);
   }
 }
 
@@ -274,7 +275,7 @@ async function clearScriptErrors(scriptId) {
     const storageKey = `scriptErrors_${scriptId}`;
     await chrome.storage.local.remove(storageKey);
   } catch (err) {
-    console.error('Failed to clear script errors:', err);
+    logger.error('Failed to clear script errors:', err);
   }
 }
 
@@ -419,7 +420,7 @@ class GMAPIHandler {
     const result = await createNotification();
 
     if (!result.ok) {
-      console.warn('[CodeTweak] Notification creation failed:', result.error);
+      logger.warn('[CodeTweak] Notification creation failed:', result.error);
     }
 
     return { result: null };
@@ -471,7 +472,7 @@ async function handleCrossOriginXmlhttpRequest(details) {
   const { url, method = 'GET', headers, data, responseType } = details;
 
   if (!url) {
-    console.error('CodeTweak: Cross-origin request failed: No URL provided.');
+    logger.error('CodeTweak: Cross-origin request failed: No URL provided.');
     return { error: 'No URL provided.' };
   }
 
@@ -525,7 +526,7 @@ async function handleCrossOriginXmlhttpRequest(details) {
       },
     };
   } catch (error) {
-    console.error('CodeTweak: Cross-origin request failed:', {
+    logger.error('CodeTweak: Cross-origin request failed:', {
       error,
       url,
       method,
@@ -658,12 +659,12 @@ const messageHandlers = {
 };
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('[CodeTweak] Message received:', message.type || message.action);
+  logger.info('[CodeTweak] Message received:', message.type || message.action);
 
   // Handle GM API requests
   if (message.type === 'GM_API_REQUEST') {
     if (!message.payload) {
-      console.error('[CodeTweak] GM_API_REQUEST received with no payload.');
+      logger.error('[CodeTweak] GM_API_REQUEST received with no payload.');
       sendResponse({ error: 'Request payload is missing.' });
       return false;
     }
@@ -678,7 +679,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           sendResponse(response ?? { result: null });
         })
         .catch((error) => {
-          console.error(`GM API error [${action}]:`, error);
+          logger.error(`GM API error [${action}]:`, error);
           sendResponse({ error: error.message });
         });
       return true;
@@ -717,7 +718,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     Promise.resolve(handler(message, sender))
       .then(sendResponse)
       .catch((error) => {
-        console.error(`Message handler error [${message.action}]:`, error);
+        logger.error(`Message handler error [${message.action}]:`, error);
         sendResponse({ error: error.message });
       });
     return true;
@@ -749,7 +750,7 @@ chrome.runtime.onConnect.addListener((port) => {
 
   state.ports.add(port);
   port.onDisconnect.addListener(() => state.ports.delete(port));
-  port.onMessage.addListener(console.log);
+  port.onMessage.addListener(logger.info);
 });
 
 const navigationEvents = ['onCommitted', 'onDOMContentLoaded', 'onCompleted'];
@@ -785,7 +786,7 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
     updateBadgeForTab(tab.id, tab.url);
   } catch (error) {
     if (!isIgnorableTabError(error)) {
-      console.warn('Error getting activated tab:', error);
+      logger.warn('Error getting activated tab:', error);
     }
   }
 });

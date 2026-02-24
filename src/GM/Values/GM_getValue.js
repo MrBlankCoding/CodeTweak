@@ -1,3 +1,4 @@
+import logger from '../../utils/logger.js';
 if (typeof GM_getValue === 'undefined') {
   window.GM_getValue = (name, defaultValue) => {
     try {
@@ -7,7 +8,7 @@ if (typeof GM_getValue === 'undefined') {
       }
       return JSON.parse(raw);
     } catch (e) {
-      console.error('GM_getValue exception:', e);
+      logger.error('GM_getValue exception:', e);
       return defaultValue;
     }
   };

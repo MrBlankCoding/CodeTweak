@@ -1,3 +1,4 @@
+import logger from './logger.js';
 // This runs in the isolated world
 // Acts as a bridge between user scripts and the extension itself for saftey
 
@@ -48,7 +49,7 @@ window.addEventListener('message', (event) => {
         },
         () => {
           if (chrome.runtime && chrome.runtime.lastError) {
-            console.error(
+            logger.error(
               '[CodeTweak Content Bridge] Error forwarding SCRIPT_ERROR:',
               chrome.runtime.lastError
             );
@@ -73,7 +74,7 @@ window.addEventListener('message', (event) => {
       typeof chrome.runtime.sendMessage === 'function'
     )
   ) {
-    console.error(
+    logger.error(
       'CodeTweak: chrome.runtime.sendMessage is not available. Cannot bridge GM_API request.'
     );
     window.postMessage(
@@ -116,13 +117,13 @@ window.addEventListener('message', (event) => {
     (_response) => {
       let responsePayload = {};
       if (chrome.runtime.lastError) {
-        console.error(
+        logger.error(
           `CodeTweak: Error in background for GM_API action ${action}:`,
           chrome.runtime.lastError.message
         );
         responsePayload.error = chrome.runtime.lastError.message;
       } else if (_response && _response.error) {
-        console.error(
+        logger.error(
           `CodeTweak: Error from background for GM_API action ${action}:`,
           _response.error
         );

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { resetLogFlags, setLogFlags } from '../../src/utils/logger.js';
 
 async function importLoaderWithPolicy(policy) {
   vi.resetModules();
@@ -10,18 +11,23 @@ async function importLoaderWithPolicy(policy) {
 
 describe('ExternalScriptLoader', () => {
   it('loads once per original url and upgrades http', async () => {
-    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
-    const { ExternalScriptLoader } = await importLoaderWithPolicy(null);
-    const loader = new ExternalScriptLoader();
+    setLogFlags({ info: true });
+    try {
+      const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+      const { ExternalScriptLoader } = await importLoaderWithPolicy(null);
+      const loader = new ExternalScriptLoader();
 
-    const injectSpy = vi.spyOn(loader, 'injectScriptTag').mockResolvedValue(undefined);
+      const injectSpy = vi.spyOn(loader, 'injectScriptTag').mockResolvedValue(undefined);
 
-    await loader.loadScript('http://cdn.example/a.js');
-    await loader.loadScript('http://cdn.example/a.js');
+      await loader.loadScript('http://cdn.example/a.js');
+      await loader.loadScript('http://cdn.example/a.js');
 
-    expect(injectSpy).toHaveBeenCalledTimes(1);
-    expect(injectSpy).toHaveBeenCalledWith('https://cdn.example/a.js');
-    expect(infoSpy).toHaveBeenCalled();
+      expect(injectSpy).toHaveBeenCalledTimes(1);
+      expect(injectSpy).toHaveBeenCalledWith('https://cdn.example/a.js');
+      expect(infoSpy).toHaveBeenCalled();
+    } finally {
+      resetLogFlags();
+    }
   });
 
   it('injectScriptTag applies trusted policy and resolves on load', async () => {

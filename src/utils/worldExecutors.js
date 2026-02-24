@@ -1,3 +1,4 @@
+import logger from './logger.js';
 export function createWorldExecutor(
   userCode,
   scriptId,
@@ -64,7 +65,7 @@ export function createWorldExecutor(
         window.GM.info = window.GM_info;
       }
     } catch (error) {
-      console.warn('CodeTweak: Unable to define GM_info', error);
+      logger.warn('CodeTweak: Unable to define GM_info', error);
     }
   }
 
@@ -104,15 +105,15 @@ export function createWorldExecutor(
 
   if (enhancedDebugging) {
     console.group(`[CodeTweak] Injecting script: ${script.name}`);
-    console.log('  ID:', scriptId);
-    console.log('  Run at:', script.runAt);
-    console.log('  Inject into:', worldType === 'ISOLATED' ? 'Isolated World' : 'Main World');
-    console.log(
+    logger.info('  ID:', scriptId);
+    logger.info('  Run at:', script.runAt);
+    logger.info('  Inject into:', worldType === 'ISOLATED' ? 'Isolated World' : 'Main World');
+    logger.info(
       '  Enabled APIs:',
       Object.keys(enabledApis).filter((api) => enabledApis[api])
     );
-    console.log('  Requires:', requiredUrls || 'none');
-    console.log('  Resources:', script.resources || 'none');
+    logger.info('  Requires:', requiredUrls || 'none');
+    logger.info('  Resources:', script.resources || 'none');
     console.groupEnd();
   }
 

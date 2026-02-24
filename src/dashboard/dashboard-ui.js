@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 import feather from 'feather-icons';
 import { getScriptDescription } from '../utils/urls.js';
 
@@ -56,7 +57,7 @@ function updateWebsiteFilterOptions(scripts, websiteFilter) {
         websiteFilter.appendChild(option);
       });
   } catch (error) {
-    console.error('Error updating website filter options:', error);
+    logger.error('Error updating website filter options:', error);
   }
 }
 

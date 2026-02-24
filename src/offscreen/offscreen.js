@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 chrome.runtime.onMessage.addListener(async (request) => {
   if (request.target !== 'offscreen' || request.type !== 'copy-to-clipboard') {
     return;
@@ -12,7 +13,7 @@ chrome.runtime.onMessage.addListener(async (request) => {
       requestId: request.requestId,
     });
   } catch (error) {
-    console.error('Failed to copy to clipboard:', error);
+    logger.error('Failed to copy to clipboard:', error);
 
     chrome.runtime.sendMessage({
       type: 'offscreen-clipboard-response',

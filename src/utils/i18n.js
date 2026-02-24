@@ -1,3 +1,4 @@
+import logger from './logger.js';
 let cachedMessages = null;
 let cachedLanguage = null;
 
@@ -13,7 +14,7 @@ export async function getEffectiveLanguage() {
 
     return userLanguage;
   } catch (error) {
-    console.error('Error getting language:', error);
+    logger.error('Error getting language:', error);
     return 'en';
   }
 }
@@ -31,7 +32,7 @@ async function loadMessages(lang) {
 
     return await response.json();
   } catch (error) {
-    console.error('Error loading messages:', error);
+    logger.error('Error loading messages:', error);
     return {};
   }
 }
@@ -51,7 +52,7 @@ export async function getMessage(key, forceLang = null) {
 
     return cachedMessages[key]?.message || key;
   } catch (error) {
-    console.error('Error getting message:', error);
+    logger.error('Error getting message:', error);
     return key;
   }
 }

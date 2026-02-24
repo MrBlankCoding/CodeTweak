@@ -1,3 +1,4 @@
+import logger from '../../utils/logger.js';
 let trustedTypesPolicy = null;
 
 export function getTrustedTypesPolicy() {
@@ -23,7 +24,7 @@ export function getTrustedTypesPolicy() {
     });
     return trustedTypesPolicy;
   } catch (error) {
-    console.error('[GMBridge] Failed to create Trusted Types policy:', error);
+    logger.error('[GMBridge] Failed to create Trusted Types policy:', error);
     return null;
   }
 }

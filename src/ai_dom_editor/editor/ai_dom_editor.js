@@ -1,3 +1,4 @@
+import logger from '../../utils/logger.js';
 // AI DOM Editor - Main JavaScript
 import feather from 'feather-icons';
 import { ChatManager } from './helpers/chat_manager.js';
@@ -99,7 +100,7 @@ class AIDOMEditor {
         await chrome.storage.local.remove(storageKey);
       }
     } catch (error) {
-      console.error('Error saving current script state:', error);
+      logger.error('Error saving current script state:', error);
     }
   }
 
@@ -138,7 +139,7 @@ class AIDOMEditor {
         }
       }
     } catch (error) {
-      console.error('Error restoring current script state:', error);
+      logger.error('Error restoring current script state:', error);
     }
   }
 
@@ -153,7 +154,7 @@ class AIDOMEditor {
 
       return userLanguage;
     } catch (error) {
-      console.error('Error getting language:', error);
+      logger.error('Error getting language:', error);
       return 'en';
     }
   }
@@ -164,7 +165,7 @@ class AIDOMEditor {
       document.documentElement.setAttribute('lang', lang);
       await applyTranslations();
     } catch (error) {
-      console.error('Error setting language:', error);
+      logger.error('Error setting language:', error);
     }
     await this.apiHandler.loadAPIConfig();
     await this.apiHandler.loadAvailableModels();

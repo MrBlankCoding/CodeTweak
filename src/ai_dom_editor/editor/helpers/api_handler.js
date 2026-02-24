@@ -1,3 +1,4 @@
+import logger from '../../../utils/logger.js';
 export class ApiHandler {
   constructor(editor) {
     this.editor = editor;
@@ -19,7 +20,7 @@ export class ApiHandler {
         this.editor.uiManager.showConfigBanner();
       }
     } catch (error) {
-      console.error('Error loading AI config:', error);
+      logger.error('Error loading AI config:', error);
       this.editor.uiManager.showConfigBanner();
     }
   }
@@ -48,7 +49,7 @@ export class ApiHandler {
         await chrome.storage.local.set({ selectedModel: activeModel });
       }
     } catch (error) {
-      console.error('Error loading AI models:', error);
+      logger.error('Error loading AI models:', error);
       this.availableModels = [];
       this.selectedModel = null;
       this._renderModelSelector(null);
@@ -66,7 +67,7 @@ export class ApiHandler {
       this.selectedModel = parsed;
       await chrome.storage.local.set({ selectedModel: parsed });
     } catch (error) {
-      console.error('Error changing model:', error);
+      logger.error('Error changing model:', error);
     }
   }
 

@@ -1,3 +1,4 @@
+import logger from './logger.js';
 //intercept installs from greasyfork
 //prevent other editors :)
 (function interceptGreasyForkInstall() {
@@ -22,7 +23,7 @@
       try {
         chrome.runtime.sendMessage({ action: 'greasyForkInstall', url: href });
       } catch (err) {
-        console.warn('CodeTweak: GreasyFork intercept sendMessage failed:', err);
+        logger.warn('CodeTweak: GreasyFork intercept sendMessage failed:', err);
       }
     },
     true

@@ -1,3 +1,4 @@
+import logger from '../../utils/logger.js';
 import feather from 'feather-icons';
 import { applyTranslations, getMessageSync } from '../../utils/i18n.js';
 
@@ -89,7 +90,7 @@ class AISettings {
         this.startNewProfile();
       }
     } catch (error) {
-      console.error('Error loading AI settings:', error);
+      logger.error('Error loading AI settings:', error);
       this.showToast(this.t('aiSettingsToastLoadFailed', 'Failed to load settings'), 'error');
     }
   }
@@ -367,7 +368,7 @@ class AISettings {
       this.loadConfig(this.currentConfigIndex);
       this.showToast(this.t('aiSettingsToastSaved', 'Profile saved'), 'success');
     } catch (error) {
-      console.error('Error saving AI settings:', error);
+      logger.error('Error saving AI settings:', error);
       this.showToast(this.t('aiSettingsToastSaveFailed', 'Failed to save profile'), 'error');
     }
   }

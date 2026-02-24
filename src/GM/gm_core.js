@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 'use strict';
 
 import { GMBridge } from './gm_bridge.js';
@@ -144,7 +145,7 @@ if (window.GMBridge === undefined) {
         '*'
       );
     } catch (postError) {
-      console.error('[GMBridge] Failed to report script error:', postError);
+      logger.error('[GMBridge] Failed to report script error:', postError);
     }
   }
 
@@ -153,7 +154,7 @@ if (window.GMBridge === undefined) {
       const message = event.error?.message || event.message || 'Unknown error';
       const stack = event.error?.stack || '';
 
-      console.error(
+      logger.error(
         `[GMBridge] Error in user script (ID: ${scriptId})`,
         `\nMessage: ${message}`,
         `\nStack: ${stack}`
@@ -167,7 +168,7 @@ if (window.GMBridge === undefined) {
         event.reason?.message || String(event.reason) || 'Unhandled promise rejection';
       const stack = event.reason?.stack || '';
 
-      console.error(
+      logger.error(
         `[GMBridge] Unhandled rejection in user script (ID: ${scriptId})`,
         `\nMessage: ${message}`,
         `\nStack: ${stack}`
@@ -191,7 +192,7 @@ if (window.GMBridge === undefined) {
           script.remove();
           return;
         } catch {
-          console.warn('[GMBridge] Inline script textContent failed, trying Blob URL...');
+          logger.warn('[GMBridge] Inline script textContent failed, trying Blob URL...');
         }
 
         // Fallback to Blob URL
@@ -205,7 +206,7 @@ if (window.GMBridge === undefined) {
           blobScript.remove();
         };
         blobScript.onerror = (err) => {
-          console.error(
+          logger.error(
             `[GMBridge] Both inline and Blob injection failed for ${scriptId}. This site's CSP is too strict for direct injection.`,
             err
           );
@@ -229,7 +230,7 @@ if (window.GMBridge === undefined) {
         }
       }
     } catch (error) {
-      console.error(`[GMBridge] Error executing user script ${scriptId}:`, error);
+      logger.error(`[GMBridge] Error executing user script ${scriptId}:`, error);
       reportScriptError(scriptId, error, 'execution');
     } finally {
       window.removeEventListener('error', errorHandler);

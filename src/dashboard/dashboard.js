@@ -1,3 +1,4 @@
+import logger from '../utils/logger.js';
 /* global showNotification */
 import feather from 'feather-icons';
 import { setupGreasyfork } from './dashboard-greasyfork.js';
@@ -163,7 +164,7 @@ function setupFileDragAndDrop() {
         // Refresh dashboard view
         window.location.reload();
       } catch (err) {
-        console.error('Import failed:', err);
+        logger.error('Import failed:', err);
         showNotification('Failed to import scripts', 'error');
       }
     },
@@ -192,7 +193,7 @@ async function exportAllScripts() {
     }
     showNotification('All scripts exported', 'success');
   } catch (err) {
-    console.error('Export failed', err);
+    logger.error('Export failed', err);
     showNotification('Failed to export scripts', 'error');
   }
 }
@@ -211,7 +212,7 @@ async function initializeI18n() {
   try {
     await applyTranslations();
   } catch (error) {
-    console.error('Error initializing translations:', error);
+    logger.error('Error initializing translations:', error);
   }
 }
 
