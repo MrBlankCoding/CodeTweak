@@ -32,7 +32,7 @@ function parseUserScriptMetadata(content) {
   const lines = metaBlock.split("\n").filter((line) => line.trim());
 
   for (const line of lines) {
-    const match = line.match(/@(\w+)\s+(.+)/);
+    const match = line.match(/@([\w-]+)\s+(.+)/);
     if (!match) continue;
 
     const [, key, value] = match;

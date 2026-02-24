@@ -13,6 +13,61 @@ const EXECUTION_WORLDS = Object.freeze({
   ISOLATED: "ISOLATED",
 });
 
+function toSerializableValue(value, seen = new WeakSet()) {
+  if (value === null) return null;
+
+  const valueType = typeof value;
+  if (valueType === "string" || valueType === "boolean") {
+    return value;
+  }
+  if (valueType === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (valueType === "bigint") {
+    return value.toString();
+  }
+  if (
+    valueType === "undefined" ||
+    valueType === "function" ||
+    valueType === "symbol"
+  ) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value.toISOString();
+  }
+  if (value instanceof URL) {
+    return value.toString();
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => toSerializableValue(item, seen));
+  }
+
+  if (valueType === "object") {
+    if (seen.has(value)) {
+      return null;
+    }
+    seen.add(value);
+    const output = {};
+    for (const [key, nestedValue] of Object.entries(value)) {
+      const serializedNested = toSerializableValue(nestedValue, seen);
+      if (serializedNested !== null || nestedValue === null) {
+        output[key] = serializedNested;
+      }
+    }
+    seen.delete(value);
+    return output;
+  }
+
+  return null;
+}
+
+function sanitizeExecutionArgs(args) {
+  return args.map((arg) => toSerializableValue(arg));
+}
+
 
 class ScriptInjector {
   constructor() {
@@ -60,16 +115,16 @@ class ScriptInjector {
       gmInfo: {
         script: {
           id: scriptId,
-          name: script.name,
-          version: script.version,
-          description: script.description,
-          author: script.author,
+          name: script.name || "",
+          version: script.version || "",
+          description: script.description || "",
+          author: script.author || "",
           namespace: script.namespace || "",
         },
         scriptHandler: "CodeTweak",
         version: chrome.runtime?.getManifest?.().version || "",
       },
-      enhancedDebugging,
+      enhancedDebugging: Boolean(enhancedDebugging),
     };
   }
 
@@ -112,7 +167,7 @@ class ScriptInjector {
   async injectInWorld(tabId, config, world) {
     await this.injectCoreScripts(tabId, world);
 
-    const args = [
+    const args = sanitizeExecutionArgs([
       config.code,
       config.id,
       config.enabledApis,
@@ -123,7 +178,7 @@ class ScriptInjector {
       config.gmInfo,
       config.enhancedDebugging,
       world,
-    ];
+    ]);
 
     await chrome.scripting.executeScript({
       target: { tabId },
