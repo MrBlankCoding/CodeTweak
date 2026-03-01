@@ -99,4 +99,18 @@ describe('GMBridge', () => {
       'runtime fail'
     );
   });
+
+  it('rejects ISOLATED call when response contains error', async () => {
+    global.chrome = {
+      runtime: {
+        sendMessage: vi.fn((_payload, cb) => cb({ error: 'payload failed' })),
+        lastError: null,
+      },
+    };
+
+    const bridge = new GMBridge('script-6', 'ext-6', 'ISOLATED');
+    await expect(bridge.call('setValue', { name: 'n', value: 1 })).rejects.toThrow(
+      'payload failed'
+    );
+  });
 });

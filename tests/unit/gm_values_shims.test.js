@@ -132,4 +132,28 @@ describe('legacy GM value shims', () => {
     expect(window.GM_listValues()).toEqual([]);
     expect(errSpy).toHaveBeenCalled();
   });
+
+  it('does not overwrite pre-existing GM value APIs', async () => {
+    vi.resetModules();
+
+    const existingSet = vi.fn();
+    const existingGet = vi.fn(() => 'preset');
+    const existingList = vi.fn(() => ['preset']);
+    const existingDelete = vi.fn();
+
+    window.GM_setValue = existingSet;
+    window.GM_getValue = existingGet;
+    window.GM_listValues = existingList;
+    window.GM_deleteValue = existingDelete;
+
+    await import('../../src/GM/Values/GM_setValue.js');
+    await import('../../src/GM/Values/GM_getValue.js');
+    await import('../../src/GM/Values/GM_listValues.js');
+    await import('../../src/GM/Values/GM_deleteValue.js');
+
+    expect(window.GM_setValue).toBe(existingSet);
+    expect(window.GM_getValue).toBe(existingGet);
+    expect(window.GM_listValues).toBe(existingList);
+    expect(window.GM_deleteValue).toBe(existingDelete);
+  });
 });

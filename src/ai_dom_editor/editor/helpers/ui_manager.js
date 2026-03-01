@@ -451,10 +451,6 @@ export class UIManager {
     }
   }
 
-  /**
-   * Safely sets innerHTML by parsing it and only allowing a subset of safe elements/attributes.
-   * This helps satisfy Firefox's security requirements.
-   */
   _setSafeInnerHTML(element, html) {
     if (typeof html !== 'string' || !html) {
       element.replaceChildren();

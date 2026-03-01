@@ -1,23 +1,23 @@
 {
   "manifest_version": 3,
   "name": "__MSG_appName__",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "__MSG_appDescription__",
   "default_locale": "en",
   "permissions": [
     "storage",
     "tabs",
     "scripting",
-    "webNavigation",
     "contextMenus",
     "notifications",
     "offscreen",
     "clipboardWrite",
-    "downloads"
+    "downloads",
+    "userScripts"
   ],
   "host_permissions": ["http://*/*", "https://*/*"],
   "background": {
-    "service_worker": "background/background.js",
+    "service_worker": "background/serviceWorker.js",
     "type": "module"
   },
   "action": {
@@ -63,17 +63,5 @@
       "resources": ["utils/*", "GM/*", "ai_dom_editor/*"],
       "matches": ["<all_urls>"]
     }
-  ],
-  "browser_specific_settings": {
-    "gecko": {
-      "id": "codetweak@MrBlankCoding",
-      "strict_min_version": "140.0",
-      "data_collection_permissions": {
-        "required": ["none"]
-      }
-    },
-    "gecko_android": {
-      "strict_min_version": "142.0"
-    }
-  }
+  ]
 }

@@ -34,6 +34,7 @@ function createChromeMock(seed = {}) {
     runtime: {
       id: 'ext-id',
       lastError: null,
+      getManifest: vi.fn(() => ({ version: '1.0.0' })),
       getURL: vi.fn((p) => `chrome-extension://ext-id/${p}`),
       sendMessage: vi.fn((msg, cb) => {
         if (typeof cb === 'function') cb({ result: null });
@@ -73,6 +74,11 @@ function createChromeMock(seed = {}) {
       hasDocument: vi.fn(async () => false),
       createDocument: vi.fn(async () => {}),
     },
+    userScripts: {
+      register: vi.fn(async () => {}),
+      update: vi.fn(async () => {}),
+      unregister: vi.fn(async () => {}),
+    },
     webNavigation: {
       onCommitted: addListener(listeners.webNavigation.onCommitted),
       onDOMContentLoaded: addListener(listeners.webNavigation.onDOMContentLoaded),
@@ -105,21 +111,7 @@ function createChromeMock(seed = {}) {
 }
 
 async function setupBackground(seed = {}) {
-  const injectSpies = {
-    injectScriptsForStage: vi.fn(async () => {}),
-    clearInjectedCoreScriptsForTab: vi.fn(() => {}),
-  };
-
   vi.resetModules();
-  vi.doMock('../../src/utils/inject.js', () => ({
-    injectScriptsForStage: injectSpies.injectScriptsForStage,
-    clearInjectedCoreScriptsForTab: injectSpies.clearInjectedCoreScriptsForTab,
-    INJECTION_TYPES: {
-      DOCUMENT_START: 'document_start',
-      DOCUMENT_END: 'document_end',
-      DOCUMENT_IDLE: 'document_idle',
-    },
-  }));
 
   const { chrome, listeners, storageData } = createChromeMock(seed);
   global.chrome = chrome;
@@ -139,7 +131,7 @@ async function setupBackground(seed = {}) {
   }));
 
   await import('../../src/background/background.js');
-  return { chrome, listeners, storageData, injectSpies };
+  return { chrome, listeners, storageData };
 }
 
 async function sendRuntimeMessage(listeners, message, sender = { tab: { id: 1 } }) {
@@ -191,6 +183,7 @@ describe('background', () => {
     });
 
     expect(chrome.tabs.create).toHaveBeenCalled();
+    expect(chrome.userScripts.register).toHaveBeenCalled();
   });
 
   it('handles GM API requests for values/listeners/clipboard/download/requests', async () => {
@@ -303,19 +296,19 @@ describe('background', () => {
     expect(storageData.scriptErrors_sErr).toBeUndefined();
   });
 
-  it('handles navigation, tab, context menu, and connection listeners', async () => {
-    const { listeners, injectSpies, chrome } = await setupBackground();
-
-    listeners.webNavigation.onCommitted[0]({ tabId: 1, frameId: 0, url: 'https://example.com' });
-    listeners.webNavigation.onDOMContentLoaded[0]({
-      tabId: 1,
-      frameId: 0,
-      url: 'https://example.com',
+  it('handles tab, context menu, connection listeners, and lifecycle sync', async () => {
+    const { listeners, chrome } = await setupBackground({
+      scripts: [
+        {
+          id: 'lifecycle-script',
+          name: 'Lifecycle Script',
+          code: 'console.log(1)',
+          enabled: true,
+          targetUrls: ['https://example.com/*'],
+          runAt: 'document_end',
+        },
+      ],
     });
-    listeners.webNavigation.onCompleted[0]({ tabId: 1, frameId: 0, url: 'https://example.com' });
-
-    expect(injectSpies.clearInjectedCoreScriptsForTab).toHaveBeenCalledWith(1);
-    expect(injectSpies.injectScriptsForStage).toHaveBeenCalledTimes(3);
 
     listeners.contextMenus.onClicked[0]({ menuItemId: 'selectElement' }, { id: 10 });
     expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(10, { action: 'startSelection' });
@@ -338,6 +331,7 @@ describe('background', () => {
     await listeners.runtime.onStartup[0]();
 
     expect(chrome.action.setBadgeText).toHaveBeenCalled();
+    expect(chrome.userScripts.register).toHaveBeenCalled();
   });
 
   it('handles createScriptFromAI and updateScript', async () => {

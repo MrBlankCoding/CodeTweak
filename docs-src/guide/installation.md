@@ -14,22 +14,10 @@ Then:
 3. Click `Load unpacked`.
 4. Select `build/chrome`.
 
-## Firefox
-
-```bash
-npm install
-npm run build:firefox
-```
-
-Build output:
-
-- `build/codetweak-firefox.zip`
-
 ## Update after code changes
 
 ```bash
 npm run build:chrome
-npm run build:firefox
 ```
 
 Then reload the extension from the browser extension page.

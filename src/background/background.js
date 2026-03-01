@@ -1,36 +1,22 @@
 import logger from '../utils/logger.js';
 import { urlMatchesPattern } from '../utils/urls.js';
-import {
-  injectScriptsForStage,
-  INJECTION_TYPES,
-  clearInjectedCoreScriptsForTab,
-} from '../utils/inject.js';
-import { parseUserScriptMetadata } from '../utils/metadataParser.js';
+import { parseUserScriptMetadata } from '../core/metadataParser.js';
+import { ScriptRegistry } from '../core/scriptRegistry.js';
+import { UserScriptsAdapter } from '../core/userscriptAdapter.js';
+import { getStorageApi } from '../shared/browserAdapter.js';
 
 class BackgroundState {
   constructor() {
-    this.scriptCache = null;
-    this.lastCacheUpdate = 0;
-    this.cacheTtl = 5000;
     this.ports = new Set();
-    this.executedScripts = new Map();
     this.creatingOffscreenDocument = null;
     this.valueChangeListeners = new Map();
   }
 
   clearCache() {
-    this.scriptCache = null;
-    this.lastCacheUpdate = 0;
-  }
-
-  isCacheValid() {
-    return this.scriptCache && Date.now() - this.lastCacheUpdate <= this.cacheTtl;
+    scriptRegistry.clearCache();
   }
 
   cleanupTab(tabId) {
-    this.executedScripts.delete(tabId);
-    clearInjectedCoreScriptsForTab(tabId);
-
     for (const listeners of this.valueChangeListeners.values()) {
       listeners.delete(tabId);
     }
@@ -38,6 +24,8 @@ class BackgroundState {
 }
 
 const state = new BackgroundState();
+const userscriptAdapter = new UserScriptsAdapter();
+const scriptRegistry = new ScriptRegistry(getStorageApi(), userscriptAdapter);
 
 function isIgnorableTabError(error) {
   const ignorableMessages = ['No tab with id', 'Invalid tab ID', 'Receiving end does not exist'];
@@ -108,33 +96,20 @@ function normalizeStackTrace(stack) {
 }
 
 async function getFilteredScripts(url, runAt = null) {
-  if (!url?.startsWith('http')) {
-    return [];
-  }
-
-  if (!state.isCacheValid()) {
-    await refreshScriptCache();
-  }
-
-  return state.scriptCache.filter(
-    (script) =>
-      script.enabled &&
-      (!runAt || script.runAt === runAt) &&
-      script.targetUrls.some((target) => urlMatchesPattern(url, target))
-  );
+  return scriptRegistry.getFilteredScripts(url, runAt);
 }
 
 async function refreshScriptCache() {
-  const { scripts = [] } = await chrome.storage.local.get('scripts');
+  await scriptRegistry.refresh();
+}
 
-  state.scriptCache = scripts.map((script) => ({
-    ...script,
-    id: script.id || crypto.randomUUID(),
-    targetUrls: script.targetUrls || [script.targetUrl].filter(Boolean),
-  }));
-
-  await chrome.storage.local.set({ scripts: state.scriptCache });
-  state.lastCacheUpdate = Date.now();
+async function syncUserscriptRegistrations() {
+  await scriptRegistry.ensureLoaded();
+  const result = await scriptRegistry.syncRuntimeRegistration();
+  logger.info('Runtime sync:', {
+    usingUserScripts: result.usingUserScripts,
+    legacyScriptCount: 0,
+  });
 }
 
 async function updateBadgeForTab(tabId, url) {
@@ -173,8 +148,6 @@ async function handleScriptCreation(url, template) {
     if (existing) {
       const lines = existing.code.split('\n');
       let insertIndex = lines.length - 1;
-
-      // Find insertion point (skip empty lines and closing IIFE)
       while (
         insertIndex > 0 &&
         (!lines[insertIndex].trim() || lines[insertIndex].trim() === '})();')
@@ -240,8 +213,6 @@ async function storeScriptError(scriptId, error) {
     const storageKey = `scriptErrors_${scriptId}`;
     const { [storageKey]: existingErrors = [] } = await chrome.storage.local.get(storageKey);
     const normalizedNewStack = normalizeStackTrace(error.stack);
-
-    // Check for duplicates
     const isDuplicate = existingErrors.some((existingError) => {
       const normalizedExistingStack = normalizeStackTrace(existingError.stack);
       return (
@@ -266,7 +237,7 @@ async function storeScriptError(scriptId, error) {
         // Editor might not be open, ignore
       });
   } catch (err) {
-    logger.error('[CodeTweak] Failed to store script error:', err);
+    logger.error('Failed to store script error:', err);
   }
 }
 
@@ -383,7 +354,6 @@ class GMAPIHandler {
   }
 
   async xmlhttpRequest({ details }) {
-    // Standardize URL to absolute
     try {
       if (!details.url.startsWith('http')) {
         return { error: `Invalid URL: ${details.url}` };
@@ -420,10 +390,27 @@ class GMAPIHandler {
     const result = await createNotification();
 
     if (!result.ok) {
-      logger.warn('[CodeTweak] Notification creation failed:', result.error);
+      logger.warn('Notification creation failed:', result.error);
     }
 
     return { result: null };
+  }
+
+  async openInTab({ url, options = {} }) {
+    if (!url || typeof url !== 'string') {
+      return { error: 'A valid URL is required.' };
+    }
+
+    try {
+      const tab = await chrome.tabs.create({
+        url,
+        active: options.active !== false,
+      });
+
+      return { result: { tabId: tab?.id ?? null } };
+    } catch (error) {
+      return { error: error.message };
+    }
   }
 
   async setClipboard({ data }) {
@@ -477,8 +464,6 @@ async function handleCrossOriginXmlhttpRequest(details) {
   }
 
   const requestOptions = { method, headers };
-
-  // Only add body for methods that support it
   if (data && !['GET', 'HEAD'].includes(method.toUpperCase())) {
     requestOptions.body = data;
   }
@@ -491,7 +476,6 @@ async function handleCrossOriginXmlhttpRequest(details) {
       responseHeaders[name] = value;
     });
 
-    // Clone response to read body multiple times
     const responseClone = response.clone();
     const responseText = await responseClone.text();
 
@@ -545,8 +529,10 @@ async function handleCrossOriginXmlhttpRequest(details) {
 const messageHandlers = {
   scriptsUpdated: async () => {
     state.clearCache();
+    await refreshScriptCache();
+    await syncUserscriptRegistrations();
     notifyPorts('scriptsUpdated');
-    updateAllTabBadges();
+    await updateAllTabBadges();
     return { success: true };
   },
 
@@ -555,10 +541,7 @@ const messageHandlers = {
     return { success: true };
   },
 
-  contentScriptReady: (message, sender) => {
-    if (sender.tab?.id) {
-      state.executedScripts.set(sender.tab.id, new Set());
-    }
+  contentScriptReady: (_message, _sender) => {
     return { success: true };
   },
 
@@ -592,8 +575,10 @@ const messageHandlers = {
     scripts.push(newScript);
     await chrome.storage.local.set({ scripts });
     state.clearCache();
+    await refreshScriptCache();
+    await syncUserscriptRegistrations();
     notifyPorts('scriptsUpdated');
-    updateAllTabBadges();
+    await updateAllTabBadges();
 
     return { script: newScript };
   },
@@ -641,8 +626,10 @@ const messageHandlers = {
     await chrome.storage.local.set({ scripts });
 
     state.clearCache();
+    await refreshScriptCache();
+    await syncUserscriptRegistrations();
     notifyPorts('scriptsUpdated');
-    updateAllTabBadges();
+    await updateAllTabBadges();
 
     // Reload tabs where the script is running
     const updatedScript = scripts[scriptIndex];
@@ -659,12 +646,10 @@ const messageHandlers = {
 };
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  logger.info('[CodeTweak] Message received:', message.type || message.action);
-
-  // Handle GM API requests
+  logger.info('Message received:', message.type || message.action);
   if (message.type === 'GM_API_REQUEST') {
     if (!message.payload) {
-      logger.error('[CodeTweak] GM_API_REQUEST received with no payload.');
+      logger.error('GM_API_REQUEST received with no payload.');
       sendResponse({ error: 'Request payload is missing.' });
       return false;
     }
@@ -689,7 +674,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
 
-  // Handle script errors
   if (message.type === 'SCRIPT_ERROR') {
     storeScriptError(message.scriptId, message.error).then(() => {
       sendResponse({ success: true });
@@ -712,7 +696,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  // Handle standard messages
   const handler = messageHandlers[message.action];
   if (handler) {
     Promise.resolve(handler(message, sender))
@@ -724,7 +707,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  // Only send "Unknown action" if we didn't handle it above
   if (message.type !== 'offscreen-clipboard-response') {
     sendResponse({ error: 'Unknown action' });
   }
@@ -753,23 +735,6 @@ chrome.runtime.onConnect.addListener((port) => {
   port.onMessage.addListener(logger.info);
 });
 
-const navigationEvents = ['onCommitted', 'onDOMContentLoaded', 'onCompleted'];
-
-navigationEvents.forEach((event, index) => {
-  chrome.webNavigation[event].addListener((details) => {
-    if (event === 'onCommitted' && details.frameId === 0) {
-      clearInjectedCoreScriptsForTab(details.tabId);
-    }
-
-    injectScriptsForStage(
-      details,
-      Object.values(INJECTION_TYPES)[index],
-      getFilteredScripts,
-      state.executedScripts
-    );
-  });
-});
-
 chrome.tabs.onRemoved.addListener((tabId) => {
   state.cleanupTab(tabId);
 });
@@ -791,5 +756,23 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
   }
 });
 
-chrome.runtime.onInstalled.addListener(updateAllTabBadges);
-chrome.runtime.onStartup.addListener(updateAllTabBadges);
+chrome.runtime.onInstalled.addListener(async () => {
+  await refreshScriptCache();
+  await syncUserscriptRegistrations();
+  await updateAllTabBadges();
+});
+
+chrome.runtime.onStartup.addListener(async () => {
+  await refreshScriptCache();
+  await syncUserscriptRegistrations();
+  await updateAllTabBadges();
+});
+
+(async () => {
+  try {
+    await refreshScriptCache();
+    await syncUserscriptRegistrations();
+  } catch (error) {
+    logger.error('Initial runtime registration sync failed:', error);
+  }
+})();

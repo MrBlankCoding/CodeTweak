@@ -36,9 +36,3 @@ Fix:
 
 - Enable the external resources/request setting in dashboard.
 - Retry request.
-
-## Firefox CSP/eval warnings
-
-Firefox MV3 is stricter than Chromium.
-CodeTweak Firefox build avoids runtime `eval/new Function` in extension code paths.
-If you still see warnings, rebuild and reload the latest package.
