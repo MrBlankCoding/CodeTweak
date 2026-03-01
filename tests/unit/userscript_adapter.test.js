@@ -84,7 +84,7 @@ describe('UserScriptsAdapter', () => {
     expect(registrations[0].runAt).toBe('document_end');
     expect(registrations[0].world).toBe('MAIN');
     expect(registrations[0].js[0].code).toContain('GM_setValue');
-    expect(registrations[0].js[0].code).toContain('replace(/^http:\\/\\//i, \'https://\')');
+    expect(registrations[0].js[0].code).toContain("replace(/^http:\\/\\//i, 'https://')");
     expect(registrations[1].world).toBe('ISOLATED');
 
     expect(storageData.userScriptRegistrationIds.sort()).toEqual(['ct-us-s1', 'ct-us-s2']);
@@ -98,7 +98,7 @@ describe('UserScriptsAdapter', () => {
       {
         id: 's-esc',
         name: 'Escaper',
-        code: "GM_addStyle(`.x{color:red}`); const t = `${1+1}`;",
+        code: 'GM_addStyle(`.x{color:red}`); const t = `${1+1}`;',
         enabled: true,
         runAt: 'document_end',
         targetUrls: ['https://example.com/*'],

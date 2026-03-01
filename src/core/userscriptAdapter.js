@@ -571,9 +571,7 @@ export class UserScriptsAdapter {
     const enabledScripts = scripts.filter((script) => script.enabled);
 
     if (!this.isSupported()) {
-      logger.error(
-        'Make sure to go to extension settings and enable allow user scrupts.'
-      );
+      logger.error('Make sure to go to extension settings and enable allow user scrupts.');
       return {
         usingUserScripts: false,
       };
