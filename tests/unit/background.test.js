@@ -67,6 +67,11 @@ function createChromeMock(seed = {}) {
     notifications: {
       create: vi.fn((_opts, cb) => cb && cb('notif-id')),
     },
+    alarms: {
+      create: vi.fn(),
+      onAlarm: { addListener: vi.fn() },
+      get: vi.fn((_name, cb) => cb && cb(null)),
+    },
     downloads: {
       download: vi.fn((_opts, cb) => cb && cb(123)),
     },

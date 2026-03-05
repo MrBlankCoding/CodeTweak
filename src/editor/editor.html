@@ -509,22 +509,68 @@
                 </p>
               </div>
               <div class="panel-content">
-                <div class="error-log-controls">
-                  <button
-                    type="button"
-                    id="clearErrorsBtn"
-                    class="btn-secondary"
-                    title="Clear all errors"
-                  >
-                    <i data-feather="trash-2"></i>
-                    <span data-i18n="editorClearErrors">Clear Errors</span>
-                  </button>
+                <div class="debug-section">
+                  <div class="debug-section-header">
+                    <h4 class="debug-section-title">Error Log</h4>
+                    <div class="error-log-controls">
+                      <button
+                        type="button"
+                        id="clearErrorsBtn"
+                        class="btn-secondary"
+                        title="Clear all errors"
+                      >
+                        <i data-feather="trash-2"></i>
+                        <span data-i18n="editorClearErrors">Clear Errors</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div id="errorLogContainer" class="error-log-container">
+                    <div class="error-log-empty">
+                      <i data-feather="check-circle"></i>
+                      <p>No errors detected</p>
+                      <small>Errors will appear here when your script runs</small>
+                    </div>
+                  </div>
                 </div>
-                <div id="errorLogContainer" class="error-log-container">
-                  <div class="error-log-empty">
-                    <i data-feather="check-circle"></i>
-                    <p>No errors detected</p>
-                    <small>Errors will appear here when your script runs</small>
+
+                <div class="debug-section">
+                  <div class="debug-section-header">
+                    <h4 class="debug-section-title">GM Storage Viewer</h4>
+                    <div class="storage-controls-inline">
+                      <button type="button" id="refreshStorageBtn" class="btn-secondary">
+                        <i data-feather="refresh-cw"></i>
+                        <span>Refresh</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="storage-add-form">
+                    <input
+                      type="text"
+                      id="storageKeyInput"
+                      class="form-input"
+                      placeholder="Key"
+                      aria-label="Storage key"
+                    />
+                    <textarea
+                      id="storageValueInput"
+                      class="form-textarea"
+                      placeholder='Value (JSON or plain text). Example: {"enabled": true}'
+                      rows="3"
+                      aria-label="Storage value"
+                    ></textarea>
+                    <button type="button" id="setStorageBtn" class="btn-secondary">
+                      <i data-feather="save"></i>
+                      <span>Set Value</span>
+                    </button>
+                  </div>
+
+                  <div id="storageViewerContainer" class="storage-viewer-container">
+                    <div class="storage-empty">
+                      <i data-feather="database"></i>
+                      <p>No stored values</p>
+                      <small>Values written by GM_setValue will appear here</small>
+                    </div>
                   </div>
                 </div>
               </div>

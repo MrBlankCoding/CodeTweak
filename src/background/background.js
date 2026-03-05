@@ -4,6 +4,7 @@ import { parseUserScriptMetadata } from '../core/metadataParser.js';
 import { ScriptRegistry } from '../core/scriptRegistry.js';
 import { UserScriptsAdapter } from '../core/userscriptAdapter.js';
 import { getStorageApi } from '../shared/browserAdapter.js';
+import { ScriptUpdater } from '../core/scriptUpdater.js';
 
 class BackgroundState {
   constructor() {
@@ -26,6 +27,9 @@ class BackgroundState {
 const state = new BackgroundState();
 const userscriptAdapter = new UserScriptsAdapter();
 const scriptRegistry = new ScriptRegistry(getStorageApi(), userscriptAdapter);
+const scriptUpdater = new ScriptUpdater(getStorageApi());
+
+scriptUpdater.setupAlarm();
 
 function isIgnorableTabError(error) {
   const ignorableMessages = ['No tab with id', 'Invalid tab ID', 'Receiving end does not exist'];
@@ -365,11 +369,15 @@ class GMAPIHandler {
     return await handleCrossOriginXmlhttpRequest(details, this.sender.tab.id);
   }
 
-  async notification({ details }) {
+  async notification(args) {
+    const { details, ondone } = args;
+    const options =
+      typeof details === 'object' && details ? details : { text: details, title: ondone };
+
     const baseOptions = {
       type: 'basic',
-      title: details.title || 'CodeTweak Notification',
-      message: details.text || '',
+      title: options.title || 'CodeTweak Notification',
+      message: options.text || '',
     };
 
     const defaultIconUrl = chrome.runtime.getURL('assets/icons/icon128.png');
@@ -434,15 +442,25 @@ class GMAPIHandler {
     return { error: 'Clipboard API is unavailable in this browser.' };
   }
 
-  async download({ url, name }) {
+  async download(args) {
+    const { url, name } = args;
+    const downloadUrl = typeof url === 'object' && url ? url.url : url;
+    const filename = typeof url === 'object' && url ? url.name || url.filename : name;
+
     return new Promise((resolve) => {
-      chrome.downloads.download({ url, filename: name }, (downloadId) => {
-        if (chrome.runtime.lastError) {
-          resolve({ error: chrome.runtime.lastError.message });
-        } else {
-          resolve({ result: { downloadId } });
+      chrome.downloads.download(
+        {
+          url: downloadUrl,
+          filename: filename,
+        },
+        (downloadId) => {
+          if (chrome.runtime.lastError) {
+            resolve({ error: chrome.runtime.lastError.message });
+          } else {
+            resolve({ result: { downloadId } });
+          }
         }
-      });
+      );
     });
   }
 }

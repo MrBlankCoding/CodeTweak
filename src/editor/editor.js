@@ -34,6 +34,7 @@ class ScriptEditor {
       isUpdatingFromSidebar: false,
       hasUserInteraction: false,
       codeEditor: null,
+      storageChangeListener: null,
     };
 
     this.elements = this.cacheElements();
@@ -239,6 +240,11 @@ class ScriptEditor {
       'errorLogContainer',
       'clearErrorsBtn',
       'errorCountBadge',
+      'storageViewerContainer',
+      'refreshStorageBtn',
+      'setStorageBtn',
+      'storageKeyInput',
+      'storageValueInput',
     ];
 
     const elements = {};
@@ -268,6 +274,8 @@ class ScriptEditor {
 
       // Setup error logging
       this.setupErrorLog();
+      this.setupStorageViewer();
+      this.loadStorageValues();
 
       await this.codeEditorManager.initializeCodeEditor();
       this.codeEditorManager.toggleLinting(this.state.lintingEnabled);
@@ -300,6 +308,12 @@ class ScriptEditor {
       this.setupBackgroundConnection();
       this.codeEditorManager.updateEditorLintAndAutocomplete();
       window.applyTheme();
+      window.addEventListener('beforeunload', () => {
+        if (this.state.storageChangeListener) {
+          chrome.storage.onChanged.removeListener(this.state.storageChangeListener);
+          this.state.storageChangeListener = null;
+        }
+      });
 
       setTimeout(() => this.codeEditorManager.focus(), 100);
     } catch (error) {
@@ -719,6 +733,8 @@ class ScriptEditor {
       this.state.hasUnsavedChanges = false;
       this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
       this.codeEditorManager.updateEditorLintAndAutocomplete();
+      this.bindStorageChangeListener();
+      await this.loadStorageValues();
     } catch (error) {
       logger.error('Error loading script:', error);
       this.ui.showStatusMessage(`Failed to load script: ${error.message}`, 'error');
@@ -890,6 +906,8 @@ class ScriptEditor {
         newUrl.searchParams.set('id', savedScript.id);
         window.history.pushState({}, '', newUrl);
         this.state.isEditMode = true;
+        this.bindStorageChangeListener();
+        await this.loadStorageValues();
       }
 
       this.notifyBackgroundScript();
@@ -987,6 +1005,213 @@ class ScriptEditor {
     if (this.state.scriptId) {
       this.loadScriptErrors();
     }
+  }
+
+  setupStorageViewer() {
+    this.elements.refreshStorageBtn?.addEventListener('click', () => {
+      this.loadStorageValues();
+    });
+
+    this.elements.setStorageBtn?.addEventListener('click', () => {
+      this.handleSetStorageValue();
+    });
+  }
+
+  getScriptStorageKey() {
+    if (!this.state.scriptId) return null;
+    return `script-values-${this.state.scriptId}`;
+  }
+
+  async getScriptStorageValues() {
+    const storageKey = this.getScriptStorageKey();
+    if (!storageKey) return {};
+    const result = await chrome.storage.local.get(storageKey);
+    return result[storageKey] || {};
+  }
+
+  parseStorageEditorValue(rawValue) {
+    const trimmed = rawValue.trim();
+    if (trimmed === '') {
+      return '';
+    }
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      return rawValue;
+    }
+  }
+
+  formatStorageValue(value) {
+    if (value === undefined) return 'undefined';
+    if (typeof value === 'string') return value;
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return String(value);
+    }
+  }
+
+  async loadStorageValues() {
+    const container = this.elements.storageViewerContainer;
+    if (!container) return;
+
+    container.replaceChildren();
+
+    if (!this.state.scriptId) {
+      const empty = document.createElement('div');
+      empty.className = 'storage-empty';
+      empty.innerHTML = `
+        <i data-feather="info"></i>
+        <p>Save this script to enable GM storage debugging</p>
+        <small>Storage keys are scoped per script ID</small>
+      `;
+      container.appendChild(empty);
+      feather.replace();
+      return;
+    }
+
+    try {
+      const values = await this.getScriptStorageValues();
+      const keys = Object.keys(values);
+
+      if (keys.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'storage-empty';
+        empty.innerHTML = `
+          <i data-feather="database"></i>
+          <p>No stored values</p>
+          <small>Values written by GM_setValue will appear here</small>
+        `;
+        container.appendChild(empty);
+        feather.replace();
+        return;
+      }
+
+      keys.sort().forEach((key) => {
+        const item = document.createElement('div');
+        item.className = 'storage-item';
+
+        const keyEl = document.createElement('div');
+        keyEl.className = 'storage-item-key';
+        keyEl.textContent = key;
+
+        const valueEl = document.createElement('textarea');
+        valueEl.className = 'storage-item-value';
+        valueEl.rows = 3;
+        valueEl.value = this.formatStorageValue(values[key]);
+
+        const actionsEl = document.createElement('div');
+        actionsEl.className = 'storage-item-actions';
+
+        const saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'btn-secondary';
+        saveBtn.innerHTML = '<i data-feather="save"></i><span>Save</span>';
+        saveBtn.addEventListener('click', async () => {
+          await this.updateStorageValue(key, valueEl.value);
+        });
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'btn-secondary danger';
+        deleteBtn.innerHTML = '<i data-feather="trash-2"></i><span>Delete</span>';
+        deleteBtn.addEventListener('click', async () => {
+          await this.deleteStorageValue(key);
+        });
+
+        actionsEl.appendChild(saveBtn);
+        actionsEl.appendChild(deleteBtn);
+        item.appendChild(keyEl);
+        item.appendChild(valueEl);
+        item.appendChild(actionsEl);
+        container.appendChild(item);
+      });
+
+      feather.replace();
+    } catch (error) {
+      logger.error('[CodeTweak Storage Viewer] Failed to load storage values:', error);
+      container.innerHTML = `
+        <div class="storage-empty">
+          <i data-feather="alert-circle"></i>
+          <p>Failed to load storage values</p>
+          <small>${this.escapeHtml(error.message || 'Unknown error')}</small>
+        </div>
+      `;
+      feather.replace();
+    }
+  }
+
+  async handleSetStorageValue() {
+    const keyInput = this.elements.storageKeyInput;
+    const valueInput = this.elements.storageValueInput;
+    if (!keyInput || !valueInput) return;
+
+    const key = keyInput.value.trim();
+    if (!key) {
+      this.ui.showStatusMessage('Storage key is required', 'error');
+      return;
+    }
+
+    await this.updateStorageValue(key, valueInput.value);
+  }
+
+  async updateStorageValue(key, rawValue) {
+    if (!this.state.scriptId) {
+      this.ui.showStatusMessage('Save script before editing storage', 'error');
+      return;
+    }
+
+    try {
+      const parsedValue = this.parseStorageEditorValue(rawValue);
+      const storageKey = this.getScriptStorageKey();
+      const values = await this.getScriptStorageValues();
+      values[key] = parsedValue;
+      await chrome.storage.local.set({ [storageKey]: values });
+
+      if (this.elements.storageKeyInput?.value.trim() === key && this.elements.storageValueInput) {
+        this.elements.storageValueInput.value = '';
+      }
+
+      this.ui.showStatusMessage(`Storage key "${key}" updated`, 'success');
+      await this.loadStorageValues();
+    } catch (error) {
+      logger.error('[CodeTweak Storage Viewer] Failed to set storage value:', error);
+      this.ui.showStatusMessage(`Failed to set value: ${error.message}`, 'error');
+    }
+  }
+
+  async deleteStorageValue(key) {
+    if (!this.state.scriptId) return;
+
+    try {
+      const storageKey = this.getScriptStorageKey();
+      const values = await this.getScriptStorageValues();
+      if (!(key in values)) return;
+
+      delete values[key];
+      await chrome.storage.local.set({ [storageKey]: values });
+      this.ui.showStatusMessage(`Storage key "${key}" deleted`, 'success');
+      await this.loadStorageValues();
+    } catch (error) {
+      logger.error('[CodeTweak Storage Viewer] Failed to delete storage value:', error);
+      this.ui.showStatusMessage('Failed to delete storage key', 'error');
+    }
+  }
+
+  bindStorageChangeListener() {
+    if (this.state.storageChangeListener) {
+      chrome.storage.onChanged.removeListener(this.state.storageChangeListener);
+      this.state.storageChangeListener = null;
+    }
+
+    if (!this.state.scriptId) return;
+    const watchedKey = this.getScriptStorageKey();
+
+    this.state.storageChangeListener = (changes, namespace) => {
+      if (namespace !== 'local' || !changes[watchedKey]) return;
+      this.loadStorageValues();
+    };
+    chrome.storage.onChanged.addListener(this.state.storageChangeListener);
   }
 
   async loadScriptErrors() {

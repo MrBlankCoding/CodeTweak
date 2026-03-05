@@ -1,5 +1,6 @@
 import logger from '../utils/logger.js';
 import { getBrowserApi, promisifyChromeCall } from '../shared/browserAdapter.js';
+import { normalizeMatchPattern } from '../utils/urls.js';
 
 const REGISTRATION_PREFIX = 'ct-us-';
 const REGISTRATION_STORE_KEY = 'userScriptRegistrationIds';
@@ -36,7 +37,11 @@ function normalizeMatches(script) {
     ? script.targetUrls
     : [script.targetUrl].filter(Boolean);
 
-  return [...new Set(matches)].filter(Boolean);
+  const uniqueMatches = [...new Set(matches)]
+    .filter(Boolean)
+    .filter((match) => !/^https?:\/\/$/.test(match));
+
+  return uniqueMatches.map((m) => normalizeMatchPattern(m));
 }
 
 function normalizeInjectInto(injectInto) {
@@ -322,7 +327,7 @@ function buildRuntimeBootstrap(config, userCode) {
     }
 
     if (enabled.gmNotification) {
-      const notifyFn = (details) => __ctPostBackground('notification', { details });
+      const notifyFn = (details, ondone) => __ctPostBackground('notification', { details, ondone });
       window.GM_notification = notifyFn;
       GM.notification = notifyFn;
     }
@@ -584,11 +589,22 @@ export class UserScriptsAdapter {
     const registrations = await Promise.all(
       userScriptsEligible.map((script) => this.toRegistration(script))
     );
-    const nextIds = new Set(registrations.map((entry) => entry.id));
+
+    // Filter out duplicates by ID before processing.
+    const uniqueRegistrations = [];
+    const seenIds = new Set();
+    for (const reg of registrations) {
+      if (!seenIds.has(reg.id)) {
+        uniqueRegistrations.push(reg);
+        seenIds.add(reg.id);
+      }
+    }
+
+    const nextIds = new Set(uniqueRegistrations.map((entry) => entry.id));
 
     const idsToRemove = [...previousIds].filter((id) => !nextIds.has(id));
-    const registrationsToAdd = registrations.filter((entry) => !previousIds.has(entry.id));
-    const registrationsToUpdate = registrations.filter((entry) => previousIds.has(entry.id));
+    const registrationsToAdd = uniqueRegistrations.filter((entry) => !previousIds.has(entry.id));
+    const registrationsToUpdate = uniqueRegistrations.filter((entry) => previousIds.has(entry.id));
 
     try {
       if (idsToRemove.length > 0) {

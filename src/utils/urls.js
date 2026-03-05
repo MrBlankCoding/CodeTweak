@@ -71,11 +71,33 @@ export function urlMatchesPattern(url, pattern) {
     return false;
   }
 }
+// "http://google.com" -> "http://google.com/*"
+export function normalizeMatchPattern(pattern) {
+  if (!pattern || typeof pattern !== 'string') return pattern;
+  if (pattern === '<all_urls>') return pattern;
+
+  try {
+    let normalized = pattern;
+    if (!normalized.includes('://')) {
+      normalized = '*://' + normalized;
+    }
+
+    const [scheme, rest] = normalized.split('://');
+    if (!rest) return normalized;
+
+    const slashIndex = rest.indexOf('/');
+    if (slashIndex === -1) {
+      return `${scheme}://${rest}/*`;
+    }
+    return normalized;
+  } catch {
+    return pattern;
+  }
+}
 
 export function generateUrlMatchPattern(baseUrl, scope = 'domain') {
   try {
     if (!baseUrl) return null;
-    // Ensure we have a scheme
     if (!/^https?:\/\//i.test(baseUrl)) {
       baseUrl = 'https://' + baseUrl.replace(/^\/*/, '');
     }

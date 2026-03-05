@@ -13,7 +13,9 @@
     "offscreen",
     "clipboardWrite",
     "downloads",
-    "userScripts"
+    "userScripts",
+    "alarms",
+    "identity"
   ],
   "host_permissions": ["http://*/*", "https://*/*"],
   "background": {

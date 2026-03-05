@@ -1,5 +1,6 @@
 import logger from './logger.js';
 import { GM_API_DEFINITIONS } from '../GM/gmApiDefinitions.js';
+import { normalizeMatchPattern } from './urls.js';
 
 // Map classic style to ours
 function buildGrantToApiMapping() {
@@ -42,7 +43,7 @@ function parseUserScriptMetadata(content) {
       case 'match':
       case 'include':
         if (!metadata.matches) metadata.matches = [];
-        metadata.matches.push(value);
+        metadata.matches.push(normalizeMatchPattern(value.trim()));
         break;
 
       case 'require':

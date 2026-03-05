@@ -1,10 +1,14 @@
-import { urlMatchesPattern } from '../utils/urls.js';
+import { urlMatchesPattern, normalizeMatchPattern } from '../utils/urls.js';
 
 function normalizeScript(script) {
+  const targetUrls = (script.targetUrls || [script.targetUrl].filter(Boolean)).map(
+    normalizeMatchPattern
+  );
+
   return {
     ...script,
     id: script.id || crypto.randomUUID(),
-    targetUrls: script.targetUrls || [script.targetUrl].filter(Boolean),
+    targetUrls,
   };
 }
 
