@@ -110,6 +110,15 @@
   "settingsLanguageDesc": {
     "message": "Choose your preferred interface language"
   },
+  "settingsCheckUpdates": {
+    "message": "Check for updates"
+  },
+  "settingsCheckUpdatesDesc": {
+    "message": "Manually check for userscript updates"
+  },
+  "settingsCheckUpdatesButton": {
+    "message": "Check for updates"
+  },
   "languageBrowserDefault": {
     "message": "Browser Default (Auto)"
   },

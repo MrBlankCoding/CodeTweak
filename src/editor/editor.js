@@ -339,6 +339,11 @@ class ScriptEditor {
 
     if (initialTargetUrl && this.elements.targetUrl) {
       this.elements.targetUrl.value = initialTargetUrl;
+      if (!this.state.isEditMode) {
+        this.ui.addUrlToList(initialTargetUrl);
+        this.markAsDirty();
+        this._debouncedSidebarSync();
+      }
     }
 
     if (this.state.isEditMode) {

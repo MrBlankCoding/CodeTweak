@@ -110,6 +110,15 @@
   "settingsLanguageDesc": {
     "message": "Choisissez votre langue d'interface préférée"
   },
+  "settingsCheckUpdates": {
+    "message": "Vérifier les mises à jour"
+  },
+  "settingsCheckUpdatesDesc": {
+    "message": "Vérifier manuellement les mises à jour des userscripts"
+  },
+  "settingsCheckUpdatesButton": {
+    "message": "Vérifier les mises à jour"
+  },
   "languageBrowserDefault": {
     "message": "Défaut du Navigateur (Auto)"
   },

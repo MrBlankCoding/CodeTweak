@@ -110,6 +110,15 @@
   "settingsLanguageDesc": {
     "message": "Elige tu idioma de interfaz preferido"
   },
+  "settingsCheckUpdates": {
+    "message": "Buscar actualizaciones"
+  },
+  "settingsCheckUpdatesDesc": {
+    "message": "Buscar actualizaciones de userscripts manualmente"
+  },
+  "settingsCheckUpdatesButton": {
+    "message": "Buscar actualizaciones"
+  },
   "languageBrowserDefault": {
     "message": "Predeterminado del Navegador (Auto)"
   },

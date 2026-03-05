@@ -33,8 +33,9 @@
     "test:changed": "vitest related --run --passWithNoTests",
     "test:gm": "vitest run tests/unit/gm_*.test.js tests/unit/gm*.test.js",
     "test:runtime": "vitest run tests/unit/background.test.js tests/unit/content_bridge.test.js tests/unit/offscreen.test.js tests/unit/userscript_adapter.test.js tests/unit/script_registry.test.js tests/unit/browser_adapter.test.js",
+    "test:i18n": "node scripts/check-i18n.js",
     "prepare": "husky",
-    "precommit:run": "lint-staged && npm run test:changed"
+    "precommit:run": "npm run lint && npm run format:check && npm run test:i18n && npm run test"
   },
   "dependencies": {
     "@babel/runtime": "7.28.4",

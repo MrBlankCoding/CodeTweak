@@ -31,6 +31,7 @@ function initDashboard() {
       confirmFirstRun: document.getElementById('confirmFirstRun'),
       accentColor: document.getElementById('accentColor'),
       languageSelector: document.getElementById('languageSelector'),
+      checkUpdatesBtn: document.getElementById('checkUpdatesBtn'),
     },
     greasyfork: {
       button: document.getElementById('greasyforkBtn'),
@@ -81,6 +82,30 @@ function setupEventListeners(elements, state) {
   elements.settingsForm?.addEventListener('submit', (e) => {
     e.preventDefault();
     saveSettings(elements.settings);
+  });
+
+  elements.settings.checkUpdatesBtn?.addEventListener('click', async () => {
+    const btn = elements.settings.checkUpdatesBtn;
+    const originalContent = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i data-feather="loader"></i><span>Checking...</span>';
+    feather.replace();
+
+    try {
+      const response = await chrome.runtime.sendMessage({ action: 'checkUpdates' });
+      if (response && response.success) {
+        showNotification('Update check completed', 'success');
+      } else if (response && response.error) {
+        showNotification(`Update check failed: ${response.error}`, 'error');
+      }
+    } catch (error) {
+      showNotification('Error checking for updates', 'error');
+      logger.error('Update check error:', error);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = originalContent;
+      feather.replace();
+    }
   });
 
   // bulk export

@@ -661,6 +661,15 @@ const messageHandlers = {
 
     return { success: true };
   },
+
+  checkUpdates: async () => {
+    try {
+      await scriptUpdater.checkAndPerformUpdates();
+      return { success: true };
+    } catch (error) {
+      return { error: error.message };
+    }
+  },
 };
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

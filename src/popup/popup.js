@@ -5,6 +5,7 @@ import {
   formatRunAt,
   getScriptDescription,
   isValidWebpage,
+  generateUrlMatchPattern,
 } from '../utils/urls.js';
 import { applyTranslations, getMessageSync } from '../utils/i18n.js';
 
@@ -28,7 +29,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   createScriptBtn.addEventListener('click', () => {
-    chrome.tabs.create({ url: chrome.runtime.getURL('editor/editor.html') });
+    let url = chrome.runtime.getURL('editor/editor.html');
+    if (currentTabUrl && isValidWebpage(currentTabUrl)) {
+      const pattern = generateUrlMatchPattern(currentTabUrl, 'domain');
+      if (pattern) {
+        url += `?targetUrl=${encodeURIComponent(pattern)}`;
+      }
+    }
+    chrome.tabs.create({ url });
   });
 
   openDashboardBtn.addEventListener('click', () => {

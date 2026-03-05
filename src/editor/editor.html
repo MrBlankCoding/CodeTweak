@@ -635,11 +635,6 @@
                     <td><kbd>Cmd</kbd> + <kbd>S</kbd></td>
                   </tr>
                   <tr>
-                    <td>Format Code</td>
-                    <td><kbd>Alt</kbd> + <kbd>F</kbd></td>
-                    <td><kbd>Alt</kbd> + <kbd>F</kbd></td>
-                  </tr>
-                  <tr>
                     <td>Autocomplete</td>
                     <td><kbd>Ctrl</kbd> + <kbd>Space</kbd></td>
                     <td><kbd>Ctrl</kbd> + <kbd>Space</kbd></td>
@@ -670,16 +665,15 @@
                   </tr>
                 </tbody>
               </table>
-              <p class="help-note" style="margin-top: 8px; color: #9ca3af">
-                Notes: Shortcuts reflect the current editor configuration. Formatting uses the
-                built-in beautifier. The minimap can also be toggled from Settings.
-              </p>
             </div>
           </div>
           <div class="help-tab-content" id="help-tab-wildcards">
             <div class="help-section">
               <h3>URL Matching with Wildcards</h3>
-              <p>The URL matching system supports the following patterns:</p>
+              <p>
+                CodeTweak uses a match-pattern style URL matcher. Patterns are split into
+                <code>scheme://host/path</code>.
+              </p>
               <table class="wildcards-table">
                 <thead>
                   <tr>
@@ -690,19 +684,43 @@
                 </thead>
                 <tbody>
                   <tr>
-                    <td><code>*</code></td>
-                    <td>Matches any characters except <code>/</code></td>
-                    <td><code>https://example.com/*</code> matches any page on example.com</td>
+                    <td><code>*://</code></td>
+                    <td>Any scheme (<code>http</code> or <code>https</code>)</td>
+                    <td><code>*://example.com/*</code></td>
                   </tr>
                   <tr>
-                    <td><code>**</code></td>
-                    <td>Matches any characters including <code>/</code></td>
-                    <td><code>https://**/api/**</code> matches any API endpoint on any domain</td>
+                    <td><code>*</code> (host)</td>
+                    <td>Any host</td>
+                    <td><code>*://*/*</code> matches all URLs</td>
                   </tr>
                   <tr>
-                    <td><code>?</code></td>
-                    <td>Matches any single character</td>
-                    <td><code>file?.js</code> matches file1.js, file2.js, etc.</td>
+                    <td><code>*.example.com</code></td>
+                    <td>Any subdomain of a domain (also matches the bare domain)</td>
+                    <td><code>https://*.example.com/*</code></td>
+                  </tr>
+                  <tr>
+                    <td><code>*</code> (path)</td>
+                    <td>Matches one or more path segments</td>
+                    <td>
+                      <code>https://example.com/*</code> matches <code>/a</code>, <code>/a/b</code>,
+                      etc.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code>**</code> (path segment)</td>
+                    <td>Matches across path boundaries (including <code>/</code>)</td>
+                    <td>
+                      <code>https://example.com/api/**</code> matches <code>/api</code>,
+                      <code>/api/v1/users</code>, etc.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code>foo*</code> (path segment)</td>
+                    <td>Wildcard within a single path segment</td>
+                    <td>
+                      <code>https://example.com/foo*</code> matches <code>/foo</code>,
+                      <code>/foobar</code>, etc.
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -713,74 +731,18 @@
               <h3>GM API Documentation</h3>
               <p>
                 The GM API provides special functions for userscripts to interact with the browser
-                and page.<br />
+                and page.
+              </p>
+              <p>
                 <a
-                  href="https://wiki.greasespot.net/Greasemonkey_Manual:API"
+                  href="https://mrblankcoding.github.io/CodeTweak/reference/gm-apis"
                   target="_blank"
                   rel="noopener"
                   style="color: #4ea1ff; text-decoration: underline"
                 >
-                  View the full official GM API documentation
+                  Open the official GM API documentation
                 </a>
               </p>
-              <table class="gmapi-table">
-                <thead>
-                  <tr>
-                    <th>API</th>
-                    <th>Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td><code>GM_setValue</code></td>
-                    <td>Stores a value that persists across page loads.</td>
-                  </tr>
-                  <tr>
-                    <td><code>GM_getValue</code></td>
-                    <td>Retrieves a value stored with <code>GM_setValue</code>.</td>
-                  </tr>
-                  <tr>
-                    <td><code>GM_deleteValue</code></td>
-                    <td>Deletes a value stored with <code>GM_setValue</code>.</td>
-                  </tr>
-                  <tr>
-                    <td><code>GM_listValues</code></td>
-                    <td>Lists all keys stored with <code>GM_setValue</code>.</td>
-                  </tr>
-                  <tr>
-                    <td><code>GM_openInTab</code></td>
-                    <td>Opens a URL in a new browser tab.</td>
-                  </tr>
-                  <tr>
-                    <td><code>GM_notification</code></td>
-                    <td>Shows a desktop notification.</td>
-                  </tr>
-                  <tr>
-                    <td><code>GM_getResourceText</code></td>
-                    <td>Gets the content of a resource as text.</td>
-                  </tr>
-                  <tr>
-                    <td><code>GM_getResourceURL</code></td>
-                    <td>Gets the URL of a resource.</td>
-                  </tr>
-                  <tr>
-                    <td><code>GM_addStyle</code></td>
-                    <td>Injects CSS styles into the page.</td>
-                  </tr>
-                  <tr>
-                    <td><code>GM_registerMenuCommand</code></td>
-                    <td>Adds a custom command to the userscript menu.</td>
-                  </tr>
-                  <tr>
-                    <td><code>GM_setClipboard</code></td>
-                    <td>Copies data to the clipboard.</td>
-                  </tr>
-                  <tr>
-                    <td><code>GM_xmlhttpRequest</code></td>
-                    <td>Makes cross-origin HTTP requests.</td>
-                  </tr>
-                </tbody>
-              </table>
             </div>
           </div>
         </div>
