@@ -50,7 +50,10 @@
     "@codemirror/view": "6.38.6",
     "@replit/codemirror-minimap": "0.5.2",
     "codemirror": "^6.0.2",
+    "diff": "^8.0.3",
+    "diff-match-patch": "^1.0.5",
     "feather-icons": "4.29.2",
+    "fuzzysort": "^3.1.0",
     "marked": "^17.0.0"
   },
   "lint-staged": {

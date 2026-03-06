@@ -113,3 +113,7 @@
   --scrollbar-thumb: #4b5263;
   --scrollbar-thumb-hover: #5c6370;
 }
+
+.hidden {
+  display: none !important;
+}

@@ -361,6 +361,45 @@
   "editorEnableAutosave": {
     "message": "Activer la Sauvegarde Automatique"
   },
+  "editorAiAssistant": {
+    "message": "Assistant de Code IA"
+  },
+  "editorAiAssistantDesc": {
+    "message": "Écrivez, affinez et expliquez du code avec l'IA"
+  },
+  "editorAiNoConfig": {
+    "message": "L'IA n'est pas configurée"
+  },
+  "editorAiConfigure": {
+    "message": "Configurer les clés IA"
+  },
+  "editorAiModel": {
+    "message": "Modèle"
+  },
+  "editorAiWelcome": {
+    "message": "Bonjour ! Je peux vous aider à écrire ou à affiner votre script utilisateur. Que aimeriez-vous faire ?"
+  },
+  "editorAiInputPlaceholder": {
+    "message": "Demandez à l'IA d'écrire ou d'affiner du code..."
+  },
+  "editorAiRefactor": {
+    "message": "Refactoriser"
+  },
+  "editorAiExplain": {
+    "message": "Expliquer"
+  },
+  "editorAiFixErrors": {
+    "message": "Corriger les erreurs"
+  },
+  "editorAiApply": {
+    "message": "Appliquer"
+  },
+  "editorAiDiscard": {
+    "message": "Jeter"
+  },
+  "editorAiThinking": {
+    "message": "En train de réfléchir..."
+  },
   "aiSettingsTitle": {
     "message": "Paramètres de l'Éditeur DOM IA"
   },

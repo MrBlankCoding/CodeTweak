@@ -5,7 +5,7 @@ import { CodeEditorManager } from './editor_settings.js';
 import { buildMetadata, parseUserScriptMetadata } from '../utils/metadataParser.js';
 import { GM_API_DEFINITIONS, getApiElementIds } from '../GM/gmApiDefinitions.js';
 import { applyTranslations } from '../utils/i18n.js';
-import ScriptAnalyzer from '../utils/scriptAnalyzer.js';
+import { AICodeManager } from './ai_code_manager.js';
 
 class ScriptEditor {
   constructor() {
@@ -147,54 +147,43 @@ class ScriptEditor {
 
       if (this.elements.requireList) {
         this.elements.requireList.innerHTML = '';
+        if (Array.isArray(metadata.requires)) {
+          metadata.requires.forEach((url) => {
+            this.ui.addRequireToList(url);
+          });
+        }
       }
-      if (Array.isArray(metadata.requires) && metadata.requires.length > 0) {
-        metadata.requires.forEach((url) => this.ui.addRequireToList(url));
-      }
-    } catch {
-      // Silently fail - don't spam console during normal editing
+    } catch (error) {
+      logger.error('Sync to sidebar failed:', error);
     }
   }
 
   syncSidebarToHeader() {
+    this.state.isUpdatingFromSidebar = true;
     try {
-      const currentCode = this.codeEditorManager.getValue();
-      const headerMatch = currentCode.match(/\/\/ ==UserScript==[\s\S]*?\/\/ ==\/UserScript==/);
-
       const scriptData = this.gatherScriptData();
-      const newMetadata = buildMetadata(scriptData);
+      const metadata = buildMetadata(scriptData);
+      const currentCode = this.codeEditorManager.getValue();
+      const existingHeaderMatch = currentCode.match(
+        /\/\/ ==UserScript==[\s\S]*?\/\/ ==\/UserScript==/
+      );
 
       let newCode;
-      if (headerMatch) {
-        newCode = currentCode.replace(headerMatch[0], newMetadata);
+      if (existingHeaderMatch) {
+        newCode = currentCode.replace(existingHeaderMatch[0], metadata);
       } else {
-        newCode = newMetadata + '\n\n' + currentCode;
+        newCode = metadata + '\n\n' + currentCode;
       }
 
-      if (newCode !== currentCode) {
-        this.state.isUpdatingFromSidebar = true;
-
-        this.codeEditorManager.setValue(newCode);
-        setTimeout(() => {
-          this.state.isUpdatingFromSidebar = false;
-        }, 100);
-      }
-    } catch {
-      // Silently fail - don't spam console during normal editing
+      this.codeEditorManager.setValue(newCode);
+      this._debouncedHeaderSync();
+    } finally {
+      this.state.isUpdatingFromSidebar = false;
     }
-  }
-
-  markAsDirty() {
-    if (this.state.hasUnsavedChanges && !this.state.isEditMode) return;
-    this.state.hasUnsavedChanges = true;
-    this.ui.updateScriptStatus(true);
   }
 
   cacheElements() {
     const elementIds = [
-      'pageTitle',
-      'settingsBtn',
-      'closeSettings',
       'scriptName',
       'scriptAuthor',
       'scriptLicense',
@@ -240,11 +229,12 @@ class ScriptEditor {
       'errorLogContainer',
       'clearErrorsBtn',
       'errorCountBadge',
-      'storageViewerContainer',
-      'refreshStorageBtn',
-      'setStorageBtn',
-      'storageKeyInput',
-      'storageValueInput',
+      'aiConfigWarning',
+      'aiChatContainer',
+      'aiModelSelector',
+      'aiChatHistory',
+      'aiChatInput',
+      'aiSendBtn',
     ];
 
     const elements = {};
@@ -272,281 +262,97 @@ class ScriptEditor {
       this.state.isAutosaveEnabled = localStorage.getItem('autosaveEnabled') !== 'false';
       this.state.lintingEnabled = localStorage.getItem('lintingEnabled') !== 'false';
 
-      // Setup error logging
-      this.setupErrorLog();
-      this.setupStorageViewer();
-      this.loadStorageValues();
-
       await this.codeEditorManager.initializeCodeEditor();
-      this.codeEditorManager.toggleLinting(this.state.lintingEnabled);
+
       this.codeEditorManager.setSaveCallback(() => this.saveScript());
       this.codeEditorManager.setChangeCallback(() => {
         this.markAsDirty();
-        if (this.state.isAutosaveEnabled) {
-          this._debouncedSave();
-        }
         this._debouncedHeaderSync();
         this.updateSectionVisibility();
       });
       this.codeEditorManager.setImportCallback((importData) => this.handleScriptImport(importData));
+
+      // Init AI Code Assistant
+      this.aiCodeManager = new AICodeManager(this.elements, this.state, this.codeEditorManager);
 
       this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
 
       await this.parseUrlParams();
       this.setupEditorMode();
       this.ui.initializeCollapsibleSections();
-      this.ui.updateSidebarState();
+
       this.registerEventListeners();
-
-      // Listen for Ctrl+S / Cmd+S via KeyboardManager
-      if (this.ui && typeof this.ui.on === 'function') {
-        this.ui.on('saveRequested', async () => {
-          await this.saveScript();
-          this.ui.showStatusMessage('Script saved!', 'success', 2000);
-        });
-      }
       this.setupBackgroundConnection();
-      this.codeEditorManager.updateEditorLintAndAutocomplete();
-      window.applyTheme();
-      window.addEventListener('beforeunload', () => {
-        if (this.state.storageChangeListener) {
-          chrome.storage.onChanged.removeListener(this.state.storageChangeListener);
-          this.state.storageChangeListener = null;
-        }
-      });
+      this.setupErrorLog();
 
-      setTimeout(() => this.codeEditorManager.focus(), 100);
+      logger.info('Script editor initialized successfully');
     } catch (error) {
-      logger.error('Failed to initialize editor:', error);
-      this.ui.showStatusMessage('Failed to initialize editor', 'error');
+      logger.error('Failed to initialize script editor:', error);
+      this.ui.showStatusMessage(
+        'Editor initialization failed. Check console for details.',
+        'error'
+      );
     }
   }
 
-  setDefaultValues() {
-    if (!this.elements.scriptVersion.value) {
-      this.elements.scriptVersion.value = this.config.DEFAULT_VERSION;
+  setupEditorMode() {
+    if (this.state.isEditMode) {
+      this.ui.showStatusMessage('Editing existing script', 'success');
+    } else {
+      this.ui.showStatusMessage('Creating new script', 'success');
+      this.codeEditorManager.insertDefaultTemplate();
+      this.updateSectionVisibility();
+      this.markAsDirty();
     }
   }
 
   async parseUrlParams() {
-    const urlParams = new URLSearchParams(window.location.search);
-    this.state.scriptId = urlParams.get('id');
-    const initialTargetUrl = urlParams.get('targetUrl');
-    const template = urlParams.get('template');
-    const importId = urlParams.get('importId');
-    const aiScriptId = urlParams.get('aiScriptId');
-    this.state.isEditMode = Boolean(this.state.scriptId);
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
 
-    if (initialTargetUrl && this.elements.targetUrl) {
-      this.elements.targetUrl.value = initialTargetUrl;
-      if (!this.state.isEditMode) {
-        this.ui.addUrlToList(initialTargetUrl);
-        this.markAsDirty();
-        this._debouncedSidebarSync();
-      }
-    }
-
-    if (this.state.isEditMode) {
-      await this.loadScript(this.state.scriptId);
-    } else if (template) {
-      this.codeEditorManager.insertDefaultTemplate();
-    }
-
-    if (importId) {
-      await this.loadImportedScript(importId);
-    }
-
-    if (aiScriptId) {
-      await this.loadAIScript(aiScriptId);
+    if (id) {
+      this.state.scriptId = id;
+      this.state.isEditMode = true;
+      await this.loadScript(id);
     }
   }
 
-  handleScriptImport(importData) {
-    try {
-      const { code, ...metadata } = importData;
-      const scriptData = { code };
-      if (metadata.name) scriptData.name = metadata.name;
-      if (metadata.version) scriptData.version = metadata.version;
-      if (metadata.description) scriptData.description = metadata.description;
-      if (metadata.author) scriptData.author = metadata.author;
-      if (metadata.namespace) scriptData.namespace = metadata.namespace;
-      if (metadata.runAt) scriptData.runAt = metadata.runAt;
-      if (metadata.license) scriptData.license = metadata.license;
-      if (metadata.icon) scriptData.icon = metadata.icon;
-      if (metadata.matches?.length) {
-        scriptData.targetUrls = [...new Set(metadata.matches)];
-      }
-
-      if (metadata.requires?.length) {
-        scriptData.requires = metadata.requires;
-      }
-
-      if (metadata.resources?.length) {
-        scriptData.resources = metadata.resources;
-      }
-
-      if (metadata.gmApis) {
-        Object.entries(metadata.gmApis).forEach(([api, enabled]) => {
-          if (enabled && this.elements[api]) {
-            scriptData[api] = true;
-          }
-        });
-      }
-
-      this.populateFormWithScript(scriptData);
-      this.codeEditorManager.setValue(code);
-      this.ui.showStatusMessage('Script metadata imported successfully', 'success');
-    } catch (error) {
-      logger.error('Error handling script import:', error);
-      this.ui.showStatusMessage('Failed to import script metadata', 'error');
+  setDefaultValues() {
+    if (this.elements.scriptVersion) {
+      this.elements.scriptVersion.value = this.config.DEFAULT_VERSION;
     }
+    if (this.elements.runAt) {
+      this.elements.runAt.value = this.config.RUN_MODES.DOCUMENT_IDLE;
+    }
+    this.updateApiCount();
   }
 
-  async loadImportedScript(importId) {
-    try {
-      const key = `tempImport_${importId}`;
-      const data = await chrome.storage.local.get(key);
-      const importData = data[key];
-      if (!importData) return;
-
-      const { code } = importData;
-      const metadata = parseUserScriptMetadata(code);
-      this.handleScriptImport({ code, ...metadata });
-      this.state.hasUnsavedChanges = true;
-      this.ui.updateScriptStatus(true);
-
-      await chrome.storage.local.remove(key);
-    } catch (err) {
-      logger.error('Error loading imported script:', err);
-      this.ui.showStatusMessage('Failed to load imported script', 'error');
-    }
-  }
-
-  async loadAIScript(aiScriptId) {
-    try {
-      const key = `tempAIScript_${aiScriptId}`;
-      const data = await chrome.storage.local.get(key);
-      const aiData = data[key];
-      if (!aiData) return;
-
-      const { code, sourceUrl } = aiData;
-      const enhanced = ScriptAnalyzer.validateAndEnhanceMetadata(code, {
-        url: sourceUrl || '',
-        hostname: sourceUrl ? new URL(sourceUrl).hostname : '',
-        userPrompt: 'AI Generated Script',
-      });
-
-      if (enhanced.warnings && enhanced.warnings.length > 0) {
-        enhanced.warnings.forEach((warning) => {
-          if (warning.suggestion) {
-            logger.info(`       ${warning.suggestion}`);
-          }
-        });
-
-        const fixedCount = enhanced.warnings.length;
-        this.ui.showStatusMessage(
-          `AI script loaded: ${fixedCount} metadata issue${fixedCount > 1 ? 's' : ''} auto-fixed`,
-          'info'
-        );
-      }
-
-      const enhancedCode = ScriptAnalyzer.rebuildWithEnhancedMetadata(code, enhanced);
-
-      const metadata = parseUserScriptMetadata(enhancedCode);
-      this.handleScriptImport({ code: enhancedCode, ...metadata });
-      this.state.hasUnsavedChanges = true;
-      this.ui.updateScriptStatus(true);
-      await chrome.storage.local.remove(key);
-    } catch (err) {
-      logger.error('Error loading AI script:', err);
-      this.ui.showStatusMessage('Failed to load AI-generated script', 'error');
-    }
-  }
-
-  // edit vs create
-  async setupEditorMode() {
-    if (this.state.isEditMode) {
-      await this.loadScript(this.state.scriptId);
-    } else if (!this.codeEditorManager.getValue()) {
-      this.codeEditorManager.insertDefaultTemplate();
-    }
+  markAsDirty() {
+    this.state.hasUnsavedChanges = true;
     this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
   }
 
-  hasRequireInCode() {
-    const code = this.codeEditorManager?.getValue() || '';
-    return /@require\s+\S+/i.test(code);
-  }
-
-  hasResourceInCode() {
-    const code = this.codeEditorManager?.getValue() || '';
-    return /@resource\s+\S+/i.test(code);
+  handleScriptImport(importData) {
+    this.populateFormWithScript(importData);
+    this.markAsDirty();
+    this.ui.showStatusMessage('Script metadata imported successfully', 'success');
   }
 
   toggleResourcesSection() {
-    const resourcesPanel = document.getElementById('resources-panel');
-    const resourcesIconBtn = document.querySelector('[data-section="resources"]');
-
-    const hasResourceApis =
+    const section = document.getElementById('resourcesSection');
+    const shouldShow =
       this.elements.gmGetResourceText?.checked || this.elements.gmGetResourceURL?.checked;
-    const hasResourcesInList = this.elements.resourceList?.children.length > 0;
-    const hasResourceInCode = this.hasResourceInCode();
 
-    const shouldShow = hasResourceApis || hasResourcesInList || hasResourceInCode;
-
-    if (resourcesPanel) {
-      if (shouldShow) {
-        resourcesPanel.classList.remove('hidden');
-      } else {
-        resourcesPanel.classList.add('hidden');
-      }
-    }
-
-    // Update sidebar icon button visibility
-    if (resourcesIconBtn) {
-      if (shouldShow) {
-        resourcesIconBtn.style.display = 'flex';
-      } else {
-        resourcesIconBtn.style.display = 'none';
-        if (resourcesIconBtn.classList.contains('active')) {
-          this.elements.sidebar?.classList.remove('expanded', 'has-active-panel');
-          resourcesIconBtn.classList.remove('active');
-          if (this.elements.sidebarContentArea) {
-            this.elements.sidebarContentArea.style.display = 'none';
-          }
-        }
-      }
+    if (section) {
+      section.classList.toggle('hidden', !shouldShow);
     }
   }
 
   toggleRequiredScriptsSection() {
-    const requiresPanel = document.getElementById('requires-panel');
-    const requiresIconBtn = document.querySelector('[data-section="requires"]');
-    const hasRequiresInList = this.elements.requireList?.children.length > 0;
-    const hasRequireInCode = this.hasRequireInCode();
-
-    const shouldShow = hasRequiresInList || hasRequireInCode;
-    if (requiresPanel) {
-      if (shouldShow) {
-        requiresPanel.classList.remove('hidden');
-      } else {
-        requiresPanel.classList.add('hidden');
-      }
-    }
-
-    if (requiresIconBtn) {
-      if (shouldShow) {
-        requiresIconBtn.style.display = 'flex';
-      } else {
-        requiresIconBtn.style.display = 'none';
-        if (requiresIconBtn.classList.contains('active')) {
-          this.elements.sidebar?.classList.remove('expanded', 'has-active-panel');
-          requiresIconBtn.classList.remove('active');
-          if (this.elements.sidebarContentArea) {
-            this.elements.sidebarContentArea.style.display = 'none';
-          }
-        }
-      }
+    const section = document.getElementById('requiresSection');
+    // For now we always show this
+    if (section) {
+      section.classList.remove('hidden');
     }
   }
 
@@ -738,8 +544,6 @@ class ScriptEditor {
       this.state.hasUnsavedChanges = false;
       this.ui.updateScriptStatus(this.state.hasUnsavedChanges);
       this.codeEditorManager.updateEditorLintAndAutocomplete();
-      this.bindStorageChangeListener();
-      await this.loadStorageValues();
     } catch (error) {
       logger.error('Error loading script:', error);
       this.ui.showStatusMessage(`Failed to load script: ${error.message}`, 'error');
@@ -911,8 +715,6 @@ class ScriptEditor {
         newUrl.searchParams.set('id', savedScript.id);
         window.history.pushState({}, '', newUrl);
         this.state.isEditMode = true;
-        this.bindStorageChangeListener();
-        await this.loadStorageValues();
       }
 
       this.notifyBackgroundScript();
@@ -1010,213 +812,6 @@ class ScriptEditor {
     if (this.state.scriptId) {
       this.loadScriptErrors();
     }
-  }
-
-  setupStorageViewer() {
-    this.elements.refreshStorageBtn?.addEventListener('click', () => {
-      this.loadStorageValues();
-    });
-
-    this.elements.setStorageBtn?.addEventListener('click', () => {
-      this.handleSetStorageValue();
-    });
-  }
-
-  getScriptStorageKey() {
-    if (!this.state.scriptId) return null;
-    return `script-values-${this.state.scriptId}`;
-  }
-
-  async getScriptStorageValues() {
-    const storageKey = this.getScriptStorageKey();
-    if (!storageKey) return {};
-    const result = await chrome.storage.local.get(storageKey);
-    return result[storageKey] || {};
-  }
-
-  parseStorageEditorValue(rawValue) {
-    const trimmed = rawValue.trim();
-    if (trimmed === '') {
-      return '';
-    }
-    try {
-      return JSON.parse(trimmed);
-    } catch {
-      return rawValue;
-    }
-  }
-
-  formatStorageValue(value) {
-    if (value === undefined) return 'undefined';
-    if (typeof value === 'string') return value;
-    try {
-      return JSON.stringify(value, null, 2);
-    } catch {
-      return String(value);
-    }
-  }
-
-  async loadStorageValues() {
-    const container = this.elements.storageViewerContainer;
-    if (!container) return;
-
-    container.replaceChildren();
-
-    if (!this.state.scriptId) {
-      const empty = document.createElement('div');
-      empty.className = 'storage-empty';
-      empty.innerHTML = `
-        <i data-feather="info"></i>
-        <p>Save this script to enable GM storage debugging</p>
-        <small>Storage keys are scoped per script ID</small>
-      `;
-      container.appendChild(empty);
-      feather.replace();
-      return;
-    }
-
-    try {
-      const values = await this.getScriptStorageValues();
-      const keys = Object.keys(values);
-
-      if (keys.length === 0) {
-        const empty = document.createElement('div');
-        empty.className = 'storage-empty';
-        empty.innerHTML = `
-          <i data-feather="database"></i>
-          <p>No stored values</p>
-          <small>Values written by GM_setValue will appear here</small>
-        `;
-        container.appendChild(empty);
-        feather.replace();
-        return;
-      }
-
-      keys.sort().forEach((key) => {
-        const item = document.createElement('div');
-        item.className = 'storage-item';
-
-        const keyEl = document.createElement('div');
-        keyEl.className = 'storage-item-key';
-        keyEl.textContent = key;
-
-        const valueEl = document.createElement('textarea');
-        valueEl.className = 'storage-item-value';
-        valueEl.rows = 3;
-        valueEl.value = this.formatStorageValue(values[key]);
-
-        const actionsEl = document.createElement('div');
-        actionsEl.className = 'storage-item-actions';
-
-        const saveBtn = document.createElement('button');
-        saveBtn.type = 'button';
-        saveBtn.className = 'btn-secondary';
-        saveBtn.innerHTML = '<i data-feather="save"></i><span>Save</span>';
-        saveBtn.addEventListener('click', async () => {
-          await this.updateStorageValue(key, valueEl.value);
-        });
-
-        const deleteBtn = document.createElement('button');
-        deleteBtn.type = 'button';
-        deleteBtn.className = 'btn-secondary danger';
-        deleteBtn.innerHTML = '<i data-feather="trash-2"></i><span>Delete</span>';
-        deleteBtn.addEventListener('click', async () => {
-          await this.deleteStorageValue(key);
-        });
-
-        actionsEl.appendChild(saveBtn);
-        actionsEl.appendChild(deleteBtn);
-        item.appendChild(keyEl);
-        item.appendChild(valueEl);
-        item.appendChild(actionsEl);
-        container.appendChild(item);
-      });
-
-      feather.replace();
-    } catch (error) {
-      logger.error('[CodeTweak Storage Viewer] Failed to load storage values:', error);
-      container.innerHTML = `
-        <div class="storage-empty">
-          <i data-feather="alert-circle"></i>
-          <p>Failed to load storage values</p>
-          <small>${this.escapeHtml(error.message || 'Unknown error')}</small>
-        </div>
-      `;
-      feather.replace();
-    }
-  }
-
-  async handleSetStorageValue() {
-    const keyInput = this.elements.storageKeyInput;
-    const valueInput = this.elements.storageValueInput;
-    if (!keyInput || !valueInput) return;
-
-    const key = keyInput.value.trim();
-    if (!key) {
-      this.ui.showStatusMessage('Storage key is required', 'error');
-      return;
-    }
-
-    await this.updateStorageValue(key, valueInput.value);
-  }
-
-  async updateStorageValue(key, rawValue) {
-    if (!this.state.scriptId) {
-      this.ui.showStatusMessage('Save script before editing storage', 'error');
-      return;
-    }
-
-    try {
-      const parsedValue = this.parseStorageEditorValue(rawValue);
-      const storageKey = this.getScriptStorageKey();
-      const values = await this.getScriptStorageValues();
-      values[key] = parsedValue;
-      await chrome.storage.local.set({ [storageKey]: values });
-
-      if (this.elements.storageKeyInput?.value.trim() === key && this.elements.storageValueInput) {
-        this.elements.storageValueInput.value = '';
-      }
-
-      this.ui.showStatusMessage(`Storage key "${key}" updated`, 'success');
-      await this.loadStorageValues();
-    } catch (error) {
-      logger.error('[CodeTweak Storage Viewer] Failed to set storage value:', error);
-      this.ui.showStatusMessage(`Failed to set value: ${error.message}`, 'error');
-    }
-  }
-
-  async deleteStorageValue(key) {
-    if (!this.state.scriptId) return;
-
-    try {
-      const storageKey = this.getScriptStorageKey();
-      const values = await this.getScriptStorageValues();
-      if (!(key in values)) return;
-
-      delete values[key];
-      await chrome.storage.local.set({ [storageKey]: values });
-      this.ui.showStatusMessage(`Storage key "${key}" deleted`, 'success');
-      await this.loadStorageValues();
-    } catch (error) {
-      logger.error('[CodeTweak Storage Viewer] Failed to delete storage value:', error);
-      this.ui.showStatusMessage('Failed to delete storage key', 'error');
-    }
-  }
-
-  bindStorageChangeListener() {
-    if (this.state.storageChangeListener) {
-      chrome.storage.onChanged.removeListener(this.state.storageChangeListener);
-      this.state.storageChangeListener = null;
-    }
-
-    if (!this.state.scriptId) return;
-    const watchedKey = this.getScriptStorageKey();
-
-    this.state.storageChangeListener = (changes, namespace) => {
-      if (namespace !== 'local' || !changes[watchedKey]) return;
-      this.loadStorageValues();
-    };
-    chrome.storage.onChanged.addListener(this.state.storageChangeListener);
   }
 
   async loadScriptErrors() {

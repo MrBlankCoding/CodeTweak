@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/assets/styles/editor/e_settings_modal.css" />
     <link rel="stylesheet" href="/assets/styles/editor/e_header_footer.css" />
     <link rel="stylesheet" href="/assets/styles/editor/e_sidebar.css" />
+    <link rel="stylesheet" href="/assets/styles/ai/ai_code_assistant.css" />
     <script src="../utils/theme_manager.js"></script>
     <script src="/assets/scripts/jshint.js"></script>
     <script type="module" src="editor.js"></script>
@@ -101,6 +102,15 @@
             >
               <i data-feather="alert-circle"></i>
               <div class="error-count-badge hidden" id="errorCountBadge">0</div>
+            </button>
+            <button
+              class="sidebar-icon-btn"
+              data-section="ai"
+              title="AI Code Assistant"
+              data-i18n-attr="title"
+              data-i18n="editorAiAssistant"
+            >
+              <i data-feather="zap"></i>
             </button>
             <div class="sidebar-divider"></div>
             <button
@@ -532,44 +542,65 @@
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
 
-                <div class="debug-section">
-                  <div class="debug-section-header">
-                    <h4 class="debug-section-title">GM Storage Viewer</h4>
-                    <div class="storage-controls-inline">
-                      <button type="button" id="refreshStorageBtn" class="btn-secondary">
-                        <i data-feather="refresh-cw"></i>
-                        <span>Refresh</span>
-                      </button>
+            <!-- AI Assistant Panel -->
+            <div class="sidebar-panel" id="ai-panel">
+              <div class="panel-header ai-panel-header">
+                <div class="panel-header-content">
+                  <h3 class="panel-title" data-i18n="editorAiAssistant">AI Code Assistant</h3>
+                  <p class="panel-subtitle" data-i18n="editorAiAssistantDesc">
+                    Write, refactor, and explain code with AI
+                  </p>
+                </div>
+                <button type="button" id="aiClearBtn" class="ai-clear-btn" title="Clear Chat">
+                  <i data-feather="trash-2"></i>
+                </button>
+              </div>
+              <div class="panel-content ai-panel-content">
+                <div id="aiConfigWarning" class="ai-config-warning hidden">
+                  <i data-feather="alert-triangle"></i>
+                  <p data-i18n="editorAiNoConfig">AI is not configured</p>
+                  <a
+                    href="../ai_dom_editor/settings/ai_settings.html"
+                    class="btn-secondary"
+                    data-i18n="editorAiConfigure"
+                  >
+                    Configure AI Keys
+                  </a>
+                </div>
+
+                <div id="aiChatContainer" class="ai-chat-container">
+                  <div class="ai-model-selector-group">
+                    <label for="aiModelSelector" class="form-label" data-i18n="editorAiModel"
+                      >Model</label
+                    >
+                    <select id="aiModelSelector" class="form-select ai-model-select"></select>
+                  </div>
+
+                  <div id="aiChatHistory" class="ai-chat-history">
+                    <div class="ai-message ai-message-assistant">
+                      <div class="ai-message-content" data-i18n="editorAiWelcome">
+                        Hello! I can help you write or refactor your userscript. What would you like
+                        to do?
+                      </div>
                     </div>
                   </div>
 
-                  <div class="storage-add-form">
-                    <input
-                      type="text"
-                      id="storageKeyInput"
-                      class="form-input"
-                      placeholder="Key"
-                      aria-label="Storage key"
-                    />
+                  <div class="ai-chat-input-wrapper">
                     <textarea
-                      id="storageValueInput"
-                      class="form-textarea"
-                      placeholder='Value (JSON or plain text). Example: {"enabled": true}'
+                      id="aiChatInput"
+                      class="form-textarea ai-chat-input"
+                      placeholder="Ask AI to write or refactor code..."
+                      data-i18n-attr="placeholder"
+                      data-i18n="editorAiInputPlaceholder"
                       rows="3"
-                      aria-label="Storage value"
                     ></textarea>
-                    <button type="button" id="setStorageBtn" class="btn-secondary">
-                      <i data-feather="save"></i>
-                      <span>Set Value</span>
-                    </button>
-                  </div>
-
-                  <div id="storageViewerContainer" class="storage-viewer-container">
-                    <div class="storage-empty">
-                      <i data-feather="database"></i>
-                      <p>No stored values</p>
-                      <small>Values written by GM_setValue will appear here</small>
+                    <div class="ai-chat-actions">
+                      <button type="button" id="aiSendBtn" class="ai-send-btn" title="Send Message">
+                        <i data-feather="send"></i>
+                      </button>
                     </div>
                   </div>
                 </div>

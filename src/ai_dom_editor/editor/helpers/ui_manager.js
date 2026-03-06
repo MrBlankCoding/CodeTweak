@@ -1,6 +1,7 @@
 import logger from '../../../utils/logger.js';
 import feather from 'feather-icons';
 import { marked } from 'marked';
+import { AIDiffHelper } from '../../../utils/ai_diff_helper.js';
 
 export class UIManager {
   constructor(editor) {
@@ -15,57 +16,31 @@ export class UIManager {
   }
 
   updateAllActionButtons() {
-    const allButtons = document.querySelectorAll('.code-preview-actions .action-btn');
+    const allButtons = document.querySelectorAll('.ai-code-actions .action-btn');
     allButtons.forEach((btn) => {
+      const isPatch = btn.closest('.ai-patch-response') !== null;
+      if (isPatch) return; // Patches use their own logic
+
       btn.replaceChildren();
-      const icon = this._createFeatherIcon('', 16);
+      const icon = this._createFeatherIcon('', 14);
 
       if (this.editor.currentScript) {
         icon.setAttribute('data-feather', 'refresh-cw');
         btn.title = `Update script: ${this.editor.currentScript.name}`;
+        const span = document.createElement('span');
+        span.textContent = 'Update';
+        btn.appendChild(icon);
+        btn.appendChild(span);
       } else {
         icon.setAttribute('data-feather', 'plus-circle');
         btn.title = 'Create new script';
+        const span = document.createElement('span');
+        span.textContent = 'Create';
+        btn.appendChild(icon);
+        btn.appendChild(span);
       }
-      btn.appendChild(icon);
       feather.replace();
     });
-
-    const editLinks = document.querySelectorAll(
-      ".code-preview-actions a[href*='editor/editor.html']"
-    );
-    editLinks.forEach((link) => {
-      link.remove();
-    });
-
-    if (this.editor.currentScript) {
-      const previewActions = document.querySelectorAll('.code-preview-actions');
-      previewActions.forEach((actionsDiv) => {
-        if (!actionsDiv.querySelector("a[href*='editor/editor.html']")) {
-          const editLink = document.createElement('a');
-          editLink.className = 'btn-text icon-btn';
-          editLink.title = 'Open in editor';
-          editLink.href = `${chrome.runtime.getURL('editor/editor.html')}?id=${
-            this.editor.currentScript.id
-          }`;
-          editLink.target = '_blank';
-
-          const icon = document.createElement('i');
-          icon.setAttribute('data-feather', 'edit-2');
-          icon.setAttribute('width', '16');
-          icon.setAttribute('height', '16');
-          editLink.appendChild(icon);
-
-          const actionBtn = actionsDiv.querySelector('.action-btn');
-          if (actionBtn) {
-            actionBtn.parentNode.insertBefore(editLink, actionBtn);
-          } else {
-            actionsDiv.appendChild(editLink);
-          }
-        }
-      });
-      feather.replace();
-    }
   }
 
   showConfigBanner() {
@@ -83,16 +58,16 @@ export class UIManager {
 
   createMessageElement(role, text, data = {}) {
     const messageEl = document.createElement('div');
-    messageEl.className = `message ${role}`;
+    messageEl.className = `ai-message ai-message-${role}`;
     messageEl.dataset.id = `msg-${Date.now()}-${Math.random()}`;
 
     const avatar = document.createElement('div');
-    avatar.className = 'message-avatar';
+    avatar.className = 'ai-message-avatar';
     avatar.textContent = role === 'user' ? 'U' : 'AI';
     messageEl.appendChild(avatar);
 
     const content = document.createElement('div');
-    content.className = 'message-content';
+    content.className = 'ai-message-content';
 
     if (role === 'user') {
       const textEl = this._createUserTextElement(text);
@@ -101,57 +76,42 @@ export class UIManager {
       return messageEl;
     }
 
-    // Handle assistant messages based on response type
-    if (data.type === 'code') {
-      // Code response with optional explanation
+    // Handle assistant messages
+    if (data.type === 'code' || data.type === 'patch') {
       if (data.explanation) {
         const explanationEl = document.createElement('div');
-        explanationEl.className = 'message-text';
+        explanationEl.className = 'ai-message-text';
         this._setSafeInnerHTML(explanationEl, marked.parse(data.explanation));
         content.appendChild(explanationEl);
       }
 
-      const codePreview = this.createCodePreview(data.code, data.name, data.explanation);
-      content.appendChild(codePreview);
-    } else if (data.type === 'text') {
-      // Pure text response (questions, clarifications, etc.)
-      const textEl = document.createElement('div');
-      textEl.className = 'message-text';
-
-      // Check if the text looks like markdown
-      if (this._hasMarkdownFormatting(data.message || text)) {
-        this._setSafeInnerHTML(textEl, marked.parse(data.message || text));
+      if (data.type === 'code') {
+        content.appendChild(this.createCodePreview(data.code, data.name, data.explanation));
       } else {
-        textEl.textContent = data.message || text;
+        content.appendChild(this.createPatchPreview(data.patches, data.name, data.explanation));
       }
-
+    } else if (data.type === 'text') {
+      const textEl = document.createElement('div');
+      textEl.className = 'ai-message-text';
+      const msgText = data.message || text;
+      if (this._hasMarkdownFormatting(msgText)) {
+        this._setSafeInnerHTML(textEl, marked.parse(msgText));
+      } else {
+        textEl.textContent = msgText;
+      }
       content.appendChild(textEl);
     } else if (data.error) {
-      // Error message
       const textEl = document.createElement('div');
-      textEl.className = 'message-text';
-      textEl.textContent = text;
+      textEl.className = 'ai-message-text';
+      textEl.style.borderColor = 'var(--error)';
+      textEl.innerHTML = `<div style="display: flex; gap: 8px; color: var(--error); font-size: 0.85rem; font-weight: 600; align-items: center; margin-bottom: 4px;">
+        <i data-feather="alert-circle" style="width: 14px; height: 14px;"></i> Error
+      </div>
+      <div style="color: var(--error);">${this._escapeHtml(text)}</div>`;
       content.appendChild(textEl);
-
-      const errorEl = document.createElement('div');
-      errorEl.className = 'error-message';
-
-      const errorIcon = document.createElement('i');
-      errorIcon.setAttribute('data-feather', 'alert-circle');
-      errorIcon.setAttribute('width', '16');
-      errorIcon.setAttribute('height', '16');
-      errorEl.appendChild(errorIcon);
-
-      const errorSpan = document.createElement('span');
-      errorSpan.textContent = 'An error occurred';
-      errorEl.appendChild(errorSpan);
-
-      content.appendChild(errorEl);
-      feather.replace();
     } else {
-      // Fallback for unknown types
       const textEl = document.createElement('div');
-      textEl.className = 'message-text';
+      textEl.className = 'ai-message-text';
       textEl.textContent = text;
       content.appendChild(textEl);
     }
@@ -161,9 +121,15 @@ export class UIManager {
     return messageEl;
   }
 
+  _escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
   _createUserTextElement(text) {
     const textEl = document.createElement('div');
-    textEl.className = 'message-text';
+    textEl.className = 'ai-message-text';
 
     const parts = [];
     let lastIndex = 0;
@@ -222,86 +188,58 @@ export class UIManager {
 
   createCodePreview(code, name = 'Generated Script', explanation = null) {
     const preview = document.createElement('div');
-    preview.className = 'code-preview';
+    preview.className = 'ai-code-response';
 
     const header = document.createElement('div');
-    header.className = 'code-preview-header';
+    header.className = 'ai-code-header';
 
     const title = document.createElement('div');
-    title.className = 'code-preview-title';
-
-    const codeIcon = document.createElement('i');
-    codeIcon.setAttribute('data-feather', 'code');
-    codeIcon.setAttribute('width', '16');
-    codeIcon.setAttribute('height', '16');
-    title.appendChild(codeIcon);
-
-    const titleSpan = document.createElement('span');
-    titleSpan.textContent = name;
-    title.appendChild(titleSpan);
-
+    title.className = 'ai-code-title';
+    title.innerHTML = `<i data-feather="code" style="width: 14px; height: 14px;"></i> <span>${name}</span>`;
     header.appendChild(title);
 
     const actionsDiv = document.createElement('div');
-    actionsDiv.className = 'code-preview-actions';
+    actionsDiv.className = 'ai-code-actions';
 
     const copyBtn = document.createElement('button');
-    copyBtn.className = 'btn-text icon-btn';
+    copyBtn.className = 'ai-code-btn secondary';
     copyBtn.title = 'Copy to clipboard';
-
-    const copyIcon = document.createElement('i');
-    copyIcon.setAttribute('data-feather', 'copy');
-    copyIcon.setAttribute('width', '16');
-    copyIcon.setAttribute('height', '16');
-    copyBtn.appendChild(copyIcon);
+    copyBtn.innerHTML = `<i data-feather="copy" style="width: 12px; height: 12px;"></i> <span>Copy</span>`;
 
     copyBtn.addEventListener('click', () => {
       this.copyToClipboard(code);
-      copyBtn.replaceChildren(this._createFeatherIcon('check', 16));
-      feather.replace();
+      const span = copyBtn.querySelector('span');
+      span.textContent = 'Copied!';
       setTimeout(() => {
-        copyBtn.replaceChildren(this._createFeatherIcon('copy', 16));
-        feather.replace();
+        span.textContent = 'Copy';
       }, 2000);
     });
     actionsDiv.appendChild(copyBtn);
 
-    // Only show edit link if we're updating an existing script
     if (this.editor.currentScript) {
       const editLink = document.createElement('a');
-      editLink.className = 'btn-text icon-btn';
+      editLink.className = 'ai-code-btn secondary';
       editLink.title = 'Open in editor';
       editLink.href = `${chrome.runtime.getURL('editor/editor.html')}?id=${
         this.editor.currentScript.id
       }`;
       editLink.target = '_blank';
-
-      const editIcon = document.createElement('i');
-      editIcon.setAttribute('data-feather', 'edit-2');
-      editIcon.setAttribute('width', '16');
-      editIcon.setAttribute('height', '16');
-      editLink.appendChild(editIcon);
-
+      editLink.style.textDecoration = 'none';
+      editLink.innerHTML = `<i data-feather="edit-2" style="width: 12px; height: 12px;"></i>`;
       actionsDiv.appendChild(editLink);
     }
 
     const applyIconBtn = document.createElement('button');
-    applyIconBtn.className = 'btn-text icon-btn action-btn';
-    applyIconBtn.title = 'Create or update script';
+    applyIconBtn.className = 'ai-code-btn primary action-btn';
 
-    // Update button icon and functionality based on current state
     const updateButtonState = () => {
-      applyIconBtn.replaceChildren();
-      const icon = this._createFeatherIcon('', 16);
-
       if (this.editor.currentScript) {
-        icon.setAttribute('data-feather', 'refresh-cw');
+        applyIconBtn.innerHTML = `<i data-feather="refresh-cw" style="width: 12px; height: 12px;"></i> <span>Update</span>`;
         applyIconBtn.title = `Update script: ${this.editor.currentScript.name}`;
       } else {
-        icon.setAttribute('data-feather', 'plus-circle');
+        applyIconBtn.innerHTML = `<i data-feather="plus-circle" style="width: 12px; height: 12px;"></i> <span>Create</span>`;
         applyIconBtn.title = 'Create new script';
       }
-      applyIconBtn.appendChild(icon);
       feather.replace();
     };
 
@@ -318,21 +256,121 @@ export class UIManager {
       }
     });
 
-    // Update button state initially
     updateButtonState();
-
     actionsDiv.appendChild(applyIconBtn);
     header.appendChild(actionsDiv);
-
     preview.appendChild(header);
 
     const body = document.createElement('div');
-    body.className = 'code-preview-body';
-    const pre = document.createElement('pre');
-    pre.textContent = code;
-    body.appendChild(pre);
+    body.className = 'ai-code-block';
+    body.textContent = code;
     preview.appendChild(body);
 
+    feather.replace();
+    return preview;
+  }
+
+  createPatchPreview(patches, name = 'Script Update', explanation = null) {
+    const preview = document.createElement('div');
+    preview.className = 'ai-code-response ai-patch-response';
+
+    const header = document.createElement('div');
+    header.className = 'ai-code-header';
+
+    const title = document.createElement('div');
+    title.className = 'ai-code-title';
+    title.innerHTML = `<i data-feather="zap" style="width: 14px; height: 14px;"></i> <span>${patches.length} surgical edit${patches.length > 1 ? 's' : ''}</span>`;
+    header.appendChild(title);
+
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'ai-code-actions';
+
+    const applyIconBtn = document.createElement('button');
+    applyIconBtn.className = 'ai-code-btn primary action-btn';
+    applyIconBtn.innerHTML = `<i data-feather="check-circle" style="width: 12px; height: 12px;"></i> <span>Apply</span>`;
+
+    applyIconBtn.addEventListener('click', async () => {
+      if (!this.editor.currentScript) {
+        this.editor.chatManager.addMessage(
+          'assistant',
+          'No script is currently active to apply patches to.',
+          { type: 'text', error: true }
+        );
+        return;
+      }
+
+      const currentCode = this.editor.currentScript.code;
+      const results = AIDiffHelper.applyPatches(currentCode, patches);
+
+      if (results.successCount > 0) {
+        await this.editor.userscriptHandler.updateUserscript(
+          this.editor.currentScript.name,
+          results.finalCode,
+          name,
+          explanation
+        );
+
+        if (results.failedCount > 0) {
+          this.editor.chatManager.addMessage(
+            'assistant',
+            `Applied ${results.successCount} edits, but ${results.failedCount} failed to match.`,
+            { type: 'text', error: true }
+          );
+        } else {
+          applyIconBtn.disabled = true;
+          applyIconBtn.innerHTML = `<i data-feather="check" style="width: 12px; height: 12px;"></i> <span>Applied</span>`;
+          feather.replace();
+        }
+      } else {
+        this.editor.chatManager.addMessage(
+          'assistant',
+          'Failed to apply surgical edits. The script may have changed or the edits are incompatible.',
+          { type: 'text', error: true }
+        );
+      }
+    });
+
+    actionsDiv.appendChild(applyIconBtn);
+    header.appendChild(actionsDiv);
+    preview.appendChild(header);
+
+    const body = document.createElement('div');
+    body.className = 'ai-diff-container';
+
+    patches.forEach((patch, idx) => {
+      const patchEl = document.createElement('div');
+      patchEl.className = 'ai-patch-preview';
+
+      let previewHtml = '';
+      if (patch.type === 'unified') {
+        const lines = patch.diff
+          .split('\n')
+          .filter((l) => !l.startsWith('---') && !l.startsWith('+++'));
+        previewHtml = lines
+          .slice(0, 10)
+          .map((line) => {
+            const cls = line.startsWith('+')
+              ? 'diff-line-add'
+              : line.startsWith('-')
+                ? 'diff-line-remove'
+                : '';
+            return `<div class="${cls}">${this._escapeHtml(line)}</div>`;
+          })
+          .join('');
+        if (lines.length > 10) previewHtml += `<div style="opacity: 0.5;">...</div>`;
+      } else {
+        previewHtml = `<div class="diff-line-remove">-${this._escapeHtml(patch.search.substring(0, 80))}...</div>
+                       <div class="diff-line-add">+${this._escapeHtml(patch.replace.substring(0, 80))}...</div>`;
+      }
+
+      patchEl.innerHTML = `
+        <div class="patch-item-header">Edit #${idx + 1} (${patch.type})</div>
+        <div class="patch-item-diff">${previewHtml}</div>
+      `;
+      body.appendChild(patchEl);
+    });
+
+    preview.appendChild(body);
     feather.replace();
     return preview;
   }
@@ -341,23 +379,23 @@ export class UIManager {
     const messageId = `msg-${Date.now()}-loading`;
 
     const messageEl = document.createElement('div');
-    messageEl.className = 'message assistant';
+    messageEl.className = 'ai-message ai-message-assistant';
     messageEl.dataset.id = messageId;
 
     const avatar = document.createElement('div');
-    avatar.className = 'message-avatar';
+    avatar.className = 'ai-message-avatar';
     avatar.textContent = 'AI';
     messageEl.appendChild(avatar);
 
     const content = document.createElement('div');
-    content.className = 'message-content';
+    content.className = 'ai-message-content';
 
     const loading = document.createElement('div');
-    loading.className = 'loading-indicator';
+    loading.className = 'ai-typing-indicator';
 
     for (let i = 0; i < 3; i++) {
       const dot = document.createElement('div');
-      dot.className = 'loading-dot';
+      dot.className = 'ai-typing-dot';
       loading.appendChild(dot);
     }
 

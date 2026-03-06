@@ -508,6 +508,7 @@ async function callUserScriptsMethod(userScriptsApi, methodName, args = []) {
 export class UserScriptsAdapter {
   constructor() {
     this.api = getBrowserApi();
+    this.syncLock = null;
   }
 
   isSupported() {
@@ -573,6 +574,28 @@ export class UserScriptsAdapter {
   }
 
   async syncEnabledScripts(scripts) {
+    if (this.syncLock) {
+      try {
+        await this.syncLock;
+      } catch {
+        // Ignore
+      }
+    }
+
+    let resolveLock;
+    this.syncLock = new Promise((resolve) => {
+      resolveLock = resolve;
+    });
+
+    try {
+      return await this._doSyncEnabledScripts(scripts);
+    } finally {
+      this.syncLock = null;
+      resolveLock();
+    }
+  }
+
+  async _doSyncEnabledScripts(scripts) {
     const enabledScripts = scripts.filter((script) => script.enabled);
 
     if (!this.isSupported()) {
@@ -602,25 +625,20 @@ export class UserScriptsAdapter {
 
     const nextIds = new Set(uniqueRegistrations.map((entry) => entry.id));
 
-    const idsToRemove = [...previousIds].filter((id) => !nextIds.has(id));
-    const registrationsToAdd = uniqueRegistrations.filter((entry) => !previousIds.has(entry.id));
-    const registrationsToUpdate = uniqueRegistrations.filter((entry) => previousIds.has(entry.id));
+    const idsToRemove = [...previousIds];
+    const registrationsToAdd = uniqueRegistrations;
 
     try {
       if (idsToRemove.length > 0) {
-        await callUserScriptsMethod(userScriptsApi, 'unregister', [{ ids: idsToRemove }]);
+        try {
+          await callUserScriptsMethod(userScriptsApi, 'unregister', [{ ids: idsToRemove }]);
+        } catch {
+          // Ignore cleanup errors
+        }
       }
 
       if (registrationsToAdd.length > 0) {
         await callUserScriptsMethod(userScriptsApi, 'register', [registrationsToAdd]);
-      }
-
-      if (registrationsToUpdate.length > 0 && typeof userScriptsApi.update === 'function') {
-        await callUserScriptsMethod(userScriptsApi, 'update', [registrationsToUpdate]);
-      } else if (registrationsToUpdate.length > 0) {
-        const ids = registrationsToUpdate.map((entry) => entry.id);
-        await callUserScriptsMethod(userScriptsApi, 'unregister', [{ ids }]);
-        await callUserScriptsMethod(userScriptsApi, 'register', [registrationsToUpdate]);
       }
 
       await this.setStoredRegistrationIds(nextIds);
@@ -629,7 +647,12 @@ export class UserScriptsAdapter {
         usingUserScripts: true,
       };
     } catch (error) {
-      logger.error('Failed to sync userScripts registrations.', error);
+      const errorMsg = error.message || String(error);
+      if (!errorMsg.includes('does not exist') && !errorMsg.includes('not fully registered')) {
+        logger.error('Failed to sync userScripts registrations.', error);
+      } else {
+        logger.debug('userScripts sync handled expected mismatch:', errorMsg);
+      }
 
       try {
         if (previousIds.size > 0) {

@@ -1,4 +1,6 @@
 import logger from '../../../utils/logger.js';
+import { AIDiffHelper } from '../../../utils/ai_diff_helper.js';
+
 export class ApiHandler {
   constructor(editor) {
     this.editor = editor;
@@ -29,16 +31,12 @@ export class ApiHandler {
     try {
       const {
         availableModels = [],
-        selectedModel = null,
+        lastAiModel = null,
         aiDomEditorConfigs = [],
-      } = await chrome.storage.local.get([
-        'availableModels',
-        'selectedModel',
-        'aiDomEditorConfigs',
-      ]);
+      } = await chrome.storage.local.get(['availableModels', 'lastAiModel', 'aiDomEditorConfigs']);
 
       this.availableModels = this._normalizeModels(availableModels, aiDomEditorConfigs);
-      const parsedSelected = this._safeParseJSON(selectedModel) || selectedModel;
+      const parsedSelected = this._safeParseJSON(lastAiModel) || lastAiModel;
 
       this._renderModelSelector(parsedSelected);
 
@@ -46,7 +44,7 @@ export class ApiHandler {
       this.selectedModel = activeModel;
 
       if (activeModel) {
-        await chrome.storage.local.set({ selectedModel: activeModel });
+        await chrome.storage.local.set({ lastAiModel: activeModel });
       }
     } catch (error) {
       logger.error('Error loading AI models:', error);
@@ -65,7 +63,7 @@ export class ApiHandler {
       if (!parsed || typeof parsed !== 'object') return;
 
       this.selectedModel = parsed;
-      await chrome.storage.local.set({ selectedModel: parsed });
+      await chrome.storage.local.set({ lastAiModel: parsed });
     } catch (error) {
       logger.error('Error changing model:', error);
     }
@@ -252,27 +250,27 @@ export class ApiHandler {
   _buildSystemPrompt(domSummary, previousCode) {
     const safeDom = (domSummary || '').slice(0, 50000);
 
-    let prompt = `You are a senior userscript engineer. Generate practical, robust JavaScript for userscripts.
+    let prompt = `You are a Senior Systems Architect and Expert Userscript Developer. Generate practical, robust JavaScript for userscripts.
 
 OUTPUT CONTRACT (required):
 1) First line: Script Name: <short descriptive title>
 2) Second line: one concise sentence describing behavior
-3) Then exactly one fenced javascript code block
-4) The code block must include JavaScript only
-5) Do not output userscript metadata headers (no ==UserScript== block)
-6) Assume requested GM APIs are available; do not emit fallback branches for missing GM APIs
+3) Then your code changes (either a full block or surgical patches)
+4) No userscript metadata headers (no ==UserScript== block)
+5) Assume requested GM APIs are available
 
-CODE RULES:
-- Prefer GM APIs where appropriate
-- Use specific selectors and guard missing elements
-- Keep code concise and maintainable
-- No external libraries
+CORE ENGINEERING PRINCIPLES:
+1. DRY (Don't Repeat Yourself): If you are adding logic that already exists, you MUST refactor it into a shared function.
+2. Architectural Reasoning: Before adding new triggers (like keyboard shortcuts), check if the logic already exists in another handler and extract it if necessary.
+3. Minimal Impact: When modifying existing code, you MUST provide your changes in SEARCH/REPLACE blocks or Unified Diff format for surgical edits.
 
-PAGE CONTEXT:
+${AIDiffHelper.getSystemInstructions()}
+
+PAGE CONTEXT (DOM SUMMARY):
 ${safeDom}`;
 
     if (previousCode) {
-      prompt += `\n\nCURRENT SCRIPT CONTEXT (modify only if requested):\n\n\
+      prompt += `\n\nCURRENT SCRIPT CONTEXT:\n\n\
 \`\`\`javascript
 ${previousCode}
 \`\`\``;
@@ -463,13 +461,43 @@ ${previousCode}
       return { type: 'text', message: '' };
     }
 
-    const codeMatch = text.match(/```(?:javascript|js|ts)?\s*([\s\S]*?)```/i);
     const scriptNameMatch = text.match(/^\s*Script Name:\s*(.+)$/im);
+    const patches = AIDiffHelper.parsePatches(text);
+
+    if (patches.length > 0) {
+      const explanation = text
+        .replace(/<<<<<< SEARCH[\s\S]*?>>>>>> REPLACE/gi, '')
+        .replace(/```diff[\s\S]*?```/gi, '')
+        .replace(/^\s*Script Name:\s*.+$/gim, '')
+        .replace(/\r?\n+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      return {
+        type: 'patch',
+        patches,
+        name: this._cleanScriptName(scriptNameMatch?.[1]) || 'Script Update',
+        explanation: explanation || 'I have prepared some surgical edits for your script:',
+      };
+    }
+
+    const codeMatch = text.match(/```(?:javascript|js|ts)?\s*([\s\S]*?)```/i);
 
     if (codeMatch?.[1]) {
       const code = codeMatch[1].trim();
       const explanation = this._extractExplanation(text).trim();
       const name = this._cleanScriptName(scriptNameMatch?.[1]) || 'Generated Script';
+
+      // If we are updating an existing script, diff it to show changes
+      if (this.editor.currentScript && code !== this.editor.currentScript.code.trim()) {
+        const diff = AIDiffHelper.createUnifiedDiff(this.editor.currentScript.code.trim(), code);
+        return {
+          type: 'patch',
+          patches: [{ type: 'unified', diff: diff }],
+          name,
+          explanation: explanation || 'I have refactored the script for you:',
+        };
+      }
 
       return {
         type: 'code',

@@ -361,6 +361,45 @@
   "editorEnableAutosave": {
     "message": "Enable Autosave"
   },
+  "editorAiAssistant": {
+    "message": "AI Code Assistant"
+  },
+  "editorAiAssistantDesc": {
+    "message": "Write, refactor, and explain code with AI"
+  },
+  "editorAiNoConfig": {
+    "message": "AI is not configured"
+  },
+  "editorAiConfigure": {
+    "message": "Configure AI Keys"
+  },
+  "editorAiModel": {
+    "message": "Model"
+  },
+  "editorAiWelcome": {
+    "message": "Hello! I can help you write or refactor your userscript. What would you like to do?"
+  },
+  "editorAiInputPlaceholder": {
+    "message": "Ask AI to write or refactor code..."
+  },
+  "editorAiRefactor": {
+    "message": "Refactor"
+  },
+  "editorAiExplain": {
+    "message": "Explain"
+  },
+  "editorAiFixErrors": {
+    "message": "Fix Errors"
+  },
+  "editorAiApply": {
+    "message": "Apply"
+  },
+  "editorAiDiscard": {
+    "message": "Discard"
+  },
+  "editorAiThinking": {
+    "message": "Thinking..."
+  },
 
   "aiSettingsTitle": {
     "message": "AI DOM Editor Settings"

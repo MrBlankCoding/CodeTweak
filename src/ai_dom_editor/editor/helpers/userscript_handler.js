@@ -251,7 +251,15 @@ export class UserscriptHandler {
       };
 
       metadata.runAt = suggestedRunAt;
-      const finalScript = this.buildFinalScript(cleanCode, metadata);
+
+      // If newCode already has metadata header, it's likely a full patched script
+      let finalScript;
+      if (newCode.includes('// ==UserScript==')) {
+        // Just increment version in the full script
+        finalScript = newCode.replace(/\/\/ @version\s+.+/, `// @version      ${metadata.version}`);
+      } else {
+        finalScript = this.buildFinalScript(cleanCode, metadata);
+      }
 
       chrome.runtime.sendMessage(
         {
