@@ -85,4 +85,22 @@ console.log('x');
     const noApis = buildMetadata({ name: 'n' }, false);
     expect(noApis).toContain('@grant      none');
   });
+
+  it('handles edge cases in @resource parsing', () => {
+    const content = `
+// ==UserScript==
+// @resource icon_only_no_url
+// @resource icon1 http://some-url.com
+// @resource icon2 https://valid.com/image.png
+// ==/UserScript==`;
+    const parsed = parseUserScriptMetadata(content);
+    expect(parsed.resources).toHaveLength(2);
+    expect(parsed.resources[0].name).toBe('icon1');
+  });
+
+  it('preserves unknown metadata fields', () => {
+    const content = '// ==UserScript==\n// @custom-field some value\n// ==/UserScript==';
+    const parsed = parseUserScriptMetadata(content);
+    expect(parsed['custom-field']).toBe('some value');
+  });
 });

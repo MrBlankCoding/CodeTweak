@@ -21,6 +21,12 @@ export default defineConfig({
         'src/GM/Values/*.js',
         'src/utils/metadataParser.js',
         'src/utils/urls.js',
+        'src/utils/ai_diff_helper.js',
+        'src/core/userscriptAdapter.js',
+        'src/core/scriptRegistry.js',
+        'src/core/scriptUpdater.js',
+        'src/editor/ai_code_manager.js',
+        'src/ai_dom_editor/editor/helpers/*.js',
       ],
       thresholds: {
         lines: 70,

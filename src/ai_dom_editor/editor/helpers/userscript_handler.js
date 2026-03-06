@@ -217,7 +217,12 @@ export class UserscriptHandler {
   async updateUserscript(scriptName, newCode, newName = null, explanation = null) {
     try {
       const { scripts = [] } = await chrome.storage.local.get('scripts');
-      const scriptToUpdate = scripts.find((s) => s.name === scriptName);
+
+      // Fallback to currentScript if name doesn't match exactly
+      let scriptToUpdate = scripts.find((s) => s.name === scriptName);
+      if (!scriptToUpdate && this.editor.currentScript) {
+        scriptToUpdate = scripts.find((s) => s.id === this.editor.currentScript.id);
+      }
 
       if (!scriptToUpdate) {
         throw new Error(`Script "${scriptName}" not found for update.`);

@@ -274,6 +274,23 @@ describe('background', () => {
     );
     expect(xhrRes.result.status).toBe(200);
 
+    // Test deleteValue
+    await sendRuntimeMessage(listeners, {
+      type: 'GM_API_REQUEST',
+      payload: { action: 'deleteValue', scriptId: 's1', name: 'k' },
+    });
+    const listAfterDelete = await sendRuntimeMessage(listeners, {
+      type: 'GM_API_REQUEST',
+      payload: { action: 'listValues', scriptId: 's1' },
+    });
+    expect(listAfterDelete.result).not.toContain('k');
+
+    // Test removeValueChangeListener
+    await sendRuntimeMessage(listeners, {
+      type: 'GM_API_REQUEST',
+      payload: { action: 'removeValueChangeListener', scriptId: 's1', name: 'k' },
+    });
+
     expect(chrome.tabs.sendMessage).toHaveBeenCalled();
     expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'copy-to-clipboard', target: 'offscreen' })
@@ -455,6 +472,34 @@ describe('background', () => {
         code: 'x',
       })
     ).resolves.toEqual({ error: 'Script with id missing not found.' });
+
+    // Reset tabs.query mock to succeed
+    chrome.tabs.query = vi.fn(async () => [{ id: 1, url: 'https://x' }]);
+    await expect(
+      sendRuntimeMessage(listeners, { action: 'getCurrentTab' })
+    ).resolves.toHaveProperty('tab');
+  });
+
+  it('covers CLEAR_SCRIPT_ERRORS and extra message branches', async () => {
+    const { listeners } = await setupBackground({
+      scripts: [{ id: 's1', name: 'S1', enabled: true }],
+    });
+
+    await expect(
+      sendRuntimeMessage(listeners, { type: 'CLEAR_SCRIPT_ERRORS', scriptId: 's1' })
+    ).resolves.toEqual({ success: true });
+
+    // Test addValueChangeListener error path (missing tab id)
+    await expect(
+      sendRuntimeMessage(
+        listeners,
+        {
+          type: 'GM_API_REQUEST',
+          payload: { action: 'addValueChangeListener', scriptId: 's1', name: 'k' },
+        },
+        { tab: null }
+      )
+    ).resolves.toEqual({ result: null });
   });
 
   it('covers createScript and greasyFork error path branches', async () => {

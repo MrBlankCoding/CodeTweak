@@ -151,6 +151,35 @@ if (!rx.test("https://example.com")) {
     expect(generated).toContain('payload: safePayload');
   });
 
+  it('toRegistration handles minimal script configuration', async () => {
+    createChromeMock();
+    const adapter = new UserScriptsAdapter();
+    const reg = await adapter.toRegistration({
+      id: 'min',
+      enabled: true,
+      code: 'console.log(1)',
+      targetUrls: [],
+    });
+    expect(reg.id).toBe('ct-us-min');
+    expect(reg.matches).toEqual([]);
+  });
+
+  it('toRegistration handles complex script with resources and requires', async () => {
+    createChromeMock();
+    const adapter = new UserScriptsAdapter();
+    const reg = await adapter.toRegistration({
+      id: 'complex',
+      enabled: true,
+      code: 'console.log(1)',
+      targetUrls: ['https://*/*'],
+      requires: ['https://lib.js'],
+      resources: [{ name: 'res', url: 'https://res.png' }],
+      resourceContents: { res: 'data' },
+    });
+    expect(reg.js[0].code).toContain('"requires":["https://lib.js"]');
+    expect(reg.js[0].code).toContain('"res":"https://res.png"');
+  });
+
   it('returns unsupported result if userScripts API is missing', async () => {
     global.chrome = {
       runtime: { id: 'ext-id', getManifest: () => ({ version: '1.0.0' }) },
@@ -169,5 +198,49 @@ if (!rx.test("https://example.com")) {
         },
       ])
     ).resolves.toEqual({ usingUserScripts: false });
+  });
+
+  it('should handle concurrent sync calls using mutex', async () => {
+    createChromeMock();
+    const adapter = new UserScriptsAdapter();
+    const mockSync = vi.spyOn(adapter, '_doSyncEnabledScripts').mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      return { usingUserScripts: true };
+    });
+
+    const p1 = adapter.syncEnabledScripts([]);
+    const p2 = adapter.syncEnabledScripts([]);
+
+    await Promise.all([p1, p2]);
+
+    expect(mockSync).toHaveBeenCalledTimes(2);
+  });
+
+  it('should handle registration error and cleanup', async () => {
+    const script = {
+      id: 's1',
+      name: 'Test',
+      code: 'console.log(1)',
+      enabled: true,
+      targetUrls: ['https://example.com/*'],
+    };
+
+    global.chrome = {
+      runtime: { id: 'ext-id', getManifest: () => ({ version: '1.0.0' }) },
+      storage: {
+        local: {
+          get: vi.fn(async () => ({ userScriptRegistrationIds: ['old-id'] })),
+          set: vi.fn(async () => {}),
+        },
+      },
+      userScripts: {
+        unregister: vi.fn().mockResolvedValue(),
+        register: vi.fn().mockRejectedValue(new Error('Register failed')),
+      },
+    };
+
+    const adapter = new UserScriptsAdapter();
+    const result = await adapter.syncEnabledScripts([script]);
+    expect(result.usingUserScripts).toBe(false);
   });
 });

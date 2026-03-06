@@ -4,6 +4,7 @@ import { applyPatch as standardApplyPatch, diffLines, createPatch } from 'diff';
 const dmp = new diff_match_patch();
 dmp.Match_Threshold = 0.5;
 dmp.Patch_Margin = 4;
+dmp.Match_MaxBits = 1024; // Support longer search patterns
 
 export class AIDiffHelper {
   static createUnifiedDiff(oldCode, newCode, fileName = 'script.user.js') {
