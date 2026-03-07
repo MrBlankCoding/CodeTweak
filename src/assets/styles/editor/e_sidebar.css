@@ -5,7 +5,7 @@
   display: flex;
   background: var(--bg-secondary);
   border-right: 1px solid var(--border-primary);
-  overflow: hidden;
+  overflow: visible;
   font-size: var(--text-sm);
   width: 48px;
   transition: width var(--transition-fast);
@@ -40,6 +40,7 @@
   padding: var(--space-sm) 0;
   gap: var(--space-xs);
   flex-shrink: 0;
+  overflow: visible;
 }
 
 .sidebar-icon-btn {
@@ -47,7 +48,7 @@
   width: 40px;
   height: 40px;
   margin: 0 4px;
-  background: none;
+  background: var(--bg-tertiary);
   border: none;
   border-radius: var(--radius-sm);
   color: var(--text-muted);
@@ -77,12 +78,83 @@
   background: white;
   border-radius: 0 2px 2px 0;
 }
+.sidebar-icon-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+.sidebar-icon-btn:disabled,
+.sidebar-icon-btn.loading {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.sidebar-icon-btn[title]::before,
+.sidebar-icon-btn[title]::after {
+  position: absolute;
+  left: calc(100% + 10px);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease;
+  z-index: 30;
+}
+
+.sidebar-icon-btn[title]::before {
+  content: attr(title);
+  top: 50%;
+  transform: translateY(-50%) translateX(-6px);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-secondary);
+  border-radius: var(--radius-sm);
+  padding: 6px 9px;
+  box-shadow: var(--shadow-md);
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: var(--font-medium);
+  line-height: 1.1;
+}
+
+.sidebar-icon-btn[title]::after {
+  content: '';
+  top: 50%;
+  left: calc(100% + 4px);
+  transform: translateY(-50%) translateX(-6px);
+  border-style: solid;
+  border-width: 6px 6px 6px 0;
+  border-color: transparent var(--bg-primary) transparent transparent;
+}
+
+.sidebar-icon-btn[title]:hover::before,
+.sidebar-icon-btn[title]:hover::after,
+.sidebar-icon-btn[title]:focus-visible::before,
+.sidebar-icon-btn[title]:focus-visible::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-50%) translateX(0);
+}
 
 .sidebar-divider {
   height: 1px;
   background: var(--border-secondary);
   margin: var(--space-xs) var(--space-sm);
   opacity: 0.5;
+}
+
+.sidebar-icon-btn .api-count-badge,
+.sidebar-icon-btn .error-count-badge {
+  right: -1px;
+  top: -1px;
+  border-color: var(--bg-tertiary);
+}
+
+@media (max-width: 900px) {
+  .sidebar-icon-btn[title]::before,
+  .sidebar-icon-btn[title]::after {
+    display: none;
+  }
 }
 
 .sidebar-icon-btn .api-count-badge {

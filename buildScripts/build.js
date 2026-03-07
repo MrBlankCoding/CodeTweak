@@ -51,7 +51,17 @@ await build({
   outdir,
   logLevel: 'info',
   platform: 'browser',
+  alias: {
+    path: 'path-browserify',
+    'node:path': 'path-browserify',
+    assert: 'assert',
+    fs: join(process.cwd(), 'buildScripts/browser_stubs/fs_stub.js'),
+    'node:fs/promises': join(process.cwd(), 'buildScripts/browser_stubs/fs_promises_stub.js'),
+    'isolated-vm': join(process.cwd(), 'buildScripts/browser_stubs/isolated_vm_stub.js'),
+  },
   define: {
+    'process.env.NODE_ENV': JSON.stringify(isProduction ? 'production' : 'development'),
+    'process.env.BABEL_TYPES_8_BREAKING': 'false',
     'process.env.BROWSER': JSON.stringify('chrome'),
     'process.env.BUILD_TARGET': JSON.stringify('chrome'),
   },

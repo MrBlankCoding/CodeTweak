@@ -6,8 +6,9 @@ import { buildMetadata, parseUserScriptMetadata } from '../utils/metadataParser.
 import { GM_API_DEFINITIONS, getApiElementIds } from '../GM/gmApiDefinitions.js';
 import { applyTranslations } from '../utils/i18n.js';
 import { AICodeManager } from './ai_code_manager.js';
+import { webcrack } from 'webcrack';
 
-class ScriptEditor {
+export class ScriptEditor {
   constructor() {
     this.config = {
       RUN_MODES: {
@@ -226,6 +227,7 @@ class ScriptEditor {
       'requireList',
       'helpButton',
       'generateHeaderBtn',
+      'deobfuscateBtn',
       'errorLogContainer',
       'clearErrorsBtn',
       'errorCountBadge',
@@ -391,6 +393,10 @@ class ScriptEditor {
     this.elements.generateHeaderBtn?.addEventListener('click', (e) => {
       e.preventDefault();
       this.generateHeader();
+    });
+    this.elements.deobfuscateBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.deobfuscateCode();
     });
 
     const callbacks = {
@@ -663,6 +669,52 @@ class ScriptEditor {
     }
 
     return scriptData;
+  }
+
+  createWebcrackSandbox() {
+    return async (code) => {
+      const evaluator = new Function(`"use strict"; return (${code});`);
+      return evaluator();
+    };
+  }
+
+  async deobfuscateCode() {
+    const button = this.elements.deobfuscateBtn;
+    if (button?.disabled) return;
+
+    const code = this.codeEditorManager.getValue();
+    if (!code || !code.trim()) {
+      this.ui.showStatusMessage('No code to deobfuscate', 'warning');
+      return;
+    }
+
+    if (button) {
+      button.disabled = true;
+      button.classList.add('loading');
+    }
+
+    this.ui.showStatusMessage('Running webcrack deobfuscation...', 'success');
+
+    try {
+      const result = await webcrack(code, {
+        unpack: false,
+        sandbox: this.createWebcrackSandbox(),
+      });
+
+      this.codeEditorManager.setValue(result.code);
+      this.markAsDirty();
+      this.updateSectionVisibility();
+      this.ui.showStatusMessage('Code deobfuscated with webcrack', 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error('webcrack deobfuscation failed:', error);
+      this.ui.showStatusMessage(`webcrack failed: ${message}`, 'error');
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.classList.remove('loading');
+      }
+    }
   }
 
   async saveScript(quiet = false) {

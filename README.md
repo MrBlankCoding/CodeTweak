@@ -65,3 +65,11 @@ MIT. See `LICENSE.txt`.
 
 - Docs page: `https://mrblankcoding.github.io/CodeTweak/guide/privacy`
 - Source page: `docs-src/guide/privacy.md`
+
+## Credits
+
+CodeTweak uses these open source projects:
+
+- [webcrack](https://github.com/j4k0xb/webcrack) (MIT)
+- [Feather Icons](https://github.com/feathericons/feather) (MIT)
+- [CodeMirror](https://github.com/codemirror/dev) (MIT)
