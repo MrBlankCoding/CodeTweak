@@ -1,6 +1,9 @@
 {
   "type": "module",
   "version": "2.0.0",
+  "engines": {
+    "node": ">=20.19.0 <27"
+  },
   "devDependencies": {
     "@eslint/js": "9.39.1",
     "@vitest/coverage-v8": "^4.0.18",
@@ -68,5 +71,13 @@
     "*.{json,md,yml,yaml,css,html}": [
       "prettier --write"
     ]
+  },
+  "allowScripts": {
+    "core-js@3.46.0": true,
+    "esbuild@0.25.12": true,
+    "esbuild@0.21.5": true,
+    "esbuild@0.27.3": true,
+    "fsevents@2.3.3": true,
+    "isolated-vm@5.0.4": true
   }
 }
