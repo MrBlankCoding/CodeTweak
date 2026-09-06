@@ -4,6 +4,7 @@ import {
   formatUrlPattern,
   generateUrlMatchPattern,
   getScriptDescription,
+  isValidMatchPattern,
   isValidWebpage,
   normalizeMatchPattern,
   urlMatchesPattern,
@@ -37,6 +38,15 @@ describe('urls utilities', () => {
     expect(normalizeMatchPattern('https://google.com/path')).toBe('https://google.com/path');
     expect(normalizeMatchPattern('<all_urls>')).toBe('<all_urls>');
     expect(normalizeMatchPattern(null)).toBeNull();
+  });
+
+  it('maps any wildcard scheme to valid userScripts pattern', () => {
+    for (const raw of ['https*://example.com/*', '*http://example.com/*', 'ht*p://example.com/*']) {
+      const normalized = normalizeMatchPattern(raw);
+      expect(isValidMatchPattern(normalized)).toBe(true);
+      expect(normalized.startsWith('*://')).toBe(true);
+    }
+    expect(urlMatchesPattern('https://www.example.com/', '*://www.example.com/*')).toBe(true);
   });
 
   it('handles edge cases in generateUrlMatchPattern', () => {

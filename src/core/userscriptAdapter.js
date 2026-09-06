@@ -1,6 +1,6 @@
 import logger from '../utils/logger.js';
 import { getBrowserApi, promisifyChromeCall } from '../shared/browserAdapter.js';
-import { normalizeMatchPattern } from '../utils/urls.js';
+import { normalizeMatchPattern, isValidMatchPattern } from '../utils/urls.js';
 
 const REGISTRATION_PREFIX = 'ct-us-';
 const REGISTRATION_STORE_KEY = 'userScriptRegistrationIds';
@@ -41,7 +41,7 @@ function normalizeMatches(script) {
     .filter(Boolean)
     .filter((match) => !/^https?:\/\/$/.test(match));
 
-  return uniqueMatches.map((m) => normalizeMatchPattern(m));
+  return uniqueMatches.map((m) => normalizeMatchPattern(m)).filter((m) => isValidMatchPattern(m));
 }
 
 function normalizeInjectInto(injectInto) {
@@ -638,7 +638,27 @@ export class UserScriptsAdapter {
       }
 
       if (registrationsToAdd.length > 0) {
-        await callUserScriptsMethod(userScriptsApi, 'register', [registrationsToAdd]);
+        // ponytail: batch first, per-script fallback so one bad pattern can't fail all.
+        let succeededIds = nextIds;
+        try {
+          await callUserScriptsMethod(userScriptsApi, 'register', [registrationsToAdd]);
+        } catch {
+          succeededIds = new Set();
+          for (const reg of registrationsToAdd) {
+            try {
+              await callUserScriptsMethod(userScriptsApi, 'register', [[reg]]);
+              succeededIds.add(reg.id);
+            } catch (regError) {
+              logger.error(`Skipping userScript ${reg.id}: invalid registration.`, regError);
+            }
+          }
+        }
+
+        await this.setStoredRegistrationIds(succeededIds);
+
+        return {
+          usingUserScripts: succeededIds.size > 0,
+        };
       }
 
       await this.setStoredRegistrationIds(nextIds);

@@ -72,27 +72,53 @@ export function urlMatchesPattern(url, pattern) {
   }
 }
 // "http://google.com" -> "http://google.com/*"
+// Any non-standard scheme containing "*" (Tampermonkey "http*" etc.)
+// maps to "*" which chrome.userScripts.register rejects otherwise ("Invalid scheme").
+const VALID_MATCH_SCHEMES = new Set(['*', 'http', 'https', 'file', 'ftp']);
+
 export function normalizeMatchPattern(pattern) {
   if (!pattern || typeof pattern !== 'string') return pattern;
-  if (pattern === '<all_urls>') return pattern;
+  const trimmed = pattern.trim();
+  if (trimmed === '<all_urls>') return trimmed;
 
   try {
-    let normalized = pattern;
+    let normalized = trimmed;
     if (!normalized.includes('://')) {
       normalized = '*://' + normalized;
     }
 
-    const [scheme, rest] = normalized.split('://');
+    const sep = normalized.indexOf('://');
+    if (sep === -1) return normalized;
+    let scheme = normalized.slice(0, sep).trim().toLowerCase();
+    const rest = normalized.slice(sep + 3);
     if (!rest) return normalized;
+
+    if (!VALID_MATCH_SCHEMES.has(scheme) && scheme.includes('*')) {
+      scheme = '*';
+    }
 
     const slashIndex = rest.indexOf('/');
     if (slashIndex === -1) {
       return `${scheme}://${rest}/*`;
     }
-    return normalized;
+    return `${scheme}://${rest}`;
   } catch {
     return pattern;
   }
+}
+
+export function isValidMatchPattern(pattern) {
+  if (pattern === '<all_urls>') return true;
+  if (!pattern || typeof pattern !== 'string') return false;
+  const sep = pattern.indexOf('://');
+  if (sep === -1) return false;
+  const scheme = pattern.slice(0, sep).toLowerCase();
+  const rest = pattern.slice(sep + 3);
+  if (!VALID_MATCH_SCHEMES.has(scheme) || !rest) return false;
+  const slashIndex = rest.indexOf('/');
+  if (slashIndex === -1) return false;
+  if (rest.slice(0, slashIndex).length === 0) return false;
+  return true;
 }
 
 export function generateUrlMatchPattern(baseUrl, scope = 'domain') {
