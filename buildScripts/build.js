@@ -72,6 +72,7 @@ async function buildTarget(target) {
       'process.env.BABEL_TYPES_8_BREAKING': 'false',
       'process.env.BROWSER': JSON.stringify(target),
       'process.env.BUILD_TARGET': JSON.stringify(target),
+      __SAFARI_BUILD__: JSON.stringify(target === 'safari'),
     },
   });
 

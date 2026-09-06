@@ -12,12 +12,20 @@ class MessageClient {
   }
 
   async sendToTab(tabId, action, data = {}) {
-    try {
-      return await browser.tabs.sendMessage(tabId, { action, ...data });
-    } catch (error) {
-      logger.warn(`Message to tab ${tabId} failed: ${action}`, error);
-      return { error: error.message };
-    }
+    return new Promise((resolve) => {
+      try {
+        browser.tabs.sendMessage(tabId, { action, ...data }, (response) => {
+          if (browser.runtime.lastError) {
+            resolve({ error: browser.runtime.lastError.message });
+            return;
+          }
+          resolve(response);
+        });
+      } catch (error) {
+        logger.warn(`Message to tab ${tabId} failed: ${action}`, error);
+        resolve({ error: error.message });
+      }
+    });
   }
 
   connect(name = 'CodeTweak') {

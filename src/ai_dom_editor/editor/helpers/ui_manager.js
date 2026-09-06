@@ -106,7 +106,9 @@ export class UIManager {
 
     browser.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs.length > 0) {
-        browser.tabs.sendMessage(tabs[0].id, { action: 'startAiSelection' });
+        browser.tabs.sendMessage(tabs[0].id, { action: 'startAiSelection' }, () => {
+          void browser.runtime.lastError;
+        });
       }
     });
   }
@@ -117,7 +119,9 @@ export class UIManager {
 
     browser.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs.length > 0) {
-        browser.tabs.sendMessage(tabs[0].id, { action: 'stopSelection' });
+        browser.tabs.sendMessage(tabs[0].id, { action: 'stopSelection' }, () => {
+          void browser.runtime.lastError;
+        });
       }
     });
   }

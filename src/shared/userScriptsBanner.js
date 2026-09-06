@@ -1,15 +1,9 @@
 export function isUserScriptsSupported() {
-  const isSafari =
-    typeof safari !== 'undefined' ||
-    (/Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent));
-  if (isSafari) return true;
-
-  try {
-    const api = globalThis.chrome?.userScripts;
-    return Boolean(api && typeof api.register === 'function');
-  } catch {
-    return false;
-  }
+  if (typeof safari !== 'undefined') return true;
+  const ua = navigator.userAgent;
+  if (/Safari/.test(ua) && !/Chrome|Chromium|Edg|OPR|Brave/.test(ua)) return true;
+  if (typeof globalThis.chrome?.userScripts?.register !== 'function') return false;
+  return true;
 }
 
 function buildBanner(doc, { onOpenGuide } = {}) {

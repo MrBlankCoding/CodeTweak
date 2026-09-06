@@ -162,8 +162,9 @@ export class GMAPIHandler {
     if (!listeners) return;
 
     for (const tabId of listeners) {
-      browser.tabs
-        .sendMessage(tabId, {
+      browser.tabs.sendMessage(
+        tabId,
+        {
           type: 'GM_VALUE_CHANGED',
           payload: {
             name,
@@ -171,8 +172,11 @@ export class GMAPIHandler {
             newValue,
             remote: tabId !== sourceTabId,
           },
-        })
-        .catch(() => {}); // Ignore errors if tab is closed
+        },
+        () => {
+          void browser.runtime.lastError;
+        }
+      );
     }
   }
 

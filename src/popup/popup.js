@@ -87,7 +87,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   await applyTheme();
-  renderUserScriptsBanner(document.getElementById('userScriptsBannerSlot'));
+  if (globalThis.__SAFARI_BUILD__ !== 'true') {
+    renderUserScriptsBanner(document.getElementById('userScriptsBannerSlot'));
+  }
   await applyTranslations();
   await loadScripts(currentTabUrl);
   await loadMenuCommands();

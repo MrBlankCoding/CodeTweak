@@ -102,7 +102,9 @@ browser.contextMenus.removeAll(() => {
 
 browser.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === 'selectElement') {
-    browser.tabs.sendMessage(tab.id, { action: 'startSelection' });
+    browser.tabs.sendMessage(tab.id, { action: 'startSelection' }, () => {
+      void browser.runtime.lastError;
+    });
   }
 });
 

@@ -349,7 +349,11 @@ describe('background', () => {
     });
 
     listeners.contextMenus.onClicked[0]({ menuItemId: 'selectElement' }, { id: 10 });
-    expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(10, { action: 'startSelection' });
+    expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(
+      10,
+      { action: 'startSelection' },
+      expect.any(Function)
+    );
 
     const disconnectListeners = [];
     const port = {
