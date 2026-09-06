@@ -7,7 +7,7 @@ import {
   getApisByCategory,
   getGrantNames,
   getTypeScriptSignatures,
-} from '../../src/GM/gmApiDefinitions.js';
+} from '../../src/shared/constants/gmApiDefinitions.js';
 
 describe('gmApiDefinitions', () => {
   it('returns all element ids', () => {

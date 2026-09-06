@@ -1,0 +1,63 @@
+.ct-userscripts-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--error);
+  border-radius: var(--radius-md, 8px);
+  background: var(--error-light);
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.ct-userscripts-banner-icon {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--error);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.ct-userscripts-banner-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ct-userscripts-banner-title {
+  font-size: 12px;
+}
+
+.ct-userscripts-banner-body {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.ct-userscripts-banner-btn {
+  flex-shrink: 0;
+  width: auto;
+  height: auto;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+  background: var(--error);
+  border-color: var(--error);
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ct-userscripts-banner-btn:hover {
+  filter: brightness(1.1);
+  background: var(--error);
+}

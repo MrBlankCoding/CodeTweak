@@ -1,6 +1,6 @@
-import logger from '../utils/logger.js';
+import logger from '../shared/utils/logger.js';
 import feather from 'feather-icons';
-import { getScriptDescription } from '../utils/urls.js';
+import { getScriptDescription, formatUrlPattern, formatRunAt } from '../shared/utils/urls.js';
 
 // Global functions available from dashboard-logic.js via window object
 /* global toggleScript, editScript, deleteScript */
@@ -115,7 +115,7 @@ function createScriptListItem(script) {
   const nameCol = document.createElement('div');
   nameCol.className = 'script-name-col';
 
-  if (script.icon) {
+  if (script.icon && /^(https?:|data:image\/)/i.test(script.icon)) {
     const icon = document.createElement('img');
     icon.src = script.icon;
     icon.className = 'script-icon';
@@ -166,12 +166,7 @@ function createScriptListItem(script) {
   // Run At column
   const runAtCol = document.createElement('div');
   runAtCol.className = 'script-runat-col';
-  const runAtFormats = {
-    document_start: 'Page Start',
-    document_end: 'DOM Ready',
-    document_idle: 'Page Load',
-  };
-  runAtCol.textContent = runAtFormats[script.runAt] || script.runAt || 'Page Load';
+  runAtCol.textContent = formatRunAt(script.runAt);
 
   // Actions column
   const actions = document.createElement('div');
@@ -244,24 +239,6 @@ function showNotification(message, type = 'info') {
       setTimeout(() => notification.remove(), 300);
     }
   }, 5000);
-}
-
-function formatUrlPattern(pattern) {
-  if (!pattern) return 'All sites';
-
-  // Remove protocol
-  let display = pattern.replace(/^https?:\/\//, '');
-
-  // Clean up wildcards for better display
-  display = display.replace(/^\*\./, ''); // Remove leading wildcard subdomain
-  display = display.replace(/\/\*$/, ''); // Remove trailing wildcard path
-
-  // Truncate long URLs
-  if (display.length > 20) {
-    display = display.substring(0, 17) + '...';
-  }
-
-  return display;
 }
 
 window.updateWebsiteFilterOptions = updateWebsiteFilterOptions;

@@ -8,6 +8,7 @@ async function setupPopup({
   vi.resetModules();
 
   document.body.innerHTML = `
+    <div id="userScriptsBannerSlot"></div>
     <div id="scriptList"></div>
     <div id="emptyState"></div>
     <button id="createScript"></button>
@@ -23,6 +24,7 @@ async function setupPopup({
 
   let runtimeListener;
   const storage = { scripts: [...scripts] };
+  const sendMessage = vi.fn();
   global.chrome = {
     tabs: {
       query: vi.fn(async () => [{ id: 1, url: tabUrl }]),
@@ -39,7 +41,7 @@ async function setupPopup({
     runtime: {
       lastError: null,
       getURL: vi.fn((p) => `chrome-extension://id/${p}`),
-      sendMessage: vi.fn(),
+      sendMessage,
       onMessage: {
         addListener: (fn) => {
           runtimeListener = fn;
@@ -49,12 +51,14 @@ async function setupPopup({
     scripting: {
       executeScript: vi.fn(async () => [{ result: menuCommands }]),
     },
+    action: {},
   };
+  global.browser = global.chrome;
 
   vi.doMock('feather-icons', () => ({
     default: { replace: vi.fn() },
   }));
-  vi.doMock('../../src/utils/i18n.js', () => ({
+  vi.doMock('../../src/shared/utils/i18n.js', () => ({
     applyTranslations: vi.fn(async () => {}),
     getMessageSync: (k) => k,
   }));

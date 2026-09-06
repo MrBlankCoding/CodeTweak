@@ -26,7 +26,7 @@ async function setupBridge({ hasSendMessage = true, lastError = null } = {}) {
   const postSpy = vi.spyOn(window, 'postMessage').mockImplementation(() => {});
   const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-  await import('../../src/utils/content_bridge.js');
+  await import('../../src/content/contentBridge.js');
 
   return { runtimeMessageListener, postSpy, errSpy, sendMessage };
 }
@@ -123,6 +123,68 @@ describe('content_bridge', () => {
     expect(setup2.postSpy).toHaveBeenCalledWith(
       expect.objectContaining({ messageId: 'm3', error: 'Request payload is not serializable.' }),
       '*'
+    );
+  });
+
+  it('triggers injection fallback in Safari (no userScripts API)', async () => {
+    vi.resetModules();
+    const mockScripts = [
+      { id: 's1', code: 'console.log("fallback-main")', injectInto: 'main' },
+      { id: 's2', code: 'console.log("fallback-isolated")', injectInto: 'isolated' },
+    ];
+
+    global.chrome = {
+      runtime: {
+        id: 'ext-safari',
+        sendMessage: vi.fn((payload, cb) => {
+          if (payload.action === 'getScriptsForUrl') {
+            cb({ scripts: mockScripts });
+          }
+        }),
+        onMessage: { addListener: vi.fn() },
+      },
+      userScripts: undefined, // Simulate Safari
+    };
+
+    const appendSpy = vi.spyOn(document.head, 'appendChild');
+
+    await import('../../src/content/contentBridge.js');
+
+    // The injection fallback is async, so we wait a bit
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(global.chrome.runtime.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'getScriptsForUrl' }),
+      expect.any(Function)
+    );
+
+    // Both scripts inject via page script tags (eval is banned by MV3 CSP)
+    expect(appendSpy).toHaveBeenCalled();
+    expect(appendSpy.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('handles injection fallback errors gracefully', async () => {
+    vi.resetModules();
+    global.chrome = {
+      runtime: {
+        id: 'ext-safari-err',
+        sendMessage: vi.fn((_payload, _cb) => {
+          throw new Error('Network error');
+        }),
+        onMessage: { addListener: vi.fn() },
+      },
+      userScripts: undefined,
+    };
+
+    const logger = await import('../../src/shared/utils/logger.js');
+    const debugSpy = vi.spyOn(logger.default, 'debug').mockImplementation(() => {});
+
+    await import('../../src/content/contentBridge.js');
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(debugSpy).toHaveBeenCalledWith(
+      expect.stringContaining('fallback failed'),
+      expect.any(Error)
     );
   });
 });

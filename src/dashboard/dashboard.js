@@ -1,11 +1,12 @@
-import logger from '../utils/logger.js';
+import logger from '../shared/utils/logger.js';
 /* global showNotification */
 import feather from 'feather-icons';
 import { setupGreasyfork } from './dashboard-greasyfork.js';
 import { loadScripts, loadSettings, saveSettings, filterScripts } from './dashboard-logic.js';
 import { setupTabs } from './dashboard-ui.js';
-import { parseUserScriptMetadata } from '../utils/metadataParser.js';
-import { applyTranslations } from '../utils/i18n.js';
+import { renderUserScriptsBanner } from '../shared/userScriptsBanner.js';
+import { parseUserScriptMetadata } from '../services/scripts/MetadataParser.js';
+import { applyTranslations } from '../shared/utils/i18n.js';
 
 function initDashboard() {
   const elements = {
@@ -49,6 +50,7 @@ function initDashboard() {
   };
 
   setupEventListeners(elements, state);
+  renderUserScriptsBanner(document.getElementById('userScriptsBannerSlot'));
   loadScripts(elements, state);
   loadSettings(elements.settings);
   setupTabs(elements.navItems, elements.tabContents);
@@ -59,7 +61,7 @@ function initDashboard() {
   initializeI18n();
 
   // Listen for runtime messages to reflect updates from other parts of the extension
-  chrome.runtime.onMessage.addListener((message) => {
+  (globalThis.browser ?? globalThis.chrome).runtime.onMessage.addListener((message) => {
     if (message.action === 'scriptsUpdated') {
       showNotification('Dashboard refreshed', 'success');
       // reload scripts while preserving filters
@@ -72,11 +74,15 @@ function initDashboard() {
 
 function setupEventListeners(elements, state) {
   elements.createScriptBtn?.addEventListener('click', () => {
-    window.location.href = chrome.runtime.getURL('editor/editor.html');
+    window.location.href = (globalThis.browser ?? globalThis.chrome).runtime.getURL(
+      'editor/editor.html'
+    );
   });
 
   elements.emptyStateCreateBtn?.addEventListener('click', () => {
-    window.location.href = chrome.runtime.getURL('editor/editor.html');
+    window.location.href = (globalThis.browser ?? globalThis.chrome).runtime.getURL(
+      'editor/editor.html'
+    );
   });
 
   elements.settingsForm?.addEventListener('submit', (e) => {
@@ -92,7 +98,9 @@ function setupEventListeners(elements, state) {
     feather.replace();
 
     try {
-      const response = await chrome.runtime.sendMessage({ action: 'checkUpdates' });
+      const response = await (globalThis.browser ?? globalThis.chrome).runtime.sendMessage({
+        action: 'checkUpdates',
+      });
       if (response && response.success) {
         showNotification('Update check completed', 'success');
       } else if (response && response.error) {
@@ -150,7 +158,9 @@ function setupFileDragAndDrop() {
       }
 
       try {
-        const { scripts = [] } = await chrome.storage.local.get('scripts');
+        const { scripts = [] } = await (globalThis.browser ?? globalThis.chrome).storage.local.get(
+          'scripts'
+        );
         for (const file of validFiles) {
           const code = await file.text();
           const metadata = parseUserScriptMetadata(code);
@@ -182,8 +192,8 @@ function setupFileDragAndDrop() {
           scripts.push(scriptData);
         }
 
-        await chrome.storage.local.set({ scripts });
-        chrome.runtime.sendMessage({ action: 'scriptsUpdated' });
+        await (globalThis.browser ?? globalThis.chrome).storage.local.set({ scripts });
+        (globalThis.browser ?? globalThis.chrome).runtime.sendMessage({ action: 'scriptsUpdated' });
         showNotification('Scripts imported successfully', 'success');
 
         // Refresh dashboard view
@@ -199,7 +209,9 @@ function setupFileDragAndDrop() {
 
 async function exportAllScripts() {
   try {
-    const { scripts = [] } = await chrome.storage.local.get('scripts');
+    const { scripts = [] } = await (globalThis.browser ?? globalThis.chrome).storage.local.get(
+      'scripts'
+    );
     if (!scripts.length) {
       showNotification('No scripts to export', 'warning');
       return;
@@ -210,7 +222,7 @@ async function exportAllScripts() {
       const safeName = (script.name || 'script')
         .replace(/[^a-z0-9\- _]/gi, '_')
         .replace(/\s+/g, '_');
-      chrome.downloads.download({
+      (globalThis.browser ?? globalThis.chrome).downloads.download({
         url,
         filename: `CodeTweak Export/${safeName}.user.js`,
         saveAs: false,

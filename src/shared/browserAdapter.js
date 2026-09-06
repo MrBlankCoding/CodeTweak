@@ -1,21 +1,27 @@
 export function getBrowserApi() {
-  if (typeof browser !== 'undefined') {
-    return browser;
+  if (typeof globalThis.browser !== 'undefined' && globalThis.browser.runtime) {
+    return globalThis.browser;
   }
 
-  if (typeof chrome !== 'undefined') {
-    return chrome;
+  if (typeof globalThis.chrome !== 'undefined' && globalThis.chrome.runtime) {
+    return globalThis.chrome;
   }
 
-  throw new Error('No browser extension API available');
-}
+  if (typeof globalThis.browser !== 'undefined') return globalThis.browser;
+  if (typeof globalThis.chrome !== 'undefined') return globalThis.chrome;
 
-export function getRuntimeApi() {
-  return getBrowserApi().runtime;
+  return globalThis.browser ?? globalThis.chrome ?? {};
 }
 
 export function getStorageApi() {
   return getBrowserApi().storage;
+}
+
+export function isSafari() {
+  return (
+    typeof safari !== 'undefined' ||
+    (/Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent))
+  );
 }
 
 export function promisifyChromeCall(fn, context, ...args) {
@@ -23,22 +29,55 @@ export function promisifyChromeCall(fn, context, ...args) {
     return Promise.reject(new Error('API function is not available'));
   }
 
-  try {
-    const result = fn.apply(context, args);
-    if (result && typeof result.then === 'function') {
-      return result;
-    }
-  } catch (error) {
-    return Promise.reject(error);
-  }
-
   return new Promise((resolve, reject) => {
-    fn.call(context, ...args, (value) => {
-      if (typeof chrome !== 'undefined' && chrome.runtime?.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
+    let settled = false;
+    const settleResolve = (value) => {
+      if (!settled) {
+        settled = true;
+        resolve(value);
       }
-      resolve(value);
-    });
+    };
+    const settleReject = (error) => {
+      if (!settled) {
+        settled = true;
+        reject(error);
+      }
+    };
+
+    let result;
+    try {
+      result = fn.apply(context, [
+        ...args,
+        (value) => {
+          const api = globalThis.browser ?? globalThis.chrome;
+          if (api?.runtime?.lastError) {
+            settleReject(new Error(api.runtime.lastError.message));
+            return;
+          }
+          settleResolve(value);
+        },
+      ]);
+    } catch (error) {
+      settleReject(error);
+      return;
+    }
+
+    if (result && typeof result.then === 'function') {
+      result.then(settleResolve, settleReject);
+    }
   });
 }
+
+// Live binding: resolves the API on each access so late-set globals
+// (and test mocks) are picked up. Importers keep `import { browser }`.
+export const browser = new Proxy(
+  {},
+  {
+    get: (_target, prop) => getBrowserApi()[prop],
+    set: (_target, prop, value) => {
+      getBrowserApi()[prop] = value;
+      return true;
+    },
+    has: (_target, prop) => prop in getBrowserApi(),
+  }
+);

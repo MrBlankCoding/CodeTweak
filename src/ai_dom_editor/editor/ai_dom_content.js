@@ -25,25 +25,27 @@ class AIDOMContent {
 
     window.__ctwkAIDOMSummaryListener = true;
 
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-      if (message.action !== 'collectDOMSummary') {
-        return false;
-      }
+    (globalThis.browser ?? globalThis.chrome).runtime.onMessage.addListener(
+      (message, sender, sendResponse) => {
+        if (message.action !== 'collectDOMSummary') {
+          return false;
+        }
 
-      try {
-        sendResponse({
-          success: true,
-          summary: this.collectDOMSummary(),
-        });
-      } catch (error) {
-        sendResponse({
-          success: false,
-          summary: JSON.stringify({ error: error.message }),
-        });
-      }
+        try {
+          sendResponse({
+            success: true,
+            summary: this.collectDOMSummary(),
+          });
+        } catch (error) {
+          sendResponse({
+            success: false,
+            summary: JSON.stringify({ error: error.message }),
+          });
+        }
 
-      return true;
-    });
+        return true;
+      }
+    );
   }
 
   collectDOMSummary() {

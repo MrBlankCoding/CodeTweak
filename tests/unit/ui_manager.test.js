@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { UIManager } from '../../src/ai_dom_editor/editor/helpers/ui_manager.js';
+import { MessageRenderer } from '../../src/ai_dom_editor/editor/helpers/MessageRenderer.js';
 
 describe('UIManager', () => {
   let uiManager;
+  let renderer;
   let mockEditor;
 
   beforeEach(() => {
@@ -40,6 +42,7 @@ describe('UIManager', () => {
     };
 
     uiManager = new UIManager(mockEditor);
+    renderer = new MessageRenderer(mockEditor);
   });
 
   describe('show/hideConfigBanner', () => {
@@ -53,20 +56,20 @@ describe('UIManager', () => {
 
   describe('createMessageElement', () => {
     it('should create a user message', () => {
-      const el = uiManager.createMessageElement('user', 'hello');
+      const el = renderer.createMessageElement('user', 'hello');
       expect(el.className).toContain('ai-message-user');
       expect(el.textContent).toContain('hello');
     });
 
     it('should create an assistant text message', () => {
-      const el = uiManager.createMessageElement('assistant', 'hi', { type: 'text' });
+      const el = renderer.createMessageElement('assistant', 'hi', { type: 'text' });
       expect(el.className).toContain('ai-message-assistant');
       expect(el.textContent).toContain('hi');
     });
 
     it('should create an assistant code message', () => {
       const data = { type: 'code', code: 'console.log(1)', name: 'Test', explanation: 'exp' };
-      const el = uiManager.createMessageElement('assistant', '', data);
+      const el = renderer.createMessageElement('assistant', '', data);
       expect(el.querySelector('.ai-code-block')).not.toBeNull();
       expect(el.textContent).toContain('exp');
     });
@@ -78,7 +81,7 @@ describe('UIManager', () => {
         name: 'Test',
         explanation: 'exp',
       };
-      const el = uiManager.createMessageElement('assistant', '', data);
+      const el = renderer.createMessageElement('assistant', '', data);
       expect(el.querySelector('.ai-diff-container')).not.toBeNull();
       expect(el.textContent).toContain('exp');
     });
@@ -86,7 +89,7 @@ describe('UIManager', () => {
 
   describe('createCodePreview', () => {
     it('should create element with code and title', () => {
-      const el = uiManager.createCodePreview('code', 'My Script');
+      const el = renderer.createCodePreview('code', 'My Script');
       expect(el.className).toContain('ai-code-response');
       expect(el.querySelector('.ai-code-title').textContent).toContain('My Script');
       expect(el.querySelector('.ai-code-block').textContent).toBe('code');
@@ -94,14 +97,14 @@ describe('UIManager', () => {
 
     it('should show Update button if currentScript exists', () => {
       mockEditor.currentScript = { id: 's1', name: 'Existing' };
-      const el = uiManager.createCodePreview('code', 'New');
+      const el = renderer.createCodePreview('code', 'New');
       const applyBtn = el.querySelector('.ai-code-btn.primary');
       expect(applyBtn.textContent).toContain('Update');
     });
 
     it('should show Create button if no currentScript', () => {
       mockEditor.currentScript = null;
-      const el = uiManager.createCodePreview('code', 'New');
+      const el = renderer.createCodePreview('code', 'New');
       const applyBtn = el.querySelector('.ai-code-btn.primary');
       expect(applyBtn.textContent).toContain('Create');
     });
@@ -123,7 +126,7 @@ describe('UIManager', () => {
 
   describe('createMessageElement errors', () => {
     it('should render error data message', () => {
-      const el = uiManager.createMessageElement('assistant', 'bad error', { error: true });
+      const el = renderer.createMessageElement('assistant', 'bad error', { error: true });
       expect(el.textContent).toContain('Error');
       expect(el.textContent).toContain('bad error');
     });
@@ -132,7 +135,7 @@ describe('UIManager', () => {
   describe('createPatchPreview', () => {
     it('should create element with patch items', () => {
       const patches = [{ type: 'unified', diff: '@@ -1 +1 @@\n-old\n+new' }];
-      const el = uiManager.createPatchPreview(patches);
+      const el = renderer.createPatchPreview(patches);
       expect(el.className).toContain('ai-patch-response');
       expect(el.querySelectorAll('.ai-patch-preview')).toHaveLength(1);
     });
@@ -206,7 +209,7 @@ describe('UIManager', () => {
   describe('_createUserTextElement', () => {
     it('should create user text element', () => {
       const text = 'Hello world';
-      const el = uiManager._createUserTextElement(text);
+      const el = renderer._createUserTextElement(text);
       expect(el.tagName).toBe('DIV');
       expect(el.className).toContain('ai-message-text');
       expect(el.textContent).toBe('Hello world');

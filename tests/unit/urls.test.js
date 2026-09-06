@@ -8,7 +8,7 @@ import {
   isValidWebpage,
   normalizeMatchPattern,
   urlMatchesPattern,
-} from '../../src/utils/urls.js';
+} from '../../src/shared/utils/urls.js';
 
 describe('urls utilities', () => {
   it('matches urls with exact/wildcard/path patterns', () => {

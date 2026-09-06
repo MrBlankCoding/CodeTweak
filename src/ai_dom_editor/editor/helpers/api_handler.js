@@ -1,5 +1,7 @@
-import logger from '../../../utils/logger.js';
-import { AIDiffHelper } from '../../../utils/ai_diff_helper.js';
+import logger from '../../../shared/utils/logger.js';
+import { AIDiffHelper } from '../../../shared/utils/ai_diff_helper.js';
+import { PromptBuilder } from './promptBuilder.js';
+import { browser } from '../../../shared/browserAdapter.js';
 
 export class ApiHandler {
   constructor(editor) {
@@ -12,15 +14,10 @@ export class ApiHandler {
 
   async loadAPIConfig() {
     try {
-      const { aiDomEditorConfigs = [] } = await chrome.storage.local.get('aiDomEditorConfigs');
-
+      const { aiDomEditorConfigs = [] } = await browser.storage.local.get('aiDomEditorConfigs');
       this.apiConfig = Array.isArray(aiDomEditorConfigs) ? aiDomEditorConfigs[0] || null : null;
-
-      if (this._hasUsableConfig(this.apiConfig)) {
-        this.editor.uiManager.hideConfigBanner();
-      } else {
-        this.editor.uiManager.showConfigBanner();
-      }
+      if (this._hasUsableConfig(this.apiConfig)) this.editor.uiManager.hideConfigBanner();
+      else this.editor.uiManager.showConfigBanner();
     } catch (error) {
       logger.error('Error loading AI config:', error);
       this.editor.uiManager.showConfigBanner();
@@ -33,19 +30,15 @@ export class ApiHandler {
         availableModels = [],
         lastAiModel = null,
         aiDomEditorConfigs = [],
-      } = await chrome.storage.local.get(['availableModels', 'lastAiModel', 'aiDomEditorConfigs']);
+      } = await browser.storage.local.get(['availableModels', 'lastAiModel', 'aiDomEditorConfigs']);
 
       this.availableModels = this._normalizeModels(availableModels, aiDomEditorConfigs);
       const parsedSelected = this._safeParseJSON(lastAiModel) || lastAiModel;
-
       this._renderModelSelector(parsedSelected);
 
       const activeModel = this.selectedModel || this.availableModels[0] || null;
       this.selectedModel = activeModel;
-
-      if (activeModel) {
-        await chrome.storage.local.set({ lastAiModel: activeModel });
-      }
+      if (activeModel) await browser.storage.local.set({ lastAiModel: activeModel });
     } catch (error) {
       logger.error('Error loading AI models:', error);
       this.availableModels = [];
@@ -55,35 +48,27 @@ export class ApiHandler {
   }
 
   async handleModelChange(e) {
-    try {
-      const value = e?.target?.value;
-      if (!value) return;
-
-      const parsed = this._safeParseJSON(value);
-      if (!parsed || typeof parsed !== 'object') return;
-
-      this.selectedModel = parsed;
-      await chrome.storage.local.set({ lastAiModel: parsed });
-    } catch (error) {
-      logger.error('Error changing model:', error);
-    }
+    const value = e?.target?.value;
+    if (!value) return;
+    const parsed = this._safeParseJSON(value);
+    if (!parsed) return;
+    this.selectedModel = parsed;
+    await browser.storage.local.set({ lastAiModel: parsed });
   }
 
   async callAIAPI(userMessage, domSummary, previousCode = null, history = []) {
     const message = (userMessage || '').trim();
-    if (!message) {
-      return { type: 'text', message: 'Please enter a request.' };
-    }
+    if (!message) return { type: 'text', message: 'Please enter a request.' };
 
     const activeConfig = this._getActiveConfig();
     if (!this._hasUsableConfig(activeConfig)) {
       this.editor.uiManager.showConfigBanner();
-      throw new Error('Please configure an AI API key, endpoint, and model.');
+      throw new Error('Please configure AI settings.');
     }
 
     const providerType = this._detectProviderType(activeConfig);
-    const systemPrompt = this._buildSystemPrompt(domSummary, previousCode);
-    const requestBody = this._buildRequestBody({
+    const systemPrompt = PromptBuilder.buildSystemPrompt(domSummary, previousCode);
+    const requestBody = PromptBuilder.buildRequestBody({
       providerType,
       activeConfig,
       systemPrompt,
@@ -91,18 +76,15 @@ export class ApiHandler {
       history,
     });
 
-    const timeoutMs = Number(activeConfig.requestTimeoutMs || this.defaultTimeoutMs);
     const responseJson = await this._executeRequest({
       endpoint: activeConfig.endpoint,
       headers: this._buildHeaders(activeConfig, providerType),
       body: requestBody,
-      timeoutMs,
+      timeoutMs: Number(activeConfig.requestTimeoutMs || this.defaultTimeoutMs),
     });
 
     const rawContent = this._extractContent(responseJson, providerType);
-    if (!rawContent) {
-      throw new Error('AI returned an empty response.');
-    }
+    if (!rawContent) throw new Error('AI returned an empty response.');
 
     return this._parseAIContent(rawContent);
   }
@@ -110,15 +92,10 @@ export class ApiHandler {
   _normalizeModels(availableModels, configs) {
     if (Array.isArray(availableModels) && availableModels.length > 0) {
       return availableModels
-        .map((model) => this._normalizeModelRecord(model))
-        .filter((model) => this._hasUsableConfig(model));
+        .map((m) => this._normalizeModelRecord(m))
+        .filter((m) => this._hasUsableConfig(m));
     }
-
-    if (!Array.isArray(configs)) {
-      return [];
-    }
-
-    return configs
+    return (Array.isArray(configs) ? configs : [])
       .map((cfg) => ({
         id: cfg.model || cfg.id || '',
         model: cfg.model || cfg.id || '',
@@ -128,7 +105,7 @@ export class ApiHandler {
         temperature: cfg.temperature,
         maxTokens: cfg.maxTokens,
       }))
-      .filter((model) => this._hasUsableConfig(model));
+      .filter((m) => this._hasUsableConfig(m));
   }
 
   _normalizeModelRecord(model) {
@@ -145,256 +122,112 @@ export class ApiHandler {
   _renderModelSelector(selectedModel) {
     const selector = this.editor.elements.modelSelector;
     if (!selector) return;
-
     selector.innerHTML = '';
-
     if (!this.availableModels.length) {
-      const option = document.createElement('option');
-      option.value = '';
-      option.textContent = 'No models available - Configure API keys';
-      selector.appendChild(option);
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = 'No models available';
+      selector.appendChild(opt);
       selector.disabled = true;
       this.selectedModel = null;
       return;
     }
-
     selector.disabled = false;
-
-    const grouped = this.availableModels.reduce((acc, model) => {
-      const provider = (model.provider || 'custom').toLowerCase();
-      if (!acc[provider]) acc[provider] = [];
-      acc[provider].push(model);
+    const grouped = this.availableModels.reduce((acc, m) => {
+      const p = (m.provider || 'custom').toLowerCase();
+      if (!acc[p]) acc[p] = [];
+      acc[p].push(m);
       return acc;
     }, {});
-
-    const selectedSignature = this._modelSignature(selectedModel);
-    let matchedModel = null;
-
+    const sig = this._modelSignature(selectedModel);
+    let matched = null;
     Object.keys(grouped)
       .sort()
-      .forEach((provider) => {
-        const group = document.createElement('optgroup');
-        group.label = provider.toUpperCase();
-
-        grouped[provider].forEach((model, idx) => {
-          const option = document.createElement('option');
-          option.value = JSON.stringify(model);
-          option.textContent = model.id || model.model || `${provider}-${idx + 1}`;
-
-          if (selectedSignature && this._modelSignature(model) === selectedSignature) {
-            option.selected = true;
-            matchedModel = model;
+      .forEach((p) => {
+        const g = document.createElement('optgroup');
+        g.label = p.toUpperCase();
+        grouped[p].forEach((m, i) => {
+          const o = document.createElement('option');
+          o.value = JSON.stringify(m);
+          o.textContent = m.id || m.model || `${p}-${i + 1}`;
+          if (sig && this._modelSignature(m) === sig) {
+            o.selected = true;
+            matched = m;
           }
-
-          group.appendChild(option);
+          g.appendChild(o);
         });
-
-        selector.appendChild(group);
+        selector.appendChild(g);
       });
-
-    this.selectedModel = matchedModel || this.availableModels[0];
+    this.selectedModel = matched || this.availableModels[0];
   }
 
-  _modelSignature(model) {
-    if (!model) return '';
-    const provider = (model.provider || 'custom').toLowerCase();
-    const id = model.id || model.model || '';
-    return `${provider}:${id}`;
+  _modelSignature(m) {
+    return m ? `${(m.provider || 'custom').toLowerCase()}:${m.id || m.model || ''}` : '';
   }
 
   _getActiveConfig() {
-    const selected = this._normalizeModelRecord(this.selectedModel || {});
-    const fallback = this._normalizeModelRecord(this.apiConfig || {});
-
+    const s = this._normalizeModelRecord(this.selectedModel || {});
+    const f = this._normalizeModelRecord(this.apiConfig || {});
     return {
-      ...fallback,
-      ...selected,
-      model: selected.model || selected.id || fallback.model || fallback.id || '',
-      id: selected.id || selected.model || fallback.id || fallback.model || '',
-      endpoint: selected.endpoint || fallback.endpoint || '',
-      apiKey: selected.apiKey || fallback.apiKey || fallback.key || '',
-      provider: (selected.provider || fallback.provider || 'custom').toLowerCase(),
-      temperature: selected.temperature ?? fallback.temperature ?? 0.4,
-      maxTokens: selected.maxTokens ?? fallback.maxTokens ?? 1800,
+      ...f,
+      ...s,
+      model: s.model || s.id || f.model || f.id || '',
+      id: s.id || s.model || f.id || f.model || '',
+      endpoint: s.endpoint || f.endpoint || '',
+      apiKey: s.apiKey || f.apiKey || f.key || '',
+      provider: (s.provider || f.provider || 'custom').toLowerCase(),
+      temperature: s.temperature ?? f.temperature ?? 0.4,
+      maxTokens: s.maxTokens ?? f.maxTokens ?? 1800,
     };
   }
 
-  _hasUsableConfig(config) {
-    return !!(config && config.apiKey && config.endpoint && (config.id || config.model));
+  _hasUsableConfig(c) {
+    return !!(c && c.apiKey && c.endpoint && (c.id || c.model));
   }
 
-  _detectProviderType(config) {
-    const provider = (config.provider || '').toLowerCase();
-    const endpoint = (config.endpoint || '').toLowerCase();
-    const model = (config.model || config.id || '').toLowerCase();
-
+  _detectProviderType(c) {
+    const p = (c.provider || '').toLowerCase(),
+      e = (c.endpoint || '').toLowerCase(),
+      m = (c.model || c.id || '').toLowerCase();
     if (
-      provider.includes('google') ||
-      provider.includes('gemini') ||
-      endpoint.includes('generativelanguage.googleapis.com')
-    ) {
+      p.includes('google') ||
+      p.includes('gemini') ||
+      e.includes('generativelanguage.googleapis.com')
+    )
       return 'google';
-    }
-
-    if (
-      provider.includes('anthropic') ||
-      endpoint.includes('api.anthropic.com') ||
-      model.includes('claude')
-    ) {
+    if (p.includes('anthropic') || e.includes('api.anthropic.com') || m.includes('claude'))
       return 'anthropic';
-    }
-
     return 'openai';
   }
 
-  _buildSystemPrompt(domSummary, previousCode) {
-    const safeDom = (domSummary || '').slice(0, 50000);
-
-    let prompt = `You are a Senior Systems Architect and Expert Userscript Developer. Generate practical, robust JavaScript for userscripts.
-
-OUTPUT CONTRACT (required):
-1) First line: Script Name: <short descriptive title>
-2) Second line: one concise sentence describing behavior
-3) Then your code changes (either a full block or surgical patches)
-4) No userscript metadata headers (no ==UserScript== block)
-5) Assume requested GM APIs are available
-
-CORE ENGINEERING PRINCIPLES:
-1. DRY (Don't Repeat Yourself): If you are adding logic that already exists, you MUST refactor it into a shared function.
-2. Architectural Reasoning: Before adding new triggers (like keyboard shortcuts), check if the logic already exists in another handler and extract it if necessary.
-3. Minimal Impact: When modifying existing code, you MUST provide your changes in SEARCH/REPLACE blocks or Unified Diff format for surgical edits.
-
-${AIDiffHelper.getSystemInstructions()}
-
-PAGE CONTEXT (DOM SUMMARY):
-${safeDom}`;
-
-    if (previousCode) {
-      prompt += `\n\nCURRENT SCRIPT CONTEXT:\n\n\
-\`\`\`javascript
-${previousCode}
-\`\`\``;
-    }
-
-    return prompt;
-  }
-
-  _buildRequestBody({ providerType, activeConfig, systemPrompt, message, history }) {
-    const trimmedHistory = this._formatHistory(history).slice(-6);
-    const userPayload = `User request: ${message}`;
-
-    if (providerType === 'google') {
-      const transcript = [
-        `SYSTEM:\n${systemPrompt}`,
-        ...trimmedHistory.map((item) => `${item.role.toUpperCase()}:\n${item.content}`),
-        `USER:\n${userPayload}`,
-      ].join('\n\n');
-
-      return {
-        contents: [{ parts: [{ text: transcript }] }],
-        generationConfig: {
-          temperature: Number(activeConfig.temperature ?? 0.4),
-          maxOutputTokens: Number(activeConfig.maxTokens ?? 1800),
-        },
-      };
-    }
-
-    if (providerType === 'anthropic') {
-      return {
-        model: activeConfig.model || activeConfig.id,
-        system: systemPrompt,
-        messages: [...trimmedHistory, { role: 'user', content: userPayload }],
-        temperature: Number(activeConfig.temperature ?? 0.4),
-        max_tokens: Number(activeConfig.maxTokens ?? 1800),
-      };
-    }
-
-    return {
-      model: activeConfig.model || activeConfig.id,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...trimmedHistory,
-        { role: 'user', content: userPayload },
-      ],
-      temperature: Number(activeConfig.temperature ?? 0.4),
-      max_tokens: Number(activeConfig.maxTokens ?? 1800),
-    };
-  }
-
-  _formatHistory(history) {
-    if (!Array.isArray(history)) return [];
-
-    return history
-      .map((msg) => {
-        if (!msg || !msg.role) return null;
-
-        if (msg.role === 'user') {
-          return { role: 'user', content: (msg.text || '').trim() };
-        }
-
-        if (msg.role === 'assistant') {
-          if (msg.data?.type === 'code' && msg.data?.code) {
-            const parts = [];
-            if (msg.data.name) parts.push(`Script Name: ${msg.data.name}`);
-            if (msg.data.explanation) parts.push(msg.data.explanation);
-            parts.push(`\`\`\`javascript\n${msg.data.code}\n\`\`\``);
-            return { role: 'assistant', content: parts.join('\n\n') };
-          }
-          return { role: 'assistant', content: (msg.text || '').trim() };
-        }
-
-        return null;
-      })
-      .filter((entry) => entry && entry.content);
-  }
-
-  _buildHeaders(config, providerType) {
-    const headers = {
-      'Content-Type': 'application/json',
-    };
-
-    const apiKey = config.apiKey;
-    if (!apiKey) return headers;
-
-    if (providerType === 'google') {
-      headers['x-goog-api-key'] = apiKey;
-      return headers;
-    }
-
-    if (providerType === 'anthropic') {
-      headers['x-api-key'] = apiKey;
-      headers['anthropic-version'] = '2023-06-01';
-      return headers;
-    }
-
-    headers.Authorization = `Bearer ${apiKey}`;
-    return headers;
+  _buildHeaders(c, type) {
+    const h = { 'Content-Type': 'application/json' };
+    if (!c.apiKey) return h;
+    if (type === 'google') h['x-goog-api-key'] = c.apiKey;
+    else if (type === 'anthropic') {
+      h['x-api-key'] = c.apiKey;
+      h['anthropic-version'] = '2023-06-01';
+    } else h.Authorization = `Bearer ${c.apiKey}`;
+    return h;
   }
 
   async _executeRequest({ endpoint, headers, body, timeoutMs }) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
       const res = await fetch(endpoint, {
         method: 'POST',
         headers,
         body: JSON.stringify(body),
-        signal: controller.signal,
+        signal: ctrl.signal,
       });
-
-      if (!res.ok) {
-        throw new Error(await this._extractErrorMessage(res));
-      }
-
+      if (!res.ok) throw new Error(await this._extractErrorMessage(res));
       return await res.json();
-    } catch (error) {
-      if (error?.name === 'AbortError') {
-        throw new Error(`AI request timed out after ${timeoutMs}ms`);
-      }
-      throw error;
+    } catch (e) {
+      if (e?.name === 'AbortError') throw new Error(`AI request timed out after ${timeoutMs}ms`);
+      throw e;
     } finally {
-      clearTimeout(timeoutId);
+      clearTimeout(tid);
     }
   }
 
@@ -404,66 +237,40 @@ ${previousCode}
       return data?.error?.message || data?.message || JSON.stringify(data);
     } catch {
       try {
-        const text = await res.text();
-        return text || `AI request failed with status ${res.status}`;
+        return (await res.text()) || `AI request failed with status ${res.status}`;
       } catch {
         return `AI request failed with status ${res.status}`;
       }
     }
   }
 
-  _extractContent(data, providerType) {
-    if (providerType === 'google') {
-      const parts = data?.candidates?.[0]?.content?.parts;
-      if (Array.isArray(parts)) {
-        return parts
-          .map((p) => p?.text || '')
-          .join('\n')
-          .trim();
-      }
-    }
-
-    if (providerType === 'anthropic') {
-      const content = data?.content;
-      if (Array.isArray(content)) {
-        return content
-          .map((item) => item?.text || '')
-          .join('\n')
-          .trim();
-      }
-    }
-
-    const openAIContent = data?.choices?.[0]?.message?.content;
-    if (Array.isArray(openAIContent)) {
-      return openAIContent
-        .map((part) => {
-          if (typeof part === 'string') return part;
-          if (part?.type === 'text') return part.text || '';
-          if (part?.text?.value) return part.text.value;
-          return '';
-        })
+  _extractContent(data, type) {
+    if (type === 'google')
+      return data?.candidates?.[0]?.content?.parts
+        ?.map((p) => p?.text || '')
         .join('\n')
         .trim();
-    }
-
-    return (
-      openAIContent ||
-      data?.choices?.[0]?.text ||
-      data?.output_text ||
-      data?.text ||
-      ''
-    ).trim();
+    if (type === 'anthropic')
+      return data?.content
+        ?.map((i) => i?.text || '')
+        .join('\n')
+        .trim();
+    const c = data?.choices?.[0]?.message?.content;
+    if (Array.isArray(c))
+      return c
+        .map((p) =>
+          typeof p === 'string' ? p : p?.type === 'text' ? p.text : p?.text?.value || ''
+        )
+        .join('\n')
+        .trim();
+    return (c || data?.choices?.[0]?.text || data?.output_text || data?.text || '').trim();
   }
 
   _parseAIContent(content) {
     const text = (content || '').trim();
-    if (!text) {
-      return { type: 'text', message: '' };
-    }
-
-    const scriptNameMatch = text.match(/^\s*Script Name:\s*(.+)$/im);
+    if (!text) return { type: 'text', message: '' };
+    const nameMatch = text.match(/^\s*Script Name:\s*(.+)$/im);
     const patches = AIDiffHelper.parsePatches(text);
-
     if (patches.length > 0) {
       const explanation = text
         .replace(/<<<<<< SEARCH[\s\S]*?>>>>>> REPLACE/gi, '')
@@ -472,33 +279,31 @@ ${previousCode}
         .replace(/\r?\n+/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
-
       return {
         type: 'patch',
         patches,
-        name: this._cleanScriptName(scriptNameMatch?.[1]) || 'Script Update',
-        explanation: explanation || 'I have prepared some surgical edits for your script:',
+        name: this._cleanScriptName(nameMatch?.[1]) || 'Script Update',
+        explanation: explanation || 'I have prepared some surgical edits:',
       };
     }
-
     const codeMatch = text.match(/```(?:javascript|js|ts)?\s*([\s\S]*?)```/i);
-
     if (codeMatch?.[1]) {
-      const code = codeMatch[1].trim();
-      const explanation = this._extractExplanation(text).trim();
-      const name = this._cleanScriptName(scriptNameMatch?.[1]) || 'Generated Script';
-
-      // If we are updating an existing script, diff it to show changes
+      const code = codeMatch[1].trim(),
+        explanation = this._extractExplanation(text).trim(),
+        name = this._cleanScriptName(nameMatch?.[1]) || 'Generated Script';
       if (this.editor.currentScript && code !== this.editor.currentScript.code.trim()) {
-        const diff = AIDiffHelper.createUnifiedDiff(this.editor.currentScript.code.trim(), code);
         return {
           type: 'patch',
-          patches: [{ type: 'unified', diff: diff }],
+          patches: [
+            {
+              type: 'unified',
+              diff: AIDiffHelper.createUnifiedDiff(this.editor.currentScript.code.trim(), code),
+            },
+          ],
           name,
-          explanation: explanation || 'I have refactored the script for you:',
+          explanation: explanation || 'I have refactored the script:',
         };
       }
-
       return {
         type: 'code',
         name,
@@ -506,17 +311,13 @@ ${previousCode}
         code,
       };
     }
-
-    if (this._looksLikeCode(text)) {
-      const name = this._cleanScriptName(scriptNameMatch?.[1]) || 'Generated Script';
+    if (this._looksLikeCode(text))
       return {
         type: 'code',
-        name,
+        name: this._cleanScriptName(nameMatch?.[1]) || 'Generated Script',
         explanation: 'Generated script based on your request.',
         code: text,
       };
-    }
-
     return { type: 'text', message: text };
   }
 
@@ -528,22 +329,23 @@ ${previousCode}
       .replace(/\s+/g, ' ')
       .trim();
   }
-
   _cleanScriptName(raw) {
-    if (!raw) return '';
     return raw
-      .replace(/^['"]|['"]$/g, '')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 80);
+      ? raw
+          .replace(/<[^>]*>/g, '')
+          .replace(/^['"]|['"]$/g, '')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 80)
+      : '';
   }
-
-  _looksLikeCode(text) {
-    if (/==UserScript==|==\/UserScript==/.test(text)) return true;
-    if (/\(\s*function\s*\(\)\s*\{[\s\S]*?\}\)\(\);?/.test(text)) return true;
-    if (/^\s*(?:\/\/.*\n)+\s*(?:const|let|var|function|\(|document\.|GM_)/m.test(text)) return true;
-
-    const signals = [
+  _looksLikeCode(t) {
+    if (
+      /==UserScript==|==\/UserScript==/.test(t) ||
+      /\(\s*function\s*\(\)\s*\{[\s\S]*?\}\)\(\);?/.test(t)
+    )
+      return true;
+    const s = [
       /\bfunction\b/,
       /\bconst\s+\w+\s*=/,
       /\blet\s+\w+\s*=/,
@@ -557,15 +359,12 @@ ${previousCode}
       /=>\s*\{/,
       /;\s*$/m,
     ];
-
-    const matched = signals.filter((pattern) => pattern.test(text)).length;
-    return matched >= 2 || (matched >= 1 && text.split('\n').length > 8);
+    const m = s.filter((p) => p.test(t)).length;
+    return m >= 2 || (m >= 1 && t.split('\n').length > 8);
   }
-
-  _safeParseJSON(value) {
-    if (!value || typeof value !== 'string') return null;
+  _safeParseJSON(v) {
     try {
-      return JSON.parse(value);
+      return JSON.parse(v);
     } catch {
       return null;
     }

@@ -1,4 +1,4 @@
-import logger from '../utils/logger.js';
+import logger from '../shared/utils/logger.js';
 /* global feather */
 
 export class ElementSelectorMenu {
@@ -254,10 +254,10 @@ if (target) {
       try {
         if (
           typeof chrome !== 'undefined' &&
-          chrome.runtime &&
-          typeof chrome.runtime.sendMessage === 'function'
+          (globalThis.browser ?? globalThis.chrome).runtime &&
+          typeof (globalThis.browser ?? globalThis.chrome).runtime.sendMessage === 'function'
         ) {
-          chrome.runtime.sendMessage({
+          (globalThis.browser ?? globalThis.chrome).runtime.sendMessage({
             action: 'createScript',
             data: {
               selector,
@@ -267,7 +267,7 @@ if (target) {
           });
         } else {
           logger.warn(
-            'CodeTweak: chrome.runtime.sendMessage is not available; cannot send createScript message.'
+            'CodeTweak: (globalThis.browser ?? globalThis.chrome).runtime.sendMessage is not available; cannot send createScript message.'
           );
         }
       } catch (error) {

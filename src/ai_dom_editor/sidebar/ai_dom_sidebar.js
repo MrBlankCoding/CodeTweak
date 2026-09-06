@@ -10,13 +10,15 @@ class AIDOMSidebar {
   }
 
   setupMessageListener() {
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-      if (message.action === 'openAIEditor') {
-        this.toggleSidebar();
-        sendResponse({ success: true });
+    (globalThis.browser ?? globalThis.chrome).runtime.onMessage.addListener(
+      (message, sender, sendResponse) => {
+        if (message.action === 'openAIEditor') {
+          this.toggleSidebar();
+          sendResponse({ success: true });
+        }
+        return true;
       }
-      return true;
-    });
+    );
 
     // Listen for messages from the iframe
     window.addEventListener('message', (event) => {
@@ -72,7 +74,9 @@ class AIDOMSidebar {
 
     // Create iframe
     this.iframe = document.createElement('iframe');
-    this.iframe.src = chrome.runtime.getURL('ai_dom_editor/editor/ai_dom_editor.html');
+    this.iframe.src = (globalThis.browser ?? globalThis.chrome).runtime.getURL(
+      'ai_dom_editor/editor/ai_dom_editor.html'
+    );
     this.iframe.style.cssText = `
       width: 100%;
       height: 100%;

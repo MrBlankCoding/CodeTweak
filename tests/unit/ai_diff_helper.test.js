@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { AIDiffHelper } from '../../src/utils/ai_diff_helper.js';
+import { AIDiffHelper } from '../../src/shared/utils/ai_diff_helper.js';
 
 describe('AIDiffHelper', () => {
   describe('parsePatches', () => {

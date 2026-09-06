@@ -1,4 +1,4 @@
-import ScriptAnalyzer from '../../../utils/scriptAnalyzer.js';
+import ScriptAnalyzer from '../../../services/scripts/ScriptAnalyzer.js';
 
 export class EventHandler {
   constructor(editor) {
@@ -62,7 +62,7 @@ export class EventHandler {
   }
 
   setupMessageListener() {
-    chrome.runtime.onMessage.addListener((message) => {
+    (globalThis.browser ?? globalThis.chrome).runtime.onMessage.addListener((message) => {
       if (message.action === 'aiSettingsUpdated') {
         this.editor.apiHandler.loadAPIConfig();
         this.editor.apiHandler.loadAvailableModels();
@@ -100,7 +100,10 @@ export class EventHandler {
     const loadingId = this.editor.uiManager.addLoadingMessage();
 
     try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const [tab] = await (globalThis.browser ?? globalThis.chrome).tabs.query({
+        active: true,
+        currentWindow: true,
+      });
       if (!tab?.id) {
         throw new Error('No active tab found.');
       }
@@ -192,9 +195,9 @@ export class EventHandler {
 
   _sendTabMessage(tabId, payload) {
     return new Promise((resolve, reject) => {
-      chrome.tabs.sendMessage(tabId, payload, (response) => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
+      (globalThis.browser ?? globalThis.chrome).tabs.sendMessage(tabId, payload, (response) => {
+        if ((globalThis.browser ?? globalThis.chrome).runtime.lastError) {
+          reject(new Error((globalThis.browser ?? globalThis.chrome).runtime.lastError.message));
           return;
         }
         resolve(response);
@@ -233,6 +236,6 @@ export class EventHandler {
   }
 
   openSettings() {
-    chrome.runtime.sendMessage({ action: 'openAISettings' });
+    (globalThis.browser ?? globalThis.chrome).runtime.sendMessage({ action: 'openAISettings' });
   }
 }

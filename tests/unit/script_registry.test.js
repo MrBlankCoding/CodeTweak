@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { ScriptRegistry } from '../../src/core/scriptRegistry.js';
+import { ScriptRegistry } from '../../src/services/scripts/ScriptRegistry.js';
 
 describe('ScriptRegistry', () => {
   function createStorage(scripts = []) {

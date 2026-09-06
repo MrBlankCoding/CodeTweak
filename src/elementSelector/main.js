@@ -3,7 +3,7 @@ import { ElementSelectorMenu } from './menu.js';
 
 const elementSelectorInstance = new ElementSelector();
 
-chrome.runtime.onMessage.addListener((message) => {
+(globalThis.browser ?? globalThis.chrome).runtime.onMessage.addListener((message) => {
   if (message.action === 'startSelection') {
     const menu = new ElementSelectorMenu(elementSelectorInstance);
     menu.start();
@@ -12,7 +12,7 @@ chrome.runtime.onMessage.addListener((message) => {
       (element) => {
         if (element) {
           const selector = elementSelectorInstance.getUniqueSelector(element);
-          chrome.runtime.sendMessage({
+          (globalThis.browser ?? globalThis.chrome).runtime.sendMessage({
             action: 'aiElementSelected',
             selector: selector,
           });

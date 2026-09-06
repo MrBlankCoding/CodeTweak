@@ -1,10 +1,10 @@
-import logger from '../utils/logger.js';
+import logger from '../shared/utils/logger.js';
 import { EditorState, Compartment } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers } from '@codemirror/view';
 import { basicSetup } from 'codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { defaultKeymap, indentWithTab } from '@codemirror/commands';
-import { parseUserScriptMetadata } from '../utils/metadataParser.js';
+import { parseUserScriptMetadata } from '../services/scripts/MetadataParser.js';
 import { autocompletion, closeBrackets } from '@codemirror/autocomplete';
 import { bracketMatching } from '@codemirror/language';
 import { linter, lintGutter } from '@codemirror/lint';
@@ -43,12 +43,14 @@ export class CodeEditorManager {
     this.currentPerfTier = 'normal'; // 'normal' | 'large' | 'huge'
     this._perfCheckTimer = null;
 
-    chrome.storage.onChanged.addListener((changes, namespace) => {
-      if (namespace === 'local' && changes.editorSettings) {
-        this.currentSettings = { ...this.defaultSettings, ...changes.editorSettings.newValue };
-        this.applySettings(this.currentSettings);
+    (globalThis.browser ?? globalThis.chrome).storage.onChanged.addListener(
+      (changes, namespace) => {
+        if (namespace === 'local' && changes.editorSettings) {
+          this.currentSettings = { ...this.defaultSettings, ...changes.editorSettings.newValue };
+          this.applySettings(this.currentSettings);
+        }
       }
-    });
+    );
   }
 
   async initializeCodeEditor() {
@@ -283,7 +285,7 @@ export class CodeEditorManager {
 
   loadSettings() {
     return new Promise((resolve) => {
-      chrome.storage.local.get(['editorSettings'], (result) => {
+      (globalThis.browser ?? globalThis.chrome).storage.local.get(['editorSettings'], (result) => {
         if (result.editorSettings) {
           this.currentSettings = { ...this.defaultSettings, ...result.editorSettings };
         } else {
@@ -296,7 +298,9 @@ export class CodeEditorManager {
 
   saveSettings(settings) {
     this.currentSettings = { ...this.currentSettings, ...settings };
-    chrome.storage.local.set({ editorSettings: this.currentSettings });
+    (globalThis.browser ?? globalThis.chrome).storage.local.set({
+      editorSettings: this.currentSettings,
+    });
     this.applySettings(settings);
   }
 

@@ -1,4 +1,4 @@
-import logger from '../../utils/logger.js';
+import logger from '../../shared/utils/logger.js';
 // AI DOM Editor - Main JavaScript
 import feather from 'feather-icons';
 import { ChatManager } from './helpers/chat_manager.js';
@@ -6,7 +6,7 @@ import { UIManager } from './helpers/ui_manager.js';
 import { ApiHandler } from './helpers/api_handler.js';
 import { EventHandler } from './helpers/event_handler.js';
 import { UserscriptHandler } from './helpers/userscript_handler.js';
-import { applyTranslations } from '../../utils/i18n.js';
+import { applyTranslations } from '../../shared/utils/i18n.js';
 
 class AIDOMEditor {
   constructor() {
@@ -74,13 +74,17 @@ class AIDOMEditor {
   async saveCurrentScriptState() {
     try {
       let tab;
-      if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
-        [tab] = await chrome.tabs.query({
+      if (
+        typeof chrome !== 'undefined' &&
+        (globalThis.browser ?? globalThis.chrome).tabs &&
+        (globalThis.browser ?? globalThis.chrome).tabs.query
+      ) {
+        [tab] = await (globalThis.browser ?? globalThis.chrome).tabs.query({
           active: true,
           currentWindow: true,
         });
       } else {
-        const response = await chrome.runtime.sendMessage({
+        const response = await (globalThis.browser ?? globalThis.chrome).runtime.sendMessage({
           action: 'getCurrentTab',
         });
         tab = response?.tab;
@@ -93,11 +97,11 @@ class AIDOMEditor {
       const storageKey = `aiCurrentScript_${siteUrl}`;
 
       if (this.currentScript) {
-        await chrome.storage.local.set({
+        await (globalThis.browser ?? globalThis.chrome).storage.local.set({
           [storageKey]: this.currentScript,
         });
       } else {
-        await chrome.storage.local.remove(storageKey);
+        await (globalThis.browser ?? globalThis.chrome).storage.local.remove(storageKey);
       }
     } catch (error) {
       logger.error('Error saving current script state:', error);
@@ -107,13 +111,17 @@ class AIDOMEditor {
   async restoreCurrentScriptState() {
     try {
       let tab;
-      if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
-        [tab] = await chrome.tabs.query({
+      if (
+        typeof chrome !== 'undefined' &&
+        (globalThis.browser ?? globalThis.chrome).tabs &&
+        (globalThis.browser ?? globalThis.chrome).tabs.query
+      ) {
+        [tab] = await (globalThis.browser ?? globalThis.chrome).tabs.query({
           active: true,
           currentWindow: true,
         });
       } else {
-        const response = await chrome.runtime.sendMessage({
+        const response = await (globalThis.browser ?? globalThis.chrome).runtime.sendMessage({
           action: 'getCurrentTab',
         });
         tab = response?.tab;
@@ -125,17 +133,19 @@ class AIDOMEditor {
       const siteUrl = `${url.protocol}//${url.hostname}`;
       const storageKey = `aiCurrentScript_${siteUrl}`;
 
-      const { [storageKey]: script } = await chrome.storage.local.get(storageKey);
+      const { [storageKey]: script } = await (
+        globalThis.browser ?? globalThis.chrome
+      ).storage.local.get(storageKey);
       if (script) {
-        // Verify the script actually exists before restoring
-        const { scripts = [] } = await chrome.storage.local.get('scripts');
+        const { scripts = [] } = await (globalThis.browser ?? globalThis.chrome).storage.local.get(
+          'scripts'
+        );
         const scriptExists = scripts.some((s) => s.id === script.id);
 
         if (scriptExists) {
           this.setCurrentScript(script);
         } else {
-          // Script doesn't exist anymore, clear the stored state
-          await chrome.storage.local.remove(storageKey);
+          await (globalThis.browser ?? globalThis.chrome).storage.local.remove(storageKey);
         }
       }
     } catch (error) {
@@ -145,11 +155,13 @@ class AIDOMEditor {
 
   async getUserLanguage() {
     try {
-      const { settings = {} } = await chrome.storage.local.get('settings');
+      const { settings = {} } = await (globalThis.browser ?? globalThis.chrome).storage.local.get(
+        'settings'
+      );
       const userLanguage = settings.language || 'auto';
 
       if (userLanguage === 'auto') {
-        return chrome.i18n.getUILanguage().split('-')[0];
+        return (globalThis.browser ?? globalThis.chrome).i18n.getUILanguage().split('-')[0];
       }
 
       return userLanguage;

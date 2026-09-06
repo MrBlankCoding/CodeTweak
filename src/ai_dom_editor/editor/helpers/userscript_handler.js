@@ -1,5 +1,11 @@
-import logger from '../../../utils/logger.js';
-import ScriptAnalyzer from '../../../utils/scriptAnalyzer.js';
+import logger from '../../../shared/utils/logger.js';
+import ScriptAnalyzer from '../../../services/scripts/ScriptAnalyzer.js';
+import {
+  buildMetadata,
+  parseUserScriptMetadata,
+} from '../../../services/scripts/MetadataParser.js';
+import { normalizeRunAt } from '../../../shared/utils/urls.js';
+import { browser } from '../../../shared/browserAdapter.js';
 
 export class UserscriptHandler {
   constructor(editor) {
@@ -100,14 +106,15 @@ export class UserscriptHandler {
 
   buildFinalScript(cleanCode, metadata) {
     const wrappedCode = this.wrapInIIFE(cleanCode);
-    return ScriptAnalyzer.rebuildWithEnhancedMetadata(wrappedCode, metadata);
+    // Canonical builder handles flat targetUrls + nested gmApis shapes.
+    return `${buildMetadata({ ...metadata, targetUrls: metadata.matches ?? metadata.targetUrls })}\n\n${wrappedCode.replace(/\/\/\s*==UserScript==[\s\S]*?\/\/\s*==\/UserScript==\n*/, '')}`;
   }
 
   async getScriptContent(scriptName) {
     return new Promise((resolve, reject) => {
-      chrome.runtime.sendMessage({ action: 'getScriptContent', scriptName }, (response) => {
-        if (chrome.runtime.lastError) {
-          return reject(new Error(chrome.runtime.lastError.message));
+      browser.runtime.sendMessage({ action: 'getScriptContent', scriptName }, (response) => {
+        if (browser.runtime.lastError) {
+          return reject(new Error(browser.runtime.lastError.message));
         }
         if (response.error) {
           return reject(new Error(response.error));
@@ -119,9 +126,9 @@ export class UserscriptHandler {
 
   async getAllScripts() {
     return new Promise((resolve, reject) => {
-      chrome.runtime.sendMessage({ action: 'getAllScripts' }, (response) => {
-        if (chrome.runtime.lastError) {
-          return reject(new Error(chrome.runtime.lastError.message));
+      browser.runtime.sendMessage({ action: 'getAllScripts' }, (response) => {
+        if (browser.runtime.lastError) {
+          return reject(new Error(browser.runtime.lastError.message));
         }
         if (response.error) {
           return reject(new Error(response.error));
@@ -134,13 +141,15 @@ export class UserscriptHandler {
   async createUserscript(code, name = null, explanation = null) {
     try {
       let tab;
-      if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
-        [tab] = await chrome.tabs.query({
+      if (typeof chrome !== 'undefined' && browser.tabs && browser.tabs.query) {
+        [tab] = await browser.tabs.query({
           active: true,
           currentWindow: true,
         });
       } else {
-        const response = await chrome.runtime.sendMessage({ action: 'getCurrentTab' });
+        const response = await browser.runtime.sendMessage({
+          action: 'getCurrentTab',
+        });
         tab = response?.tab;
       }
 
@@ -180,7 +189,7 @@ export class UserscriptHandler {
 
       const finalScript = this.buildFinalScript(scriptCode, metadata);
 
-      chrome.runtime.sendMessage(
+      browser.runtime.sendMessage(
         {
           action: 'createScriptFromAI',
           script: finalScript,
@@ -216,9 +225,8 @@ export class UserscriptHandler {
 
   async updateUserscript(scriptName, newCode, newName = null, explanation = null) {
     try {
-      const { scripts = [] } = await chrome.storage.local.get('scripts');
+      const { scripts = [] } = await browser.storage.local.get('scripts');
 
-      // Fallback to currentScript if name doesn't match exactly
       let scriptToUpdate = scripts.find((s) => s.name === scriptName);
       if (!scriptToUpdate && this.editor.currentScript) {
         scriptToUpdate = scripts.find((s) => s.id === this.editor.currentScript.id);
@@ -228,7 +236,13 @@ export class UserscriptHandler {
         throw new Error(`Script "${scriptName}" not found for update.`);
       }
 
-      const metadata = ScriptAnalyzer.extractMetadata(scriptToUpdate.code);
+      const parsed = parseUserScriptMetadata(scriptToUpdate.code);
+      const metadata = {
+        ...parsed,
+        // Legacy analyzer shape expected below.
+        matches: parsed.matches || [],
+        runAt: normalizeRunAt(parsed.runAt, 'document_idle'),
+      };
       metadata.version = ScriptAnalyzer.incrementVersion(metadata.version);
       if (newName && newName !== scriptName && newName !== 'Generated Script') {
         const fallbackTitle =
@@ -257,24 +271,22 @@ export class UserscriptHandler {
 
       metadata.runAt = suggestedRunAt;
 
-      // If newCode already has metadata header, it's likely a full patched script
       let finalScript;
       if (newCode.includes('// ==UserScript==')) {
-        // Just increment version in the full script
         finalScript = newCode.replace(/\/\/ @version\s+.+/, `// @version      ${metadata.version}`);
       } else {
         finalScript = this.buildFinalScript(cleanCode, metadata);
       }
 
-      chrome.runtime.sendMessage(
+      browser.runtime.sendMessage(
         {
           action: 'updateScript',
           scriptId: scriptToUpdate.id,
           code: finalScript,
         },
         (response) => {
-          if (chrome.runtime.lastError || response?.error) {
-            const errorMsg = chrome.runtime.lastError?.message || response.error;
+          if (browser.runtime.lastError || response?.error) {
+            const errorMsg = browser.runtime.lastError?.message || response.error;
             logger.error('Error updating script in background:', errorMsg);
             this.editor.chatManager.addMessage('assistant', `Error updating script: ${errorMsg}`, {
               type: 'text',

@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('editor webcrack integration', () => {
-  let ScriptEditor;
+  let Deobfuscator;
   let webcrackMock;
   let codeEditorInstance;
   let uiInstance;
+  let state;
 
   beforeEach(async () => {
     vi.resetModules();
@@ -25,60 +26,13 @@ describe('editor webcrack integration', () => {
     webcrackMock = vi.fn();
     codeEditorInstance = null;
     uiInstance = null;
+    state = { hasUnsavedChanges: false };
 
     vi.doMock('webcrack', () => ({
       webcrack: webcrackMock,
     }));
 
-    vi.doMock('feather-icons', () => ({
-      default: { replace: vi.fn() },
-    }));
-
-    vi.doMock('../../src/editor/editor_managers.js', () => {
-      class MockUIManager {
-        constructor() {
-          this.showStatusMessage = vi.fn();
-          this.updateScriptStatus = vi.fn();
-          uiInstance = this;
-        }
-      }
-
-      return {
-        UIManager: MockUIManager,
-        StorageManager: class {},
-        FormValidator: class {},
-      };
-    });
-
-    vi.doMock('../../src/editor/editor_settings.js', () => ({
-      CodeEditorManager: class {
-        constructor() {
-          this.getValue = vi.fn().mockReturnValue('');
-          this.setValue = vi.fn();
-          codeEditorInstance = this;
-        }
-      },
-    }));
-
-    vi.doMock('../../src/utils/metadataParser.js', () => ({
-      buildMetadata: vi.fn(() => ''),
-      parseUserScriptMetadata: vi.fn(() => ({})),
-    }));
-
-    vi.doMock('../../src/GM/gmApiDefinitions.js', () => ({
-      GM_API_DEFINITIONS: {},
-      getApiElementIds: () => [],
-    }));
-
-    vi.doMock('../../src/utils/i18n.js', () => ({
-      applyTranslations: vi.fn(async () => {}),
-    }));
-
-    vi.doMock('../../src/editor/ai_code_manager.js', () => ({
-      AICodeManager: class {},
-    }));
-
-    vi.doMock('../../src/utils/logger.js', () => ({
+    vi.doMock('../../src/shared/utils/logger.js', () => ({
       default: {
         error: vi.fn(),
         warn: vi.fn(),
@@ -86,25 +40,30 @@ describe('editor webcrack integration', () => {
       },
     }));
 
-    ({ ScriptEditor } = await import('../../src/editor/editor.js'));
+    ({ Deobfuscator } = await import('../../src/editor/deobfuscator.js'));
+
+    uiInstance = { showStatusMessage: vi.fn(), updateScriptStatus: vi.fn() };
+    codeEditorInstance = { getValue: vi.fn().mockReturnValue(''), setValue: vi.fn() };
   });
 
+  const makeDeobfuscator = () => new Deobfuscator(uiInstance, codeEditorInstance, state);
+
   it('shows warning and skips webcrack when editor is empty', async () => {
-    const editor = new ScriptEditor();
+    const deobfuscator = makeDeobfuscator();
     codeEditorInstance.getValue.mockReturnValue('   ');
 
-    await editor.deobfuscateCode();
+    await deobfuscator.deobfuscate(document.getElementById('deobfuscateBtn'));
 
     expect(webcrackMock).not.toHaveBeenCalled();
     expect(uiInstance.showStatusMessage).toHaveBeenCalledWith('No code to deobfuscate', 'warning');
   });
 
   it('deobfuscates code and updates editor content', async () => {
-    const editor = new ScriptEditor();
+    const deobfuscator = makeDeobfuscator();
     codeEditorInstance.getValue.mockReturnValue('obfuscated();');
     webcrackMock.mockResolvedValue({ code: 'deobfuscated();' });
 
-    await editor.deobfuscateCode();
+    await deobfuscator.deobfuscate(document.getElementById('deobfuscateBtn'));
 
     expect(webcrackMock).toHaveBeenCalledTimes(1);
     expect(webcrackMock).toHaveBeenCalledWith(
@@ -122,12 +81,12 @@ describe('editor webcrack integration', () => {
   });
 
   it('reports errors and restores button state on failure', async () => {
-    const editor = new ScriptEditor();
+    const deobfuscator = makeDeobfuscator();
     const button = document.getElementById('deobfuscateBtn');
     codeEditorInstance.getValue.mockReturnValue('obfuscated();');
     webcrackMock.mockRejectedValue(new Error('decode failed'));
 
-    await editor.deobfuscateCode();
+    await deobfuscator.deobfuscate(button);
 
     expect(uiInstance.showStatusMessage).toHaveBeenCalledWith(
       'webcrack failed: decode failed',

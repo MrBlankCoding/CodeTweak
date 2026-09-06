@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_appName__",
-  "version": "2.1.2",
+  "version": "3.1.2",
   "description": "__MSG_appDescription__",
   "default_locale": "en",
   "permissions": [
@@ -43,7 +43,7 @@
     },
     {
       "matches": ["http://*/*", "https://*/*"],
-      "js": ["utils/content_bridge.js"],
+      "js": ["content/contentBridge.js"],
       "run_at": "document_start",
       "world": "ISOLATED"
     },
@@ -55,13 +55,13 @@
     },
     {
       "matches": ["https://greasyfork.org/*"],
-      "js": ["utils/greasyfork_interceptor.js"],
+      "js": ["content/greasyforkInterceptor.js"],
       "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["utils/*", "GM/*", "ai_dom_editor/*"],
+      "resources": ["shared/*", "services/*", "ai_dom_editor/*"],
       "matches": ["<all_urls>"]
     }
   ]

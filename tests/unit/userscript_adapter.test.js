@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { UserScriptsAdapter } from '../../src/core/userscriptAdapter.js';
+import { UserScriptsAdapter } from '../../src/services/scripts/UserScriptsAdapter.js';
 
 describe('UserScriptsAdapter', () => {
   beforeEach(() => {
@@ -74,7 +74,10 @@ describe('UserScriptsAdapter', () => {
     const result = await adapter.syncEnabledScripts(scripts);
 
     expect(result).toEqual({ usingUserScripts: true });
-    expect(chrome.userScripts.unregister).toHaveBeenCalledWith({ ids: ['ct-us-old-script'] });
+    expect(chrome.userScripts.unregister).toHaveBeenCalledWith(
+      expect.objectContaining({ ids: ['ct-us-old-script'] }),
+      expect.any(Function)
+    );
     expect(chrome.userScripts.register).toHaveBeenCalledTimes(1);
     expect(chrome.userScripts.update).toHaveBeenCalledTimes(0);
 
@@ -84,7 +87,7 @@ describe('UserScriptsAdapter', () => {
     expect(registrations[0].runAt).toBe('document_end');
     expect(registrations[0].world).toBe('MAIN');
     expect(registrations[0].js[0].code).toContain('GM_setValue');
-    expect(registrations[0].js[0].code).toContain("replace(/^http:\\/\\//i, 'https://')");
+    expect(registrations[0].js[0].code).toContain('__ctLoadRequires');
     expect(registrations[1].world).toBe('ISOLATED');
 
     expect(storageData.userScriptRegistrationIds.sort()).toEqual(['ct-us-s1', 'ct-us-s2']);
@@ -151,6 +154,25 @@ if (!rx.test("https://example.com")) {
     expect(generated).toContain('payload: safePayload');
   });
 
+  it('preserves dollar patterns in user code during bootstrap injection', async () => {
+    createChromeMock();
+    const adapter = new UserScriptsAdapter();
+
+    const dollarCode = 'const a = "$& $\' $| $1"; $("div").text(a);';
+    const registration = await adapter.toRegistration({
+      id: 's-dollar',
+      name: 'Dollar Test',
+      code: dollarCode,
+      enabled: true,
+      runAt: 'document_end',
+      targetUrls: ['https://example.com/*'],
+    });
+
+    const generated = registration.js[0].code;
+    expect(generated).toContain(dollarCode);
+    expect(() => new Function(generated)).not.toThrow();
+  });
+
   it('toRegistration handles minimal script configuration', async () => {
     createChromeMock();
     const adapter = new UserScriptsAdapter();
@@ -180,11 +202,58 @@ if (!rx.test("https://example.com")) {
     expect(reg.js[0].code).toContain('"res":"https://res.png"');
   });
 
-  it('returns unsupported result if userScripts API is missing', async () => {
+  it('uses scripting API as fallback for Safari and transforms registrations correctly', async () => {
+    const storageData = { userScriptRegistrationIds: [] };
+    global.chrome = {
+      runtime: { id: 'ext-id', getManifest: () => ({ version: '1.0.0' }) },
+      storage: {
+        local: {
+          get: vi.fn(async (key) => ({ [key]: storageData[key] })),
+          set: vi.fn(async (obj) => Object.assign(storageData, obj)),
+        },
+      },
+      userScripts: undefined,
+      scripting: {
+        registerContentScripts: vi.fn().mockResolvedValue(),
+        unregisterContentScripts: vi.fn().mockResolvedValue(),
+      },
+    };
+
+    const adapter = new UserScriptsAdapter();
+    const script = {
+      id: 's-safari',
+      name: 'Safari Test',
+      code: 'console.log("safari")',
+      enabled: true,
+      targetUrls: ['https://example.com/*'],
+      runAt: 'document-start',
+      injectInto: 'main',
+    };
+
+    const result = await adapter.syncEnabledScripts([script]);
+
+    expect(result.usingUserScripts).toBe(true);
+    expect(global.chrome.scripting.registerContentScripts).toHaveBeenCalled();
+    const regs = global.chrome.scripting.registerContentScripts.mock.calls[0][0];
+    expect(regs).toHaveLength(1);
+    expect(regs[0]).toEqual(
+      expect.objectContaining({
+        id: 'ct-us-s-safari',
+        matches: ['https://example.com/*'],
+        runAt: 'document_start',
+        world: 'MAIN',
+        persistAcrossSessions: true,
+      })
+    );
+    expect(regs[0].js[0].code).toContain('console.log("safari")');
+  });
+
+  it('returns unsupported result if both scripting APIs are missing', async () => {
     global.chrome = {
       runtime: { id: 'ext-id', getManifest: () => ({ version: '1.0.0' }) },
       storage: { local: { get: vi.fn(async () => ({})), set: vi.fn(async () => {}) } },
       userScripts: undefined,
+      scripting: undefined,
     };
 
     const adapter = new UserScriptsAdapter();

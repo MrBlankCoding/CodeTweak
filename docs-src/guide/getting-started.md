@@ -33,6 +33,8 @@ console.log('CodeTweak script running');
 
 ## 4. If it does not run
 
+- If the popup or dashboard shows a red "User scripts are disabled" banner,
+  enable `Allow user scripts` for CodeTweak in `chrome://extensions`.
 - Check `@match` first.
 - Check `@run-at` second.
 - Open script error logs in the editor.

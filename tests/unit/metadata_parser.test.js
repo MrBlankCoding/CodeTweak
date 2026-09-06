@@ -3,7 +3,7 @@ import {
   buildMetadata,
   extractMetadataBlock,
   parseUserScriptMetadata,
-} from '../../src/utils/metadataParser.js';
+} from '../../src/services/scripts/MetadataParser.js';
 
 describe('metadataParser', () => {
   it('parses userscript metadata including grants/resources', () => {

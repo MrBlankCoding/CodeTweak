@@ -4,10 +4,12 @@
 
 Check in this order:
 
-1. `@match` pattern.
-2. Script is enabled.
-3. `@run-at` timing.
-4. Console errors.
+1. Red "User scripts are disabled" banner in the popup or dashboard. If shown,
+   enable `Allow user scripts` for CodeTweak in `chrome://extensions`.
+2. `@match` pattern.
+3. Script is enabled.
+4. `@run-at` timing.
+5. Console errors.
 
 Quick test:
 

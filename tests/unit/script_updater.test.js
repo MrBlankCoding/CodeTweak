@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { ScriptUpdater } from '../../src/core/scriptUpdater.js';
+import { ScriptUpdater } from '../../src/services/scripts/ScriptUpdater.js';
 
 describe('ScriptUpdater', () => {
   let storageApi;

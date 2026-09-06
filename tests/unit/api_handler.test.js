@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ApiHandler } from '../../src/ai_dom_editor/editor/helpers/api_handler.js';
+import { PromptBuilder } from '../../src/ai_dom_editor/editor/helpers/promptBuilder.js';
 
 describe('ApiHandler', () => {
   let apiHandler;
@@ -174,14 +175,14 @@ describe('ApiHandler', () => {
     });
   });
 
-  describe('_buildRequestBody', () => {
+  describe('PromptBuilder.buildRequestBody', () => {
     const config = { model: 'test-model' };
     const systemPrompt = 'sys';
     const message = 'user-msg';
     const history = [];
 
     it('should build request body for openai', () => {
-      const body = apiHandler._buildRequestBody({
+      const body = PromptBuilder.buildRequestBody({
         providerType: 'openai',
         activeConfig: config,
         systemPrompt,
@@ -193,7 +194,7 @@ describe('ApiHandler', () => {
     });
 
     it('should build request body for anthropic', () => {
-      const body = apiHandler._buildRequestBody({
+      const body = PromptBuilder.buildRequestBody({
         providerType: 'anthropic',
         activeConfig: config,
         systemPrompt,
@@ -205,7 +206,7 @@ describe('ApiHandler', () => {
     });
 
     it('should build request body for google', () => {
-      const body = apiHandler._buildRequestBody({
+      const body = PromptBuilder.buildRequestBody({
         providerType: 'google',
         activeConfig: config,
         systemPrompt,
@@ -216,13 +217,13 @@ describe('ApiHandler', () => {
     });
   });
 
-  describe('_formatHistory', () => {
+  describe('PromptBuilder.formatHistory', () => {
     it('should format user and assistant messages', () => {
       const history = [
         { role: 'user', text: 'hi' },
         { role: 'assistant', data: { type: 'code', code: 'c', name: 'n', explanation: 'e' } },
       ];
-      const result = apiHandler._formatHistory(history);
+      const result = PromptBuilder.formatHistory(history);
       expect(result).toHaveLength(2);
       expect(result[0].role).toBe('user');
       expect(result[1].content).toContain('Script Name: n');
@@ -230,13 +231,13 @@ describe('ApiHandler', () => {
 
     it('should handle assistant text messages', () => {
       const history = [{ role: 'assistant', text: 'plain' }];
-      const result = apiHandler._formatHistory(history);
+      const result = PromptBuilder.formatHistory(history);
       expect(result[0].content).toBe('plain');
     });
 
     it('should return empty array for invalid input', () => {
-      expect(apiHandler._formatHistory(null)).toEqual([]);
-      expect(apiHandler._formatHistory([null])).toEqual([]);
+      expect(PromptBuilder.formatHistory(null)).toEqual([]);
+      expect(PromptBuilder.formatHistory([null])).toEqual([]);
     });
   });
 

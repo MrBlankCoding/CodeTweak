@@ -192,7 +192,24 @@ describe('background', () => {
   });
 
   it('handles GM API requests for values/listeners/clipboard/download/requests', async () => {
-    const { listeners, chrome } = await setupBackground();
+    const gmScript = (overrides = {}) => ({
+      id: 's1',
+      name: 'S1',
+      enabled: true,
+      gmSetValue: true,
+      gmGetValue: true,
+      gmDeleteValue: true,
+      gmListValues: true,
+      gmAddValueChangeListener: true,
+      gmRemoveValueChangeListener: true,
+      gmOpenInTab: true,
+      gmNotification: true,
+      gmSetClipboard: true,
+      gmDownload: true,
+      gmXmlhttpRequest: true,
+      ...overrides,
+    });
+    const { listeners, chrome } = await setupBackground({ scripts: [gmScript()] });
 
     const add = await sendRuntimeMessage(
       listeners,
@@ -274,7 +291,6 @@ describe('background', () => {
     );
     expect(xhrRes.result.status).toBe(200);
 
-    // Test deleteValue
     await sendRuntimeMessage(listeners, {
       type: 'GM_API_REQUEST',
       payload: { action: 'deleteValue', scriptId: 's1', name: 'k' },
@@ -388,10 +404,31 @@ describe('background', () => {
     expect(chrome.tabs.reload).toHaveBeenCalled();
   });
 
+  it('normalizes sensitive flags from code usage on update', async () => {
+    const { listeners, storageData } = await setupBackground({
+      scripts: [{ id: 'legacy', name: 'Legacy', enabled: true, code: 'old' }],
+    });
+    await sendRuntimeMessage(listeners, {
+      action: 'updateScript',
+      scriptId: 'legacy',
+      code: 'GM_download("https://x");',
+    });
+    expect(storageData.scripts[0].gmDownload).toBe(true);
+  });
+
   it('covers GM and handler error branches', async () => {
     const { listeners, chrome } = await setupBackground({
       settings: { allowExternalResources: false, enhancedDebugging: false },
-      scripts: [],
+      scripts: [
+        {
+          id: 's1',
+          enabled: true,
+          gmSetClipboard: true,
+          gmNotification: true,
+          gmDownload: true,
+          gmXmlhttpRequest: true,
+        },
+      ],
     });
 
     await expect(
@@ -415,7 +452,7 @@ describe('background', () => {
         { type: 'GM_API_REQUEST', payload: { action: 'setClipboard', scriptId: 's1', data: 'x' } },
         { tab: { id: 1 } }
       )
-    ).resolves.toEqual({ error: 'Clipboard API is unavailable in this browser.' });
+    ).resolves.toEqual({ error: 'Clipboard API is unavailable in this browser context.' });
     Object.defineProperty(navigator, 'clipboard', { value: originalClipboard, configurable: true });
 
     chrome.runtime.lastError = { message: 'notif blocked' };
@@ -428,7 +465,7 @@ describe('background', () => {
         },
         { tab: { id: 1 } }
       )
-    ).resolves.toEqual({ result: null });
+    ).resolves.toEqual({ error: 'notif blocked' });
     chrome.runtime.lastError = null;
 
     chrome.downloads.download = vi.fn((_opts, cb) => {
@@ -480,9 +517,59 @@ describe('background', () => {
     ).resolves.toHaveProperty('tab');
   });
 
+  it('handles getScriptsForUrl for Safari fallback', async () => {
+    const { listeners } = await setupBackground({
+      scripts: [
+        {
+          id: 's1',
+          name: 'Script 1',
+          code: 'console.log(1)',
+          enabled: true,
+          targetUrls: ['https://example.com/*'],
+          runAt: 'document_end',
+        },
+      ],
+    });
+
+    const response = await sendRuntimeMessage(listeners, {
+      action: 'getScriptsForUrl',
+      url: 'https://example.com/page',
+    });
+
+    expect(response.scripts).toHaveLength(1);
+    expect(response.scripts[0].id).toBe('s1');
+    expect(response.scripts[0].code).toContain('console.log(1)');
+
+    // Test no scripts match
+    const emptyResponse = await sendRuntimeMessage(listeners, {
+      action: 'getScriptsForUrl',
+      url: 'https://nomatch.com',
+    });
+    expect(emptyResponse.scripts).toHaveLength(0);
+  });
+
+  it('handles errors in getScriptsForUrl gracefully', async () => {
+    const { listeners } = await setupBackground({
+      scripts: [{ id: 'err-script', enabled: true, targetUrls: ['https://err.com/*'] }],
+    });
+
+    // Mock toRegistration to throw
+    const { UserScriptsAdapter } = await import('../../src/services/scripts/UserScriptsAdapter.js');
+    vi.spyOn(UserScriptsAdapter.prototype, 'toRegistration').mockRejectedValue(
+      new Error('Reg failed')
+    );
+
+    const response = await sendRuntimeMessage(listeners, {
+      action: 'getScriptsForUrl',
+      url: 'https://err.com',
+    });
+
+    expect(response.scripts).toEqual([]);
+  });
+
   it('covers CLEAR_SCRIPT_ERRORS and extra message branches', async () => {
     const { listeners } = await setupBackground({
-      scripts: [{ id: 's1', name: 'S1', enabled: true }],
+      scripts: [{ id: 's1', name: 'S1', enabled: true, gmAddValueChangeListener: true }],
     });
 
     await expect(
@@ -500,6 +587,97 @@ describe('background', () => {
         { tab: null }
       )
     ).resolves.toEqual({ result: null });
+  });
+
+  it('rejects GM API calls from unknown, disabled, or ungranted scripts', async () => {
+    const { listeners } = await setupBackground({
+      scripts: [
+        {
+          id: 'ok',
+          enabled: true,
+          gmSetValue: true,
+          targetUrls: ['https://example.com/*'],
+        },
+        { id: 'disabled', enabled: false, gmSetValue: true },
+        { id: 'ungranted', enabled: true, gmSetValue: false },
+        { id: 'legacy-sensitive', enabled: true, gmDownload: true },
+      ],
+    });
+
+    await expect(
+      sendRuntimeMessage(listeners, {
+        type: 'GM_API_REQUEST',
+        payload: { action: 'setValue', scriptId: 'ghost', name: 'k', value: 1 },
+      })
+    ).resolves.toEqual({ error: 'Unknown or disabled script.' });
+
+    await expect(
+      sendRuntimeMessage(listeners, {
+        type: 'GM_API_REQUEST',
+        payload: { action: 'setValue', scriptId: 'disabled', name: 'k', value: 1 },
+      })
+    ).resolves.toEqual({ error: 'Unknown or disabled script.' });
+
+    await expect(
+      sendRuntimeMessage(listeners, {
+        type: 'GM_API_REQUEST',
+        payload: { action: 'setValue', scriptId: 'ungranted', name: 'k', value: 1 },
+      })
+    ).resolves.toEqual({ error: 'API not granted for this script: setValue.' });
+
+    await expect(
+      sendRuntimeMessage(
+        listeners,
+        {
+          type: 'GM_API_REQUEST',
+          payload: { action: 'setValue', scriptId: 'ok', name: 'k', value: 1 },
+        },
+        { tab: { id: 1, url: 'https://evil.com/' } }
+      )
+    ).resolves.toEqual({ error: 'Sender tab does not match script targets.' });
+
+    await expect(
+      sendRuntimeMessage(
+        listeners,
+        {
+          type: 'GM_API_REQUEST',
+          payload: { action: 'setValue', scriptId: 'ok', name: 'k', value: 1 },
+        },
+        { tab: { id: 1, url: 'https://example.com/page' } }
+      )
+    ).resolves.toEqual({ result: null });
+
+    // Sensitive APIs default-deny for scripts without explicit flags.
+    await expect(
+      sendRuntimeMessage(listeners, {
+        type: 'GM_API_REQUEST',
+        payload: { action: 'download', scriptId: 'ok', url: 'https://x', name: 'x' },
+      })
+    ).resolves.toEqual({ error: 'API not granted for this script: download.' });
+
+    // Explicit true still grants.
+    await expect(
+      sendRuntimeMessage(
+        listeners,
+        {
+          type: 'GM_API_REQUEST',
+          payload: {
+            action: 'download',
+            scriptId: 'legacy-sensitive',
+            url: 'https://x',
+            name: 'x',
+          },
+        },
+        { tab: { id: 1 } }
+      )
+    ).not.resolves.toEqual({ error: 'API not granted for this script: download.' });
+
+    await expect(
+      sendRuntimeMessage(listeners, {
+        type: 'GM_API_REQUEST',
+        payload: { action: 'setValue', scriptId: '../../evil', name: 'k', value: 1 },
+      })
+    ).resolves.toEqual({ error: 'Unknown or invalid script.' });
   });
 
   it('covers createScript and greasyFork error path branches', async () => {

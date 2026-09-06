@@ -7,8 +7,7 @@
     <link rel="stylesheet" href="/assets/styles/editor/e_settings_modal.css" />
     <link rel="stylesheet" href="/assets/styles/editor/e_header_footer.css" />
     <link rel="stylesheet" href="/assets/styles/editor/e_sidebar.css" />
-    <link rel="stylesheet" href="/assets/styles/ai/ai_code_assistant.css" />
-    <script src="../utils/theme_manager.js"></script>
+    <script src="../shared/utils/theme_manager.js"></script>
     <script src="/assets/scripts/jshint.js"></script>
     <script type="module" src="editor.js"></script>
   </head>
@@ -102,15 +101,6 @@
             >
               <i data-feather="alert-circle"></i>
               <div class="error-count-badge hidden" id="errorCountBadge">0</div>
-            </button>
-            <button
-              class="sidebar-icon-btn"
-              data-section="ai"
-              title="AI Code Assistant"
-              data-i18n-attr="title"
-              data-i18n="editorAiAssistant"
-            >
-              <i data-feather="zap"></i>
             </button>
             <div class="sidebar-divider"></div>
             <button
@@ -546,68 +536,6 @@
                       <i data-feather="check-circle"></i>
                       <p>No errors detected</p>
                       <small>Errors will appear here when your script runs</small>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- AI Assistant Panel -->
-            <div class="sidebar-panel" id="ai-panel">
-              <div class="panel-header ai-panel-header">
-                <div class="panel-header-content">
-                  <h3 class="panel-title" data-i18n="editorAiAssistant">AI Code Assistant</h3>
-                  <p class="panel-subtitle" data-i18n="editorAiAssistantDesc">
-                    Write, refactor, and explain code with AI
-                  </p>
-                </div>
-                <button type="button" id="aiClearBtn" class="ai-clear-btn" title="Clear Chat">
-                  <i data-feather="trash-2"></i>
-                </button>
-              </div>
-              <div class="panel-content ai-panel-content">
-                <div id="aiConfigWarning" class="ai-config-warning hidden">
-                  <i data-feather="alert-triangle"></i>
-                  <p data-i18n="editorAiNoConfig">AI is not configured</p>
-                  <a
-                    href="../ai_dom_editor/settings/ai_settings.html"
-                    class="btn-secondary"
-                    data-i18n="editorAiConfigure"
-                  >
-                    Configure AI Keys
-                  </a>
-                </div>
-
-                <div id="aiChatContainer" class="ai-chat-container">
-                  <div class="ai-model-selector-group">
-                    <label for="aiModelSelector" class="form-label" data-i18n="editorAiModel"
-                      >Model</label
-                    >
-                    <select id="aiModelSelector" class="form-select ai-model-select"></select>
-                  </div>
-
-                  <div id="aiChatHistory" class="ai-chat-history">
-                    <div class="ai-message ai-message-assistant">
-                      <div class="ai-message-content" data-i18n="editorAiWelcome">
-                        Hello! I can help you write or refactor your userscript. What would you like
-                        to do?
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="ai-chat-input-wrapper">
-                    <textarea
-                      id="aiChatInput"
-                      class="form-textarea ai-chat-input"
-                      placeholder="Ask AI to write or refactor code..."
-                      data-i18n-attr="placeholder"
-                      data-i18n="editorAiInputPlaceholder"
-                      rows="3"
-                    ></textarea>
-                    <div class="ai-chat-actions">
-                      <button type="button" id="aiSendBtn" class="ai-send-btn" title="Send Message">
-                        <i data-feather="send"></i>
-                      </button>
                     </div>
                   </div>
                 </div>

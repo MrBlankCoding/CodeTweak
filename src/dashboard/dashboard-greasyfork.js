@@ -1,5 +1,5 @@
-import logger from '../utils/logger.js';
-import { parseUserScriptMetadata } from '../utils/metadataParser.js';
+import logger from '../shared/utils/logger.js';
+import { parseUserScriptMetadata } from '../services/scripts/MetadataParser.js';
 import { showNotification } from './dashboard-ui.js';
 function setupGreasyfork(elements) {
   if (!elements.button) return;
@@ -137,7 +137,7 @@ function createScriptCard(script) {
 }
 
 async function importGreasyforkScript(codeUrl) {
-  if (!codeUrl) {
+  if (typeof codeUrl !== 'string' || !/^https:\/\/greasyfork\.org\//i.test(codeUrl)) {
     showNotification('Invalid script URL', 'error');
     return;
   }
@@ -191,12 +191,19 @@ async function importGreasyforkScript(codeUrl) {
     }
 
     try {
-      const { scripts = [] } = await chrome.storage.local.get('scripts');
-      scripts.push(scriptData);
-      await chrome.storage.local.set({ scripts });
+      const { scripts = [] } = await (globalThis.browser ?? globalThis.chrome).storage.local.get(
+        'scripts'
+      );
+      const list = Array.isArray(scripts) ? scripts : [];
+      if (list.some((s) => s?.updateInfo?.sourceUrl === codeUrl)) {
+        showNotification('Script already imported', 'info');
+        return;
+      }
+      list.push(scriptData);
+      await (globalThis.browser ?? globalThis.chrome).storage.local.set({ scripts: list });
 
       showNotification('Script imported successfully', 'success');
-      chrome.runtime.sendMessage({ action: 'scriptsUpdated' });
+      (globalThis.browser ?? globalThis.chrome).runtime.sendMessage({ action: 'scriptsUpdated' });
 
       const modal = document.getElementById('greasyforkModal');
       if (modal) {

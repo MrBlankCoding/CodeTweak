@@ -1,4 +1,4 @@
-import logger from '../utils/logger.js';
+import logger from '../shared/utils/logger.js';
 import feather from 'feather-icons';
 import {
   urlMatchesPattern,
@@ -6,8 +6,11 @@ import {
   getScriptDescription,
   isValidWebpage,
   generateUrlMatchPattern,
-} from '../utils/urls.js';
-import { applyTranslations, getMessageSync } from '../utils/i18n.js';
+} from '../shared/utils/urls.js';
+import { applyTranslations, getMessageSync } from '../shared/utils/i18n.js';
+import { renderUserScriptsBanner } from '../shared/userScriptsBanner.js';
+import { storageService as ScriptManager } from '../services/storage/StorageService.js';
+import { browser } from '../shared/browserAdapter.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   feather.replace();
@@ -22,42 +25,40 @@ document.addEventListener('DOMContentLoaded', async () => {
   let currentTabUrl = '';
 
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
     currentTabUrl = tab?.url || '';
   } catch (err) {
     logger.error('Error getting current tab:', err);
   }
 
   createScriptBtn.addEventListener('click', () => {
-    let url = chrome.runtime.getURL('editor/editor.html');
+    let url = ScriptManager.getEditorUrl();
     if (currentTabUrl && isValidWebpage(currentTabUrl)) {
       const pattern = generateUrlMatchPattern(currentTabUrl, 'domain');
       if (pattern) {
         url += `?targetUrl=${encodeURIComponent(pattern)}`;
       }
     }
-    chrome.tabs.create({ url });
+    browser.tabs.create({ url });
   });
 
   openDashboardBtn.addEventListener('click', () => {
-    chrome.tabs.create({ url: chrome.runtime.getURL('dashboard/dashboard.html') });
+    browser.tabs.create({ url: browser.runtime.getURL('dashboard/dashboard.html') });
   });
 
   aiEditorBtn.addEventListener('click', async () => {
     try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
 
-      // Check if user is on a valid webpage
       if (!isValidWebpage(tab.url)) {
         alert('Please navigate to a webpage first to use the AI DOM Editor.');
         return;
       }
 
-      chrome.tabs.sendMessage(tab.id, { action: 'openAIEditor' }, (response) => {
-        if (chrome.runtime.lastError || !response || response.success !== true) {
-          // Fallback: open standalone window
-          chrome.windows.create({
-            url: chrome.runtime.getURL('ai_dom_editor/sidebar/ai_sidebar_window.html'),
+      browser.tabs.sendMessage(tab.id, { action: 'openAIEditor' }, (response) => {
+        if (browser.runtime.lastError || !response || response.success !== true) {
+          browser.windows.create({
+            url: browser.runtime.getURL('ai_dom_editor/sidebar/ai_sidebar_window.html'),
             type: 'popup',
             width: 440,
             height: 800,
@@ -68,9 +69,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
       window.close();
     } catch {
-      // Fallback: open standalone window
-      chrome.windows.create({
-        url: chrome.runtime.getURL('ai_dom_editor/ai_sidebar_window.html'),
+      browser.windows.create({
+        url: browser.runtime.getURL('ai_dom_editor/ai_sidebar_window.html'),
         type: 'popup',
         width: 440,
         height: 800,
@@ -83,24 +83,27 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   reportIssueLink.addEventListener('click', (e) => {
     e.preventDefault();
-    chrome.tabs.create({ url: 'https://github.com/MrBlankCoding/CodeTweak/issues/new' });
+    browser.tabs.create({ url: 'https://github.com/MrBlankCoding/CodeTweak/issues/new' });
   });
 
   await applyTheme();
+  renderUserScriptsBanner(document.getElementById('userScriptsBannerSlot'));
   await applyTranslations();
   await loadScripts(currentTabUrl);
   await loadMenuCommands();
 
-  chrome.runtime.onMessage.addListener((msg) => {
+  browser.runtime.onMessage.addListener((msg) => {
     if (msg.action === 'scriptsUpdated') {
       loadMenuCommands();
     }
   });
 
   async function loadScripts(url) {
-    const { scripts = [] } = await chrome.storage.local.get('scripts');
-    const matchingScripts = scripts.filter((script) => {
+    const scripts = await ScriptManager.getAllScripts();
+    const list = Array.isArray(scripts) ? scripts : [];
+    const matchingScripts = list.filter((script) => {
       const targets = script.targetUrls || [script.targetUrl];
+      if (!Array.isArray(targets)) return false;
       return targets.some((pattern) => urlMatchesPattern(url, pattern));
     });
 
@@ -110,7 +113,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       emptyState.style.display = 'flex';
       emptyState.replaceChildren();
 
-      if (scripts.length === 0) {
+      if (list.length === 0) {
         const iconDiv = document.createElement('div');
         iconDiv.className = 'empty-icon';
         const icon = document.createElement('i');
@@ -136,24 +139,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     matchingScripts.sort((a, b) => a.name.localeCompare(b.name));
 
     matchingScripts.forEach((script) => {
-      const index = scripts.findIndex((s) => s.id === script.id);
-      scriptList.appendChild(createScriptElement(script, index));
+      scriptList.appendChild(createScriptElement(script));
     });
 
     feather.replace();
   }
 
-  function createScriptElement(script, index) {
+  function createScriptElement(script) {
     const item = document.createElement('div');
     item.className = 'script-item';
-    item.dataset.id = index;
+    item.dataset.id = script.id;
 
     if (script.enabled === false) {
       item.classList.add('script-disabled');
     }
 
-    // Icon
-    if (script.icon) {
+    if (script.icon && /^(https?:|data:image\/)/i.test(script.icon)) {
       const iconImg = document.createElement('img');
       iconImg.src = script.icon;
       iconImg.alt = '';
@@ -162,7 +163,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       item.appendChild(iconImg);
     }
 
-    // Toggle switch
     const toggleContainer = document.createElement('div');
     toggleContainer.className = 'script-toggle';
 
@@ -189,11 +189,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     toggleContainer.appendChild(label);
     item.appendChild(toggleContainer);
 
-    // Script info
     const info = document.createElement('div');
     info.className = 'script-info';
     info.addEventListener('click', () => {
-      chrome.tabs.create({ url: chrome.runtime.getURL(`editor/editor.html?id=${script.id}`) });
+      browser.tabs.create({ url: ScriptManager.getEditorUrl(script.id) });
     });
 
     const name = document.createElement('div');
@@ -222,21 +221,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function toggleScript(scriptId, enabled) {
     try {
-      const { scripts = [] } = await chrome.storage.local.get('scripts');
-      const index = scripts.findIndex((s) => s.id === scriptId);
-      if (index === -1) return;
-
-      scripts[index].enabled = enabled;
-      await chrome.storage.local.set({ scripts });
-      chrome.runtime.sendMessage({ action: 'scriptsUpdated' });
-
-      const item = document.querySelector(`[data-id="${index}"]`);
-      if (item) {
-        const label = item.querySelector('.toggle-switch');
-        item.classList.toggle('script-disabled', !enabled);
-        label.title = enabled
-          ? getMessageSync('popupDisableScript')
-          : getMessageSync('popupEnableScript');
+      const result = await ScriptManager.toggleScript(scriptId, enabled);
+      if (result.success) {
+        const item = document.querySelector(`[data-id="${scriptId}"]`);
+        if (item) {
+          const label = item.querySelector('.toggle-switch');
+          item.classList.toggle('script-disabled', !enabled);
+          label.title = enabled
+            ? getMessageSync('popupDisableScript')
+            : getMessageSync('popupEnableScript');
+        }
       }
     } catch (err) {
       logger.error('Error toggling script:', err);
@@ -249,19 +243,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     menuContainer.replaceChildren();
 
     try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
       if (!tab?.id) return;
 
-      // Skip execution on browser pages and extension pages
-      const restrictedPatterns = /^(chrome|edge|about):\/\//i;
-      const isExtensionPage = tab.url?.startsWith('chrome-extension://');
+      const restrictedPatterns = /^(chrome|edge|about|safari-extension):\/\//i;
+      const isExtensionPage =
+        tab.url?.startsWith('chrome-extension://') || tab.url?.startsWith('safari-extension://');
 
       if (restrictedPatterns.test(tab.url || '') || isExtensionPage) {
         menuSection.style.display = 'none';
         return;
       }
 
-      const [{ result: commands = [] }] = await chrome.scripting.executeScript({
+      const [{ result: commands = [] }] = await browser.scripting.executeScript({
         target: { tabId: tab.id },
         world: 'MAIN',
         func: () => window.__gmMenuCommands || [],
@@ -272,7 +266,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
 
-      // Remove duplicates
       const uniqueCommands = [];
       const seen = new Set();
 
@@ -292,34 +285,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         btn.textContent = cmd.caption;
 
         btn.addEventListener('click', () => {
-          chrome.scripting.executeScript({
+          browser.scripting.executeScript({
             target: { tabId: tab.id },
             world: 'MAIN',
             func: (commandId) => {
               const command = (window.__gmMenuCommands || []).find(
                 (c) => c.commandId === commandId
               );
-              if (command) {
-                try {
-                  command.onClick();
-                } catch (error) {
-                  logger.error(
-                    'CodeTweak: Menu command failed. Please ensure the menu command API is enabled in the editor settings.',
-                    error
-                  );
-                }
+              if (command && typeof command.onClick === 'function') {
+                command.onClick();
               }
             },
             args: [cmd.commandId],
           });
         });
-
         menuContainer.appendChild(btn);
       });
 
       feather.replace();
     } catch (error) {
       logger.error('Error loading menu commands:', error);
+      menuSection.style.display = 'none';
     }
   }
 });

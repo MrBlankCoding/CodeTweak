@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ScriptAnalyzer } from '../../src/utils/scriptAnalyzer.js';
+import { ScriptAnalyzer } from '../../src/services/scripts/ScriptAnalyzer.js';
 
 describe('ScriptAnalyzer', () => {
   it('detects GM api usage in classic/modern/window syntax', () => {
@@ -47,8 +47,8 @@ describe('ScriptAnalyzer', () => {
       matches: ['https://example.com/*'],
       runAt: 'document_end',
     });
-    expect(rebuilt).toContain('@name         Renamed');
-    expect(rebuilt).toContain('@grant        GM_setValue');
+    expect(rebuilt).toContain('@name       Renamed');
+    expect(rebuilt).toContain('@grant      GM_setValue');
 
     expect(ScriptAnalyzer.extractCodeFromIIFE(code)).toContain('console.log(1)');
     expect(ScriptAnalyzer.incrementVersion('1.2.3')).toBe('1.2.4');

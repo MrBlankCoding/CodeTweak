@@ -1,12 +1,14 @@
-import logger from '../utils/logger.js';
-import { buildMetadata, extractMetadataBlock } from '../utils/metadataParser.js';
-import { ScriptAnalyzer } from '../utils/scriptAnalyzer.js';
+import logger from '../shared/utils/logger.js';
+import { buildMetadata, extractMetadataBlock } from '../services/scripts/MetadataParser.js';
+import ScriptAnalyzer from '../services/scripts/ScriptAnalyzer.js';
 import { updateWebsiteFilterOptions, updateScriptsList, showNotification } from './dashboard-ui.js';
-import { applyTranslations } from '../utils/i18n.js';
+import { applyTranslations } from '../shared/utils/i18n.js';
+import { storageService as ScriptManager } from '../services/storage/StorageService.js';
+import { browser } from '../shared/browserAdapter.js';
 
 async function loadScripts(elements, state) {
   try {
-    const { scripts = [] } = await chrome.storage.local.get('scripts');
+    const scripts = await ScriptManager.getAllScripts();
     state.allScripts = scripts;
 
     updateWebsiteFilterOptions(state.allScripts, elements.filters.websiteFilter);
@@ -23,44 +25,48 @@ function filterScripts(elements, state) {
   const searchTerm = (elements.filters.scriptSearch?.value || '').toLowerCase();
   const websiteValue = elements.filters.websiteFilter?.value || '';
   const statusValue = elements.filters.statusFilter?.value || '';
-  const runAtValue = elements.filters.runAtFilter?.value || '';
+  const runAtFilterValue = elements.filters.runAtFilter?.value || '';
 
-  const filteredScripts = state.allScripts.filter((script) => {
-    if (searchTerm && !script.name.toLowerCase().includes(searchTerm)) {
-      return false;
-    }
-    if (websiteValue) {
-      const matchesWebsite = (script.targetUrls || []).some((url) => {
-        try {
-          return new URL(url).hostname === websiteValue;
-        } catch {
-          return url === websiteValue;
-        }
-      });
-      if (!matchesWebsite) return false;
-    }
-    if (statusValue) {
-      const isEnabled = statusValue === 'enabled';
-      if (script.enabled !== isEnabled) return false;
-    }
-    if (runAtValue && script.runAt !== runAtValue) return false;
+  const filteredScripts = (Array.isArray(state.allScripts) ? state.allScripts : []).filter(
+    (script) => {
+      if (!script || typeof script !== 'object') return false;
+      if (
+        searchTerm &&
+        !String(script.name ?? '')
+          .toLowerCase()
+          .includes(searchTerm)
+      ) {
+        return false;
+      }
+      if (websiteValue) {
+        const matchesWebsite = (script.targetUrls || []).some((url) => {
+          try {
+            return new URL(url).hostname === websiteValue;
+          } catch {
+            return url === websiteValue;
+          }
+        });
+        if (!matchesWebsite) return false;
+      }
+      if (statusValue) {
+        const isEnabled = statusValue === 'enabled';
+        if (script.enabled !== isEnabled) return false;
+      }
+      if (runAtFilterValue && script.runAt !== runAtFilterValue) return false;
 
-    return true;
-  });
+      return true;
+    }
+  );
 
   updateScriptsList(filteredScripts, elements);
 }
 
 async function toggleScript(scriptId, enabled) {
   try {
-    const { scripts = [] } = await chrome.storage.local.get('scripts');
-    const scriptIndex = scripts.findIndex((s) => s.id === scriptId);
-
-    if (scriptIndex !== -1) {
-      scripts[scriptIndex].enabled = enabled;
-      await chrome.storage.local.set({ scripts });
-      chrome.runtime.sendMessage({ action: 'scriptsUpdated' });
+    const result = await ScriptManager.toggleScript(scriptId, enabled);
+    if (result.success) {
       showNotification(`Script ${enabled ? 'enabled' : 'disabled'}`, 'success');
+      await refreshDashboard();
     }
   } catch (error) {
     logger.error('Error toggling script:', error);
@@ -69,7 +75,7 @@ async function toggleScript(scriptId, enabled) {
 }
 
 function editScript(scriptId) {
-  window.location.href = chrome.runtime.getURL(`editor/editor.html?id=${scriptId}`);
+  window.location.href = ScriptManager.getEditorUrl(scriptId);
 }
 
 async function deleteScript(scriptId) {
@@ -78,23 +84,9 @@ async function deleteScript(scriptId) {
   }
 
   try {
-    const { scripts = [] } = await chrome.storage.local.get('scripts');
-    const updatedScripts = scripts.filter((s) => s.id !== scriptId);
-
-    await chrome.storage.local.set({ scripts: updatedScripts });
-    document.dispatchEvent(new CustomEvent('scriptsChanged'));
-    chrome.runtime.sendMessage({ action: 'scriptsUpdated' });
-
-    const elements = {
-      scriptsList: document.getElementById('scriptsList'),
-      emptyState: document.getElementById('emptyState'),
-      filters: {
-        websiteFilter: document.getElementById('websiteFilter'),
-      },
-    };
-
-    updateWebsiteFilterOptions(updatedScripts, elements.filters.websiteFilter);
-    updateScriptsList(updatedScripts, elements);
+    await ScriptManager.deleteScript(scriptId);
+    showNotification('Script deleted', 'success');
+    await refreshDashboard();
   } catch (error) {
     logger.error('Error deleting script:', error);
     showNotification('Error deleting script', 'error');
@@ -104,7 +96,7 @@ async function deleteScript(scriptId) {
 async function loadSettings(settingsElements) {
   try {
     applyTheme();
-    const { settings = {} } = await chrome.storage.local.get('settings');
+    const { settings = {} } = await browser.storage.local.get('settings');
 
     // default values
     const defaultSettings = {
@@ -117,7 +109,6 @@ async function loadSettings(settingsElements) {
       language: 'auto',
     };
 
-    // Apply defaults and update storage if needed
     let shouldSaveDefaults = false;
     Object.entries(defaultSettings).forEach(([key, defaultValue]) => {
       const elementKey = key === 'language' ? 'languageSelector' : key;
@@ -137,9 +128,8 @@ async function loadSettings(settingsElements) {
       }
     });
 
-    // Save defaults to storage if any were missing
     if (shouldSaveDefaults) {
-      await chrome.storage.local.set({ settings });
+      await browser.storage.local.set({ settings });
     }
   } catch (error) {
     logger.error('Error loading settings:', error);
@@ -165,13 +155,12 @@ async function saveSettings(settingsElements) {
       }
     });
 
-    await chrome.storage.local.set({ settings });
+    await browser.storage.local.set({ settings });
     showNotification('Settings saved successfully', 'success');
-    chrome.runtime.sendMessage({ action: 'settingsUpdated' });
+    browser.runtime.sendMessage({ action: 'settingsUpdated' });
 
     applyTheme();
 
-    // Reapply translations if language changed
     await applyTranslations();
   } catch (error) {
     logger.error('Error saving settings:', error);
@@ -182,6 +171,10 @@ async function saveSettings(settingsElements) {
 async function checkForUpdates(script) {
   if (!script.updateInfo?.updateUrl) {
     showNotification('No update URL available', 'error');
+    return;
+  }
+  if (!/^https:\/\//i.test(script.updateInfo.updateUrl)) {
+    showNotification('Update URL must use https.', 'error');
     return;
   }
 
@@ -214,19 +207,23 @@ async function checkForUpdates(script) {
     );
 
     if (updateConfirmed) {
-      const { scripts = [] } = await chrome.storage.local.get('scripts');
+      const { scripts = [] } = await browser.storage.local.get('scripts');
       const scriptIndex = scripts.findIndex((s) => s.id === script.id);
 
       if (scriptIndex !== -1) {
-        const newMetadata = await ScriptAnalyzer.validateAndEnhanceMetadata(newCode);
+        const newMetadata = parseUserScriptMetadata(newCode);
+        const detected = ScriptAnalyzer.detectGMApiUsage(newCode);
 
         scripts[scriptIndex] = {
           ...scripts[scriptIndex],
-          ...newMetadata,
-          gmApis: newMetadata.gmApis,
+          name: newMetadata.name || scripts[scriptIndex].name,
           version: newVersion,
           code: newCode,
           updatedAt: Date.now(),
+          targetUrls: newMetadata.matches || scripts[scriptIndex].targetUrls,
+          ...(newMetadata.requires && { requires: newMetadata.requires }),
+          ...(newMetadata.resources && { resources: newMetadata.resources }),
+          ...detected,
           updateInfo: {
             ...scripts[scriptIndex].updateInfo,
             lastChecked: Date.now(),
@@ -234,8 +231,8 @@ async function checkForUpdates(script) {
           },
         };
 
-        await chrome.storage.local.set({ scripts });
-        chrome.runtime.sendMessage({ action: 'scriptsUpdated' });
+        await browser.storage.local.set({ scripts });
+        browser.runtime.sendMessage({ action: 'scriptsUpdated' });
         showNotification('Script updated successfully', 'success');
         await refreshDashboard();
       }
@@ -259,7 +256,7 @@ async function refreshDashboard() {
     },
   };
 
-  const { scripts = [] } = await chrome.storage.local.get('scripts');
+  const { scripts = [] } = await browser.storage.local.get('scripts');
   const state = { allScripts: scripts };
 
   updateWebsiteFilterOptions(scripts, elements.filters.websiteFilter);

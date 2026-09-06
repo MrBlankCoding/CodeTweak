@@ -1,6 +1,6 @@
 {
   "type": "module",
-  "version": "2.0.0",
+  "version": "3.1.2",
   "engines": {
     "node": ">=20.19.0 <27"
   },
@@ -20,9 +20,11 @@
   },
   "scripts": {
     "build": "node buildScripts/build.js --production",
-    "build:chrome": "node buildScripts/build.js --production",
+    "build:chrome": "node buildScripts/build.js --chrome --production",
+    "build:safari": "node buildScripts/build.js --safari --production",
     "build:dev": "node buildScripts/build.js",
-    "build:dev:chrome": "node buildScripts/build.js",
+    "build:dev:chrome": "node buildScripts/build.js --chrome",
+    "build:dev:safari": "node buildScripts/build.js --safari",
     "lint": "eslint src tests buildScripts",
     "docs:dev": "vitepress dev docs-src",
     "docs:build": "vitepress build docs-src",

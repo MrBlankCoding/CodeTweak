@@ -1,0 +1,247 @@
+import logger from './logger.js';
+export function urlMatchesPattern(url, pattern) {
+  try {
+    if (!url || !pattern) return false;
+    if (pattern === url) return true;
+    if (pattern === '*://*/*') return true;
+    if (!pattern.includes('://')) {
+      pattern = '*://' + pattern;
+    }
+
+    const [patternScheme, patternRest] = pattern.split('://');
+    const [patternHost, ...pathParts] = patternRest.split('/');
+    const patternPath = '/' + pathParts.join('/');
+
+    const urlObj = new URL(url);
+    const urlScheme = urlObj.protocol.slice(0, -1); // "http:" -> "http"
+    const urlHost = urlObj.hostname;
+    const urlPath = urlObj.pathname;
+
+    const schemeRegex = new RegExp('^' + patternScheme.replace(/\*/g, '.*') + '$');
+    if (!schemeRegex.test(urlScheme)) return false;
+
+    if (patternHost === '*') {
+      // Any host
+    } else if (patternHost.startsWith('*.') || patternHost.startsWith('.')) {
+      const domain = patternHost.startsWith('*.') ? patternHost.slice(2) : patternHost.slice(1);
+      if (!(urlHost === domain || urlHost.endsWith('.' + domain))) return false;
+    } else if (patternHost.includes('*')) {
+      const hostRegex = new RegExp(
+        '^' + patternHost.replace(/\./g, '\\.').replace(/\*/g, '[^.]+') + '$'
+      );
+      if (!hostRegex.test(urlHost)) return false;
+    } else {
+      if (urlHost !== patternHost && !urlHost.endsWith('.' + patternHost)) return false;
+    }
+
+    if (['/', '/*'].includes(patternPath)) return true;
+    if (patternPath.endsWith('/**')) {
+      const base = patternPath.slice(0, -3);
+      return urlPath === base || urlPath.startsWith(base);
+    }
+
+    const segments = patternPath.split('/').filter(Boolean);
+    if (segments.length === 0) return true;
+
+    const regexParts = ['^'];
+
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
+      if (segment === '**') {
+        regexParts.push('(?:\\/.*)?');
+      } else if (segment === '*') {
+        regexParts.push('(?:\\/[^/]+)+');
+      } else {
+        const segmentRegex = segment.replace(/\./g, '\\.').replace(/\*/g, '[^/]*');
+        regexParts.push('\\/' + segmentRegex);
+      }
+    }
+
+    const lastSegment = segments[segments.length - 1];
+    if (lastSegment === '*' || lastSegment.includes('*')) {
+      regexParts.push('(?:\\/.*)?$');
+    } else {
+      regexParts.push('/?$');
+    }
+
+    const pathRegex = new RegExp(regexParts.join(''));
+    return pathRegex.test(urlPath);
+  } catch (e) {
+    logger.warn('URL matching error:', e);
+    return false;
+  }
+}
+// "http://google.com" -> "http://google.com/*"
+// Any non-standard scheme containing "*" (Tampermonkey "http*" etc.)
+// maps to "*" which chrome.userScripts.register rejects otherwise ("Invalid scheme").
+const VALID_MATCH_SCHEMES = new Set(['*', 'http', 'https', 'file', 'ftp']);
+
+export function normalizeMatchPattern(pattern) {
+  if (!pattern || typeof pattern !== 'string') return pattern;
+  const trimmed = pattern.trim();
+  if (trimmed === '<all_urls>') return trimmed;
+
+  try {
+    let normalized = trimmed;
+    if (!normalized.includes('://')) {
+      normalized = '*://' + normalized;
+    }
+
+    const sep = normalized.indexOf('://');
+    if (sep === -1) return normalized;
+    let scheme = normalized.slice(0, sep).trim().toLowerCase();
+    const rest = normalized.slice(sep + 3);
+    if (!rest) return normalized;
+
+    if (!VALID_MATCH_SCHEMES.has(scheme) && scheme.includes('*')) {
+      scheme = '*';
+    }
+
+    const slashIndex = rest.indexOf('/');
+    if (slashIndex === -1) {
+      return `${scheme}://${rest}/*`;
+    }
+    return `${scheme}://${rest}`;
+  } catch {
+    return pattern;
+  }
+}
+
+export function isValidMatchPattern(pattern) {
+  if (pattern === '<all_urls>') return true;
+  if (!pattern || typeof pattern !== 'string') return false;
+  const sep = pattern.indexOf('://');
+  if (sep === -1) return false;
+  const scheme = pattern.slice(0, sep).toLowerCase();
+  const rest = pattern.slice(sep + 3);
+  if (!VALID_MATCH_SCHEMES.has(scheme) || !rest) return false;
+  const slashIndex = rest.indexOf('/');
+  if (slashIndex === -1) return false;
+  if (rest.slice(0, slashIndex).length === 0) return false;
+  return true;
+}
+
+export function generateUrlMatchPattern(baseUrl, scope = 'domain') {
+  try {
+    if (!baseUrl) return null;
+    if (!/^https?:\/\//i.test(baseUrl)) {
+      baseUrl = 'https://' + baseUrl.replace(/^\/*/, '');
+    }
+    const { protocol, hostname } = new URL(baseUrl);
+
+    const scheme = protocol.replace(':', '');
+
+    let hostPart = hostname;
+    switch (scope) {
+      case 'exact':
+        return `${scheme}://${hostPart}`;
+      case 'domain':
+        return `${scheme}://${hostPart}/*`;
+      case 'subdomain': {
+        const parts = hostPart.split('.');
+        if (parts.length > 2) {
+          hostPart = parts.slice(-2).join('.');
+        }
+        return `${scheme}://*.${hostPart}/*`;
+      }
+      default:
+        return `${scheme}://${hostPart}/*`;
+    }
+  } catch (e) {
+    logger.warn('Failed to generate match pattern:', e);
+    return null;
+  }
+}
+
+export function normalizeRunAt(runAt, fallback = null) {
+  if (!runAt) return fallback;
+  return String(runAt).replace(/-/g, '_');
+}
+
+export function formatRunAt(runAt) {
+  const map = {
+    document_start: 'Start',
+    document_end: 'DOM',
+    document_idle: 'Load',
+  };
+  return map[runAt] || runAt || 'Load';
+}
+
+export function getScriptDescription(script) {
+  const features = [];
+  if (script.css?.trim()) {
+    features.push('CSS');
+  }
+
+  if (script.js?.trim()) {
+    features.push('JS');
+  }
+
+  let gmApiCount = 0;
+  const gmApiKeys = [
+    'gmSetValue',
+    'gmGetValue',
+    'gmDeleteValue',
+    'gmListValues',
+    'gmAddValueChangeListener',
+    'gmRemoveValueChangeListener',
+    'gmOpenInTab',
+    'gmNotification',
+    'gmAddStyle',
+    'gmAddElement',
+    'gmRegisterMenuCommand',
+    'gmUnregisterMenuCommand',
+    'gmGetResourceText',
+    'gmGetResourceURL',
+    'gmXmlhttpRequest',
+    'gmSetClipboard',
+    'unsafeWindow',
+  ];
+
+  gmApiKeys.forEach((key) => {
+    if (script[key]) gmApiCount++;
+  });
+
+  if (gmApiCount > 0) {
+    features.push(`${gmApiCount} GM API${gmApiCount > 1 ? 's' : ''}`);
+  }
+
+  if (script.resources && script.resources.length > 0) {
+    features.push(`${script.resources.length} Resource${script.resources.length > 1 ? 's' : ''}`);
+  }
+
+  if (script.requiredScripts && script.requiredScripts.length > 0) {
+    features.push(
+      `${script.requiredScripts.length} Lib${script.requiredScripts.length > 1 ? 's' : ''}`
+    );
+  }
+
+  if (features.length === 0) return 'Basic';
+  return features.join(' • ');
+}
+
+export function formatUrlPattern(pattern) {
+  if (!pattern) return 'All sites';
+  let display = pattern.replace(/^https?:\/\//, '');
+  display = display.replace(/^\*\./, '');
+  display = display.replace(/\/\*$/, '');
+  if (display.length > 30) {
+    display = display.substring(0, 27) + '...';
+  }
+
+  return display;
+}
+
+export function isValidWebpage(url) {
+  if (!url) return false;
+
+  const restrictedPatterns = /^(chrome|edge|about|file|safari-extension):\/\//i;
+  const isExtensionPage =
+    url.startsWith('chrome-extension://') || url.startsWith('safari-extension://');
+  const isNewTab =
+    url === 'about:blank' ||
+    url === 'chrome://newtab/' ||
+    url === 'safari-extension://com.apple.Safari/NewTab';
+
+  return !restrictedPatterns.test(url) && !isExtensionPage && !isNewTab;
+}

@@ -30,10 +30,10 @@ function scanFiles(dir) {
       }
     } else if (file.endsWith('.html') || file.endsWith('.js')) {
       const content = fs.readFileSync(fullPath, 'utf8');
-      const htmlRegex = /data-i18n(?:-attr|-title|-placeholder)?="([^"]+)"/g;
+      const htmlRegex = /data-i18n(?:-attr|-title|-placeholder)?=(?:"([^"]+)"|'([^']+)')/g;
       let match;
       while ((match = htmlRegex.exec(content)) !== null) {
-        const key = match[1];
+        const key = match[1] ?? match[2];
         if (key !== 'title' && key !== 'placeholder') {
           seenKeys.add(key);
         }
@@ -45,6 +45,12 @@ function scanFiles(dir) {
         if (key !== 'key' && key !== 'title' && key !== 'placeholder') {
           seenKeys.add(key);
         }
+      }
+
+      const setAttrRegex =
+        /setAttribute\(\s*['"]data-i18n(?:-attr|-title|-placeholder)?['"]\s*,\s*['"]([^'"]+)['"]\s*\)/g;
+      while ((match = setAttrRegex.exec(content)) !== null) {
+        seenKeys.add(match[1]);
       }
     }
   }
@@ -93,5 +99,14 @@ if (hasError) {
     '\x1b[32m%s\x1b[0m',
     'i18n Coverage Check Passed! All keys are present in all languages.'
   );
-  process.exit(0);
 }
+
+// Unused-key report (warning only): en keys never referenced in src.
+const unusedKeys = Object.keys(localeFiles['en']).filter((key) => !seenKeys.has(key));
+if (unusedKeys.length > 0) {
+  console.log(
+    '\x1b[33m%s\x1b[0m',
+    `i18n Unused Keys (${unusedKeys.length}): ${unusedKeys.join(', ')}`
+  );
+}
+process.exit(0);

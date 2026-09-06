@@ -1,4 +1,4 @@
-import logger from '../../../utils/logger.js';
+import logger from '../../../shared/utils/logger.js';
 import feather from 'feather-icons';
 
 export class ChatManager {
@@ -18,10 +18,19 @@ export class ChatManager {
     try {
       if (!this.scriptId) {
         let tab;
-        if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
-          [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (
+          typeof chrome !== 'undefined' &&
+          (globalThis.browser ?? globalThis.chrome).tabs &&
+          (globalThis.browser ?? globalThis.chrome).tabs.query
+        ) {
+          [tab] = await (globalThis.browser ?? globalThis.chrome).tabs.query({
+            active: true,
+            currentWindow: true,
+          });
         } else {
-          const response = await chrome.runtime.sendMessage({ action: 'getCurrentTab' });
+          const response = await (globalThis.browser ?? globalThis.chrome).runtime.sendMessage({
+            action: 'getCurrentTab',
+          });
           tab = response?.tab;
         }
 
@@ -33,7 +42,9 @@ export class ChatManager {
       }
 
       const storageKey = `aiChatHistory_${this.scriptId}`;
-      const { [storageKey]: history } = await chrome.storage.local.get(storageKey);
+      const { [storageKey]: history } = await (
+        globalThis.browser ?? globalThis.chrome
+      ).storage.local.get(storageKey);
 
       this.editor.elements.messages.innerHTML = '';
 
@@ -66,7 +77,7 @@ export class ChatManager {
       if (!this.scriptId) return;
 
       const storageKey = `aiChatHistory_${this.scriptId}`;
-      await chrome.storage.local.set({
+      await (globalThis.browser ?? globalThis.chrome).storage.local.set({
         [storageKey]: {
           id: this.scriptId,
           url: this.currentSiteUrl,
@@ -113,7 +124,7 @@ export class ChatManager {
 
       if (this.scriptId) {
         const storageKey = `aiChatHistory_${this.scriptId}`;
-        await chrome.storage.local.remove(storageKey);
+        await (globalThis.browser ?? globalThis.chrome).storage.local.remove(storageKey);
       }
       this.editor.setCurrentScript(null);
     }
