@@ -71,23 +71,21 @@ async function buildTarget(target) {
     },
   });
 
-  if (isProduction) {
-    const archiveName = `codetweak-${target}.zip`;
-    const output = createWriteStream(join('build', archiveName));
-    const archive = archiver('zip', { zlib: { level: 9 } });
+  const archiveName = `codetweak-${target}.zip`;
+  const output = createWriteStream(join('build', archiveName));
+  const archive = archiver('zip', { zlib: { level: 9 } });
 
-    output.on('close', () => {
-      console.log(`Successfully created ${archiveName} (${archive.pointer()} bytes)`);
-    });
+  output.on('close', () => {
+    console.log(`Successfully created ${archiveName} (${archive.pointer()} bytes)`);
+  });
 
-    archive.on('error', (err) => {
-      throw err;
-    });
+  archive.on('error', (err) => {
+    throw err;
+  });
 
-    archive.pipe(output);
-    archive.directory(outdir, false);
-    await archive.finalize();
-  }
+  archive.pipe(output);
+  archive.directory(outdir, false);
+  await archive.finalize();
 }
 
 for (const target of targets) {
