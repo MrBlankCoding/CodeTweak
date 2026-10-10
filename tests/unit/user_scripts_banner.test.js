@@ -9,7 +9,6 @@ describe('userScriptsBanner', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     delete global.chrome;
-    globalThis.__SAFARI_BUILD__ = 'false';
     document.body.innerHTML = '<div id="slot"></div>';
   });
 

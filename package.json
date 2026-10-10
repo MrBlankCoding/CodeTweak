@@ -1,8 +1,8 @@
 {
   "type": "module",
-  "version": "3.1.3",
+  "version": "3.1.4",
   "engines": {
-    "node": ">=20.19.0 <27"
+    "node": ">=24.0.0 <27"
   },
   "devDependencies": {
     "@eslint/js": "9.39.1",
@@ -21,10 +21,8 @@
   "scripts": {
     "build": "node buildScripts/build.js --production",
     "build:chrome": "node buildScripts/build.js --chrome --production",
-    "build:safari": "node buildScripts/build.js --safari --production",
     "build:dev": "node buildScripts/build.js",
     "build:dev:chrome": "node buildScripts/build.js --chrome",
-    "build:dev:safari": "node buildScripts/build.js --safari",
     "lint": "eslint src tests buildScripts",
     "docs:dev": "vitepress dev docs-src",
     "docs:build": "vitepress build docs-src",
@@ -63,7 +61,7 @@
     "fuzzysort": "^3.1.0",
     "marked": "^17.0.0",
     "path-browserify": "^1.0.1",
-    "webcrack": "^2.15.1"
+    "webcrack": "^2.16.0"
   },
   "lint-staged": {
     "*.{js,mjs,cjs}": [
@@ -80,6 +78,9 @@
     "esbuild@0.21.5": true,
     "esbuild@0.27.3": true,
     "fsevents@2.3.3": true,
-    "isolated-vm@5.0.4": true
+    "isolated-vm@7.0.1": true
+  },
+  "overrides": {
+    "isolated-vm": "7.0.1"
   }
 }

@@ -6,11 +6,7 @@ import archiver from 'archiver';
 
 const args = process.argv.slice(2);
 const isProduction = args.includes('--production');
-const targets = args.includes('--safari')
-  ? ['safari']
-  : args.includes('--chrome')
-    ? ['chrome']
-    : ['chrome', 'safari'];
+const targets = ['chrome'];
 
 async function buildTarget(target) {
   console.log(`Building for ${target}...`);
@@ -72,7 +68,6 @@ async function buildTarget(target) {
       'process.env.BABEL_TYPES_8_BREAKING': 'false',
       'process.env.BROWSER': JSON.stringify(target),
       'process.env.BUILD_TARGET': JSON.stringify(target),
-      __SAFARI_BUILD__: JSON.stringify(target === 'safari'),
     },
   });
 

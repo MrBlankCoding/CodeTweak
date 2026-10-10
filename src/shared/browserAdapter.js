@@ -17,13 +17,6 @@ export function getStorageApi() {
   return getBrowserApi().storage;
 }
 
-export function isSafari() {
-  return (
-    typeof safari !== 'undefined' ||
-    (/Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent))
-  );
-}
-
 export function promisifyChromeCall(fn, context, ...args) {
   if (typeof fn !== 'function') {
     return Promise.reject(new Error('API function is not available'));

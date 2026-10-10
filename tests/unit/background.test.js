@@ -521,7 +521,7 @@ describe('background', () => {
     ).resolves.toHaveProperty('tab');
   });
 
-  it('handles getScriptsForUrl for Safari fallback', async () => {
+  it('handles getScriptsForUrl for injection fallback', async () => {
     const { listeners } = await setupBackground({
       scripts: [
         {

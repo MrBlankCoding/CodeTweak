@@ -87,9 +87,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   await applyTheme();
-  if (globalThis.__SAFARI_BUILD__ !== 'true') {
-    renderUserScriptsBanner(document.getElementById('userScriptsBannerSlot'));
-  }
+  renderUserScriptsBanner(document.getElementById('userScriptsBannerSlot'));
   await applyTranslations();
   await loadScripts(currentTabUrl);
   await loadMenuCommands();
@@ -248,9 +246,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
       if (!tab?.id) return;
 
-      const restrictedPatterns = /^(chrome|edge|about|safari-extension):\/\//i;
-      const isExtensionPage =
-        tab.url?.startsWith('chrome-extension://') || tab.url?.startsWith('safari-extension://');
+      const restrictedPatterns = /^(chrome|edge|about):\/\//i;
+      const isExtensionPage = tab.url?.startsWith('chrome-extension://');
 
       if (restrictedPatterns.test(tab.url || '') || isExtensionPage) {
         menuSection.style.display = 'none';

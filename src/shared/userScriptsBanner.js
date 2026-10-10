@@ -1,9 +1,5 @@
 export function isUserScriptsSupported() {
-  if (typeof safari !== 'undefined') return true;
-  const ua = navigator.userAgent;
-  if (/Safari/.test(ua) && !/Chrome|Chromium|Edg|OPR|Brave/.test(ua)) return true;
-  if (typeof globalThis.chrome?.userScripts?.register !== 'function') return false;
-  return true;
+  return typeof globalThis.chrome?.userScripts?.register === 'function';
 }
 
 function buildBanner(doc, { onOpenGuide } = {}) {

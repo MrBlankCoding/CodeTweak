@@ -126,7 +126,7 @@ describe('content_bridge', () => {
     );
   });
 
-  it('triggers injection fallback in Safari (no userScripts API)', async () => {
+  it('triggers injection fallback when userScripts API is unavailable', async () => {
     vi.resetModules();
     const mockScripts = [
       { id: 's1', code: 'console.log("fallback-main")', injectInto: 'main' },
@@ -135,7 +135,7 @@ describe('content_bridge', () => {
 
     global.chrome = {
       runtime: {
-        id: 'ext-safari',
+        id: 'ext-fallback',
         sendMessage: vi.fn((payload, cb) => {
           if (payload.action === 'getScriptsForUrl') {
             cb({ scripts: mockScripts });
@@ -143,7 +143,7 @@ describe('content_bridge', () => {
         }),
         onMessage: { addListener: vi.fn() },
       },
-      userScripts: undefined, // Simulate Safari
+      userScripts: undefined, // Simulate user scripts toggle disabled
     };
 
     const appendSpy = vi.spyOn(document.head, 'appendChild');
@@ -167,7 +167,7 @@ describe('content_bridge', () => {
     vi.resetModules();
     global.chrome = {
       runtime: {
-        id: 'ext-safari-err',
+        id: 'ext-fallback-err',
         sendMessage: vi.fn((_payload, _cb) => {
           throw new Error('Network error');
         }),

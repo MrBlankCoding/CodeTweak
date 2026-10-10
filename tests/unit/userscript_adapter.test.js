@@ -202,7 +202,7 @@ if (!rx.test("https://example.com")) {
     expect(reg.js[0].code).toContain('"res":"https://res.png"');
   });
 
-  it('uses scripting API as fallback for Safari and transforms registrations correctly', async () => {
+  it('uses scripting API as fallback when userScripts is unavailable and transforms registrations correctly', async () => {
     const storageData = { userScriptRegistrationIds: [] };
     global.chrome = {
       runtime: { id: 'ext-id', getManifest: () => ({ version: '1.0.0' }) },
@@ -221,9 +221,9 @@ if (!rx.test("https://example.com")) {
 
     const adapter = new UserScriptsAdapter();
     const script = {
-      id: 's-safari',
-      name: 'Safari Test',
-      code: 'console.log("safari")',
+      id: 's-fallback',
+      name: 'Fallback Test',
+      code: 'console.log("fallback")',
       enabled: true,
       targetUrls: ['https://example.com/*'],
       runAt: 'document-start',
@@ -238,14 +238,14 @@ if (!rx.test("https://example.com")) {
     expect(regs).toHaveLength(1);
     expect(regs[0]).toEqual(
       expect.objectContaining({
-        id: 'ct-us-s-safari',
+        id: 'ct-us-s-fallback',
         matches: ['https://example.com/*'],
         runAt: 'document_start',
         world: 'MAIN',
         persistAcrossSessions: true,
       })
     );
-    expect(regs[0].js[0].code).toContain('console.log("safari")');
+    expect(regs[0].js[0].code).toContain('console.log("fallback")');
   });
 
   it('returns unsupported result if both scripting APIs are missing', async () => {

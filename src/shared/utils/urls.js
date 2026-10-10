@@ -235,13 +235,9 @@ export function formatUrlPattern(pattern) {
 export function isValidWebpage(url) {
   if (!url) return false;
 
-  const restrictedPatterns = /^(chrome|edge|about|file|safari-extension):\/\//i;
-  const isExtensionPage =
-    url.startsWith('chrome-extension://') || url.startsWith('safari-extension://');
-  const isNewTab =
-    url === 'about:blank' ||
-    url === 'chrome://newtab/' ||
-    url === 'safari-extension://com.apple.Safari/NewTab';
+  const restrictedPatterns = /^(chrome|edge|about|file):\/\//i;
+  const isExtensionPage = url.startsWith('chrome-extension://');
+  const isNewTab = url === 'about:blank' || url === 'chrome://newtab/';
 
   return !restrictedPatterns.test(url) && !isExtensionPage && !isNewTab;
 }

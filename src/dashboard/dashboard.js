@@ -50,9 +50,7 @@ function initDashboard() {
   };
 
   setupEventListeners(elements, state);
-  if (globalThis.__SAFARI_BUILD__ !== 'true') {
-    renderUserScriptsBanner(document.getElementById('userScriptsBannerSlot'));
-  }
+  renderUserScriptsBanner(document.getElementById('userScriptsBannerSlot'));
   loadScripts(elements, state);
   loadSettings(elements.settings);
   setupTabs(elements.navItems, elements.tabContents);
