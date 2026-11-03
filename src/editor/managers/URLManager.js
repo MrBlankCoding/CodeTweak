@@ -1,6 +1,6 @@
 import { BaseUIComponent } from '../base/BaseUIComponent.js';
-import feather from 'feather-icons';
 import { generateUrlMatchPattern } from '../../shared/utils/urls.js';
+import { createIcon } from '../../shared/utils/icons.js';
 
 export class URLManager extends BaseUIComponent {
   constructor(elements, eventBus) {
@@ -90,32 +90,23 @@ export class URLManager extends BaseUIComponent {
       }
     }
 
-    try {
-      const urlItem = document.createElement('div');
-      urlItem.className = 'url-item';
-      urlItem.dataset.url = url;
-      const span = document.createElement('span');
-      span.textContent = url;
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'remove-btn';
-      button.title = 'Remove URL';
-      const icon = document.createElement('i');
-      icon.setAttribute('data-feather', 'x');
-      button.appendChild(icon);
-      urlItem.appendChild(span);
-      urlItem.appendChild(button);
+    if (!this.elements.urlList) return false;
 
-      if (this.elements.urlList) {
-        this.elements.urlList.appendChild(urlItem);
-        this.emit('sidebarChanged');
-        feather.replace();
-        return true;
-      }
-    } catch {
-      // Silently fail - feather icons might not be ready yet
-    }
-    return false;
+    const urlItem = document.createElement('div');
+    urlItem.className = 'url-item';
+    urlItem.dataset.url = url;
+    const span = document.createElement('span');
+    span.textContent = url;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'remove-btn';
+    button.title = 'Remove URL';
+    button.appendChild(createIcon('x'));
+    urlItem.append(span, button);
+
+    this.elements.urlList.appendChild(urlItem);
+    this.emit('sidebarChanged');
+    return true;
   }
 
   removeUrl(urlItem) {

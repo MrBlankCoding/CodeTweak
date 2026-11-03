@@ -10,15 +10,14 @@ export function normalizeStackTrace(stack) {
 }
 
 export async function storeScriptError(scriptId, error) {
-  const browser = globalThis.browser ?? globalThis.chrome;
   try {
-    const { settings = {} } = await browser.storage.local.get('settings');
+    const { settings = {} } = await chrome.storage.local.get('settings');
     if (!settings.enhancedDebugging) {
       return;
     }
 
     const storageKey = `scriptErrors_${scriptId}`;
-    const { [storageKey]: stored = [] } = await browser.storage.local.get(storageKey);
+    const { [storageKey]: stored = [] } = await chrome.storage.local.get(storageKey);
     const existingErrors = Array.isArray(stored) ? stored : [];
     const normalizedNewStack = normalizeStackTrace(error.stack);
     const isDuplicate = existingErrors.some((existingError) => {
@@ -33,9 +32,9 @@ export async function storeScriptError(scriptId, error) {
     }
 
     const updatedErrors = [error, ...existingErrors].slice(0, 50);
-    await browser.storage.local.set({ [storageKey]: updatedErrors });
+    await chrome.storage.local.set({ [storageKey]: updatedErrors });
 
-    browser.runtime
+    chrome.runtime
       .sendMessage({
         type: 'SCRIPT_ERROR_UPDATE',
         scriptId,
@@ -50,10 +49,9 @@ export async function storeScriptError(scriptId, error) {
 }
 
 export async function clearScriptErrors(scriptId) {
-  const browser = globalThis.browser ?? globalThis.chrome;
   try {
     const storageKey = `scriptErrors_${scriptId}`;
-    await browser.storage.local.remove(storageKey);
+    await chrome.storage.local.remove(storageKey);
   } catch (err) {
     logger.error('Failed to clear script errors:', err);
   }

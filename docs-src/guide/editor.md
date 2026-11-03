@@ -33,15 +33,6 @@ These panels allow you to configure your script without manually editing the met
 - **External Resources**: Add `@require` and `@resource` links.
 - **Script Errors**: View compilation and runtime errors for the current script.
 
-## The AI DOM Editor
-
-The AI DOM Editor is a powerful tool for generating userscript code by simply describing what you want to change on a webpage.
-
-1.  **Open AI Sidebar**: Click **AI DOM Editor** in the popup or from the editor's sidebar.
-2.  **Select an Element**: Click the **Select Element** button and hover over the element on the page you want to modify.
-3.  **Describe the Change**: In the text box, describe what you want the AI to do (e.g., "Hide this element" or "Change the background color to blue").
-4.  **Review and Apply**: The AI will generate code for you. You can review it and click **Apply to Script** to add it to your current userscript.
-
 ## Debugging and Testing
 
 - **Live Updates**: When you save a script, it is instantly updated. Refresh the target website to see your changes.

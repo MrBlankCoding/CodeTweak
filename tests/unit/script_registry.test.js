@@ -20,7 +20,7 @@ describe('ScriptRegistry', () => {
         name: 'A',
         code: 'console.log(1)',
         enabled: true,
-        targetUrl: 'https://example.com/*',
+        targetUrls: ['https://example.com'],
       },
     ]);
     const adapter = { syncEnabledScripts: vi.fn(async () => ({ usingUserScripts: true })) };
@@ -29,6 +29,7 @@ describe('ScriptRegistry', () => {
     const scripts = await registry.refresh();
 
     expect(scripts[0].id).toBeTypeOf('string');
+    // missing id is assigned and the pattern gets its implicit path
     expect(scripts[0].targetUrls).toEqual(['https://example.com/*']);
     expect(storage.local.set).toHaveBeenCalledWith({ scripts: expect.any(Array) });
   });

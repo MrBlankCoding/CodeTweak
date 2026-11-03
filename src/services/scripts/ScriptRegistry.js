@@ -1,13 +1,47 @@
+import logger from '../../shared/utils/logger.js';
 import {
   urlMatchesPattern,
   normalizeMatchPattern,
   normalizeRunAt,
 } from '../../shared/utils/urls.js';
+import { gateFor } from './adapter/scriptNormalizer.js';
+import { withScriptsLock } from '../storage/StorageService.js';
+
+function isQuotaError(error) {
+  return (
+    error?.name === 'QuotaExceededError' ||
+    error?.name === 'ALREADY_EXISTS' ||
+    /quota|exceeded/i.test(error?.message || '')
+  );
+}
+
+// persist to storage.local
+// handle errors
+async function persistScripts(storageApi, scripts) {
+  try {
+    await storageApi.local.set({ scripts });
+    return true;
+  } catch (error) {
+    if (isQuotaError(error)) {
+      await storageApi.local
+        .set({
+          storageWarning: {
+            message:
+              'Extension storage is full. Recent changes were NOT saved. Delete or export some scripts to free space.',
+            at: Date.now(),
+          },
+        })
+        .catch(() => {});
+      logger.error('Storage quota exceeded while saving scripts; changes were not applied.', error);
+      return false;
+    }
+    throw error;
+  }
+}
 
 function normalizeScript(script) {
   if (!script || typeof script !== 'object') return null;
-  const raw = script.targetUrls || [script.targetUrl].filter(Boolean);
-  const targetUrls = (Array.isArray(raw) ? raw : [raw])
+  const targetUrls = (Array.isArray(script.targetUrls) ? script.targetUrls : [])
     .filter((u) => typeof u === 'string')
     .map(normalizeMatchPattern);
 
@@ -60,7 +94,16 @@ export class ScriptRegistry {
       }
 
       this.scripts = scripts.map(normalizeScript).filter(Boolean);
-      await this.storageApi.local.set({ scripts: this.scripts });
+      // only write when something was changed
+      if (JSON.stringify(scripts) !== JSON.stringify(this.scripts)) {
+        // re-read under the shared lock so a concurrent save isn't clobbered
+        await withScriptsLock(async () => {
+          const { scripts: latest } = await this.storageApi.local.get('scripts');
+          if (!Array.isArray(latest)) return;
+          this.scripts = latest.map(normalizeScript).filter(Boolean);
+          await persistScripts(this.storageApi, this.scripts);
+        });
+      }
       this.lastCacheUpdate = Date.now();
       return this.scripts;
     } finally {
@@ -90,11 +133,26 @@ export class ScriptRegistry {
     await this.ensureLoaded();
 
     const normalizedRunAt = normalizeRunAt(runAt);
+
     return this.scripts.filter((script) => {
       if (!script.enabled) return false;
       if (normalizedRunAt && normalizeRunAt(script.runAt) !== normalizedRunAt) return false;
-      if (!script.targetUrls.some((target) => urlMatchesPattern(url, target))) return false;
+
+      const targetsMatch = script.targetUrls.some((target) => urlMatchesPattern(url, target));
+      const gate = gateFor(script);
+      const regexMatch = gate.includeRegexes.some((source) => testRegexSource(source, url));
+      if (!targetsMatch && !regexMatch) return false;
+      if (gate.excludeRegexes.some((source) => testRegexSource(source, url))) return false;
+
       return true;
     });
+  }
+}
+
+function testRegexSource(source, url) {
+  try {
+    return new RegExp(source, 'i').test(url);
+  } catch {
+    return false;
   }
 }

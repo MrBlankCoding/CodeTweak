@@ -1,13 +1,34 @@
 import logger from '../shared/utils/logger.js';
 import { EditorState, Compartment } from '@codemirror/state';
-import { EditorView, keymap, lineNumbers } from '@codemirror/view';
-import { basicSetup } from 'codemirror';
+import {
+  EditorView,
+  keymap,
+  lineNumbers,
+  highlightActiveLineGutter,
+  dropCursor,
+  rectangularSelection,
+  crosshairCursor,
+  highlightActiveLine,
+} from '@codemirror/view';
+import { minimalSetup } from 'codemirror';
 import { javascript } from '@codemirror/lang-javascript';
-import { defaultKeymap, indentWithTab } from '@codemirror/commands';
+import { defaultKeymap, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { parseUserScriptMetadata } from '../services/scripts/MetadataParser.js';
-import { autocompletion, closeBrackets } from '@codemirror/autocomplete';
-import { bracketMatching } from '@codemirror/language';
-import { linter, lintGutter } from '@codemirror/lint';
+import {
+  autocompletion,
+  closeBrackets,
+  closeBracketsKeymap,
+  completionKeymap,
+} from '@codemirror/autocomplete';
+import {
+  bracketMatching,
+  indentUnit,
+  foldGutter,
+  indentOnInput,
+  foldKeymap,
+} from '@codemirror/language';
+import { linter, lintGutter, lintKeymap } from '@codemirror/lint';
+import { highlightSelectionMatches, searchKeymap } from '@codemirror/search';
 import { showMinimap } from '@replit/codemirror-minimap';
 import { oneDark } from '@codemirror/theme-one-dark';
 
@@ -31,6 +52,7 @@ export class CodeEditorManager {
     this.currentSettings = { ...this.defaultSettings };
     this.lint = new Compartment();
     this.tabSize = new Compartment();
+    this.indentUnit = new Compartment();
     this.lineNumbers = new Compartment();
     this.lineWrapping = new Compartment();
     this.matchBrackets = new Compartment();
@@ -43,14 +65,12 @@ export class CodeEditorManager {
     this.currentPerfTier = 'normal'; // 'normal' | 'large' | 'huge'
     this._perfCheckTimer = null;
 
-    (globalThis.browser ?? globalThis.chrome).storage.onChanged.addListener(
-      (changes, namespace) => {
-        if (namespace === 'local' && changes.editorSettings) {
-          this.currentSettings = { ...this.defaultSettings, ...changes.editorSettings.newValue };
-          this.applySettings(this.currentSettings);
-        }
+    chrome.storage.onChanged.addListener((changes, namespace) => {
+      if (namespace === 'local' && changes.editorSettings) {
+        this.currentSettings = { ...this.defaultSettings, ...changes.editorSettings.newValue };
+        this.applySettings(this.currentSettings);
       }
-    );
+    });
   }
 
   async initializeCodeEditor() {
@@ -63,10 +83,27 @@ export class CodeEditorManager {
     const startState = EditorState.create({
       doc: this.elements.codeEditor.value,
       extensions: [
-        basicSetup,
+        minimalSetup,
         oneDark,
         javascript(),
+        highlightActiveLineGutter(),
+        foldGutter(),
+        EditorState.allowMultipleSelections.of(true),
+        indentOnInput(),
+        dropCursor(),
+        rectangularSelection(),
+        crosshairCursor(),
+        highlightActiveLine(),
+        highlightSelectionMatches(),
         this.getEditorKeybindings(),
+        keymap.of([
+          ...closeBracketsKeymap,
+          ...historyKeymap,
+          ...searchKeymap,
+          ...foldKeymap,
+          ...completionKeymap,
+          ...lintKeymap,
+        ]),
         this.lint.of(linter(this.getLintOptions(true, this.getEnabledGmApis()))),
         autocompletion(),
         closeBrackets(),
@@ -74,6 +111,7 @@ export class CodeEditorManager {
 
         // Settings compartments
         this.tabSize.of(EditorState.tabSize.of(this.currentSettings.tabSize)),
+        this.indentUnit.of(indentUnit.of(' '.repeat(this.currentSettings.tabSize))),
         this.lineNumbers.of(this.currentSettings.lineNumbers ? [lineNumbers()] : []),
         this.lineWrapping.of(this.currentSettings.lineWrapping ? EditorView.lineWrapping : []),
         this.matchBrackets.of(this.currentSettings.matchBrackets ? bracketMatching() : []),
@@ -153,6 +191,7 @@ export class CodeEditorManager {
 
     // Tab size is not performance-related
     effects.push(this.tabSize.reconfigure(EditorState.tabSize.of(currentSettings.tabSize)));
+    effects.push(this.indentUnit.reconfigure(indentUnit.of(' '.repeat(currentSettings.tabSize))));
 
     // Performance-sensitive settings
     const isNormalTier = currentPerfTier === 'normal';
@@ -285,7 +324,7 @@ export class CodeEditorManager {
 
   loadSettings() {
     return new Promise((resolve) => {
-      (globalThis.browser ?? globalThis.chrome).storage.local.get(['editorSettings'], (result) => {
+      chrome.storage.local.get(['editorSettings'], (result) => {
         if (result.editorSettings) {
           this.currentSettings = { ...this.defaultSettings, ...result.editorSettings };
         } else {
@@ -298,7 +337,7 @@ export class CodeEditorManager {
 
   saveSettings(settings) {
     this.currentSettings = { ...this.currentSettings, ...settings };
-    (globalThis.browser ?? globalThis.chrome).storage.local.set({
+    chrome.storage.local.set({
       editorSettings: this.currentSettings,
     });
     this.applySettings(settings);
@@ -431,11 +470,10 @@ export class CodeEditorManager {
 
   insertDefaultTemplate() {
     const defaultCode = `(function() {
-    'use strict';
-    
-    // Your code here...
-  
-  })();`;
+  'use strict';
+
+  // Your code here...
+})();`;
 
     this.setValue(defaultCode);
   }

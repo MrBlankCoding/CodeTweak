@@ -2,12 +2,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 function createChromeMock(seed = {}) {
   const listeners = {
-    runtime: { onMessage: [], onConnect: [], onInstalled: [], onStartup: [] },
+    runtime: {
+      onMessage: [],
+      onUserScriptMessage: [],
+      onConnect: [],
+      onInstalled: [],
+      onStartup: [],
+    },
+    notifications: { onClicked: [], onClosed: [] },
     contextMenus: { onClicked: [] },
     webNavigation: { onCommitted: [], onDOMContentLoaded: [], onCompleted: [] },
     tabs: { onRemoved: [], onUpdated: [], onActivated: [] },
   };
 
+  const sessionData = {};
   const storageData = {
     scripts: seed.scripts || [],
     settings: {
@@ -41,6 +49,7 @@ function createChromeMock(seed = {}) {
         return Promise.resolve({ result: null });
       }),
       onMessage: addListener(listeners.runtime.onMessage),
+      onUserScriptMessage: addListener(listeners.runtime.onUserScriptMessage),
       onConnect: addListener(listeners.runtime.onConnect),
       onInstalled: addListener(listeners.runtime.onInstalled),
       onStartup: addListener(listeners.runtime.onStartup),
@@ -63,9 +72,23 @@ function createChromeMock(seed = {}) {
           delete storageData[key];
         }),
       },
+      session: {
+        get: vi.fn(async (key) => ({ [key]: sessionData[key] })),
+        set: vi.fn(async (obj) => Object.assign(sessionData, obj)),
+        remove: vi.fn(async (key) => {
+          delete sessionData[key];
+        }),
+      },
     },
     notifications: {
-      create: vi.fn((_opts, cb) => cb && cb('notif-id')),
+      create: vi.fn((id, _opts, cb) => cb && cb(id)),
+      clear: vi.fn((_id, cb) => cb && cb(true)),
+      onClicked: addListener(listeners.notifications.onClicked),
+      onClosed: addListener(listeners.notifications.onClosed),
+    },
+    scripting: {
+      executeScript: vi.fn(async () => [{ result: false }]),
+      insertCSS: vi.fn(async () => {}),
     },
     alarms: {
       create: vi.fn(),
@@ -80,6 +103,9 @@ function createChromeMock(seed = {}) {
       createDocument: vi.fn(async () => {}),
     },
     userScripts: {
+      getScripts: vi.fn(async () => []),
+      configureWorld: vi.fn(async () => {}),
+      execute: vi.fn(async () => [{ result: undefined }]),
       register: vi.fn(async () => {}),
       update: vi.fn(async () => {}),
       unregister: vi.fn(async () => {}),
@@ -149,6 +175,17 @@ async function sendRuntimeMessage(listeners, message, sender = { tab: { id: 1 } 
   });
 }
 
+// GM API calls come from the USER_SCRIPT world via runtime.onUserScriptMessage.
+async function sendUserScriptMessage(listeners, message, sender = { tab: { id: 1 } }) {
+  return await new Promise((resolve) => {
+    const handler = listeners.runtime.onUserScriptMessage[0];
+    const ret = handler(message, sender, (response) => resolve(response));
+    if (ret === false) {
+      setTimeout(() => resolve(undefined), 0);
+    }
+  });
+}
+
 describe('background', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -171,23 +208,21 @@ describe('background', () => {
     await expect(sendRuntimeMessage(listeners, { action: 'scriptsUpdated' })).resolves.toEqual({
       success: true,
     });
-    await expect(
-      sendRuntimeMessage(listeners, { action: 'getAllScripts' })
-    ).resolves.toHaveProperty('scripts');
-    await expect(
-      sendRuntimeMessage(listeners, { action: 'getScriptContent', scriptName: 'Script 1' })
-    ).resolves.toEqual({ code: 'console.log(1)' });
-    await expect(
-      sendRuntimeMessage(listeners, { action: 'getScriptContent', scriptName: 'Missing' })
-    ).resolves.toHaveProperty('error');
-    await expect(sendRuntimeMessage(listeners, { action: 'openAISettings' })).resolves.toEqual({
-      success: true,
-    });
     await expect(sendRuntimeMessage(listeners, { action: 'unknown' })).resolves.toEqual({
       error: 'Unknown action',
     });
+    // Removed AI editor actions are no longer handled.
+    for (const action of [
+      'openAISettings',
+      'createScriptFromAI',
+      'updateScript',
+      'getAllScripts',
+    ]) {
+      await expect(sendRuntimeMessage(listeners, { action })).resolves.toEqual({
+        error: 'Unknown action',
+      });
+    }
 
-    expect(chrome.tabs.create).toHaveBeenCalled();
     expect(chrome.userScripts.register).toHaveBeenCalled();
   });
 
@@ -211,44 +246,43 @@ describe('background', () => {
     });
     const { listeners, chrome } = await setupBackground({ scripts: [gmScript()] });
 
-    const add = await sendRuntimeMessage(
+    // A second document subscribes by loading its value snapshot.
+    const snapshot = await sendUserScriptMessage(
       listeners,
-      {
-        type: 'GM_API_REQUEST',
-        payload: { action: 'addValueChangeListener', scriptId: 's1', name: 'k' },
-      },
-      { tab: { id: 2 } }
+      { type: 'GM_API_REQUEST', payload: { action: 'getAllValues', scriptId: 's1' } },
+      { tab: { id: 2 }, documentId: 'doc-2' }
     );
-    expect(add).toEqual({ result: null });
+    expect(snapshot).toEqual({ result: {} });
 
-    const setRes = await sendRuntimeMessage(
+    const setRes = await sendUserScriptMessage(
       listeners,
       {
         type: 'GM_API_REQUEST',
         payload: { action: 'setValue', scriptId: 's1', name: 'k', value: 42 },
       },
-      { tab: { id: 1 } }
+      { tab: { id: 1 }, documentId: 'doc-1' }
     );
     expect(setRes).toEqual({ result: null });
+    await vi.waitFor(() =>
+      expect(chrome.userScripts.execute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          target: { tabId: 2, documentIds: ['doc-2'] },
+          world: 'USER_SCRIPT',
+        })
+      )
+    );
+    const pushed = chrome.userScripts.execute.mock.calls[0][0].js[0].code;
+    expect(pushed).toContain('"valueChanged"');
+    expect(pushed).toContain('"remote":true');
 
-    const getRes = await sendRuntimeMessage(
+    const getRes = await sendUserScriptMessage(
       listeners,
-      {
-        type: 'GM_API_REQUEST',
-        payload: { action: 'getValue', scriptId: 's1', name: 'k', defaultValue: 0 },
-      },
+      { type: 'GM_API_REQUEST', payload: { action: 'getAllValues', scriptId: 's1' } },
       { tab: { id: 1 } }
     );
-    expect(getRes).toEqual({ result: 42 });
+    expect(getRes).toEqual({ result: { k: 42 } });
 
-    const listRes = await sendRuntimeMessage(
-      listeners,
-      { type: 'GM_API_REQUEST', payload: { action: 'listValues', scriptId: 's1' } },
-      { tab: { id: 1 } }
-    );
-    expect(listRes).toEqual({ result: ['k'] });
-
-    await sendRuntimeMessage(
+    await sendUserScriptMessage(
       listeners,
       {
         type: 'GM_API_REQUEST',
@@ -257,7 +291,7 @@ describe('background', () => {
       { tab: { id: 1 } }
     );
 
-    const dlRes = await sendRuntimeMessage(
+    const dlRes = await sendUserScriptMessage(
       listeners,
       {
         type: 'GM_API_REQUEST',
@@ -272,7 +306,7 @@ describe('background', () => {
     );
     expect(dlRes).toEqual({ result: { downloadId: 123 } });
 
-    const xhrRes = await sendRuntimeMessage(
+    const xhrRes = await sendUserScriptMessage(
       listeners,
       {
         type: 'GM_API_REQUEST',
@@ -291,23 +325,16 @@ describe('background', () => {
     );
     expect(xhrRes.result.status).toBe(200);
 
-    await sendRuntimeMessage(listeners, {
+    await sendUserScriptMessage(listeners, {
       type: 'GM_API_REQUEST',
       payload: { action: 'deleteValue', scriptId: 's1', name: 'k' },
     });
-    const listAfterDelete = await sendRuntimeMessage(listeners, {
+    const afterDelete = await sendUserScriptMessage(listeners, {
       type: 'GM_API_REQUEST',
-      payload: { action: 'listValues', scriptId: 's1' },
+      payload: { action: 'getAllValues', scriptId: 's1' },
     });
-    expect(listAfterDelete.result).not.toContain('k');
+    expect(afterDelete.result).toEqual({});
 
-    // Test removeValueChangeListener
-    await sendRuntimeMessage(listeners, {
-      type: 'GM_API_REQUEST',
-      payload: { action: 'removeValueChangeListener', scriptId: 's1', name: 'k' },
-    });
-
-    expect(chrome.tabs.sendMessage).toHaveBeenCalled();
     expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'copy-to-clipboard', target: 'offscreen' })
     );
@@ -316,12 +343,16 @@ describe('background', () => {
   it('stores, gets, and clears script errors', async () => {
     const { listeners, storageData } = await setupBackground({
       settings: { enhancedDebugging: true },
+      scripts: [{ id: 'sErr', enabled: true, targetUrls: ['https://example.com/*'] }],
     });
 
-    await sendRuntimeMessage(listeners, {
-      type: 'SCRIPT_ERROR',
-      scriptId: 'sErr',
-      error: { message: 'boom', stack: 'at blob:https://x/1:10:2' },
+    await sendUserScriptMessage(listeners, {
+      type: 'GM_API_REQUEST',
+      payload: {
+        action: 'reportError',
+        scriptId: 'sErr',
+        error: { message: 'boom', stack: 'at blob:https://x/1:10:2' },
+      },
     });
 
     const got = await sendRuntimeMessage(listeners, {
@@ -334,7 +365,7 @@ describe('background', () => {
     expect(storageData.scriptErrors_sErr).toBeUndefined();
   });
 
-  it('handles tab, context menu, connection listeners, and lifecycle sync', async () => {
+  it('handles tab, context menu, and lifecycle sync', async () => {
     const { listeners, chrome } = await setupBackground({
       scripts: [
         {
@@ -348,22 +379,16 @@ describe('background', () => {
       ],
     });
 
-    listeners.contextMenus.onClicked[0]({ menuItemId: 'selectElement' }, { id: 10 });
+    await listeners.contextMenus.onClicked[0]({ menuItemId: 'selectElement' }, { id: 10 });
+    // Page tools are injected on demand before the selector starts.
+    expect(chrome.scripting.executeScript).toHaveBeenCalledWith(
+      expect.objectContaining({ files: expect.arrayContaining(['elementSelector/main.js']) })
+    );
     expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(
       10,
       { action: 'startSelection' },
       expect.any(Function)
     );
-
-    const disconnectListeners = [];
-    const port = {
-      name: 'CodeTweak',
-      postMessage: vi.fn(),
-      onDisconnect: { addListener: (fn) => disconnectListeners.push(fn) },
-      onMessage: { addListener: vi.fn() },
-    };
-    listeners.runtime.onConnect[0](port);
-    disconnectListeners[0]();
 
     listeners.tabs.onUpdated[0](1, { status: 'complete' }, { id: 1, url: 'https://example.com' });
     await listeners.tabs.onActivated[0]({ tabId: 1 });
@@ -374,50 +399,6 @@ describe('background', () => {
 
     expect(chrome.action.setBadgeText).toHaveBeenCalled();
     expect(chrome.userScripts.register).toHaveBeenCalled();
-  });
-
-  it('handles createScriptFromAI and updateScript', async () => {
-    const userscript = `// ==UserScript==\n// @name My AI\n// @match https://example.com/*\n// ==/UserScript==\nconsole.log(1)`;
-    const { listeners, storageData, chrome } = await setupBackground({
-      scripts: [
-        {
-          id: 's-upd',
-          name: 'Updatable',
-          code: 'old',
-          enabled: true,
-          targetUrls: ['https://example.com/*'],
-          runAt: 'document_end',
-        },
-      ],
-    });
-
-    const created = await sendRuntimeMessage(listeners, {
-      action: 'createScriptFromAI',
-      script: userscript,
-      url: 'https://example.com/*',
-    });
-    expect(created.script.name).toBe('My AI');
-    expect(storageData.scripts.length).toBe(2);
-
-    const updated = await sendRuntimeMessage(listeners, {
-      action: 'updateScript',
-      scriptId: 's-upd',
-      code: 'new code',
-    });
-    expect(updated).toEqual({ success: true });
-    expect(chrome.tabs.reload).toHaveBeenCalled();
-  });
-
-  it('normalizes sensitive flags from code usage on update', async () => {
-    const { listeners, storageData } = await setupBackground({
-      scripts: [{ id: 'legacy', name: 'Legacy', enabled: true, code: 'old' }],
-    });
-    await sendRuntimeMessage(listeners, {
-      action: 'updateScript',
-      scriptId: 'legacy',
-      code: 'GM_download("https://x");',
-    });
-    expect(storageData.scripts[0].gmDownload).toBe(true);
   });
 
   it('covers GM and handler error branches', async () => {
@@ -436,11 +417,11 @@ describe('background', () => {
     });
 
     await expect(
-      sendRuntimeMessage(listeners, { type: 'GM_API_REQUEST' }, { tab: { id: 1 } })
+      sendUserScriptMessage(listeners, { type: 'GM_API_REQUEST' }, { tab: { id: 1 } })
     ).resolves.toEqual({ error: 'Request payload is missing.' });
 
     await expect(
-      sendRuntimeMessage(
+      sendUserScriptMessage(
         listeners,
         { type: 'GM_API_REQUEST', payload: { action: 'nope', scriptId: 's1' } },
         { tab: { id: 1 } }
@@ -448,20 +429,23 @@ describe('background', () => {
     ).resolves.toEqual({ error: 'Unknown GM API action: nope' });
 
     chrome.offscreen = undefined;
+    const originalScripting = chrome.scripting;
+    chrome.scripting = undefined;
     const originalClipboard = navigator.clipboard;
     Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
     await expect(
-      sendRuntimeMessage(
+      sendUserScriptMessage(
         listeners,
         { type: 'GM_API_REQUEST', payload: { action: 'setClipboard', scriptId: 's1', data: 'x' } },
         { tab: { id: 1 } }
       )
     ).resolves.toEqual({ error: 'Clipboard API is unavailable in this browser context.' });
     Object.defineProperty(navigator, 'clipboard', { value: originalClipboard, configurable: true });
+    chrome.scripting = originalScripting;
 
     chrome.runtime.lastError = { message: 'notif blocked' };
     await expect(
-      sendRuntimeMessage(
+      sendUserScriptMessage(
         listeners,
         {
           type: 'GM_API_REQUEST',
@@ -478,7 +462,7 @@ describe('background', () => {
       chrome.runtime.lastError = null;
     });
     await expect(
-      sendRuntimeMessage(
+      sendUserScriptMessage(
         listeners,
         {
           type: 'GM_API_REQUEST',
@@ -489,7 +473,7 @@ describe('background', () => {
     ).resolves.toEqual({ error: 'download failed' });
 
     await expect(
-      sendRuntimeMessage(
+      sendUserScriptMessage(
         listeners,
         {
           type: 'GM_API_REQUEST',
@@ -498,77 +482,6 @@ describe('background', () => {
         { tab: { id: 1 } }
       )
     ).resolves.toEqual({ error: 'Cross-origin requests are disabled by a security setting.' });
-
-    chrome.tabs.query = vi.fn(async () => {
-      throw new Error('tab failure');
-    });
-    await expect(sendRuntimeMessage(listeners, { action: 'getCurrentTab' })).resolves.toEqual({
-      error: 'tab failure',
-    });
-
-    await expect(
-      sendRuntimeMessage(listeners, {
-        action: 'updateScript',
-        scriptId: 'missing',
-        code: 'x',
-      })
-    ).resolves.toEqual({ error: 'Script with id missing not found.' });
-
-    // Reset tabs.query mock to succeed
-    chrome.tabs.query = vi.fn(async () => [{ id: 1, url: 'https://x' }]);
-    await expect(
-      sendRuntimeMessage(listeners, { action: 'getCurrentTab' })
-    ).resolves.toHaveProperty('tab');
-  });
-
-  it('handles getScriptsForUrl for injection fallback', async () => {
-    const { listeners } = await setupBackground({
-      scripts: [
-        {
-          id: 's1',
-          name: 'Script 1',
-          code: 'console.log(1)',
-          enabled: true,
-          targetUrls: ['https://example.com/*'],
-          runAt: 'document_end',
-        },
-      ],
-    });
-
-    const response = await sendRuntimeMessage(listeners, {
-      action: 'getScriptsForUrl',
-      url: 'https://example.com/page',
-    });
-
-    expect(response.scripts).toHaveLength(1);
-    expect(response.scripts[0].id).toBe('s1');
-    expect(response.scripts[0].code).toContain('console.log(1)');
-
-    // Test no scripts match
-    const emptyResponse = await sendRuntimeMessage(listeners, {
-      action: 'getScriptsForUrl',
-      url: 'https://nomatch.com',
-    });
-    expect(emptyResponse.scripts).toHaveLength(0);
-  });
-
-  it('handles errors in getScriptsForUrl gracefully', async () => {
-    const { listeners } = await setupBackground({
-      scripts: [{ id: 'err-script', enabled: true, targetUrls: ['https://err.com/*'] }],
-    });
-
-    // Mock toRegistration to throw
-    const { UserScriptsAdapter } = await import('../../src/services/scripts/UserScriptsAdapter.js');
-    vi.spyOn(UserScriptsAdapter.prototype, 'toRegistration').mockRejectedValue(
-      new Error('Reg failed')
-    );
-
-    const response = await sendRuntimeMessage(listeners, {
-      action: 'getScriptsForUrl',
-      url: 'https://err.com',
-    });
-
-    expect(response.scripts).toEqual([]);
   });
 
   it('covers CLEAR_SCRIPT_ERRORS and extra message branches', async () => {
@@ -580,17 +493,17 @@ describe('background', () => {
       sendRuntimeMessage(listeners, { type: 'CLEAR_SCRIPT_ERRORS', scriptId: 's1' })
     ).resolves.toEqual({ success: true });
 
-    // Test addValueChangeListener error path (missing tab id)
+    // GM requests are not accepted from extension/content-script messaging.
     await expect(
-      sendRuntimeMessage(
-        listeners,
-        {
-          type: 'GM_API_REQUEST',
-          payload: { action: 'addValueChangeListener', scriptId: 's1', name: 'k' },
-        },
-        { tab: null }
-      )
-    ).resolves.toEqual({ result: null });
+      sendRuntimeMessage(listeners, {
+        type: 'GM_API_REQUEST',
+        payload: { action: 'getValue', scriptId: 's1', name: 'k' },
+      })
+    ).resolves.toEqual({ error: 'Unknown action' });
+    // And the user script channel accepts nothing but GM requests.
+    await expect(sendUserScriptMessage(listeners, { action: 'getAllScripts' })).resolves.toEqual({
+      error: 'Unsupported message.',
+    });
   });
 
   it('rejects GM API calls from unknown, disabled, or ungranted scripts', async () => {
@@ -609,28 +522,28 @@ describe('background', () => {
     });
 
     await expect(
-      sendRuntimeMessage(listeners, {
+      sendUserScriptMessage(listeners, {
         type: 'GM_API_REQUEST',
         payload: { action: 'setValue', scriptId: 'ghost', name: 'k', value: 1 },
       })
     ).resolves.toEqual({ error: 'Unknown or disabled script.' });
 
     await expect(
-      sendRuntimeMessage(listeners, {
+      sendUserScriptMessage(listeners, {
         type: 'GM_API_REQUEST',
         payload: { action: 'setValue', scriptId: 'disabled', name: 'k', value: 1 },
       })
     ).resolves.toEqual({ error: 'Unknown or disabled script.' });
 
     await expect(
-      sendRuntimeMessage(listeners, {
+      sendUserScriptMessage(listeners, {
         type: 'GM_API_REQUEST',
         payload: { action: 'setValue', scriptId: 'ungranted', name: 'k', value: 1 },
       })
     ).resolves.toEqual({ error: 'API not granted for this script: setValue.' });
 
     await expect(
-      sendRuntimeMessage(
+      sendUserScriptMessage(
         listeners,
         {
           type: 'GM_API_REQUEST',
@@ -641,7 +554,7 @@ describe('background', () => {
     ).resolves.toEqual({ error: 'Sender tab does not match script targets.' });
 
     await expect(
-      sendRuntimeMessage(
+      sendUserScriptMessage(
         listeners,
         {
           type: 'GM_API_REQUEST',
@@ -653,7 +566,7 @@ describe('background', () => {
 
     // Sensitive APIs default-deny for scripts without explicit flags.
     await expect(
-      sendRuntimeMessage(listeners, {
+      sendUserScriptMessage(listeners, {
         type: 'GM_API_REQUEST',
         payload: { action: 'download', scriptId: 'ok', url: 'https://x', name: 'x' },
       })
@@ -661,7 +574,7 @@ describe('background', () => {
 
     // Explicit true still grants.
     await expect(
-      sendRuntimeMessage(
+      sendUserScriptMessage(
         listeners,
         {
           type: 'GM_API_REQUEST',
@@ -677,7 +590,7 @@ describe('background', () => {
     ).not.resolves.toEqual({ error: 'API not granted for this script: download.' });
 
     await expect(
-      sendRuntimeMessage(listeners, {
+      sendUserScriptMessage(listeners, {
         type: 'GM_API_REQUEST',
         payload: { action: 'setValue', scriptId: '../../evil', name: 'k', value: 1 },
       })
@@ -713,13 +626,6 @@ describe('background', () => {
         url: 'https://greasyfork.org/scripts/1/code.user.js',
       })
     ).resolves.toEqual({ success: true });
-
-    const ignoredPort = {
-      name: 'Other',
-      onDisconnect: { addListener: vi.fn() },
-      onMessage: { addListener: vi.fn() },
-    };
-    listeners.runtime.onConnect[0](ignoredPort);
 
     chrome.tabs.get = vi.fn(async () => {
       throw new Error('No tab with id');

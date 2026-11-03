@@ -72,7 +72,7 @@
   border: 1px solid var(--border-primary);
 }
 
-.CodeTweak-selector-mode .icon {
+.CodeTweak-selector-mode .ct-icon {
   color: var(--primary);
   animation: icon-bounce 1s ease-in-out infinite;
 }

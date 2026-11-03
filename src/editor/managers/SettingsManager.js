@@ -1,6 +1,5 @@
 import { BaseUIComponent } from '../base/BaseUIComponent.js';
 import logger from '../../shared/utils/logger.js';
-import { browser } from '../../shared/browserAdapter.js';
 
 export class SettingsManager extends BaseUIComponent {
   constructor(elements, eventBus) {
@@ -88,7 +87,6 @@ export class SettingsManager extends BaseUIComponent {
   setupActionButtons() {
     const saveBtn = document.getElementById('saveSettings');
     const resetBtn = document.getElementById('resetSettings');
-    const closeBtn = document.querySelector('#settingsModal .close');
 
     if (saveBtn) {
       this.addEventListener(saveBtn, 'click', async (e) => {
@@ -99,21 +97,9 @@ export class SettingsManager extends BaseUIComponent {
     }
 
     if (resetBtn) {
-      this.addEventListener(resetBtn, 'click', (e) => {
+      this.addEventListener(resetBtn, 'click', async (e) => {
         e.preventDefault();
-        this.resetToDefaults();
-      });
-    }
-
-    if (closeBtn) {
-      this.addEventListener(closeBtn, 'click', (e) => {
-        e.preventDefault();
-        const modal = document.getElementById('settingsModal');
-        if (modal) {
-          modal.classList.remove('show');
-          modal.style.display = 'none';
-          document.body.style.overflow = '';
-        }
+        await this.resetToDefaults();
       });
     }
   }
@@ -140,10 +126,11 @@ export class SettingsManager extends BaseUIComponent {
       if (settingsInputs.minimap && settings.minimap !== undefined)
         settingsInputs.minimap.checked = !!settings.minimap;
       if (settingsInputs.lintingEnabled) {
-        settingsInputs.lintingEnabled.checked = localStorage.getItem('lintingEnabled') === 'true';
+        settingsInputs.lintingEnabled.checked = localStorage.getItem('lintingEnabled') !== 'false';
       }
       if (settingsInputs.autosaveEnabled) {
-        settingsInputs.autosaveEnabled.checked = localStorage.getItem('autosaveEnabled') === 'true';
+        settingsInputs.autosaveEnabled.checked =
+          localStorage.getItem('autosaveEnabled') !== 'false';
       }
     } catch (error) {
       logger.error('Failed to load settings:', error);
@@ -152,7 +139,7 @@ export class SettingsManager extends BaseUIComponent {
 
   async loadSettings() {
     try {
-      const result = await browser.storage.local.get(['editorSettings']);
+      const result = await chrome.storage.local.get(['editorSettings']);
 
       return result.editorSettings || {};
     } catch (error) {
@@ -172,13 +159,18 @@ export class SettingsManager extends BaseUIComponent {
         matchBrackets: !!settingsInputs.matchBrackets?.checked,
         minimap: !!settingsInputs.minimap?.checked,
       };
+      const lintingEnabled = !!settingsInputs.lintingEnabled?.checked;
+      const autosaveEnabled = !!settingsInputs.autosaveEnabled?.checked;
 
-      // save
-      await browser.storage.local.set({
+      await chrome.storage.local.set({
         editorSettings: newSettings,
       });
+      localStorage.setItem('lintingEnabled', lintingEnabled.toString());
+      localStorage.setItem('autosaveEnabled', autosaveEnabled.toString());
       this.emit('settingsSaved', newSettings);
       this.emit('settingChanged', newSettings);
+      this.emit('lintingToggled', { enabled: lintingEnabled });
+      this.emit('autosaveToggled', { enabled: autosaveEnabled });
       this.emit('showStatus', { message: 'Settings saved successfully', type: 'success' });
 
       const modal = document.getElementById('settingsModal');
@@ -199,19 +191,36 @@ export class SettingsManager extends BaseUIComponent {
     }
   }
 
-  resetToDefaults() {
+  async resetToDefaults() {
     const { settingsInputs } = this;
+    const defaults = {
+      fontSize: 14,
+      tabSize: 2,
+      lineNumbers: true,
+      lineWrapping: false,
+      matchBrackets: true,
+      minimap: true,
+    };
 
-    if (settingsInputs.fontSize) {
-      settingsInputs.fontSize.value = 14;
-      const fontSizeValue = document.getElementById('fontSizeValue');
-      if (fontSizeValue) fontSizeValue.textContent = '14px';
+    try {
+      await chrome.storage.local.set({ editorSettings: defaults });
+    } catch (error) {
+      logger.error('Failed to reset settings:', error);
+      this.emit('showStatus', {
+        message: 'Failed to reset settings: ' + (error.message || 'Unknown error'),
+        type: 'error',
+      });
+      return false;
     }
-    if (settingsInputs.tabSize) settingsInputs.tabSize.value = 2;
-    if (settingsInputs.lineNumbers) settingsInputs.lineNumbers.checked = true;
-    if (settingsInputs.lineWrapping) settingsInputs.lineWrapping.checked = false;
-    if (settingsInputs.matchBrackets) settingsInputs.matchBrackets.checked = true;
-    if (settingsInputs.minimap) settingsInputs.minimap.checked = true;
+
+    if (settingsInputs.fontSize) settingsInputs.fontSize.value = defaults.fontSize;
+    const fontSizeValue = document.getElementById('fontSizeValue');
+    if (fontSizeValue) fontSizeValue.textContent = defaults.fontSize + 'px';
+    if (settingsInputs.tabSize) settingsInputs.tabSize.value = defaults.tabSize;
+    if (settingsInputs.lineNumbers) settingsInputs.lineNumbers.checked = defaults.lineNumbers;
+    if (settingsInputs.lineWrapping) settingsInputs.lineWrapping.checked = defaults.lineWrapping;
+    if (settingsInputs.matchBrackets) settingsInputs.matchBrackets.checked = defaults.matchBrackets;
+    if (settingsInputs.minimap) settingsInputs.minimap.checked = defaults.minimap;
     if (settingsInputs.lintingEnabled) settingsInputs.lintingEnabled.checked = true;
     if (settingsInputs.autosaveEnabled) settingsInputs.autosaveEnabled.checked = true;
 
@@ -219,12 +228,10 @@ export class SettingsManager extends BaseUIComponent {
     localStorage.setItem('autosaveEnabled', 'true');
 
     this.emit('settingsReset', {
-      fontSize: 14,
-      tabSize: 2,
-      lineNumbers: true,
-      lineWrapping: false,
-      matchBrackets: true,
-      minimap: true,
+      ...defaults,
+      lintingEnabled: true,
+      autosaveEnabled: true,
     });
+    return true;
   }
 }

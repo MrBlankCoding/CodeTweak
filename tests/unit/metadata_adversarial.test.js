@@ -4,7 +4,6 @@ import {
   parseUserScriptMetadata,
   buildMetadata,
 } from '../../src/services/scripts/MetadataParser.js';
-import { ScriptAnalyzer } from '../../src/services/scripts/ScriptAnalyzer.js';
 
 describe('metadata adversarial', () => {
   it('normalizes hostile @match values instead of passing them through', () => {
@@ -81,37 +80,5 @@ describe('metadata adversarial', () => {
       runAt: 'document_idle',
     });
     expect(out).toContain('*://a.com/*');
-  });
-
-  it('ScriptAnalyzer never throws on hostile code', () => {
-    const hostile = [
-      '',
-      null,
-      undefined,
-      42,
-      '('.repeat(10000),
-      '/* unterminated',
-      '// @match [(((((',
-      'GM_setValue((((',
-      '😈'.repeat(5000),
-      'a'.repeat(500_000),
-    ];
-    for (const code of hostile) {
-      expect(() => ScriptAnalyzer.detectGMApiUsage(code)).not.toThrow();
-      expect(() => ScriptAnalyzer.suggestRunAt(code)).not.toThrow();
-      expect(() => ScriptAnalyzer.extractMetadata(code)).not.toThrow();
-      expect(() => ScriptAnalyzer.detectIssues(code, { gmApis: {}, matches: [] })).not.toThrow();
-    }
-  });
-
-  it('ScriptAnalyzer handles analyzer-vs-grant mismatch both directions', () => {
-    const code = 'GM_setValue("k", 1); GM_getValue("k");';
-    const warnings = ScriptAnalyzer.detectIssues(code, { gmApis: {}, matches: ['*://*/*'] });
-    expect(warnings.some((w) => w.apiEl === 'gmSetValue')).toBe(true);
-    const noWarn = ScriptAnalyzer.detectIssues(code, {
-      gmApis: { gmSetValue: true, gmGetValue: true },
-      matches: ['*://*/*'],
-    });
-    expect(noWarn.filter((w) => w.type === 'missing_grant')).toHaveLength(0);
   });
 });

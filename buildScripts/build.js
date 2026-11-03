@@ -24,7 +24,6 @@ async function buildTarget(target) {
     'shared',
     'services',
     'background',
-    'ai_dom_editor',
     '_locales',
   ];
 
@@ -39,17 +38,12 @@ async function buildTarget(target) {
   await build({
     entryPoints: [
       'src/background/serviceWorker.js',
-      'src/content/contentBridge.js',
       'src/elementSelector/main.js',
       'src/content/greasyforkInterceptor.js',
       'src/shared/utils/urls.js',
       'src/popup/popup.js',
       'src/editor/editor.js',
       'src/dashboard/dashboard.js',
-      'src/ai_dom_editor/editor/ai_dom_content.js',
-      'src/ai_dom_editor/sidebar/ai_dom_sidebar.js',
-      'src/ai_dom_editor/editor/ai_dom_editor.js',
-      'src/ai_dom_editor/settings/ai_settings.js',
     ],
     bundle: true,
     outdir,
@@ -66,8 +60,6 @@ async function buildTarget(target) {
     define: {
       'process.env.NODE_ENV': JSON.stringify(isProduction ? 'production' : 'development'),
       'process.env.BABEL_TYPES_8_BREAKING': 'false',
-      'process.env.BROWSER': JSON.stringify(target),
-      'process.env.BUILD_TARGET': JSON.stringify(target),
     },
   });
 

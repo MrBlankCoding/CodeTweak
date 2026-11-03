@@ -1,17 +1,11 @@
 # Install from Greasy Fork
 
-## From CodeTweak dashboard
+1. Open the dashboard and click `Browse Scripts`, or go to [greasyfork.org](https://greasyfork.org/) directly.
+2. Find a script and click its **Install** button.
+3. CodeTweak intercepts the `.user.js` link and opens the script in the editor.
+4. Review the code and metadata, then save to install and enable it.
 
-1. Open dashboard.
-2. Click `Browse Scripts`.
-3. Search by keyword.
-4. Click `Import`.
-5. Review code and metadata.
-6. Save and enable.
-
-## From greasyfork.org
-
-CodeTweak can intercept `.user.js` install links and open them in the editor.
+Installed scripts update automatically from their `@updateURL` / `@downloadURL`. An update that adds grants, sites (`@match`/`@include`), or `@connect` hosts, or a script you have edited locally, is held for review instead of being applied silently.
 
 ## Review checklist before enabling
 

@@ -4,10 +4,10 @@
   gap: 10px;
   padding: 10px 12px;
   border: 1px solid var(--error);
-  border-radius: var(--radius-md, 8px);
+  border-radius: var(--radius-sm);
   background: var(--error-light);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: var(--text-xs);
   line-height: 1.4;
 }
 
@@ -15,14 +15,14 @@
   flex-shrink: 0;
   width: 22px;
   height: 22px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--error);
-  color: #fff;
+  color: var(--text-on-accent);
   font-weight: 700;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .ct-userscripts-banner-text {
@@ -34,12 +34,12 @@
 }
 
 .ct-userscripts-banner-title {
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 
 .ct-userscripts-banner-body {
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: var(--text-2xs);
 }
 
 .ct-userscripts-banner-btn {
@@ -47,12 +47,12 @@
   width: auto;
   height: auto;
   padding: 6px 10px;
-  font-size: 11px;
+  font-size: var(--text-2xs);
   font-weight: 600;
-  border-radius: 6px;
+  border-radius: var(--button-radius);
   background: var(--error);
   border-color: var(--error);
-  color: #fff;
+  color: var(--text-on-accent);
   cursor: pointer;
   white-space: nowrap;
 }

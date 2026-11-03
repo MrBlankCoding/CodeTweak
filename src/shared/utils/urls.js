@@ -1,4 +1,7 @@
 import logger from './logger.js';
+import { GM_API_DEFINITIONS } from '../constants/gmApiDefinitions.js';
+
+const GM_API_FLAGS = Object.values(GM_API_DEFINITIONS).map((api) => api.el);
 export function urlMatchesPattern(url, pattern) {
   try {
     if (!url || !pattern) return false;
@@ -153,9 +156,14 @@ export function generateUrlMatchPattern(baseUrl, scope = 'domain') {
   }
 }
 
+const VALID_RUN_AT = new Set(['document_start', 'document_end', 'document_idle']);
+
+// "document-end" -> "document_end"; unknown values give `fallback`.
 export function normalizeRunAt(runAt, fallback = null) {
   if (!runAt) return fallback;
-  return String(runAt).replace(/-/g, '_');
+  const normalized = String(runAt).trim().replace(/-/g, '_');
+  if (normalized === 'document_body') return 'document_end';
+  return VALID_RUN_AT.has(normalized) ? normalized : fallback;
 }
 
 export function formatRunAt(runAt) {
@@ -169,51 +177,20 @@ export function formatRunAt(runAt) {
 
 export function getScriptDescription(script) {
   const features = [];
-  if (script.css?.trim()) {
-    features.push('CSS');
-  }
 
-  if (script.js?.trim()) {
-    features.push('JS');
-  }
-
-  let gmApiCount = 0;
-  const gmApiKeys = [
-    'gmSetValue',
-    'gmGetValue',
-    'gmDeleteValue',
-    'gmListValues',
-    'gmAddValueChangeListener',
-    'gmRemoveValueChangeListener',
-    'gmOpenInTab',
-    'gmNotification',
-    'gmAddStyle',
-    'gmAddElement',
-    'gmRegisterMenuCommand',
-    'gmUnregisterMenuCommand',
-    'gmGetResourceText',
-    'gmGetResourceURL',
-    'gmXmlhttpRequest',
-    'gmSetClipboard',
-    'unsafeWindow',
-  ];
-
-  gmApiKeys.forEach((key) => {
-    if (script[key]) gmApiCount++;
-  });
-
+  const gmApiCount = GM_API_FLAGS.filter((flag) => script[flag] === true).length;
   if (gmApiCount > 0) {
     features.push(`${gmApiCount} GM API${gmApiCount > 1 ? 's' : ''}`);
   }
 
-  if (script.resources && script.resources.length > 0) {
-    features.push(`${script.resources.length} Resource${script.resources.length > 1 ? 's' : ''}`);
+  const resourceCount = Array.isArray(script.resources) ? script.resources.length : 0;
+  if (resourceCount > 0) {
+    features.push(`${resourceCount} Resource${resourceCount > 1 ? 's' : ''}`);
   }
 
-  if (script.requiredScripts && script.requiredScripts.length > 0) {
-    features.push(
-      `${script.requiredScripts.length} Lib${script.requiredScripts.length > 1 ? 's' : ''}`
-    );
+  const requireCount = Array.isArray(script.requires) ? script.requires.length : 0;
+  if (requireCount > 0) {
+    features.push(`${requireCount} Lib${requireCount > 1 ? 's' : ''}`);
   }
 
   if (features.length === 0) return 'Basic';

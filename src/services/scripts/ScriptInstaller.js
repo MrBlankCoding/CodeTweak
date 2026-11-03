@@ -1,16 +1,19 @@
-import { browser } from '../../shared/browserAdapter.js';
 import logger from '../../shared/utils/logger.js';
 import { urlMatchesPattern } from '../../shared/utils/urls.js';
+import { mutateScripts } from '../storage/StorageService.js';
 
 export class ScriptInstaller {
+  constructor({ onScriptsUpdated } = {}) {
+    this.onScriptsUpdated = onScriptsUpdated;
+  }
+
   async handleScriptCreation(url, template) {
     try {
-      const { scripts = [] } = await browser.storage.local.get('scripts');
-      const list = Array.isArray(scripts) ? scripts : [];
-      const existing = list.find((s) => s.targetUrls?.some((t) => urlMatchesPattern(url, t)));
+      const existing = await mutateScripts(chrome.storage, (list) => {
+        const script = list.find((s) => s.targetUrls?.some((t) => urlMatchesPattern(url, t)));
+        if (!script) return false;
 
-      if (existing) {
-        const lines = String(existing.code ?? '').split('\n');
+        const lines = String(script.code ?? '').split('\n');
         let insertIndex = lines.length - 1;
         while (
           insertIndex > 0 &&
@@ -30,18 +33,20 @@ export class ScriptInstaller {
         ];
 
         lines.splice(insertIndex + 1, 0, ...newLines);
-        existing.code = lines.join('\n');
-        existing.updatedAt = new Date().toISOString();
+        script.code = lines.join('\n');
+        script.updatedAt = new Date().toISOString();
+        return script;
+      });
 
-        await browser.storage.local.set({ scripts: list });
-        browser.runtime.sendMessage({ action: 'scriptsUpdated' });
-        browser.tabs.create({
-          url: `${browser.runtime.getURL('editor/editor.html')}?id=${existing.id}`,
+      if (existing) {
+        await this.onScriptsUpdated?.();
+        chrome.tabs.create({
+          url: `${chrome.runtime.getURL('editor/editor.html')}?id=${existing.id}`,
         });
       } else {
         const params = new URLSearchParams({ targetUrl: url, template });
-        browser.tabs.create({
-          url: `${browser.runtime.getURL('editor/editor.html')}?${params}`,
+        chrome.tabs.create({
+          url: `${chrome.runtime.getURL('editor/editor.html')}?${params}`,
         });
       }
     } catch (error) {
@@ -68,9 +73,9 @@ export class ScriptInstaller {
       const tempId = crypto.randomUUID();
       const key = `tempImport_${tempId}`;
 
-      await browser.storage.local.set({ [key]: { code, sourceUrl: url } });
-      browser.tabs.create({
-        url: `${browser.runtime.getURL('editor/editor.html')}?importId=${tempId}`,
+      await chrome.storage.local.set({ [key]: { code, sourceUrl: url } });
+      chrome.tabs.create({
+        url: `${chrome.runtime.getURL('editor/editor.html')}?importId=${tempId}`,
       });
     } catch (err) {
       logger.error('GreasyFork install fetch error:', err);

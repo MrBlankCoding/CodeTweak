@@ -20,8 +20,8 @@ export default defineConfig({
         'src/elementSelector/core.js',
         'src/shared/constants/gmApiDefinitions.js',
         'src/shared/utils/*.js',
-        'src/ai_dom_editor/editor/helpers/*.js',
       ],
+      exclude: ['src/services/scripts/adapter/userScriptRuntime.js'],
       thresholds: {
         lines: 70,
         statements: 70,

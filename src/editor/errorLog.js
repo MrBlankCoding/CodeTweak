@@ -1,5 +1,5 @@
 import logger from '../shared/utils/logger.js';
-import feather from 'feather-icons';
+import { createIcon } from '../shared/utils/icons.js';
 
 export class ErrorLogUI {
   constructor(elements, state, ui) {
@@ -9,8 +9,7 @@ export class ErrorLogUI {
   }
 
   setup() {
-    const browser = globalThis.browser ?? globalThis.chrome;
-    browser.runtime.onMessage.addListener((message) => {
+    chrome.runtime.onMessage.addListener((message) => {
       if (message.type === 'SCRIPT_ERROR_UPDATE' && message.scriptId === this.state.scriptId) {
         this.loadErrors();
       }
@@ -28,12 +27,11 @@ export class ErrorLogUI {
   }
 
   async loadErrors() {
-    const browser = globalThis.browser ?? globalThis.chrome;
     if (!this.state.scriptId) return;
 
     try {
       const response = await new Promise((resolve) => {
-        browser.runtime.sendMessage(
+        chrome.runtime.sendMessage(
           { type: 'GET_SCRIPT_ERRORS', scriptId: this.state.scriptId },
           resolve
         );
@@ -69,8 +67,7 @@ export class ErrorLogUI {
     if (errors.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'error-log-empty';
-      const icon = document.createElement('i');
-      icon.setAttribute('data-feather', 'check-circle');
+      const icon = createIcon('check-circle');
       const title = document.createElement('p');
       title.textContent = 'No errors detected';
       const subtitle = document.createElement('small');
@@ -79,7 +76,6 @@ export class ErrorLogUI {
       empty.appendChild(title);
       empty.appendChild(subtitle);
       container.appendChild(empty);
-      feather.replace();
       return;
     }
 
@@ -139,17 +135,14 @@ export class ErrorLogUI {
 
       container.appendChild(errorItem);
     });
-
-    feather.replace();
   }
 
   async clearErrors() {
-    const browser = globalThis.browser ?? globalThis.chrome;
     if (!this.state.scriptId) return;
 
     try {
       await new Promise((resolve) => {
-        browser.runtime.sendMessage(
+        chrome.runtime.sendMessage(
           { type: 'CLEAR_SCRIPT_ERRORS', scriptId: this.state.scriptId },
           resolve
         );
@@ -164,12 +157,11 @@ export class ErrorLogUI {
   }
 
   async toggleErrorResolved(errorIndex) {
-    const browser = globalThis.browser ?? globalThis.chrome;
     if (!this.state.scriptId) return;
 
     try {
       const response = await new Promise((resolve) => {
-        browser.runtime.sendMessage(
+        chrome.runtime.sendMessage(
           { type: 'GET_SCRIPT_ERRORS', scriptId: this.state.scriptId },
           resolve
         );
@@ -179,12 +171,12 @@ export class ErrorLogUI {
       if (errors[errorIndex]) {
         errors[errorIndex].resolved = true;
         const storageKey = `scriptErrors_${this.state.scriptId}`;
-        await browser.storage.local.set({ [storageKey]: errors });
+        await chrome.storage.local.set({ [storageKey]: errors });
 
         this.displayErrors(errors);
         setTimeout(async () => {
           errors.splice(errorIndex, 1);
-          await browser.storage.local.set({ [storageKey]: errors });
+          await chrome.storage.local.set({ [storageKey]: errors });
           this.displayErrors(errors);
         }, 300);
       }

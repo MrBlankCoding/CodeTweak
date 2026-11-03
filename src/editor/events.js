@@ -9,6 +9,27 @@ export function registerEditorEventListeners(editor) {
     codeEditorManager.applySettings(settings);
   });
 
+  ui.on('lintingToggled', ({ enabled }) => {
+    codeEditorManager.toggleLinting(enabled);
+  });
+
+  ui.on('autosaveToggled', ({ enabled }) => {
+    state.isAutosaveEnabled = enabled;
+    localStorage.setItem('autosaveEnabled', enabled.toString());
+    if (!enabled && state.autosaveTimeout) {
+      clearTimeout(state.autosaveTimeout);
+      state.autosaveTimeout = null;
+    }
+  });
+
+  ui.on('settingsReset', (settings) => {
+    const { lintingEnabled, autosaveEnabled, ...editorSettings } = settings;
+    codeEditorManager.saveSettings(editorSettings);
+    codeEditorManager.toggleLinting(lintingEnabled);
+    state.isAutosaveEnabled = autosaveEnabled;
+    localStorage.setItem('autosaveEnabled', autosaveEnabled.toString());
+  });
+
   editor.setupSidebarIconHandlers();
 
   elements.saveBtn?.addEventListener('click', (e) => {

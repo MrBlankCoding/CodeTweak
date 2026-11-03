@@ -1,7 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('feather-icons', () => ({ default: { replace: vi.fn() } }));
-
 import { filterScripts, toggleScript, deleteScript } from '../../src/dashboard/dashboard-logic.js';
 
 function chromeMock(storageData) {
@@ -65,6 +63,25 @@ describe('dashboard-logic', () => {
     expect(elements.scriptsList.textContent).toContain('B');
   });
 
+  it('shows enabled scripts before disabled scripts', () => {
+    const elements = filterElements();
+    const state = {
+      allScripts: [
+        { id: 'disabled', name: 'Disabled', enabled: false, targetUrls: [] },
+        { id: 'enabled-first', name: 'Enabled first', enabled: true, targetUrls: [] },
+        { id: 'enabled-next', name: 'Enabled next', enabled: true, targetUrls: [] },
+      ],
+    };
+
+    filterScripts(elements, state);
+
+    expect(Array.from(elements.scriptsList.children, (item) => item.dataset.scriptId)).toEqual([
+      'enabled-first',
+      'enabled-next',
+      'disabled',
+    ]);
+  });
+
   it('drops non-object entries instead of crashing', () => {
     const elements = filterElements();
     elements.filters = {};
@@ -78,7 +95,6 @@ describe('dashboard-logic', () => {
     const data = chromeMock({
       scripts: [{ id: 's1', name: 'A', enabled: false }],
     });
-    global.browser = global.chrome;
     await toggleScript('s1', true);
     expect(data.scripts[0].enabled).toBe(true);
   });
@@ -89,7 +105,6 @@ describe('dashboard-logic', () => {
     const data = chromeMock({
       scripts: [{ id: 's1', name: 'A', targetUrls: [] }],
     });
-    global.browser = global.chrome;
     global.toggleScript = vi.fn();
     global.editScript = vi.fn();
     global.deleteScript = vi.fn();

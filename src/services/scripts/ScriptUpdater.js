@@ -1,10 +1,65 @@
 import logger from '../../shared/utils/logger.js';
-import { parseUserScriptMetadata } from './MetadataParser.js';
-import { browser } from '../../shared/browserAdapter.js';
+import {
+  parseUserScriptMetadata,
+  scriptFieldsFromMetadata,
+  GM_API_FLAGS,
+} from './MetadataParser.js';
+import { mutateScripts } from '../storage/StorageService.js';
+import { hashCode } from '../../shared/utils/hash.js';
+import { saveScriptSnapshot } from './ScriptHistory.js';
+
+const MAX_SCRIPT_BYTES = 2_000_000;
+const FETCH_TIMEOUT_MS = 15_000;
+
+function added(before, after) {
+  const known = new Set(Array.isArray(before) ? before : []);
+  return (Array.isArray(after) ? after : []).filter((item) => !known.has(item));
+}
+
+const allowsAnyHost = (connect) =>
+  !Array.isArray(connect) || connect.length === 0 || connect.includes('*');
+
+// what does a new version want
+export function describePermissionChanges(oldCode, newCode) {
+  const before = scriptFieldsFromMetadata(parseUserScriptMetadata(String(oldCode ?? '')));
+  const after = scriptFieldsFromMetadata(parseUserScriptMetadata(String(newCode ?? '')));
+  const grants = GM_API_FLAGS.filter((flag) => after[flag] && !before[flag]);
+  const matches = [
+    ...added(before.targetUrls, after.targetUrls),
+    ...added(before.includeRegexes, after.includeRegexes).map((source) => `/${source}/`),
+  ];
+  let connect = [];
+  if (!allowsAnyHost(before.connect)) {
+    connect = allowsAnyHost(after.connect) ? ['*'] : added(before.connect, after.connect);
+  }
+  return {
+    grants,
+    matches,
+    connect,
+    escalated: grants.length + matches.length + connect.length > 0,
+  };
+}
+
+async function mapWithConcurrency(items, limit, fn) {
+  const results = new Array(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const index = next++;
+      results[index] = await fn(items[index]);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
 
 export class ScriptUpdater {
-  constructor(storageApi) {
+  constructor(storageApi, { onScriptsUpdated, dependencyCache, fetchImpl, concurrency = 4 } = {}) {
     this.storageApi = storageApi;
+    this.onScriptsUpdated = onScriptsUpdated;
+    this.dependencies = dependencyCache;
+    this.fetchImpl = fetchImpl || ((...args) => globalThis.fetch(...args));
+    this.concurrency = concurrency;
   }
 
   compareVersions(v1, v2) {
@@ -26,15 +81,113 @@ export class ScriptUpdater {
     return 0;
   }
 
-  resolveUpdateUrl(script) {
-    return (
-      script.updateURL ||
-      script.updateUrl ||
+  // `check` is fetched to compare versions (ideally a light .meta.js);
+  // `download` provides the full code. Header URLs fill in missing fields.
+  resolveUrls(script) {
+    const header = parseUserScriptMetadata(String(script.code ?? ''));
+    const info = script.updateInfo || {};
+    const download =
       script.downloadURL ||
-      script.downloadUrl ||
-      (script.updateInfo && script.updateInfo.updateUrl) ||
-      null
-    );
+      header.downloadURL ||
+      info.sourceUrl ||
+      script.updateURL ||
+      header.updateURL ||
+      null;
+    const check = script.updateURL || header.updateURL || download;
+    return { check: check || null, download };
+  }
+
+  resolveUpdateUrl(script) {
+    return this.resolveUrls(script).check;
+  }
+
+  async fetchText(url, headers = {}) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    try {
+      const response = await this.fetchImpl(url, {
+        signal: controller.signal,
+        headers,
+        cache: 'no-cache',
+      });
+      const result = {
+        status: response.status,
+        ok: response.ok,
+        etag: response.headers?.get?.('etag') || undefined,
+        lastModified: response.headers?.get?.('last-modified') || undefined,
+        text: '',
+      };
+      if (response.ok) {
+        result.text = await response.text();
+        if (result.text.length > MAX_SCRIPT_BYTES) {
+          throw new Error(`payload exceeds 2MB: ${url}`);
+        }
+      }
+      return result;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  async checkScript(script) {
+    const { check, download } = this.resolveUrls(script);
+    if (!check) return null;
+    if (![check, download].every((url) => typeof url === 'string' && /^https:\/\//i.test(url))) {
+      logger.warn(`Skipping update for ${script.name}: non-HTTPS update URL.`);
+      return null;
+    }
+
+    const installedVersion =
+      script.version || parseUserScriptMetadata(String(script.code ?? '')).version;
+    const info = script.updateInfo || {};
+    const conditional = {};
+    if (info.etagUrl === check) {
+      if (info.etag) conditional['If-None-Match'] = info.etag;
+      if (info.lastModified) conditional['If-Modified-Since'] = info.lastModified;
+    }
+
+    try {
+      logger.info(`Checking update for script: ${script.name} at ${check}`);
+      const probe = await this.fetchText(check, conditional);
+      const checkMeta = { etagUrl: check, etag: probe.etag, lastModified: probe.lastModified };
+      if (probe.status === 304) return { id: script.id, unchanged: true, checkMeta };
+      if (!probe.ok) {
+        logger.warn(`Failed to fetch update for ${script.name}: ${probe.status}`);
+        return null;
+      }
+
+      const probeVersion = parseUserScriptMetadata(probe.text).version;
+      if (!probeVersion) {
+        logger.warn(`Could not find version in updated script ${script.name}`);
+        return null;
+      }
+      if (this.compareVersions(probeVersion, installedVersion) <= 0) {
+        logger.info(`Script ${script.name} is up to date (${installedVersion})`);
+        return { id: script.id, unchanged: true, checkMeta };
+      }
+
+      let newCode = probe.text;
+      if (download !== check) {
+        const full = await this.fetchText(download);
+        if (!full.ok) {
+          logger.warn(`Failed to download update for ${script.name}: ${full.status}`);
+          return null;
+        }
+        newCode = full.text;
+      }
+
+      const newMetadata = parseUserScriptMetadata(newCode);
+      if (
+        !newMetadata.version ||
+        this.compareVersions(newMetadata.version, installedVersion) <= 0
+      ) {
+        return { id: script.id, unchanged: true, checkMeta };
+      }
+      return { id: script.id, codeAtCheck: script.code, newCode, newMetadata, checkMeta };
+    } catch (error) {
+      logger.error(`Error updating script ${script.name}:`, error);
+      return null;
+    }
   }
 
   async checkAndPerformUpdates() {
@@ -42,90 +195,94 @@ export class ScriptUpdater {
     const { scripts = [] } = await this.storageApi.local.get('scripts');
     if (!Array.isArray(scripts)) {
       logger.warn('Stored scripts corrupted; skipping update check.');
-      return;
+      return { updated: [], blocked: [] };
     }
-    let anyUpdated = false;
 
-    for (let i = 0; i < scripts.length; i++) {
-      const script = scripts[i];
-      const updateUrl = this.resolveUpdateUrl(script);
+    const results = (
+      await mapWithConcurrency(scripts, this.concurrency, (script) => this.checkScript(script))
+    ).filter(Boolean);
 
-      if (!updateUrl) continue;
-      if (typeof updateUrl !== 'string' || !/^https:\/\//i.test(updateUrl)) {
-        logger.warn(`Skipping update for ${script.name}: non-HTTPS update URL.`);
-        continue;
-      }
+    const applied = [];
+    const blocked = [];
+    const snapshots = [];
 
-      try {
-        logger.info(`Checking update for script: ${script.name} at ${updateUrl}`);
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
-        let response;
-        try {
-          response = await fetch(updateUrl, { signal: controller.signal });
-        } finally {
-          clearTimeout(timeoutId);
-        }
-        if (!response.ok) {
-          logger.warn(`Failed to fetch update for ${script.name}: ${response.status}`);
-          continue;
-        }
+    if (results.length > 0) {
+      // Network work happened outside the lock; re-read and apply per script
+      // so edits made meanwhile are never overwritten.
+      await mutateScripts(this.storageApi, async (current) => {
+        for (const result of results) {
+          const script = current.find((s) => s.id === result.id);
+          if (!script) continue;
 
-        const newCode = await response.text();
-        if (newCode.length > 2_000_000) {
-          logger.warn(`Skipping update for ${script.name}: payload exceeds 2MB.`);
-          continue;
-        }
-        const newMetadata = parseUserScriptMetadata(newCode);
-
-        if (!newMetadata.version) {
-          logger.warn(`Could not find version in updated script ${script.name}`);
-          continue;
-        }
-
-        if (this.compareVersions(newMetadata.version, script.version) > 0) {
-          logger.info(
-            `Updating script ${script.name} from ${script.version} to ${newMetadata.version}`
+          const checkMeta = Object.fromEntries(
+            Object.entries(result.checkMeta || {}).filter(([, value]) => value !== undefined)
           );
-          scripts[i] = {
-            ...script,
-            ...newMetadata,
-            code: newCode,
+          script.updateInfo = { ...script.updateInfo, ...checkMeta, lastChecked: Date.now() };
+          if (result.unchanged || script.code !== result.codeAtCheck) continue;
+
+          const locallyModified =
+            Boolean(script.upstreamHash) && (await hashCode(script.code)) !== script.upstreamHash;
+          const changes = describePermissionChanges(script.code, result.newCode);
+          if (locallyModified || changes.escalated) {
+            Object.assign(script.updateInfo, {
+              pendingVersion: result.newMetadata.version,
+              pendingReason: locallyModified ? 'modified' : 'permissions',
+              pendingChanges: changes,
+            });
+            blocked.push(script.id);
+            logger.info(
+              `Update for ${script.name} needs review (${script.updateInfo.pendingReason}).`
+            );
+            continue;
+          }
+
+          snapshots.push({ ...script });
+          Object.assign(script, scriptFieldsFromMetadata(result.newMetadata), {
+            code: result.newCode,
+            upstreamHash: await hashCode(result.newCode),
             updatedAt: new Date().toISOString(),
-          };
-
-          if (newMetadata.updateURL) scripts[i].updateURL = newMetadata.updateURL;
-          if (newMetadata.downloadURL) scripts[i].downloadURL = newMetadata.downloadURL;
-
-          anyUpdated = true;
-        } else {
-          logger.info(`Script ${script.name} is up to date (${script.version})`);
+          });
+          delete script.updateInfo.pendingVersion;
+          delete script.updateInfo.pendingReason;
+          delete script.updateInfo.pendingChanges;
+          script.updateInfo.version = result.newMetadata.version;
+          logger.info(`Updated script ${script.name} to ${result.newMetadata.version}`);
+          applied.push({ ...script });
         }
-      } catch (error) {
-        logger.error(`Error updating script ${script.name}:`, error);
-      }
+      });
     }
 
-    if (anyUpdated) {
-      await this.storageApi.local.set({ scripts });
+    await Promise.all(
+      snapshots.map((script) => saveScriptSnapshot(this.storageApi, script, 'auto-update'))
+    );
+
+    if (applied.length > 0) {
+      if (this.dependencies) {
+        await Promise.all(
+          applied.map((script) =>
+            this.dependencies.resolve(script, { refresh: true }).catch((error) => {
+              logger.warn(`Dependency refresh failed for ${script.name}:`, error);
+            })
+          )
+        );
+      }
       try {
-        await browser.runtime.sendMessage({
-          action: 'scriptsUpdated',
-        });
+        await this.onScriptsUpdated?.();
       } catch (error) {
-        logger.warn('Update broadcast failed (no receiver):', error.message);
+        logger.warn('Post-update sync failed:', error);
       }
       logger.info('Automatic updates completed. Some scripts were updated.');
     } else {
-      logger.info('Automatic update check finished. No updates found.');
+      logger.info('Automatic update check finished. No updates applied.');
     }
 
     await this.storageApi.local.set({ lastUpdateCheck: Date.now() });
+    return { updated: applied.map((s) => s.id), blocked };
   }
 
   setupAlarm() {
     const ALARM_NAME = 'codetweak-auto-update';
-    browser.alarms.onAlarm.addListener((alarm) => {
+    chrome.alarms.onAlarm.addListener((alarm) => {
       if (alarm.name === ALARM_NAME) {
         this.checkAndPerformUpdates().catch((error) => {
           logger.error('Scheduled update check failed:', error);
@@ -133,9 +290,9 @@ export class ScriptUpdater {
       }
     });
 
-    browser.alarms.get(ALARM_NAME, (alarm) => {
+    chrome.alarms.get(ALARM_NAME, (alarm) => {
       if (!alarm) {
-        browser.alarms.create(ALARM_NAME, {
+        chrome.alarms.create(ALARM_NAME, {
           periodInMinutes: 24 * 60, // Once a day
         });
       }
@@ -151,7 +308,9 @@ export class ScriptUpdater {
 
     if (!lastUpdateCheck || now - lastUpdateCheck > ONE_DAY) {
       setTimeout(() => {
-        this.checkAndPerformUpdates();
+        this.checkAndPerformUpdates().catch((error) => {
+          logger.error('Initial update check failed:', error);
+        });
       }, 5000);
     }
   }

@@ -1,17 +1,16 @@
 import logger from './logger.js';
 let cachedMessages = null;
 let cachedLanguage = null;
+let cachedCustomLanguage = false;
 
 export async function getEffectiveLanguage() {
   try {
-    const { settings = {} } = await (globalThis.browser ?? globalThis.chrome).storage.local.get(
-      'settings'
-    );
+    const { settings = {} } = await chrome.storage.local.get('settings');
     const userLanguage = settings.language || 'auto';
 
     if (userLanguage === 'auto') {
       // Use Chrome's automatic detection
-      return (globalThis.browser ?? globalThis.chrome).i18n.getUILanguage().split('-')[0]; // e.g., 'en-US' -> 'en'
+      return chrome.i18n.getUILanguage().split('-')[0]; // e.g., 'en-US' -> 'en'
     }
 
     return userLanguage;
@@ -23,15 +22,11 @@ export async function getEffectiveLanguage() {
 
 async function loadMessages(lang) {
   try {
-    const url = (globalThis.browser ?? globalThis.chrome).runtime.getURL(
-      `_locales/${lang}/messages.json`
-    );
+    const url = chrome.runtime.getURL(`_locales/${lang}/messages.json`);
     const response = await fetch(url);
 
     if (!response.ok) {
-      const fallbackUrl = (globalThis.browser ?? globalThis.chrome).runtime.getURL(
-        '_locales/en/messages.json'
-      );
+      const fallbackUrl = chrome.runtime.getURL('_locales/en/messages.json');
       const fallbackResponse = await fetch(fallbackUrl);
       return await fallbackResponse.json();
     }
@@ -45,10 +40,9 @@ async function loadMessages(lang) {
 
 export async function applyTranslations() {
   const effectiveLang = await getEffectiveLanguage();
-  const { settings = {} } = await (globalThis.browser ?? globalThis.chrome).storage.local.get(
-    'settings'
-  );
+  const { settings = {} } = await chrome.storage.local.get('settings');
   const useCustomLanguage = settings.language && settings.language !== 'auto';
+  cachedCustomLanguage = Boolean(useCustomLanguage);
 
   if (useCustomLanguage) {
     if (!cachedMessages || cachedLanguage !== effectiveLang) {
@@ -63,12 +57,9 @@ export async function applyTranslations() {
 
     let text;
     if (useCustomLanguage && cachedMessages) {
-      text =
-        cachedMessages[key]?.message ||
-        (globalThis.browser ?? globalThis.chrome).i18n.getMessage(key) ||
-        key;
+      text = cachedMessages[key]?.message || chrome.i18n.getMessage(key) || key;
     } else {
-      text = (globalThis.browser ?? globalThis.chrome).i18n.getMessage(key) || key;
+      text = chrome.i18n.getMessage(key) || key;
     }
 
     if (attr) {
@@ -84,10 +75,8 @@ export async function applyTranslations() {
 
     const text =
       useCustomLanguage && cachedMessages
-        ? cachedMessages[key]?.message ||
-          (globalThis.browser ?? globalThis.chrome).i18n.getMessage(key) ||
-          key
-        : (globalThis.browser ?? globalThis.chrome).i18n.getMessage(key) || key;
+        ? cachedMessages[key]?.message || chrome.i18n.getMessage(key) || key
+        : chrome.i18n.getMessage(key) || key;
 
     element.setAttribute('title', text);
   });
@@ -98,10 +87,8 @@ export async function applyTranslations() {
 
     const text =
       useCustomLanguage && cachedMessages
-        ? cachedMessages[key]?.message ||
-          (globalThis.browser ?? globalThis.chrome).i18n.getMessage(key) ||
-          key
-        : (globalThis.browser ?? globalThis.chrome).i18n.getMessage(key) || key;
+        ? cachedMessages[key]?.message || chrome.i18n.getMessage(key) || key
+        : chrome.i18n.getMessage(key) || key;
 
     element.setAttribute('placeholder', text);
   });
@@ -111,13 +98,13 @@ export async function applyTranslations() {
 
 export function getMessageSync(key) {
   try {
-    const chromeMessage = (globalThis.browser ?? globalThis.chrome).i18n.getMessage(key);
-    if (chromeMessage) {
-      return chromeMessage;
+    if (cachedCustomLanguage && cachedMessages?.[key]?.message) {
+      return cachedMessages[key].message;
     }
 
-    if (cachedMessages && cachedMessages[key]) {
-      return cachedMessages[key].message;
+    const chromeMessage = chrome.i18n.getMessage(key);
+    if (chromeMessage) {
+      return chromeMessage;
     }
 
     return key;

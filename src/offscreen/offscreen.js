@@ -1,5 +1,5 @@
 import logger from '../shared/utils/logger.js';
-(globalThis.browser ?? globalThis.chrome).runtime.onMessage.addListener(async (request) => {
+chrome.runtime.onMessage.addListener(async (request) => {
   if (request.target !== 'offscreen' || request.type !== 'copy-to-clipboard') {
     return;
   }
@@ -7,7 +7,7 @@ import logger from '../shared/utils/logger.js';
   try {
     await navigator.clipboard.writeText(request.data);
 
-    (globalThis.browser ?? globalThis.chrome).runtime.sendMessage({
+    chrome.runtime.sendMessage({
       type: 'offscreen-clipboard-response',
       success: true,
       requestId: request.requestId,
@@ -15,7 +15,7 @@ import logger from '../shared/utils/logger.js';
   } catch (error) {
     logger.error('Failed to copy to clipboard:', error);
 
-    (globalThis.browser ?? globalThis.chrome).runtime.sendMessage({
+    chrome.runtime.sendMessage({
       type: 'offscreen-clipboard-response',
       success: false,
       error: error.message,

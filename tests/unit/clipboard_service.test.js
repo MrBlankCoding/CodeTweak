@@ -6,20 +6,17 @@ vi.mock('../../src/shared/utils/logger.js', () => ({
 
 describe('ClipboardService', () => {
   let ClipboardService;
-  let browser;
 
   beforeEach(async () => {
     vi.restoreAllMocks();
     vi.resetModules();
-    const adapter = await import('../../src/shared/browserAdapter.js');
-    browser = adapter.browser;
     const mod = await import('../../src/services/ClipboardService.js');
     ClipboardService = mod.ClipboardService;
   });
 
   it('converts non-string text to string', async () => {
     globalThis.chrome = { runtime: {} };
-    browser.offscreen = undefined;
+    globalThis.chrome.offscreen = undefined;
     navigator.clipboard = { writeText: vi.fn(async () => {}) };
     const svc = new ClipboardService();
     const result = await svc.setClipboard(null, {}, vi.fn());

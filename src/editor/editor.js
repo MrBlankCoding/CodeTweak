@@ -1,5 +1,5 @@
 import logger from '../shared/utils/logger.js';
-import feather from 'feather-icons';
+import { renderIcons } from '../shared/utils/icons.js';
 import { UIManager, storageService, FormValidator } from './editor_managers.js';
 import { CodeEditorManager } from './editor_settings.js';
 import { GM_API_DEFINITIONS, getApiElementIds } from '../shared/constants/gmApiDefinitions.js';
@@ -9,7 +9,7 @@ import { Deobfuscator } from './deobfuscator.js';
 import { ErrorLogUI } from './errorLog.js';
 import { MetadataSync } from './sync.js';
 import { registerEditorEventListeners } from './events.js';
-import { EditorActions } from './actions/EditorActions.js';
+import { EditorActions } from './actions/editorActions.js';
 import { EditorUIHelper } from './components/EditorUIHelper.js';
 
 export class ScriptEditor {
@@ -31,7 +31,7 @@ export class ScriptEditor {
       scriptId: null,
       hasUnsavedChanges: false,
       isSidebarVisible: window.innerWidth > this.config.SIDEBAR_BREAKPOINT,
-      lintingEnabled: localStorage.getItem('lintingEnabled') === 'true',
+      lintingEnabled: localStorage.getItem('lintingEnabled') !== 'false',
       isAutosaveEnabled: localStorage.getItem('autosaveEnabled') === 'true',
       autosaveTimeout: null,
       headerSyncTimeout: null,
@@ -72,12 +72,20 @@ export class ScriptEditor {
   }
 
   _debouncedSave() {
+    if (!this.state.isAutosaveEnabled) return;
+
     if (this.state.autosaveTimeout) {
       clearTimeout(this.state.autosaveTimeout);
     }
 
     this.state.autosaveTimeout = setTimeout(async () => {
-      if (this.state.hasUnsavedChanges && this.state.isEditMode) {
+      this.state.autosaveTimeout = null;
+      const hasScriptName = !!this.elements.scriptName?.value.trim();
+      if (
+        this.state.isAutosaveEnabled &&
+        this.state.hasUnsavedChanges &&
+        (this.state.isEditMode || hasScriptName)
+      ) {
         try {
           await this.saveScript(true);
         } catch (error) {
@@ -89,18 +97,29 @@ export class ScriptEditor {
   }
 
   _debouncedHeaderSync() {
+    if (this.state.isUpdatingFromSidebar) {
+      if (this.state.headerSyncTimeout) {
+        clearTimeout(this.state.headerSyncTimeout);
+        this.state.headerSyncTimeout = null;
+      }
+      return;
+    }
+
     if (this.state.headerSyncTimeout) {
       clearTimeout(this.state.headerSyncTimeout);
     }
 
     this.state.headerSyncTimeout = setTimeout(() => {
-      if (!this.state.isUpdatingFromSidebar) {
-        this.metadataSync.syncHeaderToSidebar();
-      }
+      this.metadataSync.syncHeaderToSidebar();
     }, 500);
   }
 
   _debouncedSidebarSync() {
+    if (this.state.headerSyncTimeout) {
+      clearTimeout(this.state.headerSyncTimeout);
+      this.state.headerSyncTimeout = null;
+    }
+
     if (this.state.sidebarSyncTimeout) {
       clearTimeout(this.state.sidebarSyncTimeout);
     }
@@ -157,6 +176,8 @@ export class ScriptEditor {
       'errorLogContainer',
       'clearErrorsBtn',
       'errorCountBadge',
+      'settingsBtn',
+      'closeSettings',
     ];
 
     const elements = {};
@@ -188,7 +209,12 @@ export class ScriptEditor {
       this.codeEditorManager.setSaveCallback(() => this.saveScript());
       this.codeEditorManager.setChangeCallback(() => {
         this.markAsDirty();
-        this._debouncedHeaderSync();
+        if (this.state.isAutosaveEnabled) {
+          this._debouncedSave();
+        }
+        if (!this.state.isUpdatingFromSidebar) {
+          this._debouncedHeaderSync();
+        }
         this.updateSectionVisibility();
       });
       this.codeEditorManager.setImportCallback((importData) => this.handleScriptImport(importData));
@@ -200,7 +226,6 @@ export class ScriptEditor {
       this.ui.initializeCollapsibleSections();
 
       registerEditorEventListeners(this);
-      this.setupBackgroundConnection();
       this.errorLog.setup();
 
       logger.info('Script editor initialized successfully');
@@ -211,10 +236,7 @@ export class ScriptEditor {
   }
 
   setupEditorMode() {
-    if (this.state.isEditMode) {
-      this.ui.showStatusMessage('Editing existing script', 'success');
-    } else {
-      this.ui.showStatusMessage('Creating new script', 'success');
+    if (!this.state.isEditMode) {
       this.codeEditorManager.insertDefaultTemplate();
       this.updateSectionVisibility();
       this.markAsDirty();
@@ -239,15 +261,15 @@ export class ScriptEditor {
   }
 
   async loadTempImport(importId) {
-    const browser = globalThis.browser ?? globalThis.chrome;
     const key = `tempImport_${importId}`;
     try {
-      const { [key]: staged = {} } = await browser.storage.local.get(key);
+      const { [key]: staged = {} } = await chrome.storage.local.get(key);
       if (!staged?.code) {
         this.ui.showStatusMessage('Import data expired or missing.', 'error');
         return;
       }
       this.codeEditorManager.setValue(staged.code);
+      this.state.importedSource = { code: staged.code, sourceUrl: staged.sourceUrl };
       this._debouncedHeaderSync();
       this.markAsDirty();
       this.ui.showStatusMessage('Imported script ready.', 'success');
@@ -255,7 +277,7 @@ export class ScriptEditor {
       logger.error('Failed to load import:', error);
       this.ui.showStatusMessage('Failed to load import.', 'error');
     } finally {
-      browser.storage.local.remove(key).catch(() => {});
+      chrome.storage.local.remove(key).catch(() => {});
     }
   }
 
@@ -360,27 +382,16 @@ export class ScriptEditor {
   }
 
   async notifyBackgroundScript() {
-    const browser = globalThis.browser ?? globalThis.chrome;
     try {
       await new Promise((resolve) => {
-        browser.runtime.sendMessage({ action: 'scriptsUpdated' }, () => {
-          if (browser.runtime.lastError)
-            logger.warn('Background sync warning:', browser.runtime.lastError);
+        chrome.runtime.sendMessage({ action: 'scriptsUpdated' }, () => {
+          if (chrome.runtime.lastError)
+            logger.warn('Background sync warning:', chrome.runtime.lastError);
           resolve();
         });
       });
     } catch (error) {
       logger.warn('Background sync warning:', error);
-    }
-  }
-
-  setupBackgroundConnection() {
-    const browser = globalThis.browser ?? globalThis.chrome;
-    try {
-      const port = browser.runtime.connect({ name: 'CodeTweak' });
-      port.onDisconnect.addListener(() => logger.info('Background connection closed'));
-    } catch (error) {
-      logger.warn('Initial background connection failed:', error);
     }
   }
 
@@ -407,7 +418,7 @@ export class ScriptEditor {
 document.addEventListener('DOMContentLoaded', async () => {
   setupHelpModalTabs();
   await applyTranslations();
-  feather.replace();
+  renderIcons();
 
   const editor = new ScriptEditor();
   editor.init().catch((error) => logger.error('Failed to initialize script editor:', error));

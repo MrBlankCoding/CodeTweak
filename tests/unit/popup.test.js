@@ -9,11 +9,11 @@ async function setupPopup({
 
   document.body.innerHTML = `
     <div id="userScriptsBannerSlot"></div>
+    <div id="extensionVersion"></div>
     <div id="scriptList"></div>
     <div id="emptyState"></div>
     <button id="createScript"></button>
     <button id="openDashboard"></button>
-    <button id="aiEditorBtn"></button>
     <a id="reportIssue"></a>
     <div id="menuCommandSection" style="display:none"><div id="menuCommandList"></div></div>
   `;
@@ -31,7 +31,6 @@ async function setupPopup({
       create: vi.fn(async () => {}),
       sendMessage: vi.fn((_, __, cb) => cb && cb({ success: false })),
     },
-    windows: { create: vi.fn(async () => {}) },
     storage: {
       local: {
         get: vi.fn(async (key) => ({ [key]: storage[key] || [] })),
@@ -41,6 +40,7 @@ async function setupPopup({
     runtime: {
       lastError: null,
       getURL: vi.fn((p) => `chrome-extension://id/${p}`),
+      getManifest: () => ({ version: '4.0.0' }),
       sendMessage,
       onMessage: {
         addListener: (fn) => {
@@ -48,16 +48,17 @@ async function setupPopup({
         },
       },
     },
+    // Menu commands are read from the USER_SCRIPT world registry.
+    userScripts: {
+      execute: vi.fn(async () => [{ result: menuCommands }]),
+    },
     scripting: {
-      executeScript: vi.fn(async () => [{ result: menuCommands }]),
+      executeScript: vi.fn(async () => [{ result: true }]),
+      insertCSS: vi.fn(async () => {}),
     },
     action: {},
   };
-  global.browser = global.chrome;
 
-  vi.doMock('feather-icons', () => ({
-    default: { replace: vi.fn() },
-  }));
   vi.doMock('../../src/shared/utils/i18n.js', () => ({
     applyTranslations: vi.fn(async () => {}),
     getMessageSync: (k) => k,
@@ -84,10 +85,16 @@ describe('popup', () => {
           name: 'A',
           enabled: true,
           runAt: 'document_end',
+          gmSetValue: true,
           targetUrls: ['https://example.com/*'],
         },
       ],
     });
+
+    const item = document.querySelector('.script-item');
+    expect(item.querySelector('.script-name').textContent).toBe('A');
+    expect(item.querySelector('.script-target')).toBeNull();
+    expect(item.textContent).not.toMatch(/GM API|DOM|Load|Start/);
 
     const checkbox = document.querySelector('input[type="checkbox"]');
     expect(checkbox).toBeTruthy();
@@ -111,28 +118,35 @@ describe('popup', () => {
     document
       .getElementById('reportIssue')
       .dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    document.getElementById('aiEditorBtn').click();
 
     await new Promise((r) => setTimeout(r, 0));
 
     expect(chrome.tabs.create).toHaveBeenCalled();
-    expect(chrome.windows.create).toHaveBeenCalled();
 
     const cmdBtn = document.querySelector('.menu-command-btn');
     expect(cmdBtn).toBeTruthy();
     cmdBtn.click();
-    expect(chrome.scripting.executeScript).toHaveBeenCalled();
+    expect(chrome.userScripts.execute).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        world: 'USER_SCRIPT',
+        js: [{ code: expect.stringContaining('"c1"') }],
+      })
+    );
   });
 
   it('reacts to runtime scriptsUpdated message', async () => {
     const { runtimeListener } = await setupPopup();
     runtimeListener({ action: 'scriptsUpdated' });
     await new Promise((r) => setTimeout(r, 0));
-    expect(chrome.scripting.executeScript).toHaveBeenCalled();
+    expect(chrome.userScripts.execute).toHaveBeenCalled();
   });
 
-  it('handles restricted pages and AI editor invalid webpage flow', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+  it('shows the version from the manifest', async () => {
+    await setupPopup();
+    expect(document.getElementById('extensionVersion').textContent).toBe('v4.0.0');
+  });
+
+  it('hides menu commands on restricted pages', async () => {
     await setupPopup({
       tabUrl: 'chrome://settings',
       scripts: [
@@ -142,9 +156,5 @@ describe('popup', () => {
 
     const section = document.getElementById('menuCommandSection');
     expect(section.style.display).toBe('none');
-
-    document.getElementById('aiEditorBtn').click();
-    await new Promise((r) => setTimeout(r, 0));
-    expect(alertSpy).toHaveBeenCalled();
   });
 });

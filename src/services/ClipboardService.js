@@ -1,4 +1,3 @@
-import { browser } from '../shared/browserAdapter.js';
 import logger from '../shared/utils/logger.js';
 
 export class ClipboardService {
@@ -8,10 +7,10 @@ export class ClipboardService {
       return { error: 'Clipboard data exceeds 100KB limit.' };
     }
 
-    if (browser.offscreen?.['createDocument'] && browser.offscreen?.['hasDocument']) {
+    if (chrome.offscreen?.['createDocument'] && chrome.offscreen?.['hasDocument']) {
       try {
         await setupOffscreenDocument();
-        browser.runtime.sendMessage({
+        chrome.runtime.sendMessage({
           target: 'offscreen',
           type: 'copy-to-clipboard',
           data: textToCopy,
@@ -23,9 +22,9 @@ export class ClipboardService {
     }
 
     const tabId = sender?.tab?.id;
-    if (tabId && browser.scripting) {
+    if (tabId && chrome.scripting) {
       try {
-        await browser.scripting.executeScript({
+        await chrome.scripting.executeScript({
           target: { tabId },
           func: (t) => {
             const el = document.createElement('textarea');

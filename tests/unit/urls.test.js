@@ -77,16 +77,15 @@ describe('urls utilities', () => {
     expect(getScriptDescription({})).toBe('Basic');
     expect(getScriptDescription({ gmSetValue: true })).toBe('1 GM API');
     expect(getScriptDescription({ resources: [{}] })).toBe('1 Resource');
-    expect(getScriptDescription({ requiredScripts: [{}] })).toBe('1 Lib');
+    expect(getScriptDescription({ requires: ['https://cdn/x.js'] })).toBe('1 Lib');
     expect(
       getScriptDescription({
-        css: 'body {}',
-        js: 'console.log(1)',
         gmSetValue: true,
         gmGetValue: true,
+        gmLog: false,
         resources: [{}, {}],
-        requiredScripts: [{}],
+        requires: ['https://cdn/x.js'],
       })
-    ).toBe('CSS • JS • 2 GM APIs • 2 Resources • 1 Lib');
+    ).toBe('2 GM APIs • 2 Resources • 1 Lib');
   });
 });

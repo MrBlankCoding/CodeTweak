@@ -21,7 +21,7 @@ features:
   - title: Clean Workflow
     details: Build, load unpacked, and run a script in minutes.
   - title: Modern editor
-    details: Metadata, linting, script logs, built in AI support
+    details: Metadata, linting, and script logs
   - title: GM API support
     details: Persistent values, notifications, clipboard, and HTTP requests.
   - title: Debug workflow

@@ -1,6 +1,6 @@
 import logger from '../shared/utils/logger.js';
-import feather from 'feather-icons';
-import { getScriptDescription, formatUrlPattern, formatRunAt } from '../shared/utils/urls.js';
+import { formatUrlPattern, formatRunAt } from '../shared/utils/urls.js';
+import { createIcon } from '../shared/utils/icons.js';
 
 // Global functions available from dashboard-logic.js via window object
 /* global toggleScript, editScript, deleteScript */
@@ -81,7 +81,6 @@ function updateScriptsList(scripts, elements) {
   });
 
   elements.scriptsList.appendChild(fragment);
-  feather.replace();
   updateScriptCount(scripts.length);
 }
 
@@ -151,17 +150,14 @@ function createScriptListItem(script) {
       const span = document.createElement('span');
       span.className = 'site-count';
       span.textContent = `+${targetUrls.length - 1}`;
+      const formattedUrls = targetUrls.map(formatUrlPattern);
+      span.title = formattedUrls.join('\n');
+      span.setAttribute('aria-label', `Additional sites: ${formattedUrls.join(', ')}`);
       sitesCol.appendChild(span);
     }
-    sitesCol.title = targetUrls.map(formatUrlPattern).join('\n');
   } else {
     sitesCol.textContent = 'All sites';
   }
-
-  // Features column
-  const featuresCol = document.createElement('div');
-  featuresCol.className = 'script-features-col';
-  featuresCol.textContent = getScriptDescription(script);
 
   // Run At column
   const runAtCol = document.createElement('div');
@@ -174,23 +170,21 @@ function createScriptListItem(script) {
 
   const editButton = document.createElement('button');
   editButton.className = 'btn-action btn-edit';
-  const editIcon = document.createElement('i');
-  editIcon.setAttribute('data-feather', 'edit-2');
+  const editIcon = createIcon('edit-2');
   editButton.appendChild(editIcon);
   editButton.title = 'Edit Script';
   editButton.addEventListener('click', () => editScript(script.id));
 
   const deleteButton = document.createElement('button');
   deleteButton.className = 'btn-action btn-delete';
-  const deleteIcon = document.createElement('i');
-  deleteIcon.setAttribute('data-feather', 'trash-2');
+  const deleteIcon = createIcon('trash-2');
   deleteButton.appendChild(deleteIcon);
   deleteButton.title = 'Delete Script';
   deleteButton.addEventListener('click', () => deleteScript(script.id));
 
   actions.append(editButton, deleteButton);
 
-  item.append(toggleSwitch, nameCol, versionCol, sitesCol, featuresCol, runAtCol, actions);
+  item.append(toggleSwitch, nameCol, versionCol, sitesCol, runAtCol, actions);
 
   return item;
 }
@@ -205,17 +199,15 @@ function showNotification(message, type = 'info') {
 
   const notification = document.createElement('div');
   notification.className = `notification notification-${type}`;
-  const icon = document.createElement('i');
-  icon.setAttribute(
-    'data-feather',
+  const iconName =
     type === 'success'
       ? 'check-circle'
       : type === 'error'
         ? 'x-circle'
         : type === 'warning'
           ? 'alert-triangle'
-          : 'info'
-  );
+          : 'info';
+  const icon = createIcon(iconName);
 
   const content = document.createElement('div');
   content.className = 'notification-content';

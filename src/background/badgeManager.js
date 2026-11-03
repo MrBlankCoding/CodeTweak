@@ -6,15 +6,14 @@ export function isIgnorableTabError(error) {
 }
 
 export function safeSetBadge(tabId, text = '', color = '#007bff') {
-  const browser = globalThis.browser ?? globalThis.chrome;
-  browser.action.setBadgeText({ tabId, text }).catch((err) => {
+  chrome.action.setBadgeText({ tabId, text }).catch((err) => {
     if (!isIgnorableTabError(err)) {
       logger.warn(`Error setting badge for tab ${tabId}:`, err.message);
     }
   });
 
   if (text) {
-    browser.action.setBadgeBackgroundColor({ tabId, color }).catch(() => {});
+    chrome.action.setBadgeBackgroundColor({ tabId, color }).catch(() => {});
   }
 }
 
@@ -35,10 +34,9 @@ export async function updateBadgeForTab(tabId, url, getFilteredScripts) {
 }
 
 export async function updateAllTabBadges(updateBadgeForTab) {
-  const browser = globalThis.browser ?? globalThis.chrome;
   let tabs = [];
   try {
-    tabs = await browser.tabs.query({});
+    tabs = await chrome.tabs.query({});
   } catch (error) {
     logger.warn('Failed to query tabs for badges:', error.message);
     return;

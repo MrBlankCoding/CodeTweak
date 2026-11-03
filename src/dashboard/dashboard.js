@@ -1,11 +1,15 @@
 import logger from '../shared/utils/logger.js';
 /* global showNotification */
-import feather from 'feather-icons';
-import { setupGreasyfork } from './dashboard-greasyfork.js';
+import { renderIcons } from '../shared/utils/icons.js';
 import { loadScripts, loadSettings, saveSettings, filterScripts } from './dashboard-logic.js';
 import { setupTabs } from './dashboard-ui.js';
 import { renderUserScriptsBanner } from '../shared/userScriptsBanner.js';
-import { parseUserScriptMetadata } from '../services/scripts/MetadataParser.js';
+import {
+  parseUserScriptMetadata,
+  scriptFieldsFromMetadata,
+} from '../services/scripts/MetadataParser.js';
+import { storageService as ScriptManager } from '../services/storage/StorageService.js';
+import { hashCode } from '../shared/utils/hash.js';
 import { applyTranslations } from '../shared/utils/i18n.js';
 
 function initDashboard() {
@@ -32,16 +36,6 @@ function initDashboard() {
       confirmFirstRun: document.getElementById('confirmFirstRun'),
       accentColor: document.getElementById('accentColor'),
       languageSelector: document.getElementById('languageSelector'),
-      checkUpdatesBtn: document.getElementById('checkUpdatesBtn'),
-    },
-    greasyfork: {
-      button: document.getElementById('greasyforkBtn'),
-      modal: document.getElementById('greasyforkModal'),
-      closeBtn: document.querySelector('.modal-close'),
-      searchInput: document.getElementById('greasyforkSearch'),
-      searchBtn: document.getElementById('greasyforkSearchBtn'),
-      results: document.getElementById('greasyforkResults'),
-      loading: document.getElementById('greasyforkLoading'),
     },
   };
 
@@ -54,14 +48,13 @@ function initDashboard() {
   loadScripts(elements, state);
   loadSettings(elements.settings);
   setupTabs(elements.navItems, elements.tabContents);
-  setupGreasyfork(elements.greasyfork);
   setupFileDragAndDrop();
 
   // Apply translations
   initializeI18n();
 
   // Listen for runtime messages to reflect updates from other parts of the extension
-  (globalThis.browser ?? globalThis.chrome).runtime.onMessage.addListener((message) => {
+  chrome.runtime.onMessage.addListener((message) => {
     if (message.action === 'scriptsUpdated') {
       showNotification('Dashboard refreshed', 'success');
       // reload scripts while preserving filters
@@ -74,46 +67,16 @@ function initDashboard() {
 
 function setupEventListeners(elements, state) {
   elements.createScriptBtn?.addEventListener('click', () => {
-    window.location.href = (globalThis.browser ?? globalThis.chrome).runtime.getURL(
-      'editor/editor.html'
-    );
+    window.location.href = chrome.runtime.getURL('editor/editor.html');
   });
 
   elements.emptyStateCreateBtn?.addEventListener('click', () => {
-    window.location.href = (globalThis.browser ?? globalThis.chrome).runtime.getURL(
-      'editor/editor.html'
-    );
+    window.location.href = chrome.runtime.getURL('editor/editor.html');
   });
 
   elements.settingsForm?.addEventListener('submit', (e) => {
     e.preventDefault();
     saveSettings(elements.settings);
-  });
-
-  elements.settings.checkUpdatesBtn?.addEventListener('click', async () => {
-    const btn = elements.settings.checkUpdatesBtn;
-    const originalContent = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i data-feather="loader"></i><span>Checking...</span>';
-    feather.replace();
-
-    try {
-      const response = await (globalThis.browser ?? globalThis.chrome).runtime.sendMessage({
-        action: 'checkUpdates',
-      });
-      if (response && response.success) {
-        showNotification('Update check completed', 'success');
-      } else if (response && response.error) {
-        showNotification(`Update check failed: ${response.error}`, 'error');
-      }
-    } catch (error) {
-      showNotification('Error checking for updates', 'error');
-      logger.error('Update check error:', error);
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = originalContent;
-      feather.replace();
-    }
   });
 
   // bulk export
@@ -158,42 +121,35 @@ function setupFileDragAndDrop() {
       }
 
       try {
-        const { scripts = [] } = await (globalThis.browser ?? globalThis.chrome).storage.local.get(
-          'scripts'
-        );
+        const imported = [];
         for (const file of validFiles) {
           const code = await file.text();
           const metadata = parseUserScriptMetadata(code);
 
-          const scriptData = {
+          imported.push({
+            ...scriptFieldsFromMetadata(metadata),
             name: metadata.name || file.name.replace(/\.(txt|js)$/i, '') || 'Imported Script',
             author: metadata.author || 'Anonymous',
             description: metadata.description || '',
             version: metadata.version || '1.0.0',
             targetUrls: metadata.matches || ['*://*/*'],
             code,
-            runAt: metadata.runAt || 'document_end',
+            runAt: (metadata.runAt || 'document_end').replace(/-/g, '_'),
             enabled: true,
             id: crypto.randomUUID(),
             createdAt: Date.now(),
             updatedAt: Date.now(),
-            ...(metadata.resources && { resources: metadata.resources }),
-            ...(metadata.requires && { requires: metadata.requires }),
-            ...(metadata.license && { license: metadata.license }),
-            ...(metadata.icon && { icon: metadata.icon }),
-          };
-
-          if (metadata.gmApis) {
-            Object.keys(metadata.gmApis).forEach((flag) => {
-              scriptData[flag] = metadata.gmApis[flag];
-            });
-          }
-
-          scripts.push(scriptData);
+            upstreamHash: await hashCode(code),
+          });
         }
 
-        await (globalThis.browser ?? globalThis.chrome).storage.local.set({ scripts });
-        (globalThis.browser ?? globalThis.chrome).runtime.sendMessage({ action: 'scriptsUpdated' });
+        await ScriptManager.mutateScripts(
+          (scripts) => {
+            scripts.push(...imported);
+          },
+          { notify: false }
+        );
+        chrome.runtime.sendMessage({ action: 'scriptsUpdated' });
         showNotification('Scripts imported successfully', 'success');
 
         // Refresh dashboard view
@@ -209,9 +165,7 @@ function setupFileDragAndDrop() {
 
 async function exportAllScripts() {
   try {
-    const { scripts = [] } = await (globalThis.browser ?? globalThis.chrome).storage.local.get(
-      'scripts'
-    );
+    const { scripts = [] } = await chrome.storage.local.get('scripts');
     if (!scripts.length) {
       showNotification('No scripts to export', 'warning');
       return;
@@ -222,7 +176,7 @@ async function exportAllScripts() {
       const safeName = (script.name || 'script')
         .replace(/[^a-z0-9\- _]/gi, '_')
         .replace(/\s+/g, '_');
-      (globalThis.browser ?? globalThis.chrome).downloads.download({
+      chrome.downloads.download({
         url,
         filename: `CodeTweak Export/${safeName}.user.js`,
         saveAs: false,
@@ -254,6 +208,6 @@ async function initializeI18n() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  renderIcons();
   initDashboard();
-  feather.replace();
 });

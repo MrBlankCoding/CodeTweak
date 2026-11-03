@@ -18,6 +18,8 @@ Use the dashboard to control scripts and global settings.
 - `Allow external resources`
 - `Confirm first run`
 
+When enabled, CodeTweak shows a one-time desktop notification after each script runs for the first time. Notifications must also be enabled.
+
 ## Safe defaults
 
 - Keep `Allow external resources` off unless needed.

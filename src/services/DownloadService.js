@@ -1,5 +1,3 @@
-import { browser } from '../shared/browserAdapter.js';
-
 export class DownloadService {
   async download(args) {
     const { url, name } = args;
@@ -20,14 +18,14 @@ export class DownloadService {
     }
 
     return new Promise((resolve) => {
-      browser.downloads.download(
+      chrome.downloads.download(
         {
           url: downloadUrl,
           filename: filename,
         },
         (downloadId) => {
-          if (browser.runtime.lastError) {
-            resolve({ error: browser.runtime.lastError.message });
+          if (chrome.runtime.lastError) {
+            resolve({ error: chrome.runtime.lastError.message });
           } else {
             resolve({ result: { downloadId } });
           }

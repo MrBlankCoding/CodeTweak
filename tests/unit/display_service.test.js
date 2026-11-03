@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('../../src/shared/browserAdapter.js', () => ({ browser: {} }));
 vi.mock('../../src/shared/utils/logger.js', () => ({
   default: { error: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }));
@@ -12,7 +11,7 @@ describe('DisplayService', () => {
   beforeEach(async () => {
     vi.restoreAllMocks();
     vi.resetModules();
-    browser = (await import('../../src/shared/browserAdapter.js')).browser;
+    browser = globalThis.chrome = {};
     DisplayService = (await import('../../src/services/DisplayService.js')).DisplayService;
   });
 

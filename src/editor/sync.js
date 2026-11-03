@@ -20,13 +20,20 @@ export class MetadataSync {
       if (!headerMatch) return;
 
       const metadata = parseUserScriptMetadata(headerMatch[0]);
-      if (metadata.name) this.elements.scriptName.value = metadata.name;
-      if (metadata.author) this.elements.scriptAuthor.value = metadata.author;
-      if (metadata.version) this.elements.scriptVersion.value = metadata.version;
-      if (metadata.description) this.elements.scriptDescription.value = metadata.description;
-      if (metadata.license) this.elements.scriptLicense.value = metadata.license;
-      if (metadata.icon) this.elements.scriptIcon.value = metadata.icon;
-      if (metadata.runAt) this.elements.runAt.value = normalizeRunAt(metadata.runAt, '');
+      const updateField = (field, value) => {
+        const element = this.elements[field];
+        if (value && element && document.activeElement !== element) {
+          element.value = value;
+        }
+      };
+
+      updateField('scriptName', metadata.name);
+      updateField('scriptAuthor', metadata.author);
+      updateField('scriptVersion', metadata.version);
+      updateField('scriptDescription', metadata.description);
+      updateField('scriptLicense', metadata.license);
+      updateField('scriptIcon', metadata.icon);
+      updateField('runAt', metadata.runAt && normalizeRunAt(metadata.runAt, ''));
 
       if (this.elements.urlList) this.elements.urlList.innerHTML = '';
       if (Array.isArray(metadata.matches)) {

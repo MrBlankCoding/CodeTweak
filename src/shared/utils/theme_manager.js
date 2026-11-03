@@ -1,5 +1,5 @@
 window.applyTheme = function () {
-  (globalThis.browser ?? globalThis.chrome).storage.local.get('settings', function (result) {
+  chrome.storage.local.get('settings', function (result) {
     if (result.settings && result.settings.accentColor) {
       document.documentElement.style.setProperty('--accent-color', result.settings.accentColor);
     } else {

@@ -12,18 +12,20 @@ Gives your userscript access to the main page's `window` object.
 declare const unsafeWindow: Window;
 ```
 
-### Security & Use Case
+### Execution context
 
-CodeTweak typically executes userscripts in a **protected sandbox**. This sandbox:
+Where a script runs depends on its grants and the **Execution Context** setting (or `@inject-into`):
 
-1.  **Protects the Page**: Prevent scripts from accidentally interfering with the website's original functions.
-2.  **Protects the Script**: Prevent the website from accessing the script's global variables or CodeTweak APIs.
+| Setting                      | Runs in                   | GM APIs                                                        |
+| ---------------------------- | ------------------------- | -------------------------------------------------------------- |
+| Default, script uses GM APIs | Isolated userscript world | All granted APIs                                               |
+| Default, `@grant none`       | Page (main world)         | `GM_info`, `GM_addStyle`, `GM_addElement`, `GM_log`, resources |
+| Isolated World / `content`   | Isolated userscript world | All granted APIs                                               |
+| Main World / `page`          | Page (main world)         | Only the DOM-only APIs above; others throw                     |
 
-`unsafeWindow` allows you to break out of this sandbox to:
+The isolated world shares the page's DOM but not its JavaScript globals, and the page cannot see or call your GM APIs. Privileged APIs (storage, `GM_xmlhttpRequest`, tabs, notifications, menu commands) are never available in the page context, because any page script could call them there.
 
-- Access global variables defined by the website's scripts.
-- Call functions defined on the main page.
-- Access objects like `document`, `location`, or `console` directly on the main page.
+`unsafeWindow` is the page's `window` when the script runs in the page. In the isolated world it is the isolated `window`, so page-defined globals are not reachable from it. To use both page globals and privileged APIs, inject a small page script with `GM_addElement('script', { textContent: '...' })` and exchange data through the DOM.
 
 ---
 
@@ -41,16 +43,6 @@ While standard `console.log()` works in CodeTweak, `GM_log` is a dedicated utili
 
 ---
 
-## Event Listener Protection
+## Script Error Reporting
 
-CodeTweak provides an internal **Event Listener Protection** system for userscripts that use events like `DOMContentLoaded` or `load`.
-
-- **Automatic Re-registration**: If the page is being dynamically updated or replaced (e.g., in Single Page Applications), CodeTweak attempts to re-register these listeners.
-- **Simulation**: If your script is set to run at `document-end` but the page's `DOMContentLoaded` event has already passed, CodeTweak will manually trigger the listener to ensure your logic executes correctly.
-
-### Script Error Reporting
-
-Any error that occurs in your userscript (syntax errors, runtime errors, or unhandled promise rejections) is automatically captured and reported back to the **CodeTweak Editor**.
-
-- **Error Highlighting**: Errors appear in the **Script Errors** sidebar panel within the editor.
-- **Stack Traces**: Full stack traces are provided to help you identify the exact line of code where the error occurred.
+With **Enhanced debugging** enabled in the dashboard settings, errors thrown while your script starts (including a rejected promise returned from its top level) and failed `@require`/`@resource` downloads are reported to the **Script Errors** panel in the editor, with stack traces. Errors thrown later from timers or event handlers still go to the page's DevTools console.

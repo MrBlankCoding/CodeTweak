@@ -1,21 +1,25 @@
 /* Scripts Table Header */
 .scripts-table-header {
   display: grid;
-  grid-template-columns:
-    48px minmax(250px, 2fr) 100px minmax(150px, 1.5fr) minmax(150px, 1.5fr)
-    120px 100px;
-  gap: var(--space-md);
-  padding: var(--space-sm) var(--space-md);
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: var(--script-list-columns);
+  gap: var(--script-list-gap);
+  padding: 6px var(--script-list-gutter);
   background: var(--bg-tertiary);
-  border-bottom: 2px solid var(--border-primary);
-  font-size: var(--font-sm);
-  font-weight: 600;
+  border-bottom: 1px solid var(--border-primary);
+  font-size: var(--text-3xs);
+  font-weight: var(--font-semibold);
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.04em;
   position: sticky;
   top: 0;
   z-index: 10;
+}
+
+.scripts-table-header .header-actions {
+  justify-content: flex-start;
 }
 
 .scripts-table-header > div {
@@ -27,34 +31,35 @@
 /* Scripts List */
 .scripts-list {
   flex: 1;
+  width: 100%;
   height: 100%;
   min-height: 0;
+  min-width: 0;
   overflow-y: auto;
-  padding: var(--space-md);
+  padding: 0 0 12px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
+  gap: 0;
 }
 
 .script-list-item {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-md);
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--border-primary);
   flex-shrink: 0;
-  padding: var(--space-md);
+  min-height: 46px;
+  padding: 4px var(--script-list-gutter);
   display: grid;
-  grid-template-columns:
-    48px minmax(250px, 2fr) 100px minmax(150px, 1.5fr) minmax(150px, 1.5fr)
-    120px 100px;
-  gap: var(--space-md);
+  grid-template-columns: var(--script-list-columns);
+  gap: var(--script-list-gap);
   align-items: center;
   transition: var(--transition-all);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .script-list-item:hover {
-  border-color: var(--primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: var(--bg-row-hover);
 }
 
 /* Name Column */
@@ -63,29 +68,29 @@
   overflow: hidden;
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: 8px;
 }
 
 .script-icon {
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   border-radius: var(--radius-sm);
   object-fit: cover;
   flex-shrink: 0;
 }
 
 .script-name {
-  font-weight: 500;
-  font-size: var(--font-md);
+  font-weight: var(--font-medium);
+  font-size: var(--text-sm);
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin: 0 0 4px 0;
+  margin: 0 0 1px;
 }
 
 .script-description {
-  font-size: var(--font-sm);
+  font-size: var(--text-2xs);
   color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
@@ -95,14 +100,14 @@
 
 /* Version Column */
 .script-version-col {
-  font-size: var(--font-sm);
+  font-size: var(--text-2xs);
   color: var(--text-muted);
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-mono);
 }
 
 /* Sites Column */
 .script-sites-col {
-  font-size: var(--font-sm);
+  font-size: var(--text-2xs);
   color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
@@ -110,27 +115,19 @@
 }
 
 .site-count {
+  position: relative;
   display: inline-block;
-  padding: 2px 6px;
+  padding: 1px 4px;
   background: var(--bg-tertiary);
   border-radius: var(--radius-sm);
-  font-size: var(--font-xs);
+  font-size: var(--text-3xs);
   color: var(--text-muted);
   margin-left: 4px;
 }
 
-/* Features Column */
-.script-features-col {
-  font-size: var(--font-sm);
-  color: var(--text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 /* Run At Column */
 .script-runat-col {
-  font-size: var(--font-sm);
+  font-size: var(--text-2xs);
   color: var(--text-muted);
   white-space: nowrap;
 }
@@ -138,18 +135,18 @@
 .script-actions {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: 2px;
 }
 
 .btn-action {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: var(--icon-button-size);
+  height: var(--icon-button-size);
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 50%;
+  border-radius: var(--radius-sm);
   color: var(--text-secondary);
   cursor: pointer;
   transition: var(--transition-all);

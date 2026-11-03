@@ -1,4 +1,3 @@
-import { browser } from '../shared/browserAdapter.js';
 import logger from '../shared/utils/logger.js';
 
 export class DisplayService {
@@ -7,7 +6,7 @@ export class DisplayService {
   }
 
   async setupOffscreenDocument() {
-    const offscreenApi = browser.offscreen;
+    const offscreenApi = chrome.offscreen;
     const hasDocumentFn = offscreenApi?.['hasDocument'];
     const createDocumentFn = offscreenApi?.['createDocument'];
 

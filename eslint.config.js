@@ -11,7 +11,7 @@ export default [
       globals: {
         ...globals.browser,
         ...globals.es2021,
-        ...globals.webextensions,
+        chrome: 'readonly',
         GM_addElement: 'readonly',
         GM_addStyle: 'readonly',
         GM_setValue: 'readonly',

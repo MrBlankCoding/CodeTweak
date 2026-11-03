@@ -3,27 +3,17 @@ import { ElementSelectorMenu } from './menu.js';
 
 const elementSelectorInstance = new ElementSelector();
 
-(globalThis.browser ?? globalThis.chrome).runtime.onMessage.addListener((message) => {
+// inject on demand
+if (!globalThis.__ctwkElementSelector) {
+  globalThis.__ctwkElementSelector = true;
+  chrome.runtime.onMessage.addListener(handleMessage);
+}
+
+function handleMessage(message) {
   if (message.action === 'startSelection') {
     const menu = new ElementSelectorMenu(elementSelectorInstance);
     menu.start();
-  } else if (message.action === 'startAiSelection') {
-    elementSelectorInstance.startSelection(
-      (element) => {
-        if (element) {
-          const selector = elementSelectorInstance.getUniqueSelector(element);
-          (globalThis.browser ?? globalThis.chrome).runtime.sendMessage({
-            action: 'aiElementSelected',
-            selector: selector,
-          });
-        }
-        elementSelectorInstance.cleanup();
-      },
-      () => {
-        // Do nothing on cancel, cleanup is handled by the selector
-      }
-    );
   } else if (message.action === 'stopSelection') {
     elementSelectorInstance.cleanup();
   }
-});
+}

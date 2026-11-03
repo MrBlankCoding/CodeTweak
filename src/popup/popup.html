@@ -12,22 +12,17 @@
   <body>
     <header>
       <div class="logo-container">
-        <div class="logo">CT</div>
+        <img class="logo" src="/assets/icons/icon32.png" alt="CodeTweak" />
       </div>
       <div class="buttons">
-        <button id="aiEditorBtn" class="primary" title="AI DOM Editor">
-          <span class="btn-icon">
-            <i data-feather="cpu"></i>
-          </span>
-        </button>
         <button id="openDashboard" class="primary">
           <span class="btn-icon">
-            <i data-feather="grid"></i>
+            <span data-icon="grid"></span>
           </span>
         </button>
         <button id="createScript" class="primary">
           <span class="btn-icon">
-            <i data-feather="plus"></i>
+            <span data-icon="plus"></span>
           </span>
         </button>
       </div>
@@ -39,7 +34,7 @@
       <div class="script-list" id="scriptList">
         <div class="empty-state" id="emptyState">
           <div class="empty-icon">
-            <i data-feather="file-text"></i>
+            <span data-icon="file-text"></span>
           </div>
         </div>
       </div>
@@ -52,7 +47,7 @@
     </div>
 
     <footer>
-      <div>v1.0.0</div>
+      <div id="extensionVersion"></div>
       <div>
         <a
           href="https://github.com/MrBlankCoding/CodeTweak/issues/new"

@@ -1,5 +1,14 @@
 import logger from '../../shared/utils/logger.js';
-import { buildMetadata } from '../../services/scripts/MetadataParser.js';
+import {
+  buildMetadata,
+  extractMetadataBlock,
+  parseUserScriptMetadata,
+  scriptFieldsFromMetadata,
+} from '../../services/scripts/MetadataParser.js';
+import { hashCode } from '../../shared/utils/hash.js';
+
+// Header-only settings the sidebar has no controls for.
+const HEADER_ONLY_FIELDS = ['connect', 'excludes', 'includeRegexes', 'noframes'];
 
 export class EditorActions {
   constructor(editor) {
@@ -20,26 +29,25 @@ export class EditorActions {
       const isNewScript = !state.scriptId;
       if (!state.hasUnsavedChanges && !isNewScript) return null;
 
-      if (scriptData.resources?.length > 0) {
-        scriptData.resourceContents = {};
-        await Promise.all(
-          scriptData.resources.map(async (resource) => {
-            try {
-              const response = await fetch(resource.url);
-              scriptData.resourceContents[resource.name] = response.ok
-                ? await response.text()
-                : null;
-            } catch (error) {
-              logger.error(`Error fetching resource '${resource.name}':`, error);
-              scriptData.resourceContents[resource.name] = null;
-            }
-          })
-        );
+      // @require/@resource contents are fetched and cached by the background.
+      if (extractMetadataBlock(scriptData.code)) {
+        const headerFields = scriptFieldsFromMetadata(parseUserScriptMetadata(scriptData.code));
+        HEADER_ONLY_FIELDS.forEach((key) => {
+          scriptData[key] = headerFields[key];
+        });
+      }
+
+      if (isNewScript && state.importedSource) {
+        scriptData.upstreamHash = await hashCode(state.importedSource.code);
+        if (state.importedSource.sourceUrl) {
+          scriptData.updateInfo = { sourceUrl: state.importedSource.sourceUrl };
+        }
       }
 
       const savedScript = await storage.saveScript(scriptData, state.scriptId, state.isEditMode);
 
       state.scriptId = savedScript.id;
+      state.importedSource = null;
       state.hasUnsavedChanges = false;
       ui.updateScriptStatus(false);
 

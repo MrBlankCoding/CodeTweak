@@ -1,21 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { webcrypto } from 'node:crypto';
 
 import { UserScriptsAdapter } from '../../src/services/scripts/UserScriptsAdapter.js';
+import { DependencyCache, parseIntegrity } from '../../src/services/scripts/DependencyCache.js';
+import { resolveWorld, gateFor } from '../../src/services/scripts/adapter/scriptNormalizer.js';
+import { bytesToHex } from '../../src/shared/utils/hash.js';
 
 describe('UserScriptsAdapter', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    delete global.browser;
     delete global.chrome;
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
-  function createChromeMock() {
-    const storageData = {
-      userScriptRegistrationIds: ['ct-us-old-script'],
-      'script-values-s1': { alpha: 1 },
-      'script-values-s2': { beta: 2 },
-    };
-
+  function createChromeMock({ registered = [] } = {}) {
+    const storageData = {};
     const chrome = {
       runtime: {
         id: 'ext-id',
@@ -25,9 +25,13 @@ describe('UserScriptsAdapter', () => {
         local: {
           get: vi.fn(async (key) => ({ [key]: storageData[key] })),
           set: vi.fn(async (obj) => Object.assign(storageData, obj)),
+          remove: vi.fn(async (keys) => [].concat(keys).forEach((k) => delete storageData[k])),
+          getKeys: vi.fn(async () => Object.keys(storageData)),
         },
       },
       userScripts: {
+        getScripts: vi.fn(async () => registered),
+        configureWorld: vi.fn(async () => {}),
         register: vi.fn(async () => {}),
         update: vi.fn(async () => {}),
         unregister: vi.fn(async () => {}),
@@ -38,278 +42,194 @@ describe('UserScriptsAdapter', () => {
     return { chrome, storageData };
   }
 
-  it('syncs enabled scripts and persists registration ids', async () => {
-    const { chrome, storageData } = createChromeMock();
-    const adapter = new UserScriptsAdapter();
-
-    const scripts = [
-      {
-        id: 's1',
-        name: 'One',
-        code: 'console.log("one")',
-        enabled: true,
-        runAt: 'document-end',
-        injectInto: 'main',
-        targetUrls: ['https://example.com/*'],
-        gmSetValue: true,
-      },
-      {
-        id: 's2',
-        name: 'Two',
-        code: 'console.log("two")',
-        enabled: true,
-        runAt: 'document_start',
-        injectInto: 'isolated',
-        targetUrls: ['https://example.org/*'],
-      },
-      {
-        id: 's3',
-        name: 'Disabled',
-        code: 'console.log("off")',
-        enabled: false,
-        targetUrls: ['https://example.net/*'],
-      },
-    ];
-
-    const result = await adapter.syncEnabledScripts(scripts);
-
-    expect(result).toEqual({ usingUserScripts: true });
-    expect(chrome.userScripts.unregister).toHaveBeenCalledWith(
-      expect.objectContaining({ ids: ['ct-us-old-script'] }),
-      expect.any(Function)
-    );
-    expect(chrome.userScripts.register).toHaveBeenCalledTimes(1);
-    expect(chrome.userScripts.update).toHaveBeenCalledTimes(0);
-
-    const registrations = chrome.userScripts.register.mock.calls[0][0];
-    expect(registrations).toHaveLength(2);
-    expect(registrations[0].id).toBe('ct-us-s1');
-    expect(registrations[0].runAt).toBe('document_end');
-    expect(registrations[0].world).toBe('MAIN');
-    expect(registrations[0].js[0].code).toContain('GM_setValue');
-    expect(registrations[0].js[0].code).toContain('__ctLoadRequires');
-    expect(registrations[1].world).toBe('ISOLATED');
-
-    expect(storageData.userScriptRegistrationIds.sort()).toEqual(['ct-us-s1', 'ct-us-s2']);
+  const script = (overrides = {}) => ({
+    id: 's1',
+    name: 'One',
+    code: 'console.log("one")',
+    enabled: true,
+    runAt: 'document-end',
+    targetUrls: ['https://example.com/*'],
+    ...overrides,
   });
 
-  it('preserves template literals in embedded user code', async () => {
+  it('picks the USER_SCRIPT world for privileged grants and MAIN for grant none', () => {
+    expect(resolveWorld(script({ gmXmlhttpRequest: true }))).toBe('USER_SCRIPT');
+    expect(resolveWorld(script({ gmSetValue: true }))).toBe('USER_SCRIPT');
+    expect(resolveWorld(script({ gmAddStyle: true, unsafeWindow: true }))).toBe('MAIN');
+    expect(resolveWorld(script({ injectInto: 'isolated' }))).toBe('USER_SCRIPT');
+    expect(resolveWorld(script({ injectInto: 'main', gmSetValue: true }))).toBe('MAIN');
+    // 'ISOLATED' is not a valid userScripts world and must never be produced.
+    expect(resolveWorld(script({ injectInto: 'isolated' }))).not.toBe('ISOLATED');
+  });
+
+  it('configures messaging and registers new scripts', async () => {
     const { chrome } = createChromeMock();
     const adapter = new UserScriptsAdapter();
 
-    const scripts = [
-      {
-        id: 's-esc',
-        name: 'Escaper',
-        code: 'GM_addStyle(`.x{color:red}`); const t = `${1+1}`;',
-        enabled: true,
-        runAt: 'document_end',
-        targetUrls: ['https://example.com/*'],
-      },
-    ];
+    const result = await adapter.syncEnabledScripts([
+      script({ gmSetValue: true }),
+      script({ id: 's2', targetUrls: ['https://example.org/*'], injectInto: 'isolated' }),
+      script({ id: 's3', enabled: false }),
+    ]);
 
-    await adapter.syncEnabledScripts(scripts);
-
-    const registrations = chrome.userScripts.register.mock.calls[0][0];
-    const generated = registrations[0].js[0].code;
-    expect(generated).toContain('GM_addStyle(`.x{color:red}`)');
-    expect(generated).toContain('const t = `${1+1}`');
-  });
-
-  it('generates syntactically valid bootstrap for tricky template-heavy user code', async () => {
-    createChromeMock();
-    const adapter = new UserScriptsAdapter();
-
-    const trickyUserCode = `
-const panelId = "tm-tester-panel";
-GM_addStyle(\`
-  #\${panelId} {
-    color: red;
-  }
-\`);
-const note = \`value=\${1 + 2}\`;
-const rx = /^http:\\/\\//i;
-if (!rx.test("https://example.com")) {
-  throw new Error("regex sanity failed");
-}
-`;
-
-    const registration = await adapter.toRegistration({
-      id: 's-sanitize',
-      name: 'Sanitize Test',
-      code: trickyUserCode,
-      enabled: true,
-      runAt: 'document_end',
-      targetUrls: ['https://example.com/*'],
-    });
-
-    const generated = registration.js[0].code;
-
-    expect(() => new Function(generated)).not.toThrow();
-    expect(generated).toContain('GM_addStyle(`');
-    expect(generated).toContain('#${panelId}');
-    expect(generated).toContain('const note = `value=${1 + 2}`');
-    expect(generated).toContain('const rx = /^http:\\/\\//i;');
-    expect(generated).toContain('const safePayload = __ctToCloneable({');
-    expect(generated).toContain('payload: safePayload');
-  });
-
-  it('preserves dollar patterns in user code during bootstrap injection', async () => {
-    createChromeMock();
-    const adapter = new UserScriptsAdapter();
-
-    const dollarCode = 'const a = "$& $\' $| $1"; $("div").text(a);';
-    const registration = await adapter.toRegistration({
-      id: 's-dollar',
-      name: 'Dollar Test',
-      code: dollarCode,
-      enabled: true,
-      runAt: 'document_end',
-      targetUrls: ['https://example.com/*'],
-    });
-
-    const generated = registration.js[0].code;
-    expect(generated).toContain(dollarCode);
-    expect(() => new Function(generated)).not.toThrow();
-  });
-
-  it('toRegistration handles minimal script configuration', async () => {
-    createChromeMock();
-    const adapter = new UserScriptsAdapter();
-    const reg = await adapter.toRegistration({
-      id: 'min',
-      enabled: true,
-      code: 'console.log(1)',
-      targetUrls: [],
-    });
-    expect(reg.id).toBe('ct-us-min');
-    expect(reg.matches).toEqual([]);
-  });
-
-  it('toRegistration handles complex script with resources and requires', async () => {
-    createChromeMock();
-    const adapter = new UserScriptsAdapter();
-    const reg = await adapter.toRegistration({
-      id: 'complex',
-      enabled: true,
-      code: 'console.log(1)',
-      targetUrls: ['https://*/*'],
-      requires: ['https://lib.js'],
-      resources: [{ name: 'res', url: 'https://res.png' }],
-      resourceContents: { res: 'data' },
-    });
-    expect(reg.js[0].code).toContain('"requires":["https://lib.js"]');
-    expect(reg.js[0].code).toContain('"res":"https://res.png"');
-  });
-
-  it('uses scripting API as fallback when userScripts is unavailable and transforms registrations correctly', async () => {
-    const storageData = { userScriptRegistrationIds: [] };
-    global.chrome = {
-      runtime: { id: 'ext-id', getManifest: () => ({ version: '1.0.0' }) },
-      storage: {
-        local: {
-          get: vi.fn(async (key) => ({ [key]: storageData[key] })),
-          set: vi.fn(async (obj) => Object.assign(storageData, obj)),
-        },
-      },
-      userScripts: undefined,
-      scripting: {
-        registerContentScripts: vi.fn().mockResolvedValue(),
-        unregisterContentScripts: vi.fn().mockResolvedValue(),
-      },
-    };
-
-    const adapter = new UserScriptsAdapter();
-    const script = {
-      id: 's-fallback',
-      name: 'Fallback Test',
-      code: 'console.log("fallback")',
-      enabled: true,
-      targetUrls: ['https://example.com/*'],
-      runAt: 'document-start',
-      injectInto: 'main',
-    };
-
-    const result = await adapter.syncEnabledScripts([script]);
-
-    expect(result.usingUserScripts).toBe(true);
-    expect(global.chrome.scripting.registerContentScripts).toHaveBeenCalled();
-    const regs = global.chrome.scripting.registerContentScripts.mock.calls[0][0];
-    expect(regs).toHaveLength(1);
+    expect(result).toEqual(
+      expect.objectContaining({ usingUserScripts: true, added: 2, updated: 0, removed: 0 })
+    );
+    expect(chrome.userScripts.configureWorld).toHaveBeenCalledWith(
+      expect.objectContaining({ messaging: true })
+    );
+    const regs = chrome.userScripts.register.mock.calls[0][0];
+    expect(regs.map((r) => r.id)).toEqual(['ct-us-s1', 'ct-us-s2']);
     expect(regs[0]).toEqual(
-      expect.objectContaining({
-        id: 'ct-us-s-fallback',
-        matches: ['https://example.com/*'],
-        runAt: 'document_start',
-        world: 'MAIN',
-        persistAcrossSessions: true,
+      expect.objectContaining({ runAt: 'document_end', world: 'USER_SCRIPT', allFrames: true })
+    );
+    // GM APIs are scoped parameters, never window globals.
+    expect(regs[0].js[0].code).not.toContain('window.GM_setValue');
+    expect(regs[0].js[0].code).toContain('GM_setValue');
+  });
+
+  it('only touches registrations that changed', async () => {
+    createChromeMock();
+    const first = new UserScriptsAdapter();
+    const scripts = [script({ gmSetValue: true }), script({ id: 's2', gmSetValue: true })];
+    await first.syncEnabledScripts(scripts);
+    const registered = global.chrome.userScripts.register.mock.calls[0][0];
+
+    const { chrome } = createChromeMock({ registered: [...registered, { id: 'ct-us-gone' }] });
+    const adapter = new UserScriptsAdapter();
+    const result = await adapter.syncEnabledScripts([
+      scripts[0],
+      { ...scripts[1], code: 'changed()' },
+    ]);
+
+    expect(result).toEqual(expect.objectContaining({ added: 0, updated: 1, removed: 1 }));
+    expect(chrome.userScripts.unregister).toHaveBeenCalledWith({ ids: ['ct-us-gone'] });
+    expect(chrome.userScripts.update.mock.calls[0][0].map((r) => r.id)).toEqual(['ct-us-s2']);
+    expect(chrome.userScripts.register).not.toHaveBeenCalled();
+  });
+
+  it('adds an error bridge only when Main World scripts exist', async () => {
+    const { chrome } = createChromeMock();
+    await new UserScriptsAdapter().syncEnabledScripts([script()]);
+    const ids = chrome.userScripts.register.mock.calls[0][0].map((r) => r.id);
+    expect(ids).toContain('ct-sys-error-bridge');
+
+    const isolated = createChromeMock();
+    await new UserScriptsAdapter().syncEnabledScripts([script({ gmSetValue: true })]);
+    const isolatedIds = isolated.chrome.userScripts.register.mock.calls[0][0].map((r) => r.id);
+    expect(isolatedIds).not.toContain('ct-sys-error-bridge');
+  });
+
+  it('inlines cached @require code and reports missing dependencies', async () => {
+    createChromeMock();
+    const fetchImpl = vi.fn(async (url) =>
+      url.includes('ok.js')
+        ? { ok: true, arrayBuffer: async () => new TextEncoder().encode('var LIB = 1;').buffer }
+        : { ok: false, status: 404 }
+    );
+    const adapter = new UserScriptsAdapter({
+      dependencyCache: new DependencyCache(global.chrome.storage, fetchImpl),
+    });
+
+    const reg = await adapter.toRegistration(
+      script({ requires: ['https://cdn.test/ok.js', 'https://cdn.test/missing.js'] })
+    );
+    expect(reg.js[0].code).toContain('var LIB = 1;');
+    expect(reg.js[0].code).not.toContain("createElement('script')");
+    expect(reg.js[0].code).toContain('"missingDependencies":["https://cdn.test/missing.js"]');
+
+    // Second build is served from the cache.
+    await adapter.toRegistration(script({ requires: ['https://cdn.test/ok.js'] }));
+    expect(fetchImpl.mock.calls.filter(([url]) => url.includes('ok.js'))).toHaveLength(1);
+  });
+
+  it('verifies @require integrity hashes', async () => {
+    createChromeMock();
+    const body = new TextEncoder().encode('var SAFE = 1;');
+    const hex = bytesToHex(await webcrypto.subtle.digest('SHA-256', body));
+    const fetchImpl = vi.fn(async () => ({ ok: true, arrayBuffer: async () => body.buffer }));
+    const cache = new DependencyCache(global.chrome.storage, fetchImpl);
+
+    expect(parseIntegrity(`https://x/a.js#sha256=${hex}`)).toEqual([
+      { algorithm: 'sha256', value: hex },
+    ]);
+    const good = await cache.resolve({ requires: [`https://x/a.js#sha256=${hex}`] });
+    expect(good.requires).toEqual(['var SAFE = 1;']);
+    const bad = await cache.resolve({ requires: ['https://x/b.js#sha256=deadbeef'] });
+    expect(bad.missing).toEqual(['https://x/b.js#sha256=deadbeef']);
+    // Fragments are not sent to the server.
+    expect(fetchImpl.mock.calls[0][0]).toBe('https://x/a.js');
+  });
+
+  it('blocks non-HTTPS @require URLs', async () => {
+    createChromeMock();
+    const fetchImpl = vi.fn();
+    const cache = new DependencyCache(global.chrome.storage, fetchImpl);
+    const result = await cache.resolve({ requires: ['http://insecure.test/lib.js'] });
+    expect(result.missing).toEqual(['http://insecure.test/lib.js']);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('applies @exclude globs and regex @include gates', async () => {
+    createChromeMock();
+    const adapter = new UserScriptsAdapter();
+    const reg = await adapter.toRegistration(
+      script({
+        excludes: ['*://example.com/private/*', '/logout/'],
+        includeRegexes: ['^https://news\\.test/'],
+        noframes: true,
       })
     );
-    expect(regs[0].js[0].code).toContain('console.log("fallback")');
+    expect(reg.matches).toEqual(['*://*/*']);
+    expect(reg.excludeGlobs).toEqual(['*://example.com/private/*']);
+    expect(reg.allFrames).toBe(false);
+    expect(reg.js[0].code).toContain('"gate":{"include":[');
+
+    const gate = gateFor(script({ excludes: ['/logout/', 'https://a.test/*'] }));
+    expect(gate.excludeRegexes).toEqual(['logout', '^https://a\\.test/.*$']);
   });
 
-  it('returns unsupported result if both scripting APIs are missing', async () => {
+  it('returns unsupported when the userScripts API is disabled', async () => {
     global.chrome = {
       runtime: { id: 'ext-id', getManifest: () => ({ version: '1.0.0' }) },
       storage: { local: { get: vi.fn(async () => ({})), set: vi.fn(async () => {}) } },
-      userScripts: undefined,
-      scripting: undefined,
+      get userScripts() {
+        throw new Error('The userScripts API is not available');
+      },
     };
 
     const adapter = new UserScriptsAdapter();
-    await expect(
-      adapter.syncEnabledScripts([
-        {
-          id: 's1',
-          code: 'console.log(1)',
-          enabled: true,
-          targetUrls: ['https://example.com/*'],
-        },
-      ])
-    ).resolves.toEqual({ usingUserScripts: false });
+    await expect(adapter.syncEnabledScripts([script()])).resolves.toEqual({
+      usingUserScripts: false,
+    });
   });
 
-  it('should handle concurrent sync calls using mutex', async () => {
+  it('serializes concurrent sync calls', async () => {
     createChromeMock();
     const adapter = new UserScriptsAdapter();
-    const mockSync = vi.spyOn(adapter, '_doSyncEnabledScripts').mockImplementation(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 50));
+    let active = 0;
+    let maxActive = 0;
+    vi.spyOn(adapter, '_doSyncEnabledScripts').mockImplementation(async () => {
+      active++;
+      maxActive = Math.max(maxActive, active);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      active--;
       return { usingUserScripts: true };
     });
 
-    const p1 = adapter.syncEnabledScripts([]);
-    const p2 = adapter.syncEnabledScripts([]);
-
-    await Promise.all([p1, p2]);
-
-    expect(mockSync).toHaveBeenCalledTimes(2);
+    await Promise.all([
+      adapter.syncEnabledScripts([]),
+      adapter.syncEnabledScripts([]),
+      adapter.syncEnabledScripts([]),
+    ]);
+    expect(maxActive).toBe(1);
   });
 
-  it('should handle registration error and cleanup', async () => {
-    const script = {
-      id: 's1',
-      name: 'Test',
-      code: 'console.log(1)',
-      enabled: true,
-      targetUrls: ['https://example.com/*'],
-    };
-
-    global.chrome = {
-      runtime: { id: 'ext-id', getManifest: () => ({ version: '1.0.0' }) },
-      storage: {
-        local: {
-          get: vi.fn(async () => ({ userScriptRegistrationIds: ['old-id'] })),
-          set: vi.fn(async () => {}),
-        },
-      },
-      userScripts: {
-        unregister: vi.fn().mockResolvedValue(),
-        register: vi.fn().mockRejectedValue(new Error('Register failed')),
-      },
-    };
-
-    const adapter = new UserScriptsAdapter();
-    const result = await adapter.syncEnabledScripts([script]);
+  it('reports failure when registration throws outright', async () => {
+    const { chrome } = createChromeMock();
+    chrome.userScripts.unregister.mockRejectedValue(new Error('boom'));
+    chrome.userScripts.getScripts.mockResolvedValue([{ id: 'ct-us-old' }]);
+    const result = await new UserScriptsAdapter().syncEnabledScripts([]);
     expect(result.usingUserScripts).toBe(false);
   });
 });

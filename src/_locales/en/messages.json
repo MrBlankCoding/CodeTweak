@@ -5,7 +5,6 @@
   "appDescription": {
     "message": "Create and manage custom JavaScript scripts for any website"
   },
-
   "sidebarScripts": {
     "message": "Scripts"
   },
@@ -17,13 +16,6 @@
   },
   "sidebarNewScript": {
     "message": "New Script"
-  },
-  "sidebarBrowseScripts": {
-    "message": "Browse Scripts"
-  },
-
-  "scriptsTitle": {
-    "message": "Your Scripts"
   },
   "scriptsSearch": {
     "message": "Search scripts..."
@@ -61,9 +53,6 @@
   "scriptsSites": {
     "message": "Sites"
   },
-  "scriptsFeatures": {
-    "message": "Features"
-  },
   "scriptsRunAt": {
     "message": "Run At"
   },
@@ -79,7 +68,6 @@
   "scriptsCreateNew": {
     "message": "Create New Script"
   },
-
   "settingsTitle": {
     "message": "Settings"
   },
@@ -89,38 +77,14 @@
   "settingsEnableDefault": {
     "message": "Enable scripts by default"
   },
-  "settingsEnableDefaultDesc": {
-    "message": "New scripts will be automatically enabled"
-  },
   "settingsShowNotifications": {
     "message": "Show notifications"
-  },
-  "settingsShowNotificationsDesc": {
-    "message": "Display notifications when scripts run"
   },
   "settingsEnhancedDebugging": {
     "message": "Enhanced Debugging"
   },
-  "settingsEnhancedDebuggingDesc": {
-    "message": "Log detailed script information to the console"
-  },
   "settingsLanguage": {
     "message": "Language"
-  },
-  "settingsLanguageDesc": {
-    "message": "Choose your preferred interface language"
-  },
-  "settingsCheckUpdates": {
-    "message": "Check for updates"
-  },
-  "settingsCheckUpdatesDesc": {
-    "message": "Manually check for userscript updates"
-  },
-  "settingsCheckUpdatesButton": {
-    "message": "Check for updates"
-  },
-  "languageBrowserDefault": {
-    "message": "Browser Default (Auto)"
   },
   "settingsSecurity": {
     "message": "Security"
@@ -128,14 +92,8 @@
   "settingsAllowExternal": {
     "message": "Allow external resources"
   },
-  "settingsAllowExternalDesc": {
-    "message": "Allow scripts to load resources from external URLs"
-  },
   "settingsConfirmFirstRun": {
     "message": "Confirm first run"
-  },
-  "settingsConfirmFirstRunDesc": {
-    "message": "Ask for confirmation before a script runs on a website for the first time"
   },
   "settingsTheme": {
     "message": "Theme"
@@ -143,11 +101,11 @@
   "settingsAccentColor": {
     "message": "Accent Color"
   },
-  "settingsAccentColorDesc": {
-    "message": "Choose the accent color for the UI"
-  },
   "settingsSaveSettings": {
     "message": "Save Settings"
+  },
+  "settingsSaved": {
+    "message": "Settings saved successfully"
   },
   "settingsResetDefaults": {
     "message": "Reset Defaults"
@@ -155,20 +113,6 @@
   "settingsExportAll": {
     "message": "Export All"
   },
-
-  "settingsAi": {
-    "message": "AI Settings"
-  },
-  "settingsAiConfigure": {
-    "message": "Configure AI Features"
-  },
-  "settingsAiConfigureDesc": {
-    "message": "Open the settings page for the AI DOM Editor"
-  },
-  "settingsAiConfigureButton": {
-    "message": "Configure"
-  },
-
   "aboutTitle": {
     "message": "About CodeTweak"
   },
@@ -181,17 +125,6 @@
   "aboutPrivacyLink": {
     "message": "Privacy Policy"
   },
-
-  "greasyForkTitle": {
-    "message": "Browse Greasy Fork Scripts"
-  },
-  "greasyForkSearch": {
-    "message": "Search Greasy Fork..."
-  },
-  "greasyForkSearchBtn": {
-    "message": "Search"
-  },
-
   "popupReportIssue": {
     "message": "Report Issue"
   },
@@ -222,9 +155,11 @@
   "userScriptsBannerGuide": {
     "message": "How to enable"
   },
-
-  "editorUnsavedChanges": {
-    "message": "Unsaved Changes"
+  "editorUnsaved": {
+    "message": "Unsaved"
+  },
+  "editorSaved": {
+    "message": "Saved"
   },
   "editorSaveScript": {
     "message": "Save Script"
@@ -244,20 +179,11 @@
   "editorGmApiAccess": {
     "message": "GM API Access"
   },
-  "editorGmApiAccessDesc": {
-    "message": "Enable powerful Greasemonkey APIs"
-  },
   "editorRequiredScripts": {
     "message": "Required Scripts"
   },
-  "editorRequiredScriptsDesc": {
-    "message": "External libraries and dependencies"
-  },
   "editorScriptResources": {
     "message": "Script Resources"
-  },
-  "editorScriptResourcesDesc": {
-    "message": "Static resources your script needs"
   },
   "editorScriptErrors": {
     "message": "Script Errors"
@@ -279,18 +205,6 @@
   },
   "editorLicense": {
     "message": "License"
-  },
-  "editorHomepage": {
-    "message": "Homepage URL"
-  },
-  "editorUpdateUrl": {
-    "message": "Update URL"
-  },
-  "editorDownloadUrl": {
-    "message": "Download URL"
-  },
-  "editorSupportUrl": {
-    "message": "Support URL"
   },
   "editorIcon": {
     "message": "Icon URL"
@@ -316,9 +230,6 @@
   "editorGenerate": {
     "message": "Generate"
   },
-  "editorRunTiming": {
-    "message": "Run Timing"
-  },
   "editorDocumentStart": {
     "message": "Document Start"
   },
@@ -328,9 +239,6 @@
   "editorPageLoaded": {
     "message": "Page Loaded"
   },
-  "editorExecutionContext": {
-    "message": "Execution Context"
-  },
   "editorSelectGmApis": {
     "message": "Select the Greasemonkey APIs your script needs"
   },
@@ -339,18 +247,6 @@
   },
   "editorClearErrors": {
     "message": "Clear Errors"
-  },
-  "editorSettingsTitle": {
-    "message": "Editor Settings"
-  },
-  "editorFontSize": {
-    "message": "Font Size"
-  },
-  "editorTabSize": {
-    "message": "Tab Size"
-  },
-  "editorPreferences": {
-    "message": "Preferences"
   },
   "editorShowLineNumbers": {
     "message": "Show Line Numbers"
@@ -369,276 +265,5 @@
   },
   "editorEnableAutosave": {
     "message": "Enable Autosave"
-  },
-  "aiSettingsTitle": {
-    "message": "AI DOM Editor Settings"
-  },
-  "aiSettingsPrivacySecurity": {
-    "message": "Privacy & Security"
-  },
-  "aiSettingsPrivacyLi1": {
-    "message": "API keys are stored locally in your browser"
-  },
-  "aiSettingsPrivacyLi2": {
-    "message": "No data is sent to CodeTweak servers"
-  },
-  "aiSettingsPrivacyLi3": {
-    "message": "All requests go directly to your chosen AI provider"
-  },
-  "aiSettingsPrivacyLi4": {
-    "message": "Generated code runs in an isolated sandbox"
-  },
-  "aiSettingsGettingStarted": {
-    "message": "Getting Started"
-  },
-  "aiSettingsGettingStartedLi1": {
-    "message": "Obtain an API key from your chosen provider"
-  },
-  "aiSettingsSavedApiKeys": {
-    "message": "Saved API Keys"
-  },
-  "aiSettingsAddKey": {
-    "message": "Add Key"
-  },
-  "aiSettingsProviderConfig": {
-    "message": "AI Provider Configuration"
-  },
-  "aiSettingsProvider": {
-    "message": "AI Provider"
-  },
-  "aiSettingsSelectProvider": {
-    "message": "Select a provider..."
-  },
-  "aiSettingsApiKey": {
-    "message": "API Key"
-  },
-  "aiSettingsApiEndpoint": {
-    "message": "API Endpoint"
-  },
-  "aiSettingsApiEndpointHint": {
-    "message": "Custom API endpoint URL"
-  },
-  "aiSettingsModel": {
-    "message": "Model"
-  },
-  "aiSettingsSelectModel": {
-    "message": "Select a model..."
-  },
-  "aiSettingsFetchModels": {
-    "message": "Fetch Models"
-  },
-  "aiSettingsAdvanced": {
-    "message": "Advanced Settings"
-  },
-  "aiSettingsTemperature": {
-    "message": "Temperature"
-  },
-  "aiSettingsTemperatureHint": {
-    "message": "Controls randomness (0 = deterministic, 1 = creative)"
-  },
-  "aiSettingsMaxTokens": {
-    "message": "Max Tokens"
-  },
-  "aiSettingsMaxTokensHint": {
-    "message": "Maximum tokens in AI response"
-  },
-  "aiSettingsTestConnection": {
-    "message": "Test Connection"
-  },
-  "aiSettingsReset": {
-    "message": "Reset"
-  },
-  "aiSettingsSave": {
-    "message": "Save Settings"
-  },
-  "aiSettingsSubtitle": {
-    "message": "Simple profile-based setup for providers, keys, and models."
-  },
-  "aiSettingsNewProfile": {
-    "message": "New Profile"
-  },
-  "aiSettingsProfiles": {
-    "message": "Profiles"
-  },
-  "aiSettingsNoProfiles": {
-    "message": "No profiles yet. Click New Profile."
-  },
-  "aiSettingsNoModel": {
-    "message": "no model"
-  },
-  "aiSettingsProfileConfig": {
-    "message": "Profile Configuration"
-  },
-  "aiSettingsProfileHintNew": {
-    "message": "New unsaved profile"
-  },
-  "aiSettingsEditingProfile": {
-    "message": "Editing profile"
-  },
-  "aiSettingsProviderOpenAI": {
-    "message": "OpenAI"
-  },
-  "aiSettingsProviderAnthropic": {
-    "message": "Anthropic"
-  },
-  "aiSettingsProviderGoogleGemini": {
-    "message": "Google Gemini"
-  },
-  "aiSettingsProviderMistral": {
-    "message": "Mistral"
-  },
-  "aiSettingsProviderAimlapi": {
-    "message": "AIML API"
-  },
-  "aiSettingsProviderCustom": {
-    "message": "Custom Endpoint"
-  },
-  "aiSettingsApiKeyPlaceholder": {
-    "message": "Paste API key"
-  },
-  "aiSettingsToggleKey": {
-    "message": "Show or hide key"
-  },
-  "aiSettingsEndpointPlaceholder": {
-    "message": "https://api.example.com/v1/chat/completions"
-  },
-  "aiSettingsEndpointRequiredHint": {
-    "message": "Only required for custom providers."
-  },
-  "aiSettingsSyncModels": {
-    "message": "Sync Models"
-  },
-  "aiSettingsSyncing": {
-    "message": "Syncing..."
-  },
-  "aiSettingsTest": {
-    "message": "Test"
-  },
-  "aiSettingsTesting": {
-    "message": "Testing..."
-  },
-  "aiSettingsResetAll": {
-    "message": "Reset All"
-  },
-  "aiSettingsSaveProfile": {
-    "message": "Save Profile"
-  },
-  "aiSettingsQuickStart": {
-    "message": "Quick Start"
-  },
-  "aiSettingsQuickStartSteps": {
-    "message": "1. Create a profile 2. Paste key 3. Choose model 4. Save."
-  },
-  "aiSettingsLinksLabel": {
-    "message": "Links:"
-  },
-  "aiSettingsDeleteProfile": {
-    "message": "Delete profile"
-  },
-  "aiSettingsToastLoadFailed": {
-    "message": "Failed to load settings"
-  },
-  "aiSettingsToastRequiredFields": {
-    "message": "Provider, key, endpoint, and model are required"
-  },
-  "aiSettingsToastSaved": {
-    "message": "Profile saved"
-  },
-  "aiSettingsToastSaveFailed": {
-    "message": "Failed to save profile"
-  },
-  "aiSettingsConfirmDelete": {
-    "message": "Delete this profile?"
-  },
-  "aiSettingsToastDeleted": {
-    "message": "Profile deleted"
-  },
-  "aiSettingsConfirmReset": {
-    "message": "Reset all AI profiles and model cache?"
-  },
-  "aiSettingsToastReset": {
-    "message": "All settings reset"
-  },
-  "aiSettingsToastNeedConnectionFields": {
-    "message": "Add key, endpoint, and model first"
-  },
-  "aiSettingsToastConnectionSuccess": {
-    "message": "Connection successful"
-  },
-  "aiSettingsToastConnectionFailed": {
-    "message": "Connection failed"
-  },
-  "aiSettingsToastConnectionError": {
-    "message": "Connection error"
-  },
-  "aiSettingsToastNeedProviderKey": {
-    "message": "Select provider and enter key first"
-  },
-  "aiSettingsToastCustomSyncUnsupported": {
-    "message": "Custom endpoint model sync is not supported"
-  },
-  "aiSettingsToastNoModels": {
-    "message": "No models found"
-  },
-  "aiSettingsToastSyncedPrefix": {
-    "message": "Synced"
-  },
-  "aiSettingsToastSyncedSuffix": {
-    "message": "models"
-  },
-  "aiSettingsToastSyncFailed": {
-    "message": "Model sync failed"
-  },
-
-  "aiEditorTitle": {
-    "message": "AI DOM Editor"
-  },
-  "aiEditorClearConversation": {
-    "message": "Clear conversation"
-  },
-  "aiEditorSettings": {
-    "message": "Settings"
-  },
-  "aiEditorClose": {
-    "message": "Close AI Editor"
-  },
-  "aiEditorApiNotConfigured": {
-    "message": "API not configured. Please configure your AI provider in settings."
-  },
-  "aiEditorConfigure": {
-    "message": "Configure"
-  },
-  "aiEditorWelcomeTitle": {
-    "message": "Ai Editor"
-  },
-  "aiEditorWelcomeSubtitle": {
-    "message": "What's your idea?"
-  },
-  "aiEditorExamplePrompt1": {
-    "message": "Make the background pink and all headings blue"
-  },
-  "aiEditorExamplePrompt2": {
-    "message": "Remove all Ads"
-  },
-  "aiEditorExamplePrompt3": {
-    "message": "Make all buttons larger"
-  },
-  "aiEditorClickElement": {
-    "message": "Click an element on the page"
-  },
-  "aiEditorCancel": {
-    "message": "Cancel"
-  },
-  "aiEditorSelectModel": {
-    "message": "Select AI Model"
-  },
-  "aiEditorLoadingModels": {
-    "message": "Loading models..."
-  },
-  "aiEditorSelectElement": {
-    "message": "Select element on page"
-  },
-  "aiEditorPlaceholder": {
-    "message": "Describe what you want to change on this page..."
   }
 }

@@ -5,7 +5,6 @@ import { UserScriptsAdapter } from '../../src/services/scripts/UserScriptsAdapte
 describe('userscript adapter hardening', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    delete global.browser;
     delete global.chrome;
   });
 
@@ -20,7 +19,10 @@ describe('userscript adapter hardening', () => {
         },
       },
       userScripts: {
+        getScripts: vi.fn(async () => []),
+        configureWorld: vi.fn(async () => {}),
         register: vi.fn(registerImpl),
+        update: vi.fn(async () => {}),
         unregister: vi.fn(async () => {}),
       },
     };
@@ -113,7 +115,10 @@ describe('userscript adapter hardening', () => {
     await adapter.syncEnabledScripts([
       baseScript({ targetUrls: ['http*://example.com/*', '*://example.com/*'] }),
     ]);
-    const regs = chrome.userScripts.register.mock.calls[0][0];
+    // grant-none scripts run in MAIN, which also registers the error bridge
+    const regs = chrome.userScripts.register.mock.calls[0][0].filter((r) =>
+      r.id.startsWith('ct-us-')
+    );
     expect(regs).toHaveLength(1);
     expect(regs[0].matches).toEqual(['*://example.com/*']);
   });
@@ -135,9 +140,13 @@ describe('userscript adapter hardening', () => {
     const adapter = new UserScriptsAdapter();
     const result = await adapter.syncEnabledScripts([good, bad]);
     expect(result.usingUserScripts).toBe(true);
-    const stored = chrome.storage.local.set.mock.calls.at(-1)[0].userScriptRegistrationIds;
-    expect(stored).toContain('ct-us-good');
-    expect(stored).not.toContain('ct-us-bad');
+    // Batch failed, then each registration was retried on its own.
+    const singleIds = chrome.userScripts.register.mock.calls
+      .map(([regs]) => regs)
+      .filter((regs) => regs.length === 1)
+      .map((regs) => regs[0].id)
+      .filter((id) => id.startsWith('ct-us-'));
+    expect(singleIds).toEqual(['ct-us-good', 'ct-us-bad']);
   });
 
   it('handles undefined code and missing runAt without crashing', async () => {

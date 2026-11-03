@@ -1,6 +1,10 @@
 import logger from '../../shared/utils/logger.js';
 import { GM_API_DEFINITIONS } from '../../shared/constants/gmApiDefinitions.js';
-import { normalizeMatchPattern, isValidMatchPattern } from '../../shared/utils/urls.js';
+import {
+  normalizeMatchPattern,
+  isValidMatchPattern,
+  normalizeRunAt,
+} from '../../shared/utils/urls.js';
 
 // Map classic style to ours
 function buildGrantToApiMapping() {
@@ -17,7 +21,23 @@ function buildGrantToApiMapping() {
     }
   });
 
+  // GM4 spellings that differ from the GM_ names.
+  grantToGmApi['GM.xmlHttpRequest'] = 'gmXmlhttpRequest';
+  grantToGmApi['GM.getResourceUrl'] = 'gmGetResourceURL';
+
   return grantToGmApi;
+}
+
+// `/pattern/flags` in @include/@exclude is a regex rule; returns its source.
+function parseRegexRule(value) {
+  const match = String(value).match(/^\/(.+)\/([a-z]*)$/i);
+  if (!match) return null;
+  try {
+    new RegExp(match[1]);
+    return match[1];
+  } catch {
+    return null;
+  }
 }
 
 function parseUserScriptMetadata(content) {
@@ -34,18 +54,56 @@ function parseUserScriptMetadata(content) {
   const lines = metaBlock.split('\n').filter((line) => line.trim());
 
   for (const line of lines) {
-    const match = line.match(/@([\w-]+)\s+(.+)/);
+    const match = line.match(/@([\w-]+)(?:\s+(.*\S))?\s*$/);
     if (!match) continue;
 
-    const [, key, value] = match;
+    const [, key, rawValue] = match;
+    const value = rawValue ?? '';
+
+    // Flag-style keys that take no value.
+    if (key.toLowerCase() === 'noframes') {
+      metadata.noframes = true;
+      continue;
+    }
+    if (!value) continue;
 
     switch (key.toLowerCase()) {
       case 'match':
       case 'include': {
+        const trimmed = value.trim();
+        const regex = key.toLowerCase() === 'include' ? parseRegexRule(trimmed) : null;
+        if (regex) {
+          if (!metadata.includeRegexes) metadata.includeRegexes = [];
+          metadata.includeRegexes.push(regex);
+          break;
+        }
         if (!metadata.matches) metadata.matches = [];
-        const normalized = normalizeMatchPattern(value.trim());
+        const normalized = normalizeMatchPattern(trimmed);
         if (isValidMatchPattern(normalized) && !metadata.matches.includes(normalized)) {
           metadata.matches.push(normalized);
+        }
+        break;
+      }
+
+      case 'exclude':
+      case 'exclude-match': {
+        if (!metadata.excludes) metadata.excludes = [];
+        const trimmed = value.trim();
+        if (!metadata.excludes.includes(trimmed)) metadata.excludes.push(trimmed);
+        break;
+      }
+
+      case 'connect': {
+        if (!metadata.connect) metadata.connect = [];
+        const host = value.trim().toLowerCase();
+        if (host && !metadata.connect.includes(host)) metadata.connect.push(host);
+        break;
+      }
+
+      case 'inject-into': {
+        const mode = value.trim().toLowerCase();
+        if (['page', 'content', 'auto'].includes(mode)) {
+          metadata.injectInto = { page: 'main', content: 'isolated', auto: 'default' }[mode];
         }
         break;
       }
@@ -153,6 +211,10 @@ function buildMetadata(script, useModernStyle = false) {
   if (matches && matches.length) {
     matches.forEach((pattern) => push('match', pattern));
   }
+  (script.includeRegexes || []).forEach((source) => push('include', `/${source}/`));
+  (script.excludes || []).forEach((rule) => push('exclude', rule));
+  (script.connect || []).forEach((host) => push('connect', host));
+  if (script.noframes) lines.push('// @noframes');
 
   const runAt = script.runAt || script.suggestedRunAt;
   if (runAt) {
@@ -195,4 +257,48 @@ function buildMetadata(script, useModernStyle = false) {
   return lines.join('\n');
 }
 
-export { parseUserScriptMetadata, extractMetadataBlock, buildMetadata };
+const GM_API_FLAGS = Object.values(GM_API_DEFINITIONS).map((api) => api.el);
+
+// maps classic GM names to our flags
+function scriptFieldsFromMetadata(metadata) {
+  if (!metadata || typeof metadata !== 'object') return {};
+  const fields = {};
+  for (const key of ['name', 'version', 'description', 'author', 'namespace', 'license', 'icon']) {
+    if (typeof metadata[key] === 'string' && metadata[key].trim()) {
+      fields[key] = metadata[key].trim();
+    }
+  }
+  if (Array.isArray(metadata.matches) && metadata.matches.length > 0) {
+    fields.targetUrls = [...metadata.matches];
+  }
+  const runAt = normalizeRunAt(metadata.runAt);
+  if (runAt) fields.runAt = runAt;
+  fields.requires = Array.isArray(metadata.requires) ? [...metadata.requires] : [];
+  fields.resources = Array.isArray(metadata.resources) ? [...metadata.resources] : [];
+  fields.excludes = Array.isArray(metadata.excludes) ? [...metadata.excludes] : [];
+  fields.includeRegexes = Array.isArray(metadata.includeRegexes)
+    ? [...metadata.includeRegexes]
+    : [];
+  fields.noframes = metadata.noframes === true;
+  // No @connect means "any host" (legacy behaviour), so clear stale lists.
+  fields.connect = Array.isArray(metadata.connect) ? [...metadata.connect] : undefined;
+  if (metadata.injectInto) fields.injectInto = metadata.injectInto;
+  for (const key of ['updateURL', 'downloadURL']) {
+    if (typeof metadata[key] === 'string' && metadata[key].trim()) {
+      fields[key] = metadata[key].trim();
+    }
+  }
+  const grants = metadata.gmApis || {};
+  for (const flag of GM_API_FLAGS) {
+    fields[flag] = grants[flag] === true;
+  }
+  return fields;
+}
+
+export {
+  parseUserScriptMetadata,
+  extractMetadataBlock,
+  buildMetadata,
+  scriptFieldsFromMetadata,
+  GM_API_FLAGS,
+};

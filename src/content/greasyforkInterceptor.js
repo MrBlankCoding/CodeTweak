@@ -21,7 +21,7 @@ import logger from '../shared/utils/logger.js';
       event.stopPropagation();
 
       try {
-        (globalThis.browser ?? globalThis.chrome).runtime.sendMessage({
+        chrome.runtime.sendMessage({
           action: 'greasyForkInstall',
           url: href,
         });

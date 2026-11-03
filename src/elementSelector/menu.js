@@ -1,5 +1,5 @@
 import logger from '../shared/utils/logger.js';
-/* global feather */
+import { createIcon } from '../shared/utils/icons.js';
 
 export class ElementSelectorMenu {
   constructor(selector) {
@@ -40,7 +40,7 @@ export class ElementSelectorMenu {
         background: rgba(255,255,255,.06); outline: none; 
       }
       .ctwk-menu-item .i { width: 18px; text-align: center; display: inline-flex; align-items: center; justify-content: center; }
-      .ctwk-menu-item .i svg { width: 16px; height: 16px; fill: currentColor; display: block; }
+      .ctwk-menu-item .i .ct-icon { width: 16px; height: 16px; fill: none; stroke: currentColor; display: block; }
       .ctwk-menu-footer { 
         padding: 8px 10px; border-top: 1px solid rgba(148,163,184,.18); 
         font: 500 11px/1.2 Inter; color: #9ca3af; display: flex; gap: 8px; flex-wrap: wrap; 
@@ -118,9 +118,6 @@ if (target) {
     this.elements.menu.appendChild(this.createMenuFooter());
 
     document.body.appendChild(this.elements.menu);
-    if (typeof feather !== 'undefined' && feather.replace) {
-      feather.replace();
-    }
   }
 
   createMenuHeader() {
@@ -159,9 +156,7 @@ if (target) {
     item.tabIndex = 0;
     const spanI = document.createElement('span');
     spanI.className = 'i';
-    const i = document.createElement('i');
-    i.setAttribute('data-feather', this.iconName(action));
-    spanI.appendChild(i);
+    spanI.appendChild(createIcon(this.iconName(action)));
     const spanText = document.createElement('span');
     spanText.textContent = text;
     item.appendChild(spanI);
@@ -254,10 +249,10 @@ if (target) {
       try {
         if (
           typeof chrome !== 'undefined' &&
-          (globalThis.browser ?? globalThis.chrome).runtime &&
-          typeof (globalThis.browser ?? globalThis.chrome).runtime.sendMessage === 'function'
+          chrome.runtime &&
+          typeof chrome.runtime.sendMessage === 'function'
         ) {
-          (globalThis.browser ?? globalThis.chrome).runtime.sendMessage({
+          chrome.runtime.sendMessage({
             action: 'createScript',
             data: {
               selector,
@@ -267,7 +262,7 @@ if (target) {
           });
         } else {
           logger.warn(
-            'CodeTweak: (globalThis.browser ?? globalThis.chrome).runtime.sendMessage is not available; cannot send createScript message.'
+            'CodeTweak: chrome.runtime.sendMessage is not available; cannot send createScript message.'
           );
         }
       } catch (error) {

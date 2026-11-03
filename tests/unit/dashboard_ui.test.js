@@ -1,7 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('feather-icons', () => ({ default: { replace: vi.fn() } }));
-
 import {
   setupTabs,
   updateWebsiteFilterOptions,
@@ -75,6 +73,39 @@ describe('dashboard-ui', () => {
 
     updateScriptsList([], elements);
     expect(elements.emptyState.style.display).toBe('block');
+  });
+
+  it('shows site details on the site-count hover without a features column', () => {
+    document.body.innerHTML = '<div id="scriptCount"></div><div id="scriptsList"></div>';
+    global.toggleScript = vi.fn();
+    global.editScript = vi.fn();
+    global.deleteScript = vi.fn();
+
+    const elements = {
+      scriptsList: document.getElementById('scriptsList'),
+      emptyState: null,
+    };
+    updateScriptsList(
+      [
+        {
+          id: 'multi-site',
+          name: 'Multi-site',
+          enabled: true,
+          targetUrls: ['https://example.com/*', 'https://other.example/path'],
+        },
+      ],
+      elements
+    );
+
+    const item = elements.scriptsList.firstElementChild;
+    const siteCount = item.querySelector('.site-count');
+    expect(siteCount.textContent).toBe('+1');
+    expect(siteCount.title).toBe('example.com\nother.example/path');
+    expect(siteCount.getAttribute('aria-label')).toBe(
+      'Additional sites: example.com, other.example/path'
+    );
+    expect(item.querySelector('.script-features-col')).toBeNull();
+    expect(item.children).toHaveLength(6);
   });
 
   it('shows and auto-dismisses notifications', () => {

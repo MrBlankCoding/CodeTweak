@@ -1,7 +1,6 @@
 import logger from '../shared/utils/logger.js';
 import { ScriptRegistry } from '../services/scripts/ScriptRegistry.js';
 import { UserScriptsAdapter } from '../services/scripts/UserScriptsAdapter.js';
-import { browser } from '../shared/browserAdapter.js';
 import { ScriptUpdater } from '../services/scripts/ScriptUpdater.js';
 
 import { updateBadgeForTab, updateAllTabBadges, isIgnorableTabError } from './badgeManager.js';
@@ -9,11 +8,14 @@ import { createMessageHandlers } from './handlers/BackgroundHandlers.js';
 import { DisplayService } from '../services/DisplayService.js';
 import { ScriptInstaller } from '../services/scripts/ScriptInstaller.js';
 import { MessageRouter } from './handlers/MessageRouter.js';
+import { PushService } from './pushService.js';
+import { DependencyCache } from '../services/scripts/DependencyCache.js';
+import { ensurePageTools } from '../shared/utils/pageTools.js';
+import { NotificationService } from '../services/NotificationService.js';
 
 class BackgroundState {
   constructor() {
-    this.ports = new Set();
-    this.valueChangeListeners = new Map();
+    this.push = new PushService(chrome);
   }
 
   clearCache() {
@@ -21,33 +23,31 @@ class BackgroundState {
   }
 
   cleanupTab(tabId) {
-    for (const listeners of this.valueChangeListeners.values()) {
-      listeners.delete(tabId);
-    }
+    this.push.removeTab(tabId).catch(() => {});
   }
 }
 
 const state = new BackgroundState();
-const userscriptAdapter = new UserScriptsAdapter();
-const scriptRegistry = new ScriptRegistry(browser.storage, userscriptAdapter);
-const scriptUpdater = new ScriptUpdater(browser.storage);
+const dependencyCache = new DependencyCache(chrome.storage);
+const userscriptAdapter = new UserScriptsAdapter({ dependencyCache });
+const scriptRegistry = new ScriptRegistry(chrome.storage, userscriptAdapter);
+// For changes made here (auto-update, element selector): runtime.sendMessage
+// never reaches this worker's own listener, so sync directly, then tell any
+// open extension pages to refresh.
+async function onBackgroundScriptsChange() {
+  await messageHandlers.scriptsUpdated();
+  chrome.runtime.sendMessage({ action: 'scriptsUpdated' })?.catch?.(() => {});
+}
+
+const scriptUpdater = new ScriptUpdater(chrome.storage, {
+  dependencyCache,
+  onScriptsUpdated: onBackgroundScriptsChange,
+});
 const displayService = new DisplayService();
-const scriptInstaller = new ScriptInstaller();
+const scriptInstaller = new ScriptInstaller({ onScriptsUpdated: onBackgroundScriptsChange });
+const notificationService = new NotificationService();
 
 scriptUpdater.setupAlarm();
-
-function notifyPorts(action) {
-  const disconnectedPorts = [];
-  for (const port of state.ports) {
-    try {
-      port.postMessage({ action });
-    } catch (error) {
-      logger.warn('Failed to notify port:', error);
-      disconnectedPorts.push(port);
-    }
-  }
-  disconnectedPorts.forEach((port) => state.ports.delete(port));
-}
 
 async function getFilteredScripts(url, runAt = null) {
   return scriptRegistry.getFilteredScripts(url, runAt);
@@ -67,17 +67,13 @@ async function syncUserscriptRegistrations() {
 
 const messageHandlers = createMessageHandlers({
   state,
-  scriptRegistry,
-  scriptUpdater,
-  userscriptAdapter,
-  notifyPorts,
   updateAllTabBadges: () =>
     updateAllTabBadges((tabId, url) => updateBadgeForTab(tabId, url, getFilteredScripts)),
   handleScriptCreation: (url, template) => scriptInstaller.handleScriptCreation(url, template),
   handleGreasyForkInstall: (url) => scriptInstaller.handleGreasyForkInstall(url),
+  notificationService,
   refreshScriptCache,
   syncUserscriptRegistrations,
-  getFilteredScripts,
 });
 
 const messageRouter = new MessageRouter({
@@ -88,47 +84,59 @@ const messageRouter = new MessageRouter({
 });
 
 // Event Listeners
-browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return messageRouter.handleMessage(message, sender, sendResponse);
 });
 
-browser.contextMenus.removeAll(() => {
-  browser.contextMenus.create({
+// GM API calls arrive only from the USER_SCRIPT world, which page scripts
+// cannot reach.
+chrome.runtime.onUserScriptMessage?.addListener((message, sender, sendResponse) => {
+  return messageRouter.handleUserScriptMessage(message, sender, sendResponse);
+});
+
+chrome.notifications?.onClicked?.addListener((notificationId) => {
+  state.push.notificationEvent(notificationId, 'click').catch(() => {});
+  chrome.notifications.clear(notificationId, () => {});
+});
+
+chrome.notifications?.onClosed?.addListener((notificationId) => {
+  state.push.notificationEvent(notificationId, 'done').catch(() => {});
+});
+
+chrome.contextMenus.removeAll(() => {
+  chrome.contextMenus.create({
     id: 'selectElement',
     title: 'Select Element for Script',
     contexts: ['page'],
   });
 });
 
-browser.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === 'selectElement') {
-    browser.tabs.sendMessage(tab.id, { action: 'startSelection' }, () => {
-      void browser.runtime.lastError;
-    });
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (info.menuItemId !== 'selectElement' || typeof tab?.id !== 'number') return;
+  try {
+    await ensurePageTools(tab.id);
+  } catch (error) {
+    logger.warn('Cannot inject element selector:', error?.message);
+    return;
   }
+  chrome.tabs.sendMessage(tab.id, { action: 'startSelection' }, () => {
+    void chrome.runtime.lastError;
+  });
 });
 
-browser.runtime.onConnect.addListener((port) => {
-  if (port.name !== 'CodeTweak' || state.ports.has(port)) return;
-
-  state.ports.add(port);
-  port.onDisconnect.addListener(() => state.ports.delete(port));
-  port.onMessage.addListener(logger.info);
-});
-
-browser.tabs.onRemoved.addListener((tabId) => {
+chrome.tabs.onRemoved.addListener((tabId) => {
   state.cleanupTab(tabId);
 });
 
-browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab?.url) {
     updateBadgeForTab(tabId, tab.url, getFilteredScripts);
   }
 });
 
-browser.tabs.onActivated.addListener(async (activeInfo) => {
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
   try {
-    const tab = await browser.tabs.get(activeInfo.tabId);
+    const tab = await chrome.tabs.get(activeInfo.tabId);
     updateBadgeForTab(tab.id, tab.url, getFilteredScripts);
   } catch (error) {
     if (!isIgnorableTabError(error)) {
@@ -137,13 +145,13 @@ browser.tabs.onActivated.addListener(async (activeInfo) => {
   }
 });
 
-browser.runtime.onInstalled.addListener(async () => {
+chrome.runtime.onInstalled.addListener(async () => {
   await refreshScriptCache();
   await syncUserscriptRegistrations();
   await updateAllTabBadges((tabId, url) => updateBadgeForTab(tabId, url, getFilteredScripts));
 });
 
-browser.runtime.onStartup.addListener(async () => {
+chrome.runtime.onStartup.addListener(async () => {
   await refreshScriptCache();
   await syncUserscriptRegistrations();
   await updateAllTabBadges((tabId, url) => updateBadgeForTab(tabId, url, getFilteredScripts));

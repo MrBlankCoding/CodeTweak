@@ -71,5 +71,4 @@ MIT. See `LICENSE.txt`.
 CodeTweak uses these open source projects:
 
 - [webcrack](https://github.com/j4k0xb/webcrack) (MIT)
-- [Feather Icons](https://github.com/feathericons/feather) (MIT)
 - [CodeMirror](https://github.com/codemirror/dev) (MIT)

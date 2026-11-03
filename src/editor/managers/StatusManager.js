@@ -1,3 +1,5 @@
+import { getMessageSync } from '../../shared/utils/i18n.js';
+
 import { BaseUIComponent } from '../base/BaseUIComponent.js';
 
 export class StatusManager extends BaseUIComponent {
@@ -16,15 +18,11 @@ export class StatusManager extends BaseUIComponent {
     const badge = this.elements.scriptStatusBadge;
     if (!badge) return;
 
-    if (hasUnsavedChanges) {
-      badge.textContent = 'Unsaved Changes';
-      badge.style.backgroundColor = '#4B5563';
-      badge.style.color = '#D1D5DB';
-    } else {
-      badge.textContent = 'Saved';
-      badge.style.backgroundColor = '#065F46';
-      badge.style.color = '#A7F3D0';
-    }
+    badge.classList.toggle('is-unsaved', hasUnsavedChanges);
+    badge.classList.toggle('is-saved', !hasUnsavedChanges);
+    const text = badge.querySelector('.status-text');
+    if (text)
+      text.textContent = getMessageSync(hasUnsavedChanges ? 'editorUnsaved' : 'editorSaved');
   }
 
   showMessage(message, type = 'success', duration = 3000) {

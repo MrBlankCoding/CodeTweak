@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { ScriptRegistry } from '../../src/services/scripts/ScriptRegistry.js';
 import { ScriptUpdater } from '../../src/services/scripts/ScriptUpdater.js';
-import { AIDiffHelper } from '../../src/shared/utils/ai_diff_helper.js';
 
 describe('registry/updater/diff hardening', () => {
   function storageWith(scripts, { getImpl } = {}) {
@@ -33,9 +32,9 @@ describe('registry/updater/diff hardening', () => {
     expect(scripts.find((s) => s.id === 'tm').targetUrls).toEqual(['*://a.com/*']);
   });
 
-  it('registry normalizes legacy targetUrl and TM schemes', async () => {
+  it('registry normalizes TM schemes in targetUrls', async () => {
     const storage = storageWith([
-      { id: 'legacy', code: '1', enabled: true, targetUrl: 'http*://a.com/*' },
+      { id: 'tm', code: '1', enabled: true, targetUrls: ['http*://a.com/*'] },
     ]);
     const registry = new ScriptRegistry(storage, { syncEnabledScripts: vi.fn(async () => ({})) });
     const [script] = await registry.refresh();
@@ -67,20 +66,23 @@ describe('registry/updater/diff hardening', () => {
       if (url.endsWith('/a.js')) throw new Error('network down');
       return { ok: false, status: 500 };
     });
-    await expect(updater.checkAndPerformUpdates()).resolves.toBeUndefined();
+    await expect(updater.checkAndPerformUpdates()).resolves.toEqual({ updated: [], blocked: [] });
 
     global.fetch = vi.fn(async () => ({
       ok: true,
       text: async () => 'garbage with no metadata at all ((((',
     }));
-    await expect(updater.checkAndPerformUpdates()).resolves.toBeUndefined();
+    await expect(updater.checkAndPerformUpdates()).resolves.toEqual({ updated: [], blocked: [] });
 
     global.fetch = vi.fn(async () => ({
       ok: true,
       text: async () =>
         '// ==UserScript==\n// @version ' + '9'.repeat(5000) + '\n// ==/UserScript==',
     }));
-    await expect(updater.checkAndPerformUpdates()).resolves.toBeUndefined();
+    // A huge version is still a (permission-free) update from the script's own URL.
+    await expect(updater.checkAndPerformUpdates()).resolves.toEqual(
+      expect.objectContaining({ blocked: [] })
+    );
   });
 
   it('updater ignores downgrade payloads', async () => {
@@ -100,44 +102,5 @@ describe('registry/updater/diff hardening', () => {
     }));
     await updater.checkAndPerformUpdates();
     expect(storage.data.scripts[0].code).toBe('old');
-  });
-
-  it('diff helper handles empty/garbage/fuzzed patches', () => {
-    expect(AIDiffHelper.parsePatches('')).toEqual([]);
-    expect(AIDiffHelper.parsePatches('<<<<<< SEARCH\nunclosed')).toEqual([]);
-    expect(AIDiffHelper.applyPatches('hello', [{ type: 'unknown-type' }]).failedCount).toBe(1);
-    const res = AIDiffHelper.applyPatches('line1\nline2\n', [
-      { type: 'search-replace', search: 'line1', replace: 'LINE1' },
-      { type: 'search-replace', search: 'nonexistent-xyz', replace: 'NOPE' },
-    ]);
-    expect(res.successCount).toBe(1);
-    expect(res.failedCount).toBe(1);
-    expect(res.finalCode).toContain('LINE1');
-  });
-
-  it('diff fuzzer: random mutations never throw or lose input', () => {
-    const base = 'function add(a, b) {\n  return a + b;\n}\n';
-    const alphabet = ['x', ' ', '\n', '{', '}', '$', '`', '\\', '(', ')', '*', '@'];
-    let seed = 12345;
-    const rand = () => {
-      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-      return seed / 0x7fffffff;
-    };
-    for (let i = 0; i < 200; i++) {
-      let mutated = base;
-      const ops = 1 + Math.floor(rand() * 4);
-      for (let o = 0; o < ops; o++) {
-        const pos = Math.floor(rand() * (mutated.length + 1));
-        const ch = alphabet[Math.floor(rand() * alphabet.length)];
-        mutated = mutated.slice(0, pos) + ch + mutated.slice(pos);
-      }
-      let parsed;
-      expect(() => {
-        parsed = AIDiffHelper.parsePatches(mutated);
-      }).not.toThrow();
-      expect(() => AIDiffHelper.applyPatches(base, parsed)).not.toThrow();
-      const applied = AIDiffHelper.applyPatches(base, parsed);
-      expect(typeof applied.finalCode).toBe('string');
-    }
   });
 });

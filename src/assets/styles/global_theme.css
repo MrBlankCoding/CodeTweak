@@ -1,4 +1,5 @@
 :root {
+  color-scheme: dark;
   --accent-color: #61afef;
   --primary: var(--accent-color);
   --primary-hover: var(--accent-color);
@@ -15,6 +16,7 @@
   --text-secondary: #7d8799;
   --text-muted: #5c6370;
   --text-accent: #61afef;
+  --text-on-accent: #ffffff;
 
   --border-primary: #3e4451;
   --border-secondary: #4b5263;
@@ -39,6 +41,7 @@
 
   --shadow-modal: 0 10px 25px rgba(0, 0, 0, 0.5);
   --backdrop-blur: blur(4px);
+  --modal-backdrop: rgba(0, 0, 0, 0.6);
   --modal-z-index: 1000;
   --space-xs: 0.25rem;
   --space-sm: 0.5rem;
@@ -46,12 +49,13 @@
   --space-lg: 1.5rem;
   --space-xl: 2rem;
 
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
   --radius-full: 9999px;
 
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
 
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
@@ -94,15 +98,31 @@
   --z-toast: 80;
 
   /* === Form Elements === */
-  --form-element-height: 40px;
-  --form-element-padding: var(--space-sm) var(--space-md);
+  --form-element-height: 36px;
+  --form-element-padding: 6px 8px;
   --form-element-border: var(--border-primary);
-  --form-element-radius: var(--radius-md);
+  --form-element-radius: var(--radius-sm);
+  --form-element-background: var(--bg-secondary);
+  --form-element-font-size: var(--text-xs);
+  --form-element-transition: var(--transition-colors);
 
-  --button-height: 40px;
+  --button-height: 32px;
+  --button-height-compact: 30px;
+  --icon-button-size: 26px;
+  --empty-state-icon-size: 32px;
   --button-padding: var(--space-sm) var(--space-lg);
-  --button-radius: var(--radius-md);
+  --button-padding-compact: 6px 10px;
+  --button-radius: var(--radius-sm);
   --button-font-weight: var(--font-medium);
+  --button-background: var(--bg-secondary);
+  --button-hover-background: var(--bg-hover);
+
+  --text-2xs: 0.6875rem;
+  --text-3xs: 0.625rem;
+  --text-4xs: 0.5625rem;
+  --bg-row-hover: rgba(255, 255, 255, 0.025);
+  --performance-large: var(--warning);
+  --performance-huge: var(--error);
 
   --editor-font-size: 14px;
   --editor-line-height: 1.5;
@@ -110,8 +130,46 @@
 
   --scrollbar-width: 6px;
   --scrollbar-track: transparent;
-  --scrollbar-thumb: #4b5263;
-  --scrollbar-thumb-hover: #5c6370;
+  --scrollbar-thumb: var(--border-secondary);
+  --scrollbar-thumb-hover: var(--text-muted);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.ct-icon {
+  display: block;
+  flex: 0 0 auto;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vertical-align: middle;
+}
+
+body {
+  margin: 0;
 }
 
 .hidden {

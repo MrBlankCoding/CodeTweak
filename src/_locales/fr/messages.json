@@ -5,7 +5,6 @@
   "appDescription": {
     "message": "Créez et gérez des scripts JavaScript personnalisés pour n'importe quel site web"
   },
-
   "sidebarScripts": {
     "message": "Scripts"
   },
@@ -17,13 +16,6 @@
   },
   "sidebarNewScript": {
     "message": "Nouveau Script"
-  },
-  "sidebarBrowseScripts": {
-    "message": "Parcourir les Scripts"
-  },
-
-  "scriptsTitle": {
-    "message": "Vos Scripts"
   },
   "scriptsSearch": {
     "message": "Rechercher des scripts..."
@@ -61,9 +53,6 @@
   "scriptsSites": {
     "message": "Sites"
   },
-  "scriptsFeatures": {
-    "message": "Fonctionnalités"
-  },
   "scriptsRunAt": {
     "message": "Exécuter À"
   },
@@ -79,7 +68,6 @@
   "scriptsCreateNew": {
     "message": "Créer un Nouveau Script"
   },
-
   "settingsTitle": {
     "message": "Paramètres"
   },
@@ -89,38 +77,14 @@
   "settingsEnableDefault": {
     "message": "Activer les scripts par défaut"
   },
-  "settingsEnableDefaultDesc": {
-    "message": "Les nouveaux scripts seront automatiquement activés"
-  },
   "settingsShowNotifications": {
     "message": "Afficher les notifications"
-  },
-  "settingsShowNotificationsDesc": {
-    "message": "Afficher les notifications lors de l'exécution des scripts"
   },
   "settingsEnhancedDebugging": {
     "message": "Débogage Avancé"
   },
-  "settingsEnhancedDebuggingDesc": {
-    "message": "Enregistrer des informations détaillées du script dans la console"
-  },
   "settingsLanguage": {
     "message": "Langue"
-  },
-  "settingsLanguageDesc": {
-    "message": "Choisissez votre langue d'interface préférée"
-  },
-  "settingsCheckUpdates": {
-    "message": "Vérifier les mises à jour"
-  },
-  "settingsCheckUpdatesDesc": {
-    "message": "Vérifier manuellement les mises à jour des userscripts"
-  },
-  "settingsCheckUpdatesButton": {
-    "message": "Vérifier les mises à jour"
-  },
-  "languageBrowserDefault": {
-    "message": "Défaut du Navigateur (Auto)"
   },
   "settingsSecurity": {
     "message": "Sécurité"
@@ -128,14 +92,8 @@
   "settingsAllowExternal": {
     "message": "Autoriser les ressources externes"
   },
-  "settingsAllowExternalDesc": {
-    "message": "Autoriser les scripts à charger des ressources à partir d'URLs externes"
-  },
   "settingsConfirmFirstRun": {
     "message": "Confirmer la première exécution"
-  },
-  "settingsConfirmFirstRunDesc": {
-    "message": "Demander confirmation avant qu'un script ne s'exécute sur un site web pour la première fois"
   },
   "settingsTheme": {
     "message": "Thème"
@@ -143,11 +101,11 @@
   "settingsAccentColor": {
     "message": "Couleur d'Accent"
   },
-  "settingsAccentColorDesc": {
-    "message": "Choisissez la couleur d'accent pour l'interface"
-  },
   "settingsSaveSettings": {
     "message": "Enregistrer les Paramètres"
+  },
+  "settingsSaved": {
+    "message": "Paramètres enregistrés avec succès"
   },
   "settingsResetDefaults": {
     "message": "Réinitialiser"
@@ -155,20 +113,6 @@
   "settingsExportAll": {
     "message": "Tout Exporter"
   },
-
-  "settingsAi": {
-    "message": "Paramètres de l`IA"
-  },
-  "settingsAiConfigure": {
-    "message": "Configurer les fonctionnalités de l`IA"
-  },
-  "settingsAiConfigureDesc": {
-    "message": "Ouvrir la page des paramètres de l`éditeur DOM de l`IA"
-  },
-  "settingsAiConfigureButton": {
-    "message": "Configurer"
-  },
-
   "aboutTitle": {
     "message": "À propos de CodeTweak"
   },
@@ -181,17 +125,6 @@
   "aboutPrivacyLink": {
     "message": "Politique de confidentialité"
   },
-
-  "greasyForkTitle": {
-    "message": "Parcourir les Scripts Greasy Fork"
-  },
-  "greasyForkSearch": {
-    "message": "Rechercher sur Greasy Fork..."
-  },
-  "greasyForkSearchBtn": {
-    "message": "Rechercher"
-  },
-
   "popupReportIssue": {
     "message": "Signaler un Problème"
   },
@@ -222,9 +155,11 @@
   "userScriptsBannerGuide": {
     "message": "Comment activer"
   },
-
-  "editorUnsavedChanges": {
-    "message": "Modifications Non Enregistrées"
+  "editorUnsaved": {
+    "message": "Non enregistré"
+  },
+  "editorSaved": {
+    "message": "Enregistré"
   },
   "editorSaveScript": {
     "message": "Enregistrer le Script"
@@ -244,20 +179,11 @@
   "editorGmApiAccess": {
     "message": "Accès API GM"
   },
-  "editorGmApiAccessDesc": {
-    "message": "Activez les puissantes APIs Greasemonkey"
-  },
   "editorRequiredScripts": {
     "message": "Scripts Requis"
   },
-  "editorRequiredScriptsDesc": {
-    "message": "Bibliothèques externes et dépendances"
-  },
   "editorScriptResources": {
     "message": "Ressources du Script"
-  },
-  "editorScriptResourcesDesc": {
-    "message": "Ressources statiques dont votre script a besoin"
   },
   "editorScriptErrors": {
     "message": "Erreurs du Script"
@@ -279,18 +205,6 @@
   },
   "editorLicense": {
     "message": "Licence"
-  },
-  "editorHomepage": {
-    "message": "URL de la Page d'Accueil"
-  },
-  "editorUpdateUrl": {
-    "message": "URL de Mise à Jour"
-  },
-  "editorDownloadUrl": {
-    "message": "URL de Téléchargement"
-  },
-  "editorSupportUrl": {
-    "message": "URL de Support"
   },
   "editorIcon": {
     "message": "URL de l'Icône"
@@ -316,9 +230,6 @@
   "editorGenerate": {
     "message": "Générer"
   },
-  "editorRunTiming": {
-    "message": "Moment d'Exécution"
-  },
   "editorDocumentStart": {
     "message": "Début du Document"
   },
@@ -328,9 +239,6 @@
   "editorPageLoaded": {
     "message": "Page Chargée"
   },
-  "editorExecutionContext": {
-    "message": "Contexte d'Exécution"
-  },
   "editorSelectGmApis": {
     "message": "Sélectionnez les APIs Greasemonkey dont votre script a besoin"
   },
@@ -339,18 +247,6 @@
   },
   "editorClearErrors": {
     "message": "Effacer les Erreurs"
-  },
-  "editorSettingsTitle": {
-    "message": "Paramètres de l'Éditeur"
-  },
-  "editorFontSize": {
-    "message": "Taille de Police"
-  },
-  "editorTabSize": {
-    "message": "Taille de Tabulation"
-  },
-  "editorPreferences": {
-    "message": "Préférences"
   },
   "editorShowLineNumbers": {
     "message": "Afficher les Numéros de Ligne"
@@ -370,284 +266,13 @@
   "editorEnableAutosave": {
     "message": "Activer la Sauvegarde Automatique"
   },
-  "aiSettingsTitle": {
-    "message": "Paramètres de l'Éditeur DOM IA"
-  },
-  "aiSettingsPrivacySecurity": {
-    "message": "Confidentialité et Sécurité"
-  },
-  "aiSettingsPrivacyLi1": {
-    "message": "Les clés API sont stockées localement dans votre navigateur"
-  },
-  "aiSettingsPrivacyLi2": {
-    "message": "Aucune donnée n'est envoyée aux serveurs de CodeTweak"
-  },
-  "aiSettingsPrivacyLi3": {
-    "message": "Toutes les requêtes vont directement à votre fournisseur d'IA choisi"
-  },
-  "aiSettingsPrivacyLi4": {
-    "message": "Le code généré s`exécute dans un environnement isolé (sandbox)"
-  },
-  "aiSettingsGettingStarted": {
-    "message": "Commencer"
-  },
-  "aiSettingsGettingStartedLi1": {
-    "message": "Obtenez une clé API auprès de votre fournisseur choisi"
-  },
-  "aiSettingsSavedApiKeys": {
-    "message": "Clés API enregistrées"
-  },
-  "aiSettingsAddKey": {
-    "message": "Ajouter une clé"
-  },
-  "aiSettingsProviderConfig": {
-    "message": "Configuration du Fournisseur d'IA"
-  },
-  "aiSettingsProvider": {
-    "message": "Fournisseur d'IA"
-  },
-  "aiSettingsSelectProvider": {
-    "message": "Sélectionnez un fournisseur..."
-  },
   "aiSettingsProviderHint": {
     "message": "Choisissez votre fournisseur d'IA"
-  },
-  "aiSettingsApiKey": {
-    "message": "Clé API"
   },
   "aiSettingsApiKeyHint": {
     "message": "Votre clé API est stockée localement et n’est jamais envoyée à des serveurs externes"
   },
-  "aiSettingsApiEndpoint": {
-    "message": "Point de terminaison API"
-  },
-  "aiSettingsApiEndpointHint": {
-    "message": "URL du point de terminaison API personnalisé"
-  },
-  "aiSettingsModel": {
-    "message": "Modèle"
-  },
-  "aiSettingsSelectModel": {
-    "message": "Sélectionnez un modèle..."
-  },
-  "aiSettingsFetchModels": {
-    "message": "Récupérer les modèles"
-  },
   "aiSettingsModelHint": {
     "message": "Modèle d'IA à utiliser pour la génération de code"
-  },
-  "aiSettingsAdvanced": {
-    "message": "Paramètres avancés"
-  },
-  "aiSettingsTemperature": {
-    "message": "Température"
-  },
-  "aiSettingsTemperatureHint": {
-    "message": "Contrôle l'aléatoire (0 = déterministe, 1 = créatif)"
-  },
-  "aiSettingsMaxTokens": {
-    "message": "Nombre maximal de tokens"
-  },
-  "aiSettingsMaxTokensHint": {
-    "message": "Nombre maximal de tokens dans la réponse de l'IA"
-  },
-  "aiSettingsTestConnection": {
-    "message": "Tester la connexion"
-  },
-  "aiSettingsReset": {
-    "message": "Réinitialiser"
-  },
-  "aiSettingsSave": {
-    "message": "Enregistrer les paramètres"
-  },
-  "aiSettingsSubtitle": {
-    "message": "Configuration simple par profil pour fournisseurs, clés et modèles."
-  },
-  "aiSettingsNewProfile": {
-    "message": "Nouveau profil"
-  },
-  "aiSettingsProfiles": {
-    "message": "Profils"
-  },
-  "aiSettingsNoProfiles": {
-    "message": "Aucun profil. Cliquez sur Nouveau profil."
-  },
-  "aiSettingsNoModel": {
-    "message": "aucun modèle"
-  },
-  "aiSettingsProfileConfig": {
-    "message": "Configuration du profil"
-  },
-  "aiSettingsProfileHintNew": {
-    "message": "Nouveau profil non enregistré"
-  },
-  "aiSettingsEditingProfile": {
-    "message": "Modification du profil"
-  },
-  "aiSettingsProviderOpenAI": {
-    "message": "OpenAI"
-  },
-  "aiSettingsProviderAnthropic": {
-    "message": "Anthropic"
-  },
-  "aiSettingsProviderGoogleGemini": {
-    "message": "Google Gemini"
-  },
-  "aiSettingsProviderMistral": {
-    "message": "Mistral"
-  },
-  "aiSettingsProviderAimlapi": {
-    "message": "AIML API"
-  },
-  "aiSettingsProviderCustom": {
-    "message": "Point de terminaison personnalisé"
-  },
-  "aiSettingsApiKeyPlaceholder": {
-    "message": "Collez la clé API"
-  },
-  "aiSettingsToggleKey": {
-    "message": "Afficher ou masquer la clé"
-  },
-  "aiSettingsEndpointPlaceholder": {
-    "message": "https://api.exemple.com/v1/chat/completions"
-  },
-  "aiSettingsEndpointRequiredHint": {
-    "message": "Requis uniquement pour les fournisseurs personnalisés."
-  },
-  "aiSettingsSyncModels": {
-    "message": "Synchroniser les modèles"
-  },
-  "aiSettingsSyncing": {
-    "message": "Synchronisation..."
-  },
-  "aiSettingsTest": {
-    "message": "Tester"
-  },
-  "aiSettingsTesting": {
-    "message": "Test en cours..."
-  },
-  "aiSettingsResetAll": {
-    "message": "Tout réinitialiser"
-  },
-  "aiSettingsSaveProfile": {
-    "message": "Enregistrer le profil"
-  },
-  "aiSettingsQuickStart": {
-    "message": "Démarrage rapide"
-  },
-  "aiSettingsQuickStartSteps": {
-    "message": "1. Créez un profil 2. Collez la clé 3. Choisissez un modèle 4. Enregistrez."
-  },
-  "aiSettingsLinksLabel": {
-    "message": "Liens :"
-  },
-  "aiSettingsDeleteProfile": {
-    "message": "Supprimer le profil"
-  },
-  "aiSettingsToastLoadFailed": {
-    "message": "Échec du chargement des paramètres"
-  },
-  "aiSettingsToastRequiredFields": {
-    "message": "Le fournisseur, la clé, le point de terminaison et le modèle sont requis"
-  },
-  "aiSettingsToastSaved": {
-    "message": "Profil enregistré"
-  },
-  "aiSettingsToastSaveFailed": {
-    "message": "Échec de l'enregistrement du profil"
-  },
-  "aiSettingsConfirmDelete": {
-    "message": "Supprimer ce profil ?"
-  },
-  "aiSettingsToastDeleted": {
-    "message": "Profil supprimé"
-  },
-  "aiSettingsConfirmReset": {
-    "message": "Réinitialiser tous les profils IA et le cache des modèles ?"
-  },
-  "aiSettingsToastReset": {
-    "message": "Tous les paramètres ont été réinitialisés"
-  },
-  "aiSettingsToastNeedConnectionFields": {
-    "message": "Ajoutez d'abord la clé, le point de terminaison et le modèle"
-  },
-  "aiSettingsToastConnectionSuccess": {
-    "message": "Connexion réussie"
-  },
-  "aiSettingsToastConnectionFailed": {
-    "message": "Échec de la connexion"
-  },
-  "aiSettingsToastConnectionError": {
-    "message": "Erreur de connexion"
-  },
-  "aiSettingsToastNeedProviderKey": {
-    "message": "Sélectionnez un fournisseur et saisissez la clé d'abord"
-  },
-  "aiSettingsToastCustomSyncUnsupported": {
-    "message": "La synchronisation des modèles n'est pas prise en charge pour un endpoint personnalisé"
-  },
-  "aiSettingsToastNoModels": {
-    "message": "Aucun modèle trouvé"
-  },
-  "aiSettingsToastSyncedPrefix": {
-    "message": "Synchronisé"
-  },
-  "aiSettingsToastSyncedSuffix": {
-    "message": "modèles"
-  },
-  "aiSettingsToastSyncFailed": {
-    "message": "Échec de la synchronisation des modèles"
-  },
-
-  "aiEditorTitle": {
-    "message": "Éditeur DOM IA"
-  },
-  "aiEditorClearConversation": {
-    "message": "Effacer la conversation"
-  },
-  "aiEditorSettings": {
-    "message": "Paramètres"
-  },
-  "aiEditorClose": {
-    "message": "Fermer l'Éditeur IA"
-  },
-  "aiEditorApiNotConfigured": {
-    "message": "API non configurée. Veuillez configurer votre fournisseur d'IA dans les paramètres."
-  },
-  "aiEditorConfigure": {
-    "message": "Configurer"
-  },
-  "aiEditorWelcomeTitle": {
-    "message": "Éditeur IA"
-  },
-  "aiEditorWelcomeSubtitle": {
-    "message": "Quelle est votre idée ?"
-  },
-  "aiEditorExamplePrompt1": {
-    "message": "Rends le fond rose et tous les titres bleus"
-  },
-  "aiEditorExamplePrompt2": {
-    "message": "Supprime toutes les publicités"
-  },
-  "aiEditorExamplePrompt3": {
-    "message": "Agrandis tous les boutons"
-  },
-  "aiEditorClickElement": {
-    "message": "Cliquez sur un élément de la page"
-  },
-  "aiEditorCancel": {
-    "message": "Annuler"
-  },
-  "aiEditorSelectModel": {
-    "message": "Sélectionner un modèle d'IA"
-  },
-  "aiEditorLoadingModels": {
-    "message": "Chargement des modèles..."
-  },
-  "aiEditorSelectElement": {
-    "message": "Sélectionnez un élément sur la page"
-  },
-  "aiEditorPlaceholder": {
-    "message": "Décrivez ce que vous voulez modifier sur cette page..."
   }
 }

@@ -1,4 +1,5 @@
 import { BaseUIComponent } from '../base/BaseUIComponent.js';
+import { createIcon } from '../../shared/utils/icons.js';
 
 export class ResourceManager extends BaseUIComponent {
   constructor(elements, eventBus) {
@@ -66,11 +67,7 @@ export class ResourceManager extends BaseUIComponent {
     const removeBtn = document.createElement('button');
     removeBtn.className = 'remove-resource';
     removeBtn.title = 'Remove Resource';
-    const icon = document.createElement('i');
-    icon.setAttribute('data-feather', 'x');
-    icon.setAttribute('width', '16');
-    icon.setAttribute('height', '16');
-    removeBtn.appendChild(icon);
+    removeBtn.appendChild(createIcon('x'));
     resourceItem.appendChild(contentDiv);
     resourceItem.appendChild(removeBtn);
 
