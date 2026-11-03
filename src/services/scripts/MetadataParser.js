@@ -113,8 +113,12 @@ function parseUserScriptMetadata(content) {
         const trimmed = value.trim();
         if (/^https:\/\//i.test(trimmed)) {
           metadata.requires.push(trimmed);
+        } else if (/^http:\/\//i.test(trimmed)) {
+          const upgraded = trimmed.replace(/^http:/i, 'https:');
+          metadata.requires.push(upgraded);
+          logger.warn(`CodeTweak: Upgrading @require URL to HTTPS: "${trimmed}"`);
         } else {
-          logger.warn(`CodeTweak: Dropping @require with non-HTTPS URL: "${trimmed}"`);
+          logger.warn(`CodeTweak: Dropping @require with unsupported URL: "${trimmed}"`);
         }
         break;
       }

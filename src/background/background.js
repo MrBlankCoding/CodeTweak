@@ -3,7 +3,12 @@ import { ScriptRegistry } from '../services/scripts/ScriptRegistry.js';
 import { UserScriptsAdapter } from '../services/scripts/UserScriptsAdapter.js';
 import { ScriptUpdater } from '../services/scripts/ScriptUpdater.js';
 
-import { updateBadgeForTab, updateAllTabBadges, isIgnorableTabError } from './badgeManager.js';
+import {
+  updateBadgeForTab,
+  updateAllTabBadges,
+  isIgnorableTabError,
+  setBadgeColor,
+} from './badgeManager.js';
 import { createMessageHandlers } from './handlers/BackgroundHandlers.js';
 import { DisplayService } from '../services/DisplayService.js';
 import { ScriptInstaller } from '../services/scripts/ScriptInstaller.js';
@@ -63,6 +68,12 @@ async function syncUserscriptRegistrations() {
   logger.info('Runtime sync:', {
     usingUserScripts: result.usingUserScripts,
   });
+  return result;
+}
+
+async function refreshBadgeColor() {
+  const { settings = {} } = await chrome.storage.local.get('settings');
+  return setBadgeColor(settings.accentColor);
 }
 
 const messageHandlers = createMessageHandlers({
@@ -74,6 +85,7 @@ const messageHandlers = createMessageHandlers({
   notificationService,
   refreshScriptCache,
   syncUserscriptRegistrations,
+  refreshBadgeColor,
 });
 
 const messageRouter = new MessageRouter({
@@ -161,6 +173,7 @@ chrome.runtime.onStartup.addListener(async () => {
 (async () => {
   try {
     await refreshScriptCache();
+    await refreshBadgeColor();
     await syncUserscriptRegistrations();
   } catch (error) {
     logger.error('Initial runtime registration sync failed:', error);

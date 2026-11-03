@@ -145,12 +145,16 @@ class StorageService {
 
   async toggleScript(scriptId, enabled) {
     try {
-      const found = await this.mutateScripts((scripts) => {
-        const script = scripts.find((s) => s.id === scriptId);
-        if (!script) return false;
-        script.enabled = enabled;
-        return true;
-      });
+      const found = await this.mutateScripts(
+        (scripts) => {
+          const script = scripts.find((s) => s.id === scriptId);
+          if (!script) return false;
+          script.enabled = enabled;
+          return true;
+        },
+        { notify: false }
+      );
+      if (found) await this._notifyAndWait();
       return found ? { success: true, enabled } : { success: false, error: 'Script not found' };
     } catch (error) {
       logger.error('Error toggling script:', error);
@@ -175,7 +179,18 @@ class StorageService {
   }
 
   _notify() {
-    chrome.runtime.sendMessage({ action: 'scriptsUpdated' })?.catch?.(() => {});
+    this._notifyAndWait().catch((error) => {
+      logger.warn('Failed to notify background about script changes:', error);
+    });
+  }
+
+  async _notifyAndWait() {
+    const response = await chrome.runtime.sendMessage({ action: 'scriptsUpdated' });
+    if (response?.error) throw new Error(response.error);
+    if (response?.success !== true) {
+      throw new Error('Background did not confirm the script registration update.');
+    }
+    return response;
   }
 
   generateUniqueId() {

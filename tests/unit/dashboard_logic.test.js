@@ -10,7 +10,10 @@ function chromeMock(storageData) {
         set: vi.fn(async (obj) => Object.assign(storageData, obj)),
       },
     },
-    runtime: { sendMessage: vi.fn(async () => ({})), getURL: (p) => `chrome-extension://id/${p}` },
+    runtime: {
+      sendMessage: vi.fn(async () => ({ success: true })),
+      getURL: (p) => `chrome-extension://id/${p}`,
+    },
   };
   return storageData;
 }
@@ -97,6 +100,17 @@ describe('dashboard-logic', () => {
     });
     await toggleScript('s1', true);
     expect(data.scripts[0].enabled).toBe(true);
+    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({ action: 'scriptsUpdated' });
+  });
+
+  it('does not report a toggle as successful when runtime sync fails', async () => {
+    const data = chromeMock({
+      scripts: [{ id: 's1', name: 'A', enabled: true }],
+    });
+    chrome.runtime.sendMessage.mockResolvedValue({ error: 'Registration sync failed' });
+
+    await expect(toggleScript('s1', false)).resolves.toBeUndefined();
+    expect(data.scripts[0].enabled).toBe(false);
   });
 
   it('deletes a script after confirm', async () => {

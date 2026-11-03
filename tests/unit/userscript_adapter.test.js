@@ -108,6 +108,15 @@ describe('UserScriptsAdapter', () => {
     expect(chrome.userScripts.register).not.toHaveBeenCalled();
   });
 
+  it('unregisters a script after it is disabled', async () => {
+    const { chrome } = createChromeMock({ registered: [{ id: 'ct-us-s1' }] });
+    const result = await new UserScriptsAdapter().syncEnabledScripts([script({ enabled: false })]);
+
+    expect(result).toEqual(expect.objectContaining({ usingUserScripts: true, removed: 1 }));
+    expect(chrome.userScripts.unregister).toHaveBeenCalledWith({ ids: ['ct-us-s1'] });
+    expect(chrome.userScripts.register).not.toHaveBeenCalled();
+  });
+
   it('adds an error bridge only when Main World scripts exist', async () => {
     const { chrome } = createChromeMock();
     await new UserScriptsAdapter().syncEnabledScripts([script()]);

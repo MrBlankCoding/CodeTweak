@@ -34,6 +34,19 @@ describe('metadata adversarial', () => {
     expect(parseUserScriptMetadata(content).requires).toEqual(['https://cdn.example/lib.js']);
   });
 
+  it('upgrades HTTP @require URLs to HTTPS and rejects unsupported schemes', () => {
+    const content = [
+      '// ==UserScript==',
+      '// @require http://code.jquery.com/jquery-3.3.1.min.js',
+      '// @require ftp://cdn.example/lib.js',
+      '// ==/UserScript==',
+    ].join('\n');
+
+    expect(parseUserScriptMetadata(content).requires).toEqual([
+      'https://code.jquery.com/jquery-3.3.1.min.js',
+    ]);
+  });
+
   it('handles duplicate/conflicting directives without crashing', () => {
     const content = [
       '// ==UserScript==',

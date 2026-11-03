@@ -226,6 +226,60 @@ describe('background', () => {
     expect(chrome.userScripts.register).toHaveBeenCalled();
   });
 
+  it('reports a failed userscript registration sync', async () => {
+    const { listeners, chrome } = await setupBackground({
+      scripts: [
+        {
+          id: 's1',
+          name: 'Script 1',
+          code: 'console.log(1)',
+          enabled: false,
+          targetUrls: ['https://example.com/*'],
+          runAt: 'document_end',
+        },
+      ],
+    });
+    chrome.userScripts.getScripts.mockResolvedValue([{ id: 'ct-us-s1' }]);
+    chrome.userScripts.unregister.mockRejectedValue(new Error('unregister failed'));
+
+    await expect(sendRuntimeMessage(listeners, { action: 'scriptsUpdated' })).resolves.toEqual({
+      error: 'Could not synchronize userscript registrations.',
+    });
+  });
+
+  it('shows the count of matching scripts and applies the theme accent to the badge', async () => {
+    const scripts = ['s1', 's2'].map((id) => ({
+      id,
+      name: id,
+      code: 'console.log(1)',
+      enabled: true,
+      targetUrls: ['https://example.com/*'],
+      runAt: 'document_end',
+    }));
+    const { listeners, chrome, storageData } = await setupBackground({
+      scripts,
+      settings: { accentColor: '#123abc' },
+    });
+
+    await expect(sendRuntimeMessage(listeners, { action: 'scriptsUpdated' })).resolves.toEqual({
+      success: true,
+    });
+    expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ tabId: 1, text: '2' });
+    expect(chrome.action.setBadgeBackgroundColor).toHaveBeenCalledWith({
+      tabId: 1,
+      color: '#123abc',
+    });
+
+    storageData.settings.accentColor = '#ff00aa';
+    await expect(sendRuntimeMessage(listeners, { action: 'settingsUpdated' })).resolves.toEqual({
+      success: true,
+    });
+    expect(chrome.action.setBadgeBackgroundColor).toHaveBeenLastCalledWith({
+      tabId: 1,
+      color: '#ff00aa',
+    });
+  });
+
   it('handles GM API requests for values/listeners/clipboard/download/requests', async () => {
     const gmScript = (overrides = {}) => ({
       id: 's1',

@@ -7,13 +7,23 @@ export function createMessageHandlers({
   handleGreasyForkInstall,
   refreshScriptCache,
   syncUserscriptRegistrations,
+  refreshBadgeColor,
   notificationService,
 }) {
   return {
     scriptsUpdated: async () => {
       state.clearCache();
       await refreshScriptCache();
-      await syncUserscriptRegistrations();
+      const syncResult = await syncUserscriptRegistrations();
+      if (syncResult?.usingUserScripts === false) {
+        throw new Error('Could not synchronize userscript registrations.');
+      }
+      await updateAllTabBadges();
+      return { success: true };
+    },
+
+    settingsUpdated: async () => {
+      await refreshBadgeColor();
       await updateAllTabBadges();
       return { success: true };
     },

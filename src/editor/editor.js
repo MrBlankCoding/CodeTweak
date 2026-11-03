@@ -237,7 +237,9 @@ export class ScriptEditor {
 
   setupEditorMode() {
     if (!this.state.isEditMode) {
-      this.codeEditorManager.insertDefaultTemplate();
+      if (!this.state.importedSource) {
+        this.codeEditorManager.insertDefaultTemplate();
+      }
       this.updateSectionVisibility();
       this.markAsDirty();
     }
