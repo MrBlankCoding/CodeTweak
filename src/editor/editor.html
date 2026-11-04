@@ -114,6 +114,9 @@
               <span data-icon="alert-circle"></span>
               <div class="error-count-badge hidden" id="errorCountBadge">0</div>
             </button>
+            <button class="sidebar-icon-btn" data-section="history" title="Version History">
+              <span data-icon="watch"></span>
+            </button>
             <div class="sidebar-divider"></div>
             <button
               class="sidebar-icon-btn sidebar-quick-action"
@@ -549,6 +552,36 @@
                       <p>No errors detected</p>
                       <small>Errors will appear here when your script runs</small>
                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Version History Panel -->
+            <div class="sidebar-panel" id="history-panel">
+              <div class="panel-header">
+                <h3 class="panel-title">Version History</h3>
+                <p class="panel-subtitle">
+                  Snapshots captured before each save overwrites the script
+                </p>
+              </div>
+              <div class="panel-content">
+                <div class="error-log-controls">
+                  <button
+                    type="button"
+                    id="clearHistoryBtn"
+                    class="btn-secondary"
+                    title="Delete all snapshots"
+                  >
+                    <span data-icon="trash-2"></span>
+                    <span>Clear History</span>
+                  </button>
+                </div>
+                <div id="historyContainer" class="error-log-container">
+                  <div class="error-log-empty">
+                    <span data-icon="check-circle"></span>
+                    <p>No snapshots yet</p>
+                    <small>Snapshots appear here before each save of an existing script</small>
                   </div>
                 </div>
               </div>

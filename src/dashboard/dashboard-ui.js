@@ -3,7 +3,7 @@ import { formatUrlPattern, formatRunAt } from '../shared/utils/urls.js';
 import { createIcon } from '../shared/utils/icons.js';
 
 // Global functions available from dashboard-logic.js via window object
-/* global toggleScript, editScript, deleteScript */
+/* global toggleScript, editScript, deleteScript, reviewUpdate */
 
 function setupTabs(navItems, tabContents) {
   if (!navItems) return;
@@ -138,6 +138,14 @@ function createScriptListItem(script) {
   versionCol.className = 'script-version-col';
   versionCol.textContent = script.version || '1.0.0';
 
+  if (script.updateInfo?.pendingVersion) {
+    const pending = document.createElement('span');
+    pending.className = 'update-pending-badge';
+    pending.textContent = `→ v${script.updateInfo.pendingVersion}`;
+    pending.title = 'An update is waiting for your review.';
+    versionCol.appendChild(pending);
+  }
+
   // Sites column
   const sitesCol = document.createElement('div');
   sitesCol.className = 'script-sites-col';
@@ -174,6 +182,17 @@ function createScriptListItem(script) {
   editButton.appendChild(editIcon);
   editButton.title = 'Edit Script';
   editButton.addEventListener('click', () => editScript(script.id));
+  actions.appendChild(editButton);
+
+  if (script.updateInfo?.pendingVersion) {
+    const reviewButton = document.createElement('button');
+    reviewButton.className = 'btn-action btn-review';
+    const reviewIcon = createIcon('refresh-cw');
+    reviewButton.appendChild(reviewIcon);
+    reviewButton.title = 'Review pending update';
+    reviewButton.addEventListener('click', () => reviewUpdate(script.id));
+    actions.appendChild(reviewButton);
+  }
 
   const deleteButton = document.createElement('button');
   deleteButton.className = 'btn-action btn-delete';
@@ -181,12 +200,114 @@ function createScriptListItem(script) {
   deleteButton.appendChild(deleteIcon);
   deleteButton.title = 'Delete Script';
   deleteButton.addEventListener('click', () => deleteScript(script.id));
-
-  actions.append(editButton, deleteButton);
+  actions.appendChild(deleteButton);
 
   item.append(toggleSwitch, nameCol, versionCol, sitesCol, runAtCol, actions);
 
   return item;
+}
+
+const REASON_LABELS = {
+  modified: 'Locally modified since install.',
+  permissions: 'The update adds new permissions.',
+};
+
+function openUpdateReviewModal(script) {
+  // Reuse the shared modal classes; the Greasy Fork modal is static markup,
+  // this one is built per review so it always reflects the latest metadata.
+  const existing = document.getElementById('updateReviewModal');
+  if (existing) existing.remove();
+
+  const info = script.updateInfo || {};
+  const changes = info.pendingChanges || {};
+
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.id = 'updateReviewModal';
+  modal.setAttribute('aria-hidden', 'false');
+  modal.role = 'dialog';
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.addEventListener('click', () => modal.remove());
+
+  const container = document.createElement('div');
+  container.className = 'modal-container';
+
+  const header = document.createElement('div');
+  header.className = 'modal-header';
+  const title = document.createElement('h2');
+  title.textContent = `Update review: ${script.name || 'Untitled Script'}`;
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'modal-close';
+  closeBtn.textContent = '×';
+  closeBtn.addEventListener('click', () => modal.remove());
+  header.append(title, closeBtn);
+
+  const content = document.createElement('div');
+  content.className = 'modal-content update-review-content';
+
+  const reason = document.createElement('p');
+  reason.className = 'update-review-reason';
+  reason.textContent =
+    REASON_LABELS[info.pendingReason] || 'The update needs confirmation before it can be applied.';
+  content.appendChild(reason);
+
+  const rows = [
+    ['Version', `${script.version || '1.0.0'} → ${info.pendingVersion}`],
+    ['Added grants', changes.grants?.length ? changes.grants.join(', ') : 'none'],
+    ['Added URL matches', changes.matches?.length ? changes.matches.join(', ') : 'none'],
+    ['Expanded @connect', changes.connect?.length ? changes.connect.join(', ') : 'none'],
+  ];
+  const list = document.createElement('dl');
+  list.className = 'update-review-list';
+  rows.forEach(([label, value]) => {
+    const dt = document.createElement('dt');
+    dt.textContent = label;
+    const dd = document.createElement('dd');
+    dd.textContent = value;
+    list.append(dt, dd);
+  });
+  content.appendChild(list);
+
+  const note = document.createElement('p');
+  note.className = 'update-review-note';
+  note.textContent =
+    'Approved updates are stored as a snapshot in version history before they overwrite your script.';
+  content.appendChild(note);
+
+  const formActions = document.createElement('div');
+  formActions.className = 'update-review-actions';
+  const applyBtn = document.createElement('button');
+  applyBtn.className = 'btn-primary';
+  applyBtn.textContent = 'Apply update';
+  applyBtn.addEventListener('click', async () => {
+    applyBtn.disabled = true;
+    try {
+      await decideScriptUpdate(script.id, true);
+      modal.remove();
+    } finally {
+      applyBtn.disabled = false;
+    }
+  });
+  const rejectBtn = document.createElement('button');
+  rejectBtn.className = 'btn-secondary';
+  rejectBtn.textContent = 'Discard update';
+  rejectBtn.addEventListener('click', async () => {
+    rejectBtn.disabled = true;
+    try {
+      await decideScriptUpdate(script.id, false);
+      modal.remove();
+    } finally {
+      rejectBtn.disabled = false;
+    }
+  });
+  formActions.append(applyBtn, rejectBtn);
+  content.appendChild(formActions);
+
+  container.append(header, content);
+  modal.append(overlay, container);
+  document.body.appendChild(modal);
 }
 
 function showNotification(message, type = 'info') {
@@ -237,4 +358,10 @@ window.updateWebsiteFilterOptions = updateWebsiteFilterOptions;
 window.updateScriptsList = updateScriptsList;
 window.showNotification = showNotification;
 
-export { setupTabs, updateWebsiteFilterOptions, updateScriptsList, showNotification };
+export {
+  setupTabs,
+  updateWebsiteFilterOptions,
+  updateScriptsList,
+  showNotification,
+  openUpdateReviewModal,
+};

@@ -7,6 +7,7 @@ import { applyTranslations } from '../shared/utils/i18n.js';
 
 import { Deobfuscator } from './deobfuscator.js';
 import { ErrorLogUI } from './errorLog.js';
+import { HistoryUI } from './history.js';
 import { MetadataSync } from './sync.js';
 import { registerEditorEventListeners } from './events.js';
 import { EditorActions } from './actions/editorActions.js';
@@ -66,6 +67,7 @@ export class ScriptEditor {
 
     this.deobfuscator = new Deobfuscator(this.ui, this.codeEditorManager, this.state);
     this.errorLog = new ErrorLogUI(this.elements, this.state, this.ui);
+    this.historyUI = new HistoryUI(this.elements, this.state, this.ui, this);
 
     this.actions = new EditorActions(this);
     this.uiHelper = new EditorUIHelper(this);
@@ -176,6 +178,8 @@ export class ScriptEditor {
       'errorLogContainer',
       'clearErrorsBtn',
       'errorCountBadge',
+      'historyContainer',
+      'clearHistoryBtn',
       'settingsBtn',
       'closeSettings',
     ];
@@ -227,6 +231,7 @@ export class ScriptEditor {
 
       registerEditorEventListeners(this);
       this.errorLog.setup();
+      this.historyUI.setup();
 
       logger.info('Script editor initialized successfully');
     } catch (error) {

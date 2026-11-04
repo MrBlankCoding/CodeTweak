@@ -194,7 +194,9 @@ class StorageService {
   }
 
   generateUniqueId() {
-    return `${Date.now().toString(36)}${Math.random().toString(36).substring(2)}`;
+    // Match the UUID format used by the installer/importer so IDs stay
+    // consistent for authorization and dedupe.
+    return crypto.randomUUID();
   }
 
   getEditorUrl(scriptId) {

@@ -105,6 +105,26 @@
   font-family: var(--font-mono);
 }
 
+/* Update pending badge next to the version */
+.update-pending-badge {
+  display: inline-block;
+  padding: 1px 5px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--accent, #61afef);
+  border-radius: var(--radius-sm);
+  color: var(--primary, #61afef);
+  font-size: var(--text-3xs, 10px);
+  margin-left: 4px;
+  font-family: var(--font-mono);
+}
+
+.btn-review {
+  color: var(--primary, #61afef);
+}
+.btn-review:hover {
+  background: var(--bg-hover);
+}
+
 /* Sites Column */
 .script-sites-col {
   font-size: var(--text-2xs);
@@ -130,6 +150,55 @@
   font-size: var(--text-2xs);
   color: var(--text-muted);
   white-space: nowrap;
+}
+
+/* Storage warning banner in settings */
+.storage-warning {
+  display: flex;
+  flex-flow: row wrap;
+  align-items: center;
+  gap: var(--space-sm, 8px);
+  padding: var(--space-sm, 8px) var(--space-md, 12px);
+  background: rgba(229, 92, 92, 0.12);
+  border: 1px solid rgba(229, 92, 92, 0.5);
+  border-radius: var(--radius-md, 8px);
+  color: var(--text-primary);
+  margin-bottom: var(--space-md, 12px);
+}
+
+.storage-warning-dismiss {
+  margin-left: auto;
+}
+
+.storage-usage-text {
+  font-size: var(--text-2xs, 11px);
+  color: var(--text-muted);
+}
+
+/* Update review modal rows */
+.update-review-content dl.update-review-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: var(--space-md, 16px) 0;
+}
+
+.update-review-content dt {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.update-review-content dd {
+  margin: 0;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.update-review-actions {
+  display: flex;
+  gap: var(--space-sm, 8px);
+  justify-content: flex-end;
+  margin-top: var(--space-lg, 20px);
 }
 
 .script-actions {

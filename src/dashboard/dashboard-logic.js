@@ -1,8 +1,99 @@
 import logger from '../shared/utils/logger.js';
 import { buildMetadata, extractMetadataBlock } from '../services/scripts/MetadataParser.js';
-import { updateWebsiteFilterOptions, updateScriptsList, showNotification } from './dashboard-ui.js';
+import {
+  updateWebsiteFilterOptions,
+  updateScriptsList,
+  showNotification,
+  openUpdateReviewModal,
+} from './dashboard-ui.js';
 import { applyTranslations, getMessageSync } from '../shared/utils/i18n.js';
 import { storageService as ScriptManager } from '../services/storage/StorageService.js';
+
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes)) return 'unknown';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+async function updateStorageInfo() {
+  const usageText = document.getElementById('storageUsageText');
+  const warningBanner = document.getElementById('storageWarningBanner');
+  const warningText = document.getElementById('storageWarningText');
+
+  try {
+    const chrome_ = globalThis.browser ?? globalThis.chrome;
+    const bytes = await chrome_.storage.local.getBytesInUse(null);
+    const { scripts = [] } = await chrome_.storage.local.get('scripts');
+    if (usageText) {
+      const count = Array.isArray(scripts) ? scripts.length : 0;
+      usageText.textContent = `Storage in use: ${formatBytes(bytes)} · ${count} script${
+        count === 1 ? '' : 's'
+      }`;
+    }
+  } catch (error) {
+    logger.error('Failed to read storage usage:', error);
+    if (usageText) usageText.textContent = 'Storage usage unavailable.';
+  }
+
+  try {
+    const { storageWarning = null } = await (
+      globalThis.browser ?? globalThis.chrome
+    ).storage.local.get('storageWarning');
+    if (warningBanner) {
+      warningBanner.style.display = storageWarning?.message ? 'flex' : 'none';
+    }
+    if (warningText && storageWarning?.message) {
+      warningText.textContent = storageWarning.message;
+    }
+  } catch (error) {
+    logger.error('Failed to read storage warning:', error);
+  }
+}
+
+async function dismissStorageWarning() {
+  try {
+    await (globalThis.browser ?? globalThis.chrome).storage.local.remove('storageWarning');
+  } catch (error) {
+    logger.warn('Failed to dismiss storage warning:', error);
+  }
+  await updateStorageInfo();
+}
+
+async function reviewUpdate(scriptId) {
+  try {
+    const script = await ScriptManager.getScript(scriptId);
+    if (!script?.updateInfo?.pendingVersion) {
+      showNotification('No pending update for this script.', 'warning');
+      return;
+    }
+    openUpdateReviewModal(script);
+  } catch (error) {
+    logger.error('Error opening update review:', error);
+    showNotification('Failed to open update review.', 'error');
+  }
+}
+
+async function decideScriptUpdate(scriptId, approve) {
+  const type = approve ? 'applyScriptUpdate' : 'rejectScriptUpdate';
+  try {
+    const response = await (globalThis.browser ?? globalThis.chrome).runtime.sendMessage({
+      action: type,
+      scriptId,
+    });
+    if (response?.error) throw new Error(response.error);
+    showNotification(
+      approve ? 'Update applied.' : 'Update discarded.',
+      approve ? 'success' : 'info'
+    );
+  } catch (error) {
+    logger.error(`Error with ${type}:`, error);
+    showNotification(error.message || 'Update action failed.', 'error');
+    throw error;
+  } finally {
+    await refreshDashboard();
+  }
+}
 
 async function loadScripts(elements, state) {
   try {
@@ -223,6 +314,10 @@ window.exportScript = exportScript;
 window.toggleScript = toggleScript;
 window.deleteScript = deleteScript;
 window.refreshDashboard = refreshDashboard;
+window.reviewUpdate = reviewUpdate;
+window.decideScriptUpdate = decideScriptUpdate;
+window.dismissStorageWarning = dismissStorageWarning;
+window.updateStorageInfo = updateStorageInfo;
 
 export {
   loadScripts,
@@ -234,4 +329,6 @@ export {
   saveSettings,
   refreshDashboard,
   exportScript,
+  updateStorageInfo,
+  dismissStorageWarning,
 };

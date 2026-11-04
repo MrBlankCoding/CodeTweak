@@ -6,6 +6,7 @@ describe('editor webcrack integration', () => {
   let codeEditorInstance;
   let uiInstance;
   let state;
+  let confirmSpy;
 
   beforeEach(async () => {
     vi.resetModules();
@@ -44,6 +45,8 @@ describe('editor webcrack integration', () => {
 
     uiInstance = { showStatusMessage: vi.fn(), updateScriptStatus: vi.fn() };
     codeEditorInstance = { getValue: vi.fn().mockReturnValue(''), setValue: vi.fn() };
+
+    confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
   const makeDeobfuscator = () => new Deobfuscator(uiInstance, codeEditorInstance, state);
@@ -94,5 +97,77 @@ describe('editor webcrack integration', () => {
     );
     expect(button.disabled).toBe(false);
     expect(button.classList.contains('loading')).toBe(false);
+  });
+
+  it('skips webcrack when the deobfuscation confirmation is declined', async () => {
+    const deobfuscator = makeDeobfuscator();
+    confirmSpy.mockReturnValue(false);
+    codeEditorInstance.getValue.mockReturnValue('obfuscated();');
+
+    await deobfuscator.deobfuscate(document.getElementById('deobfuscateBtn'));
+
+    expect(confirmSpy).toHaveBeenCalledWith(
+      'Deobfuscation may execute parts of this script to decode strings. Run it?'
+    );
+    expect(webcrackMock).not.toHaveBeenCalled();
+    expect(uiInstance.showStatusMessage).toHaveBeenCalledWith('Deobfuscation cancelled', 'warning');
+    expect(codeEditorInstance.setValue).not.toHaveBeenCalled();
+  });
+
+  it('warns and keeps the buffer when webcrack produces no changes', async () => {
+    const deobfuscator = makeDeobfuscator();
+    codeEditorInstance.getValue.mockReturnValue('obfuscated();');
+    webcrackMock.mockResolvedValue({ code: 'obfuscated();' });
+
+    await deobfuscator.deobfuscate(document.getElementById('deobfuscateBtn'));
+
+    expect(codeEditorInstance.setValue).not.toHaveBeenCalled();
+    expect(uiInstance.showStatusMessage).toHaveBeenCalledWith(
+      'No changes produced by webcrack',
+      'warning'
+    );
+  });
+
+  it('warns and keeps the buffer when webcrack returns no code', async () => {
+    const deobfuscator = makeDeobfuscator();
+    codeEditorInstance.getValue.mockReturnValue('obfuscated();');
+    webcrackMock.mockResolvedValue({});
+
+    await deobfuscator.deobfuscate(document.getElementById('deobfuscateBtn'));
+
+    expect(codeEditorInstance.setValue).not.toHaveBeenCalled();
+    expect(uiInstance.showStatusMessage).toHaveBeenCalledWith(
+      'No changes produced by webcrack',
+      'warning'
+    );
+  });
+
+  describe('sandbox tripwire', () => {
+    it('evaluates simple decoder expressions', async () => {
+      const deobfuscator = makeDeobfuscator();
+      const sandbox = deobfuscator.createSandbox();
+
+      await expect(sandbox('(1 + 2)')).resolves.toBe(3);
+    });
+
+    it('blocks escape-hatch identifiers', async () => {
+      const deobfuscator = makeDeobfuscator();
+      const sandbox = deobfuscator.createSandbox();
+
+      for (const code of ['globalThis', 'window', 'document', 'eval(1)', 'self', 'Function("1")']) {
+        await expect(sandbox(code)).rejects.toThrow(
+          'webcrack decoder expression blocked for safety'
+        );
+      }
+    });
+
+    it('blocks snippets over the 50_000 character cap', async () => {
+      const deobfuscator = makeDeobfuscator();
+      const sandbox = deobfuscator.createSandbox();
+
+      await expect(sandbox(`'${'a'.repeat(50_001)}'`)).rejects.toThrow(
+        'webcrack decoder expression blocked for safety'
+      );
+    });
   });
 });

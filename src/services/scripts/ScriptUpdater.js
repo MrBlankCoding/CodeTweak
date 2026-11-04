@@ -280,6 +280,132 @@ export class ScriptUpdater {
     return { updated: applied.map((s) => s.id), blocked };
   }
 
+  async _getScriptById(scriptId) {
+    const { scripts = [] } = await this.storageApi.local.get('scripts');
+    return Array.isArray(scripts) ? scripts.find((candidate) => candidate?.id === scriptId) : null;
+  }
+
+  _cleanCheckMeta(checkMeta) {
+    return Object.fromEntries(
+      Object.entries(checkMeta || {}).filter(([, value]) => value !== undefined)
+    );
+  }
+
+  /** Remove pending-review markers, keeping fresh check metadata. */
+  async _clearPendingInfo(scriptId, checkMeta) {
+    await mutateScripts(this.storageApi, (current) => {
+      const entry = Array.isArray(current)
+        ? current.find((candidate) => candidate?.id === scriptId)
+        : null;
+      if (!entry?.updateInfo) return false;
+      Object.assign(entry.updateInfo, this._cleanCheckMeta(checkMeta), {
+        lastChecked: Date.now(),
+      });
+      delete entry.updateInfo.pendingVersion;
+      delete entry.updateInfo.pendingReason;
+      delete entry.updateInfo.pendingChanges;
+      return true;
+    });
+  }
+
+  // A blocked update is only applied after explicit approval from the
+  // dashboard. The approval re-checks upstream first, so a tampered or moved
+  // source is never applied blindly against the version that was reviewed.
+  async applyPendingUpdate(scriptId) {
+    const script = await this._getScriptById(scriptId);
+    const pendingVersion = script?.updateInfo?.pendingVersion;
+    if (!pendingVersion) {
+      return { ok: false, error: 'No pending update for this script.' };
+    }
+
+    const result = await this.checkScript(script);
+    if (!result) {
+      return { ok: false, error: 'Update source is unreachable. Try again later.' };
+    }
+    if (result.unchanged) {
+      await this._clearPendingInfo(scriptId, result.checkMeta);
+      return { ok: false, error: 'Update is no longer available.' };
+    }
+    if (result.newMetadata.version !== pendingVersion) {
+      // Upstream changed since the review: refresh the pending snapshot
+      // instead of applying something the user did not approve.
+      const changes = describePermissionChanges(script.code, result.newCode);
+      await mutateScripts(this.storageApi, (current) => {
+        const entry = Array.isArray(current)
+          ? current.find((candidate) => candidate?.id === scriptId)
+          : null;
+        if (!entry?.updateInfo) return false;
+        Object.assign(entry.updateInfo, this._cleanCheckMeta(result.checkMeta), {
+          lastChecked: Date.now(),
+          pendingVersion: result.newMetadata.version,
+          pendingReason: changes.escalated ? 'permissions' : 'modified',
+          pendingChanges: changes,
+        });
+        return true;
+      });
+      return {
+        ok: false,
+        error: 'A different version is now available. Review it again.',
+        newVersion: result.newMetadata.version,
+      };
+    }
+
+    await saveScriptSnapshot(this.storageApi, script, 'reviewed-update');
+    const appliedScript = await mutateScripts(this.storageApi, async (current) => {
+      const entry = Array.isArray(current)
+        ? current.find((candidate) => candidate?.id === scriptId)
+        : null;
+      if (!entry) return false;
+      Object.assign(entry, scriptFieldsFromMetadata(result.newMetadata), {
+        code: result.newCode,
+        upstreamHash: await hashCode(result.newCode),
+        updatedAt: new Date().toISOString(),
+      });
+      entry.updateInfo = { ...entry.updateInfo, ...this._cleanCheckMeta(result.checkMeta) };
+      delete entry.updateInfo.pendingVersion;
+      delete entry.updateInfo.pendingReason;
+      delete entry.updateInfo.pendingChanges;
+      entry.updateInfo.lastChecked = Date.now();
+      entry.updateInfo.version = result.newMetadata.version;
+      return true;
+    });
+
+    if (!appliedScript) {
+      return { ok: false, error: 'Script was deleted while applying the update.' };
+    }
+
+    const updatedFields = scriptFieldsFromMetadata(result.newMetadata);
+    if (this.dependencies) {
+      await this.dependencies
+        .resolve({ ...script, ...updatedFields, code: result.newCode }, { refresh: true })
+        .catch((error) => {
+          logger.warn(`Dependency refresh failed for ${script.name}:`, error);
+        });
+    }
+    try {
+      await this.onScriptsUpdated?.();
+    } catch (error) {
+      logger.warn('Post-update sync failed:', error);
+    }
+    logger.info(`Applied reviewed update for ${script.name} (${pendingVersion})`);
+    return { ok: true, version: pendingVersion };
+  }
+
+  async rejectPendingUpdate(scriptId) {
+    const script = await this._getScriptById(scriptId);
+    if (!script?.updateInfo?.pendingVersion) {
+      return { ok: false, error: 'No pending update for this script.' };
+    }
+    const info = script.updateInfo;
+    await this._clearPendingInfo(scriptId, {
+      etagUrl: info.etagUrl,
+      etag: info.etag,
+      lastModified: info.lastModified,
+    });
+    logger.info(`Rejected pending update for ${script.name} (${info.pendingVersion}).`);
+    return { ok: true };
+  }
+
   setupAlarm() {
     const ALARM_NAME = 'codetweak-auto-update';
     chrome.alarms.onAlarm.addListener((alarm) => {

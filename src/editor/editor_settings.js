@@ -19,6 +19,7 @@ import {
   closeBrackets,
   closeBracketsKeymap,
   completionKeymap,
+  completeAnyWord,
 } from '@codemirror/autocomplete';
 import {
   bracketMatching,
@@ -39,6 +40,7 @@ export class CodeEditorManager {
     this.config = config;
     this.gmApiDefinitions = gmApiDefinitions;
     this.codeEditor = null;
+    this.gmCompletionSource = this.buildGmCompletionSource();
 
     this.defaultSettings = {
       fontSize: 14,
@@ -105,7 +107,9 @@ export class CodeEditorManager {
           ...lintKeymap,
         ]),
         this.lint.of(linter(this.getLintOptions(true, this.getEnabledGmApis()))),
-        autocompletion(),
+        // GM API completions first, plus the word-completion source that the
+        // full defaults would have provided (override replaces builtin sources).
+        autocompletion({ override: [this.gmCompletionSource, completeAnyWord] }),
         closeBrackets(),
         lintGutter(),
 
@@ -395,6 +399,75 @@ export class CodeEditorManager {
     return Object.values(this.gmApiDefinitions)
       .filter((api) => this.elements[api.el] && this.elements[api.el].checked)
       .map((api) => api.name);
+  }
+
+  /**
+   * Builds a CodeMirror completion source over the shared GM API table
+   * (this.gmApiDefinitions — the same data that feeds the JSHint globals and
+   * the GM API sidebar panel). Each API offers BOTH spellings: the classic
+   * `GM_xxx` grant name and the `GM.xxx` namespace form (unsafeWindow keeps
+   * its single name; it is only reachable by typing its own prefix).
+   *
+   * Grant filtering: if at least one grant checkbox is ticked, completions are
+   * limited to the enabled APIs (same source of truth as the JSHint globals);
+   * otherwise (new script, nothing granted yet) all APIs are offered.
+   */
+  buildGmCompletionSource() {
+    const options = [];
+    Object.values(this.gmApiDefinitions || {}).forEach((api) => {
+      const tmName = api.tmName || api.name;
+      if (!tmName) return;
+      const base = {
+        type: 'member',
+        detail: 'GM API',
+        info: api.description || api.shortDescription || '',
+        _el: api.el,
+      };
+      if (tmName.startsWith('GM_')) {
+        options.push({ ...base, label: tmName, _dotStyle: false });
+        options.push({ ...base, label: `GM.${tmName.slice(3)}`, _dotStyle: true });
+      } else {
+        options.push({ ...base, label: tmName, _dotStyle: tmName.includes('.') });
+      }
+    });
+
+    return (context) => {
+      const line = context.state.doc.lineAt(context.pos);
+      const before = line.text.slice(0, context.pos - line.from);
+      const match = before.match(/GM[._]?[\w]*$/);
+      if (!match) return null;
+
+      const start = before.length - match[0].length;
+      // Only complete when the `GM...` segment starts a standalone identifier
+      // (e.g. skip the 'gm' inside 'flagGM_set').
+      if (start > 0 && /[\w$]/.test(before[start - 1])) return null;
+
+      const typed = match[0];
+      const wantsDotStyle = typed.includes('.');
+      const styleFilter =
+        typed.length <= 2
+          ? () => true // Bare 'GM': offer both styles.
+          : wantsDotStyle
+            ? (option) => option._dotStyle
+            : (option) => !option._dotStyle;
+
+      const onlyEnabled = Object.values(this.gmApiDefinitions || {}).some(
+        (api) => this.elements?.[api.el]?.checked
+      );
+
+      const filtered = options.filter(
+        (option) =>
+          option.label.startsWith(typed) &&
+          styleFilter(option) &&
+          (!onlyEnabled || this.elements?.[option._el]?.checked)
+      );
+
+      return {
+        from: line.from + start,
+        options: filtered,
+        validFor: /^GM[._]?[\w]*$/,
+      };
+    };
   }
 
   updateEditorLintAndAutocomplete() {

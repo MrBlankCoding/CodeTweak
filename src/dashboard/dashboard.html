@@ -164,6 +164,21 @@
                   <input type="color" id="accentColor" value="#61afef" />
                 </label>
               </div>
+              <div id="storageWarningBanner" class="storage-warning" style="display: none">
+                <span id="storageWarningText"></span>
+                <button
+                  type="button"
+                  id="storageWarningDismissBtn"
+                  class="btn-secondary storage-warning-dismiss"
+                >
+                  Dismiss
+                </button>
+              </div>
+              <div class="settings-group settings-storage-info">
+                <span id="storageUsageText" class="storage-usage-text"
+                  >Storage usage unavailable.</span
+                >
+              </div>
               <div class="settings-actions">
                 <button type="submit" class="btn-primary" data-i18n="settingsSaveSettings">
                   Save Settings

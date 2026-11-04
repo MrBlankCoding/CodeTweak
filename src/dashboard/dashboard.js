@@ -47,8 +47,13 @@ function initDashboard() {
   renderUserScriptsBanner(document.getElementById('userScriptsBannerSlot'));
   loadScripts(elements, state);
   loadSettings(elements.settings);
+  window.updateStorageInfo?.();
   setupTabs(elements.navItems, elements.tabContents);
   setupFileDragAndDrop();
+
+  document
+    .getElementById('storageWarningDismissBtn')
+    ?.addEventListener('click', () => window.dismissStorageWarning?.());
 
   // Apply translations
   initializeI18n();

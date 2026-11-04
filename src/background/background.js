@@ -86,6 +86,7 @@ const messageHandlers = createMessageHandlers({
   refreshScriptCache,
   syncUserscriptRegistrations,
   refreshBadgeColor,
+  scriptUpdater,
 });
 
 const messageRouter = new MessageRouter({

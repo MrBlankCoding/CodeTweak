@@ -9,6 +9,7 @@ export function createMessageHandlers({
   syncUserscriptRegistrations,
   refreshBadgeColor,
   notificationService,
+  scriptUpdater,
 }) {
   return {
     scriptsUpdated: async () => {
@@ -57,6 +58,20 @@ export function createMessageHandlers({
       }
 
       return notificationService.showFirstRunNotification(script);
+    },
+
+    applyScriptUpdate: async (message) => {
+      if (!scriptUpdater) throw new Error('Update service unavailable.');
+      const result = await scriptUpdater.applyPendingUpdate(message?.scriptId);
+      if (!result.ok) throw new Error(result.error);
+      return { success: true, version: result.version };
+    },
+
+    rejectScriptUpdate: async (message) => {
+      if (!scriptUpdater) throw new Error('Update service unavailable.');
+      const result = await scriptUpdater.rejectPendingUpdate(message?.scriptId);
+      if (!result.ok) throw new Error(result.error);
+      return { success: true };
     },
   };
 }
