@@ -1,5 +1,5 @@
 import logger from '../shared/utils/logger.js';
-import { EditorState, Compartment } from '@codemirror/state';
+import { EditorState, Compartment, Prec } from '@codemirror/state';
 import {
   EditorView,
   keymap,
@@ -276,11 +276,9 @@ export class CodeEditorManager {
   }
 
   getEditorKeybindings() {
-    return keymap.of([
-      ...defaultKeymap,
-
-      indentWithTab,
-
+    // High precedence so these win over the keymaps minimalSetup and
+    // defaultKeymap install (which bind Ctrl-M to tab-focus mode).
+    const codeTweakKeys = keymap.of([
       {
         key: 'Ctrl-s',
         run: () => {
@@ -297,6 +295,12 @@ export class CodeEditorManager {
         },
       },
 
+      // Ctrl on every platform: macOS reserves Cmd-M for minimizing the window.
+      {
+        key: 'Ctrl-m',
+        run: () => this.toggleMinimap(),
+      },
+
       {
         key: 'F11',
         run: (view) => {
@@ -311,19 +315,21 @@ export class CodeEditorManager {
       {
         key: 'Escape',
         run: () => {
-          if (document.fullscreenElement) {
-            document.exitFullscreen();
-          }
-
+          if (!document.fullscreenElement) return false;
+          document.exitFullscreen();
           return true;
         },
       },
     ]);
+
+    return [Prec.high(codeTweakKeys), keymap.of([...defaultKeymap, indentWithTab])];
   }
 
   toggleMinimap() {
-    // Minimap functionality is not available out-of-the-box in CodeMirror 6.
-    // It would require a custom extension.
+    this.saveSettings({ minimap: !this.currentSettings.minimap });
+    const checkbox = document.getElementById('minimap');
+    if (checkbox) checkbox.checked = this.currentSettings.minimap;
+    return true;
   }
 
   loadSettings() {
@@ -541,14 +547,13 @@ export class CodeEditorManager {
     return this.state.lintingEnabled;
   }
 
-  insertDefaultTemplate() {
-    const defaultCode = `(function() {
-  'use strict';
-
-  // Your code here...
-})();`;
-
-    this.setValue(defaultCode);
+  insertDefaultTemplate(body = '// Your code here...') {
+    const indented = String(body)
+      .trim()
+      .split('\n')
+      .map((line) => (line ? `  ${line}` : line))
+      .join('\n');
+    this.setValue(`(function() {\n  'use strict';\n\n${indented}\n})();`);
   }
 
   getValue() {

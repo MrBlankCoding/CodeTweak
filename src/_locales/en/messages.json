@@ -155,6 +155,12 @@
   "userScriptsBannerGuide": {
     "message": "How to enable"
   },
+  "userScriptsBannerBodyFirefox": {
+    "message": "CodeTweak needs your permission to run user scripts."
+  },
+  "userScriptsBannerGrant": {
+    "message": "Grant permission"
+  },
   "editorUnsaved": {
     "message": "Unsaved"
   },

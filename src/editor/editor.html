@@ -658,7 +658,7 @@
                   <tr>
                     <td>Toggle Minimap</td>
                     <td><kbd>Ctrl</kbd> + <kbd>M</kbd></td>
-                    <td><kbd>Cmd</kbd> + <kbd>M</kbd></td>
+                    <td><kbd>Ctrl</kbd> + <kbd>M</kbd></td>
                   </tr>
                   <tr>
                     <td>Full Screen</td>
@@ -682,7 +682,7 @@
             <div class="help-section">
               <h3>URL Matching with Wildcards</h3>
               <p>
-                CodeTweak uses a match-pattern style URL matcher. Patterns are split into
+                Target URLs use standard browser match patterns:
                 <code>scheme://host/path</code>.
               </p>
               <table class="wildcards-table">
@@ -702,39 +702,39 @@
                   <tr>
                     <td><code>*</code> (host)</td>
                     <td>Any host</td>
-                    <td><code>*://*/*</code> matches all URLs</td>
+                    <td><code>*://*/*</code> matches all websites</td>
                   </tr>
                   <tr>
                     <td><code>*.example.com</code></td>
-                    <td>Any subdomain of a domain (also matches the bare domain)</td>
+                    <td>A domain and all its subdomains</td>
                     <td><code>https://*.example.com/*</code></td>
                   </tr>
                   <tr>
                     <td><code>*</code> (path)</td>
-                    <td>Matches one or more path segments</td>
+                    <td>Any characters, including <code>/</code></td>
                     <td>
-                      <code>https://example.com/*</code> matches <code>/a</code>, <code>/a/b</code>,
-                      etc.
+                      <code>https://example.com/*</code> matches <code>/</code>, <code>/a</code>,
+                      <code>/a/b</code>, etc.
                     </td>
                   </tr>
                   <tr>
-                    <td><code>**</code> (path segment)</td>
-                    <td>Matches across path boundaries (including <code>/</code>)</td>
-                    <td>
-                      <code>https://example.com/api/**</code> matches <code>/api</code>,
-                      <code>/api/v1/users</code>, etc.
-                    </td>
-                  </tr>
-                  <tr>
-                    <td><code>foo*</code> (path segment)</td>
-                    <td>Wildcard within a single path segment</td>
+                    <td><code>foo*</code> (path)</td>
+                    <td>Paths that start with <code>foo</code></td>
                     <td>
                       <code>https://example.com/foo*</code> matches <code>/foo</code>,
-                      <code>/foobar</code>, etc.
+                      <code>/foobar</code>, <code>/foo/bar</code>, etc.
                     </td>
+                  </tr>
+                  <tr>
+                    <td>No wildcard</td>
+                    <td>That exact page</td>
+                    <td><code>https://example.com/about</code> matches only <code>/about</code></td>
                   </tr>
                 </tbody>
               </table>
+              <p>
+                Need a regular expression? Use <code>@include /regex/</code> in the metadata block.
+              </p>
             </div>
           </div>
           <div class="help-tab-content" id="help-tab-gmapi">

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { indentUnit } from '@codemirror/language';
+import { runScopeHandlers } from '@codemirror/view';
 import { registerEditorEventListeners } from '../../src/editor/events.js';
 
 describe('editor settings', () => {
@@ -52,6 +53,51 @@ describe('editor settings', () => {
 
     manager.applySettings({ lineNumbers: true });
     expect(manager.codeEditor.dom.querySelector('.cm-lineNumbers')).not.toBeNull();
+    manager.codeEditor.destroy();
+  });
+
+  it('toggles the minimap with Ctrl-M and keeps the settings checkbox in sync', async () => {
+    document.body.insertAdjacentHTML('beforeend', '<input type="checkbox" id="minimap" checked />');
+    globalThis.chrome.storage.local.set = vi.fn();
+    const manager = new CodeEditorManager(
+      { codeEditor: document.getElementById('codeEditor') },
+      { lintingEnabled: false },
+      {},
+      {}
+    );
+    await manager.initializeCodeEditor();
+    expect(manager.currentSettings.minimap).toBe(true);
+
+    const handled = runScopeHandlers(
+      manager.codeEditor,
+      new KeyboardEvent('keydown', { key: 'm', keyCode: 77, ctrlKey: true }),
+      'editor'
+    );
+    expect(handled).toBe(true);
+
+    expect(manager.currentSettings.minimap).toBe(false);
+    expect(document.getElementById('minimap').checked).toBe(false);
+    expect(globalThis.chrome.storage.local.set).toHaveBeenCalledWith({
+      editorSettings: expect.objectContaining({ minimap: false }),
+    });
+
+    manager.toggleMinimap();
+    expect(manager.currentSettings.minimap).toBe(true);
+    manager.codeEditor.destroy();
+  });
+
+  it('wraps a provided template body in the default script', async () => {
+    const manager = new CodeEditorManager(
+      { codeEditor: document.getElementById('codeEditor') },
+      { lintingEnabled: false },
+      {},
+      {}
+    );
+    await manager.initializeCodeEditor();
+    manager.insertDefaultTemplate('a();\nb();');
+    expect(manager.getValue()).toBe("(function() {\n  'use strict';\n\n  a();\n  b();\n})();");
+    manager.insertDefaultTemplate();
+    expect(manager.getValue()).toContain('// Your code here...');
     manager.codeEditor.destroy();
   });
 

@@ -41,7 +41,7 @@ export class URLManager extends BaseUIComponent {
         const scope = this.elements.patternScope.value;
         const pattern = generateUrlMatchPattern(base, scope);
         if (pattern) {
-          this.elements.generatedPattern.value = pattern + (scope === 'exact' ? '' : '');
+          this.elements.generatedPattern.value = pattern;
           this.elements.generatedPatternGroup.classList.remove('hidden');
         }
       });

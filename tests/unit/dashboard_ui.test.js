@@ -75,6 +75,28 @@ describe('dashboard-ui', () => {
     expect(elements.emptyState.style.display).toBe('block');
   });
 
+  it('offers to clear stored data only for scripts that use storage', () => {
+    document.body.innerHTML = '<div id="scriptCount"></div><div id="scriptsList"></div>';
+    global.toggleScript = vi.fn();
+    global.editScript = vi.fn();
+    global.deleteScript = vi.fn();
+    global.clearScriptData = vi.fn();
+    const elements = { scriptsList: document.getElementById('scriptsList'), emptyState: null };
+
+    updateScriptsList(
+      [
+        { id: 'plain', name: 'Plain', enabled: true, targetUrls: [] },
+        { id: 'stores', name: 'Stores', enabled: true, targetUrls: [], gmGetValue: true },
+      ],
+      elements
+    );
+
+    const buttons = elements.scriptsList.querySelectorAll('.btn-clear-data');
+    expect(buttons).toHaveLength(1);
+    buttons[0].click();
+    expect(global.clearScriptData).toHaveBeenCalledWith('stores');
+  });
+
   it('shows site details on the site-count hover without a features column', () => {
     document.body.innerHTML = '<div id="scriptCount"></div><div id="scriptsList"></div>';
     global.toggleScript = vi.fn();

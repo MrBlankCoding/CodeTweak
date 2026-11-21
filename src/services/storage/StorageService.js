@@ -2,6 +2,19 @@ import logger from '../../shared/utils/logger.js';
 import { saveScriptSnapshot, clearScriptHistory } from '../scripts/ScriptHistory.js';
 
 const SCRIPTS_KEY = 'scripts';
+
+export const scriptValuesKey = (scriptId) => `script-values-${scriptId}`;
+
+// "Enable scripts by default" in the dashboard settings; on unless turned off.
+export async function isEnabledByDefault(storageApi = chrome.storage) {
+  try {
+    const { settings = {} } = await storageApi.local.get('settings');
+    return settings?.enableAllScripts !== false;
+  } catch {
+    return true;
+  }
+}
+const scriptErrorsKey = (scriptId) => `scriptErrors_${scriptId}`;
 const SCRIPTS_LOCK = 'codetweak-scripts';
 let localLockChain = Promise.resolve();
 
@@ -87,10 +100,12 @@ class StorageService {
   async saveScript(scriptData, scriptId = null, isEditMode = false) {
     let previous = null;
     try {
+      const isEdit = Boolean(isEditMode && scriptId);
+      const enabledByDefault = isEdit ? true : await isEnabledByDefault(chrome.storage);
       const saved = await this.mutateScripts((scripts) => {
         const now = new Date().toISOString();
 
-        if (isEditMode && scriptId) {
+        if (isEdit) {
           const scriptIndex = scripts.findIndex((script) => script.id === scriptId);
           if (scriptIndex === -1) {
             throw new Error('Script not found for editing');
@@ -114,6 +129,7 @@ class StorageService {
 
         const newScript = {
           ...scriptData,
+          enabled: typeof scriptData.enabled === 'boolean' ? scriptData.enabled : enabledByDefault,
           id: this.generateUniqueId(),
           createdAt: now,
           updatedAt: now,
@@ -171,11 +187,18 @@ class StorageService {
         return true;
       });
       await clearScriptHistory(chrome.storage, id);
+      await chrome.storage.local.remove([scriptValuesKey(id), scriptErrorsKey(id)]);
       return true;
     } catch (error) {
       logger.error('Failed to delete script:', error);
       return false;
     }
+  }
+
+  // Values the script saved with GM_setValue. Open pages keep their copy
+  // until they reload.
+  async clearScriptValues(id) {
+    await chrome.storage.local.remove(scriptValuesKey(id));
   }
 
   _notify() {

@@ -130,14 +130,15 @@ export function generateUrlMatchPattern(baseUrl, scope = 'domain') {
     if (!/^https?:\/\//i.test(baseUrl)) {
       baseUrl = 'https://' + baseUrl.replace(/^\/*/, '');
     }
-    const { protocol, hostname } = new URL(baseUrl);
+    const { protocol, hostname, pathname, search } = new URL(baseUrl);
 
     const scheme = protocol.replace(':', '');
 
     let hostPart = hostname;
     switch (scope) {
       case 'exact':
-        return `${scheme}://${hostPart}`;
+        // Only this address. Without a path, normalization would widen it to the whole site.
+        return `${scheme}://${hostPart}${pathname || '/'}${search}`;
       case 'domain':
         return `${scheme}://${hostPart}/*`;
       case 'subdomain': {
@@ -212,9 +213,8 @@ export function formatUrlPattern(pattern) {
 export function isValidWebpage(url) {
   if (!url) return false;
 
-  const restrictedPatterns = /^(chrome|edge|about|file):\/\//i;
-  const isExtensionPage = url.startsWith('chrome-extension://');
-  const isNewTab = url === 'about:blank' || url === 'chrome://newtab/';
+  const restrictedPatterns =
+    /^(?:(?:chrome|edge|file|resource):\/\/|(?:about|view-source|chrome-extension|moz-extension):)/i;
 
-  return !restrictedPatterns.test(url) && !isExtensionPage && !isNewTab;
+  return !restrictedPatterns.test(url);
 }

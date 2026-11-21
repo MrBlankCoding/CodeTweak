@@ -13,6 +13,7 @@ import {
 } from './adapter/scriptNormalizer.js';
 import { buildRuntimeBootstrap, buildErrorBridgeCode } from './adapter/bootstrapBuilder.js';
 import { DependencyCache } from './DependencyCache.js';
+import { isFirefox } from '../../shared/utils/browser.js';
 
 // scripts using eval
 // this is dangerous...
@@ -116,7 +117,13 @@ export class UserScriptsAdapter {
       runAt: normalizeRunAt(script.runAt, 'document_idle'),
       world,
       allFrames: script.noframes !== true,
-      js: [{ code: buildRuntimeBootstrap(runtimeConfig, script.code, deps.requires) }],
+      js: [
+        {
+          code: buildRuntimeBootstrap(runtimeConfig, script.code, deps.requires, {
+            firefox: isFirefox(),
+          }),
+        },
+      ],
     };
     const excludeGlobs = excludeGlobsFor(script);
     if (excludeGlobs.length > 0) registration.excludeGlobs = excludeGlobs;

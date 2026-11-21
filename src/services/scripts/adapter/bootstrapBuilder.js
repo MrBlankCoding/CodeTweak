@@ -1,4 +1,5 @@
 import { createUserScriptApi, createErrorBridge } from './userScriptRuntime.js';
+import { installFirefoxBridge } from '../../../shared/firefoxFeatures.js';
 
 // Every name the runtime can provide. Each becomes a parameter of the wrapper
 // around the user code, so APIs are lexical locals rather than window globals.
@@ -34,13 +35,14 @@ function sourceUrlComment(name) {
 // @require code and the user code share one function scope, matching how other
 // managers concatenate them, so libraries see GM APIs and the script sees
 // library globals.
-export function buildRuntimeBootstrap(config, userCode, requires = []) {
+export function buildRuntimeBootstrap(config, userCode, requires = [], { firefox = false } = {}) {
   const runtimeConfig = { ...config, apiNames: API_NAMES };
   const body = [...requires, String(userCode ?? '')].join('\n;\n');
+  const bridge = firefox ? `(${installFirefoxBridge.toString()})` : 'null';
 
   return [
     '(() => {',
-    `const __ctApi = (${createUserScriptApi.toString()})(${JSON.stringify(runtimeConfig)});`,
+    `const __ctApi = (${createUserScriptApi.toString()})(${JSON.stringify(runtimeConfig)}, ${bridge});`,
     `__ctApi.run(function (${API_NAMES.join(', ')}) {`,
     'return (function () {',
     body,

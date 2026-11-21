@@ -1,6 +1,6 @@
 // builds the GM API for the userscript
 // can acess pages window and content
-export function createUserScriptApi(config) {
+export function createUserScriptApi(config, installBridge = null) {
   const global = globalThis;
   const isUserScriptWorld = config.world === 'USER_SCRIPT';
   const runtime = isUserScriptWorld ? global.chrome?.runtime : null;
@@ -101,6 +101,11 @@ export function createUserScriptApi(config) {
     registry = global.__codetweak;
   }
 
+  // Firefox only: a port the background uses to push events to this document.
+  const bridge =
+    registry && typeof installBridge === 'function' ? installBridge(registry, runtime) : null;
+  const wantPushes = () => bridge?.subscribe(scriptId);
+
   const emitValueChange = (name, oldValue, newValue, remote) => {
     for (const listener of valueListeners.values()) {
       if (listener.name === name) call(listener.callback, name, oldValue, newValue, remote);
@@ -169,6 +174,7 @@ export function createUserScriptApi(config) {
     if (typeof name !== 'string' || typeof callback !== 'function') return undefined;
     const id = ++counter;
     valueListeners.set(id, { name, callback });
+    wantPushes();
     return id;
   };
 
@@ -200,6 +206,7 @@ export function createUserScriptApi(config) {
     if (typeof options.onclick === 'function' || typeof ondone === 'function') {
       callbackId = `n${++counter}`;
       notificationCallbacks.set(callbackId, { onclick: options.onclick, ondone });
+      wantPushes();
     }
     return send('notification', {
       details: {
@@ -340,6 +347,7 @@ export function createUserScriptApi(config) {
       accessKey: typeof opts.accessKey === 'string' ? opts.accessKey : undefined,
       onClick,
     });
+    wantPushes();
     return opts.id ?? commandId;
   };
 

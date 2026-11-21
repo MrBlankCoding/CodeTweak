@@ -1,6 +1,6 @@
 {
   "type": "module",
-  "version": "4.0.1",
+  "version": "4.1.0",
   "engines": {
     "node": ">=24.0.0 <27"
   },
@@ -21,8 +21,10 @@
   "scripts": {
     "build": "node buildScripts/build.js --production",
     "build:chrome": "node buildScripts/build.js --chrome --production",
+    "build:firefox": "node buildScripts/build.js --firefox --production",
     "build:dev": "node buildScripts/build.js",
     "build:dev:chrome": "node buildScripts/build.js --chrome",
+    "build:dev:firefox": "node buildScripts/build.js --firefox",
     "lint": "eslint src tests buildScripts",
     "docs:dev": "vitepress dev docs-src",
     "docs:build": "vitepress build docs-src",

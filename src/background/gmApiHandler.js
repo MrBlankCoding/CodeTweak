@@ -1,4 +1,5 @@
 import { handleCrossOriginXmlhttpRequest, abortCrossOriginRequest } from './networkService.js';
+import { scriptValuesKey } from '../services/storage/StorageService.js';
 import { urlMatchesPattern } from '../shared/utils/urls.js';
 import { ClipboardService } from '../services/ClipboardService.js';
 import { NotificationService } from '../services/NotificationService.js';
@@ -88,7 +89,7 @@ export class GMAPIHandler {
     this.scriptId = scriptId;
     this.sender = sender;
     this.state = state;
-    this.storageKey = `script-values-${scriptId}`;
+    this.storageKey = scriptValuesKey(scriptId);
 
     this.clipboardService = new ClipboardService();
     this.notificationService = new NotificationService();

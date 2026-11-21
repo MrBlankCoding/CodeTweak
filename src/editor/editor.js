@@ -242,9 +242,11 @@ export class ScriptEditor {
 
   setupEditorMode() {
     if (!this.state.isEditMode) {
+      const { targetUrl, template } = this.state.prefill || {};
       if (!this.state.importedSource) {
-        this.codeEditorManager.insertDefaultTemplate();
+        this.codeEditorManager.insertDefaultTemplate(template || undefined);
       }
+      if (targetUrl) this.ui.addUrlToList(targetUrl);
       this.updateSectionVisibility();
       this.markAsDirty();
     }
@@ -265,6 +267,12 @@ export class ScriptEditor {
     if (importId) {
       await this.loadTempImport(importId);
     }
+
+    // New scripts from the popup's + button and the element picker.
+    this.state.prefill = {
+      targetUrl: params.get('targetUrl'),
+      template: params.get('template'),
+    };
   }
 
   async loadTempImport(importId) {

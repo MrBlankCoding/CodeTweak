@@ -8,7 +8,10 @@ import {
   parseUserScriptMetadata,
   scriptFieldsFromMetadata,
 } from '../services/scripts/MetadataParser.js';
-import { storageService as ScriptManager } from '../services/storage/StorageService.js';
+import {
+  storageService as ScriptManager,
+  isEnabledByDefault,
+} from '../services/storage/StorageService.js';
 import { hashCode } from '../shared/utils/hash.js';
 import { applyTranslations } from '../shared/utils/i18n.js';
 
@@ -127,6 +130,7 @@ function setupFileDragAndDrop() {
 
       try {
         const imported = [];
+        const enabledByDefault = await isEnabledByDefault();
         for (const file of validFiles) {
           const code = await file.text();
           const metadata = parseUserScriptMetadata(code);
@@ -140,7 +144,7 @@ function setupFileDragAndDrop() {
             targetUrls: metadata.matches || ['*://*/*'],
             code,
             runAt: (metadata.runAt || 'document_end').replace(/-/g, '_'),
-            enabled: true,
+            enabled: enabledByDefault,
             id: crypto.randomUUID(),
             createdAt: Date.now(),
             updatedAt: Date.now(),

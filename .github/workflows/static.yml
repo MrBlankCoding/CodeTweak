@@ -3,6 +3,11 @@ name: Build and Deploy Docs to Pages
 on:
   push:
     branches: ['main']
+    paths:
+      - 'docs-src/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/static.yml'
   workflow_dispatch:
 
 permissions:
@@ -20,6 +25,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Full history so each page's "Last updated" date comes from git.
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4

@@ -63,7 +63,7 @@ export class ElementSelectorMenu {
       observe: (selector) => `const observer = new MutationObserver((mutations) => {
   const element = document.querySelector(${JSON.stringify(selector)});
   if (element) {
-    logger.info('Element changed:', element);
+    console.log('Element changed:', element);
   }
 });
 

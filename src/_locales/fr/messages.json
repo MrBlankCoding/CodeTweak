@@ -155,6 +155,12 @@
   "userScriptsBannerGuide": {
     "message": "Comment activer"
   },
+  "userScriptsBannerBodyFirefox": {
+    "message": "CodeTweak a besoin de votre autorisation pour exécuter des scripts utilisateur."
+  },
+  "userScriptsBannerGrant": {
+    "message": "Accorder l’autorisation"
+  },
   "editorUnsaved": {
     "message": "Non enregistré"
   },

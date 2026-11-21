@@ -1,57 +1,20 @@
 import logger from '../../shared/utils/logger.js';
-import { urlMatchesPattern } from '../../shared/utils/urls.js';
-import { mutateScripts } from '../storage/StorageService.js';
+import { generateUrlMatchPattern, isValidWebpage } from '../../shared/utils/urls.js';
 
 export class ScriptInstaller {
   constructor({ onScriptsUpdated } = {}) {
     this.onScriptsUpdated = onScriptsUpdated;
   }
 
+  // Element picker: always opens a new, unsaved script for the current site,
+  // so nothing changes until the user reviews and saves it.
   async handleScriptCreation(url, template) {
-    try {
-      const existing = await mutateScripts(chrome.storage, (list) => {
-        const script = list.find((s) => s.targetUrls?.some((t) => urlMatchesPattern(url, t)));
-        if (!script) return false;
-
-        const lines = String(script.code ?? '').split('\n');
-        let insertIndex = lines.length - 1;
-        while (
-          insertIndex > 0 &&
-          (!lines[insertIndex].trim() || lines[insertIndex].trim() === '})();')
-        ) {
-          insertIndex--;
-        }
-
-        const newLines = [
-          '',
-          '  // Added by element selector',
-          ...String(template ?? '')
-            .trim()
-            .split('\n')
-            .map((line) => '  ' + line),
-          '',
-        ];
-
-        lines.splice(insertIndex + 1, 0, ...newLines);
-        script.code = lines.join('\n');
-        script.updatedAt = new Date().toISOString();
-        return script;
-      });
-
-      if (existing) {
-        await this.onScriptsUpdated?.();
-        chrome.tabs.create({
-          url: `${chrome.runtime.getURL('editor/editor.html')}?id=${existing.id}`,
-        });
-      } else {
-        const params = new URLSearchParams({ targetUrl: url, template });
-        chrome.tabs.create({
-          url: `${chrome.runtime.getURL('editor/editor.html')}?${params}`,
-        });
-      }
-    } catch (error) {
-      logger.error('Script creation error:', error);
-    }
+    const params = new URLSearchParams({ template: String(template ?? '') });
+    const pattern = generateUrlMatchPattern(url, 'domain');
+    if (pattern && isValidWebpage(url)) params.set('targetUrl', pattern);
+    await chrome.tabs.create({
+      url: `${chrome.runtime.getURL('editor/editor.html')}?${params}`,
+    });
   }
 
   async handleGreasyForkInstall(url) {

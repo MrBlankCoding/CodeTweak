@@ -7,6 +7,7 @@ import {
 } from '../shared/utils/urls.js';
 import { applyTranslations, getMessageSync } from '../shared/utils/i18n.js';
 import { renderUserScriptsBanner } from '../shared/userScriptsBanner.js';
+import { isExtensionPageUrl, isFirefox } from '../shared/utils/browser.js';
 import { storageService as ScriptManager } from '../services/storage/StorageService.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -198,6 +199,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     return first?.result ?? [];
   }
 
+  // Firefox has no userScripts.execute; the background relays over the
+  // ports userscripts open (see shared/firefoxFeatures.js).
+  async function fetchMenuCommands(tabId) {
+    if (isFirefox()) {
+      const response = await chrome.runtime.sendMessage({ action: 'getMenuCommands', tabId });
+      return Array.isArray(response?.commands) ? response.commands : [];
+    }
+    return runInUserScriptWorld(
+      tabId,
+      `Array.from(globalThis.__codetweak?.menu?.entries() ?? [], ([commandId, c]) => ({
+        commandId, caption: c.caption, scriptName: c.scriptName,
+      }))`
+    );
+  }
+
+  function runMenuCommand(tabId, cmd) {
+    if (isFirefox()) {
+      return chrome.runtime.sendMessage({
+        action: 'runMenuCommand',
+        tabId,
+        frameId: cmd.frameId,
+        commandId: cmd.commandId,
+      });
+    }
+    return runInUserScriptWorld(
+      tabId,
+      `void globalThis.__codetweak?.menu?.get(${JSON.stringify(cmd.commandId)})?.onClick?.()`
+    );
+  }
+
   async function loadMenuCommands() {
     const menuContainer = document.getElementById('menuCommandList');
     const menuSection = document.getElementById('menuCommandSection');
@@ -207,22 +238,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!tab?.id) return;
 
-      const restrictedPatterns = /^(chrome|edge|about):\/\//i;
-      const isExtensionPage = tab.url?.startsWith('chrome-extension://');
+      const restrictedPatterns = /^(?:(?:chrome|edge):\/\/|about:)/i;
 
-      if (restrictedPatterns.test(tab.url || '') || isExtensionPage) {
+      if (restrictedPatterns.test(tab.url || '') || isExtensionPageUrl(tab.url)) {
         menuSection.style.display = 'none';
         return;
       }
 
       // Menu commands live in the USER_SCRIPT world registry, out of reach
-      // of the page; userScripts.execute runs in that same world.
-      const commands = await runInUserScriptWorld(
-        tab.id,
-        `Array.from(globalThis.__codetweak?.menu?.entries() ?? [], ([commandId, c]) => ({
-          commandId, caption: c.caption, scriptName: c.scriptName,
-        }))`
-      );
+      // of the page.
+      const commands = await fetchMenuCommands(tab.id);
 
       if (!commands.length) {
         menuSection.style.display = 'none';
@@ -248,10 +273,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         btn.textContent = cmd.caption;
 
         btn.addEventListener('click', () => {
-          runInUserScriptWorld(
-            tab.id,
-            `void globalThis.__codetweak?.menu?.get(${JSON.stringify(cmd.commandId)})?.onClick?.()`
-          ).catch((error) => logger.warn('Menu command failed:', error));
+          Promise.resolve(runMenuCommand(tab.id, cmd)).catch((error) =>
+            logger.warn('Menu command failed:', error)
+          );
         });
         menuContainer.appendChild(btn);
       });

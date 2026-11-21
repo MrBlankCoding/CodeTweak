@@ -113,7 +113,8 @@ export class MetadataSync {
       license: this.elements.scriptLicense?.value.trim() || '',
       icon: this.elements.scriptIcon?.value.trim() || '',
       code: this.codeEditorManager.getValue(),
-      enabled: true,
+      // No `enabled` here: edits keep the script's current state, and new
+      // scripts follow the "Enable scripts by default" setting.
       updatedAt: new Date().toISOString(),
     };
 

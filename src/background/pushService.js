@@ -7,8 +7,9 @@ const NOTIFICATION_PREFIX = 'gmNotification:';
 // deliver background events
 // this way we send correct events to script and document
 export class PushService {
-  constructor(api) {
+  constructor(api, { firefoxHub = null } = {}) {
     this.api = api;
+    this.firefoxHub = firefoxHub;
     this.subscribers = null;
     this.chain = Promise.resolve();
   }
@@ -47,14 +48,21 @@ export class PushService {
     }
   }
 
-  static targetFromSender(sender) {
+  get useFirefoxHub() {
+    return !this.canExecute && Boolean(this.firefoxHub);
+  }
+
+  targetFromSender(sender) {
+    if (this.useFirefoxHub) return this.firefoxHub.constructor.targetFromSender(sender);
     const tabId = sender?.tab?.id;
     if (typeof tabId !== 'number' || typeof sender?.documentId !== 'string') return null;
     return { tabId, documentId: sender.documentId };
   }
 
   subscribe(scriptId, sender) {
-    const target = PushService.targetFromSender(sender);
+    // Firefox documents subscribe over their own port.
+    if (this.useFirefoxHub) return Promise.resolve();
+    const target = this.targetFromSender(sender);
     if (!target) return Promise.resolve();
     return this.withLock(async () => {
       const subscribers = await this.load();
@@ -66,6 +74,7 @@ export class PushService {
   }
 
   removeTab(tabId) {
+    this.firefoxHub?.removeTab(tabId);
     return this.withLock(async () => {
       const subscribers = await this.load();
       let changed = false;
@@ -93,6 +102,10 @@ export class PushService {
   }
 
   async sendToDocument(target, scriptId, type, data) {
+    if (this.useFirefoxHub) {
+      this.firefoxHub.dispatch(target, scriptId, type, data);
+      return true;
+    }
     if (!this.canExecute) return false;
     const code =
       `globalThis.__codetweak?.dispatch(${JSON.stringify(scriptId)}, ` +
@@ -112,7 +125,7 @@ export class PushService {
   }
 
   async trackNotification(notificationId, scriptId, callbackId, sender) {
-    const target = PushService.targetFromSender(sender);
+    const target = this.targetFromSender(sender);
     if (!target || !callbackId) return;
     const key = `${NOTIFICATION_PREFIX}${notificationId}`;
     try {
@@ -141,6 +154,10 @@ export class PushService {
 
   // Sends a value change to every other document running the script.
   async broadcastValueChange(scriptId, change, sender) {
+    if (this.useFirefoxHub) {
+      this.firefoxHub.broadcastValueChange(scriptId, change, sender);
+      return;
+    }
     if (!this.canExecute) return;
     const subscribers = await this.load();
     const targets = (subscribers[scriptId] || []).filter(

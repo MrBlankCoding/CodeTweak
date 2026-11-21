@@ -3,7 +3,7 @@ import { formatUrlPattern, formatRunAt } from '../shared/utils/urls.js';
 import { createIcon } from '../shared/utils/icons.js';
 
 // Global functions available from dashboard-logic.js via window object
-/* global toggleScript, editScript, deleteScript, reviewUpdate */
+/* global toggleScript, editScript, deleteScript, reviewUpdate, clearScriptData */
 
 function setupTabs(navItems, tabContents) {
   if (!navItems) return;
@@ -194,6 +194,15 @@ function createScriptListItem(script) {
     actions.appendChild(reviewButton);
   }
 
+  if (usesStoredValues(script)) {
+    const clearDataButton = document.createElement('button');
+    clearDataButton.className = 'btn-action btn-clear-data';
+    clearDataButton.appendChild(createIcon('database'));
+    clearDataButton.title = 'Clear stored data';
+    clearDataButton.addEventListener('click', () => clearScriptData(script.id));
+    actions.appendChild(clearDataButton);
+  }
+
   const deleteButton = document.createElement('button');
   deleteButton.className = 'btn-action btn-delete';
   const deleteIcon = createIcon('trash-2');
@@ -205,6 +214,18 @@ function createScriptListItem(script) {
   item.append(toggleSwitch, nameCol, versionCol, sitesCol, runAtCol, actions);
 
   return item;
+}
+
+const STORAGE_API_FLAGS = [
+  'gmSetValue',
+  'gmGetValue',
+  'gmDeleteValue',
+  'gmListValues',
+  'gmAddValueChangeListener',
+];
+
+function usesStoredValues(script) {
+  return STORAGE_API_FLAGS.some((flag) => script?.[flag] === true);
 }
 
 const REASON_LABELS = {

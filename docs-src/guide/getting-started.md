@@ -1,16 +1,20 @@
-# Getting Started
+# Your first script
 
-This is the shortest path from install to working script.
+This walkthrough takes about two minutes. You'll write a small script that changes a web page, then see it run.
 
-## 1. Install CodeTweak
+Before you start, [install CodeTweak](/guide/installation) and make sure user scripts are allowed.
 
-Follow [Install CodeTweak](/guide/installation).
+## 1. Open the editor on the site you want to change
 
-## 2. Create a script
+1. Go to `https://example.com`.
+2. Click the CodeTweak icon in your toolbar.
+3. Click the **+** button at the top of the popup.
 
-1. Open CodeTweak popup.
-2. Click `Create Script`.
-3. Paste this:
+The editor opens in a new tab. Because you started from example.com, the script is already set to run on that site.
+
+## 2. Write the script
+
+Replace everything in the code area with:
 
 ```javascript
 // ==UserScript==
@@ -20,28 +24,35 @@ Follow [Install CodeTweak](/guide/installation).
 // @grant       none
 // ==/UserScript==
 
-console.log('CodeTweak script running');
+document.querySelector('h1').textContent = 'Hello from CodeTweak!';
+document.body.style.background = '#fef6d8';
 ```
 
-4. Save.
+The block of `//` comments at the top is the **metadata block**. It tells CodeTweak the script's name, which sites it runs on (`@match`), and when it runs (`@run-at`). See [Userscript basics](/guide/writing-userscripts) for every option.
 
-## 3. Verify it runs
+## 3. Save
 
-1. Open `https://example.com`.
-2. Open DevTools console.
-3. Confirm you see `CodeTweak script running`.
+Click the save button in the top-right corner, or press <kbd>Ctrl</kbd>+<kbd>S</kbd> (<kbd>Cmd</kbd>+<kbd>S</kbd> on Mac). The status changes from **Unsaved** to **Saved**.
 
-## 4. If it does not run
+## 4. See it run
 
-- If the popup or dashboard shows a red "User scripts are disabled" banner,
-  enable `Allow user scripts` for CodeTweak in `chrome://extensions`.
-- Check `@match` first.
-- Check `@run-at` second.
-- Open script error logs in the editor.
+Reload the example.com tab. The heading now says **Hello from CodeTweak!** and the background is yellow.
 
-Next:
+Open the CodeTweak popup on that page. Your script is listed with a switch to turn it off and on.
 
-- [Using the Editor](/guide/editor)
-- [Writing Userscripts](/guide/writing-userscripts)
-- [Manage Scripts](/guide/dashboard)
-- [GM API Reference](/reference/gm-apis)
+![The CodeTweak popup listing the scripts that run on the current page](/screenshots/04-popup-on-wikipedia.png)
+
+## If nothing changed
+
+- Look for a red **User scripts are disabled** banner in the popup. If you see one, follow the steps in [Install CodeTweak](/guide/installation).
+- Make sure you reloaded the page after saving. Scripts run when a page loads.
+- Check that the address matches `@match`. For example, `https://example.com/*` doesn't match `https://www.example.com/`.
+
+More fixes are in [Troubleshooting](/troubleshooting/common-issues).
+
+## Next steps
+
+- [Install ready-made scripts from Greasy Fork](/guide/greasyfork)
+- [Tour the script editor](/guide/editor)
+- [Learn the metadata block](/guide/writing-userscripts)
+- [Store data and make requests with the GM APIs](/reference/gm-apis)

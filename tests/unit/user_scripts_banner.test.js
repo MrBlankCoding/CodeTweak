@@ -80,4 +80,36 @@ describe('userScriptsBanner', () => {
     expect(onOpenGuide).toHaveBeenCalledTimes(1);
     expect(create).not.toHaveBeenCalled();
   });
+
+  describe('on Firefox', () => {
+    const firefoxRuntime = { getURL: (p) => `moz-extension://id/${p}` };
+
+    it('offers a permission grant instead of the chrome://extensions guide', () => {
+      global.chrome = { runtime: firefoxRuntime };
+      const banner = renderUserScriptsBanner(slot());
+      expect(banner.textContent).toContain('Grant permission');
+      expect(banner.textContent).not.toContain('chrome://extensions');
+    });
+
+    it('requests the optional userScripts permission and removes the banner on grant', async () => {
+      const request = vi.fn(async () => true);
+      const create = vi.fn();
+      global.chrome = { runtime: firefoxRuntime, permissions: { request }, tabs: { create } };
+      const banner = renderUserScriptsBanner(slot());
+      banner.querySelector('.ct-userscripts-banner-btn').click();
+      await vi.waitFor(() => expect(slot().querySelector('.ct-userscripts-banner')).toBeNull());
+      expect(request).toHaveBeenCalledWith({ permissions: ['userScripts'] });
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it('keeps the banner when the permission is declined', async () => {
+      const request = vi.fn(async () => false);
+      global.chrome = { runtime: firefoxRuntime, permissions: { request } };
+      const banner = renderUserScriptsBanner(slot());
+      banner.querySelector('.ct-userscripts-banner-btn').click();
+      await vi.waitFor(() => expect(request).toHaveBeenCalled());
+      await Promise.resolve();
+      expect(slot().querySelector('.ct-userscripts-banner')).toBe(banner);
+    });
+  });
 });

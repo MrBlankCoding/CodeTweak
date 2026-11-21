@@ -1,60 +1,54 @@
-# Resource APIs
+# Resources
 
-CodeTweak allows userscripts to declare and use external static resources (like text, JSON, or images) using the `@resource` metadata tag.
+Resources are files your script needs, such as a stylesheet, a JSON file, or an image. Declare each one in the metadata block with a name and an address:
 
----
+```javascript
+// ==UserScript==
+// @resource  theme   https://cdn.example.com/theme.css
+// @resource  words   https://cdn.example.com/words.json
+// @resource  logo    https://cdn.example.com/logo.png
+// @grant     GM_getResourceText
+// @grant     GM_getResourceURL
+// ==/UserScript==
+```
 
-## Implementation Details
+You can also add them in the editor's **Script Resources** panel.
 
-CodeTweak uses a **Resource Manager** to fetch and cache all resources defined in your script's metadata block _before_ the script is executed.
+CodeTweak downloads resources when you save or install the script, and keeps a copy. They're ready the moment your script starts, without slowing down the page, and work even if the server is down later.
 
-1.  **Metadata Definition**: Resources must be declared in the header:
-    ```javascript
-    // @resource config https://example.com/config.json
-    // @resource logo https://example.com/logo.png
-    ```
-2.  **Pre-loading**: CodeTweak downloads these resources when the script is enabled or modified and keeps them in memory for fast access.
-3.  **Data Persistence**: If the script is stored locally, the resource content is often cached to ensure the script works even offline.
-
----
+If a resource can't be downloaded, the script doesn't start, and the problem is listed in the editor's [Script Errors](/guide/editor#script-errors) panel. Add a hash to the address to check the file hasn't been changed; see [Verifying libraries](/guide/writing-userscripts#verifying-libraries).
 
 ## GM_getResourceText
 
-Retrieves the content of a resource as a UTF-8 string.
+Returns a resource's contents as text, or `null` if there's no resource with that name.
 
 ```javascript
-GM_getResourceText(name: string): string
-GM.getResourceText(name: string): Promise<string>
+const text = GM_getResourceText(name);
+const text = await GM.getResourceText(name);
 ```
 
-- **name**: The unique identifier for the resource as defined in the `@resource` tag.
+```javascript
+GM_addStyle(GM_getResourceText('theme'));
 
----
+const words = JSON.parse(GM_getResourceText('words'));
+```
 
 ## GM_getResourceURL
 
-Retrieves a URL representing the resource's content.
+Returns a resource as a `data:` URL, or `null` if there's no resource with that name. Use it wherever a URL is expected, such as an image's `src`.
 
 ```javascript
-GM_getResourceURL(name: string): string
-GM.getResourceURL(name: string): Promise<string>
+const url = GM_getResourceURL(name);
+const url = await GM.getResourceUrl(name);
 ```
 
-### Data URLs
-
-CodeTweak typically returns a **Base64 Data URL** (e.g., `data:image/png;base64,...`) for images and other binary resources. This allows you to use the resource directly in `<img>` or `<video>` tags:
-
 ```javascript
-const logo = GM_getResourceURL('logo');
 const img = document.createElement('img');
-img.src = logo;
-document.body.appendChild(img);
+img.src = GM_getResourceURL('logo');
+document.body.append(img);
 ```
 
----
+## Tips
 
-## Resource Best Practices
-
-1.  **Unique Names**: Ensure resource names do not conflict with each other or with other `@grant` names.
-2.  **Size Limits**: Large resources can increase the script's memory footprint. Avoid large video files or high-resolution images unless necessary.
-3.  **MIME Types**: CodeTweak attempts to automatically detect the MIME type of a resource based on its URL or server response headers.
+- Give each resource a unique name made of letters, numbers, `-`, or `_`.
+- Keep resources small. Every resource is copied into each page the script runs on.

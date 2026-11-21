@@ -49,6 +49,20 @@ describe('urls utilities', () => {
     expect(urlMatchesPattern('https://www.example.com/', '*://www.example.com/*')).toBe(true);
   });
 
+  it('keeps the path for exact-page patterns', () => {
+    expect(generateUrlMatchPattern('https://example.com/docs/intro', 'exact')).toBe(
+      'https://example.com/docs/intro'
+    );
+    expect(generateUrlMatchPattern('https://example.com/search?q=1', 'exact')).toBe(
+      'https://example.com/search?q=1'
+    );
+    expect(generateUrlMatchPattern('example.com', 'exact')).toBe('https://example.com/');
+    const exact = generateUrlMatchPattern('https://example.com/about', 'exact');
+    expect(normalizeMatchPattern(exact)).toBe(exact);
+    expect(urlMatchesPattern('https://example.com/about', exact)).toBe(true);
+    expect(urlMatchesPattern('https://example.com/other', exact)).toBe(false);
+  });
+
   it('handles edge cases in generateUrlMatchPattern', () => {
     expect(generateUrlMatchPattern('https://example.com', 'unknown')).toBe('https://example.com/*');
     expect(generateUrlMatchPattern('')).toBeNull();
@@ -70,6 +84,12 @@ describe('urls utilities', () => {
     expect(isValidWebpage('chrome://settings')).toBe(false);
     expect(isValidWebpage('chrome-extension://abc/page.html')).toBe(false);
     expect(isValidWebpage('about:blank')).toBe(false);
+    expect(isValidWebpage('chrome://newtab/')).toBe(false);
+    expect(isValidWebpage('about:newtab')).toBe(false);
+    expect(isValidWebpage('about:addons')).toBe(false);
+    expect(isValidWebpage('moz-extension://abc/page.html')).toBe(false);
+    expect(isValidWebpage('view-source:https://example.com')).toBe(false);
+    expect(isValidWebpage('https://example.com/about:page')).toBe(true);
     expect(isValidWebpage(null)).toBe(false);
   });
 

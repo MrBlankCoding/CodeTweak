@@ -30,6 +30,20 @@ describe('ClipboardService', () => {
     expect(result).toEqual({ error: 'Clipboard data exceeds 100KB limit.' });
   });
 
+  it('writes from the background page on Firefox instead of injecting into the tab', async () => {
+    const executeScript = vi.fn();
+    globalThis.chrome = {
+      runtime: { getURL: (p) => `moz-extension://id/${p}` },
+      scripting: { executeScript },
+    };
+    navigator.clipboard = { writeText: vi.fn(async () => {}) };
+    const svc = new ClipboardService();
+    const result = await svc.setClipboard('hi', { tab: { id: 3 } }, vi.fn());
+    expect(result).toEqual({ result: null });
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('hi');
+    expect(executeScript).not.toHaveBeenCalled();
+  });
+
   it('uses offscreen document when available', async () => {
     const setupFn = vi.fn();
     globalThis.chrome = {

@@ -39,12 +39,51 @@ function eventBucket() {
   return { fns, api: { addListener: (fn) => fns.push(fn) } };
 }
 
-export async function createExtension({ settings = {}, server = {} } = {}) {
+// A connected runtime.Port pair with async, structured-clone delivery.
+function createPortPair(name, sender) {
+  const make = () => {
+    const message = [];
+    const disconnect = [];
+    return {
+      name,
+      listeners: { message, disconnect },
+      onMessage: { addListener: (fn) => message.push(fn) },
+      onDisconnect: { addListener: (fn) => disconnect.push(fn) },
+    };
+  };
+  const page = make();
+  const background = make();
+  background.sender = sender;
+  let open = true;
+  const wire = (from, to) => {
+    from.postMessage = (msg) => {
+      if (!open) throw new Error('Attempt to postMessage on disconnected port');
+      const copy = clone(msg);
+      Promise.resolve().then(() => open && to.listeners.message.forEach((fn) => fn(copy)));
+    };
+    from.disconnect = () => {
+      if (!open) return;
+      open = false;
+      Promise.resolve().then(() => to.listeners.disconnect.forEach((fn) => fn(to)));
+    };
+  };
+  wire(page, background);
+  wire(background, page);
+  return { page, background, isOpen: () => open };
+}
+
+export async function createExtension({ settings = {}, server = {}, browser = 'chrome' } = {}) {
+  const firefox = browser === 'firefox';
+  const extensionOrigin = firefox
+    ? 'moz-extension://codetweak-test/'
+    : 'chrome-extension://codetweak-test/';
+  const ports = [];
   vi.resetModules();
 
   const events = {
     onMessage: eventBucket(),
     onUserScriptMessage: eventBucket(),
+    onUserScriptConnect: eventBucket(),
     onInstalled: eventBucket(),
     onStartup: eventBucket(),
     onClicked: eventBucket(),
@@ -85,7 +124,7 @@ export async function createExtension({ settings = {}, server = {} } = {}) {
       id: 'codetweak-test',
       lastError: null,
       getManifest: () => ({ version: '9.9.9' }),
-      getURL: (path) => `chrome-extension://codetweak-test/${path}`,
+      getURL: (path) => `${extensionOrigin}${path}`,
       sendMessage: vi.fn(async () => undefined),
       onMessage: events.onMessage.api,
       onUserScriptMessage: events.onUserScriptMessage.api,
@@ -153,6 +192,12 @@ export async function createExtension({ settings = {}, server = {} } = {}) {
     scripting: { executeScript: vi.fn(async () => [{ result: true }]), insertCSS: vi.fn() },
   };
 
+  if (firefox) {
+    // Firefox: no userScripts.execute; background events travel over ports.
+    delete chrome.userScripts.execute;
+    chrome.runtime.onUserScriptConnect = events.onUserScriptConnect.api;
+  }
+
   global.chrome = chrome;
   global.fetch = vi.fn(async (url, options = {}) => {
     requests.push({ url, options });
@@ -162,9 +207,9 @@ export async function createExtension({ settings = {}, server = {} } = {}) {
 
   await import('../../src/background/background.js');
 
-  const sendRuntime = (message) =>
+  const sendRuntime = (message, sender = {}) =>
     new Promise((resolve) => {
-      const keepOpen = events.onMessage.fns[0](clone(message), {}, (r) => resolve(clone(r)));
+      const keepOpen = events.onMessage.fns[0](clone(message), sender, (r) => resolve(clone(r)));
       if (keepOpen === false) resolve(undefined);
     });
 
@@ -200,6 +245,16 @@ export async function createExtension({ settings = {}, server = {} } = {}) {
     server,
     flush,
     sendRuntime,
+    ports,
+
+    // Messages from the popup carry an extension-page sender.
+    sendFromPopup: (message) =>
+      sendRuntime(message, { url: chrome.runtime.getURL('popup/popup.html') }),
+
+    // Simulates Firefox suspending the event page: every port drops.
+    dropPorts() {
+      ports.forEach((pair) => pair.background.disconnect());
+    },
 
     async sync() {
       await sendRuntime({ action: 'scriptsUpdated' });
@@ -239,8 +294,17 @@ export async function createExtension({ settings = {}, server = {} } = {}) {
         tab: { id: tabId, url, index: 0 },
         url,
         frameId: 0,
-        documentId,
         origin: new URL(url).origin,
+      };
+      // Firefox message senders carry no documentId.
+      if (!firefox) sender.documentId = documentId;
+      const docPorts = [];
+      const connect = ({ name } = {}) => {
+        const pair = createPortPair(name, sender);
+        ports.push(pair);
+        docPorts.push(pair);
+        events.onUserScriptConnect.fns.forEach((fn) => fn(pair.background));
+        return pair.page;
       };
 
       // The USER_SCRIPT world: same document, its own globals.
@@ -260,6 +324,7 @@ export async function createExtension({ settings = {}, server = {} } = {}) {
         chrome: {
           runtime: {
             sendMessage: (message) => sendFromUserScript(message, sender),
+            ...(firefox ? { connect } : {}),
           },
         },
       };
@@ -283,9 +348,11 @@ export async function createExtension({ settings = {}, server = {} } = {}) {
         userWorld: userContext,
         alive: true,
         runInUserWorld: (code) => vm.runInContext(code, userContext),
+        ports: docPorts,
         async close() {
           doc.alive = false;
           documents.delete(documentId);
+          docPorts.forEach((pair) => pair.page.disconnect());
         },
       };
       documents.set(documentId, doc);

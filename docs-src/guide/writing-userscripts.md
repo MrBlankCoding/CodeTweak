@@ -1,92 +1,115 @@
-# Writing Userscripts
+# Userscript basics
 
-This guide explains how to write userscripts for CodeTweak, assuming you are already familiar with JavaScript.
+A userscript is ordinary JavaScript with a **metadata block** at the top. The metadata block tells CodeTweak what the script is called, where it runs, when it runs, and what extra features it needs.
 
-## The Metadata Block
+CodeTweak follows the same format as Tampermonkey, Violentmonkey, and Greasemonkey, so most scripts written for those work without changes.
 
-Every userscript starts with a metadata block (also known as the userscript header). This block tells CodeTweak when and where to run your script.
+## A complete example
 
 ```javascript
 // ==UserScript==
-// @name        My Awesome Script
-// @namespace   https://mrblankcoding.github.io/CodeTweak/
-// @version     1.0
-// @description Does something amazing
-// @author      You
-// @match       https://example.com/*
-// @grant       GM_setValue
-// @grant       GM_getValue
-// @run-at      document-end
+// @name         Dark Reader for Example
+// @namespace    https://example.com/my-scripts
+// @version      1.2.0
+// @description  Gives example.com a dark theme and remembers your choice
+// @author       You
+// @match        https://example.com/*
+// @match        https://*.example.org/*
+// @exclude      https://example.com/admin/*
+// @run-at       document-start
+// @grant        GM_addStyle
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @grant        GM_registerMenuCommand
 // ==/UserScript==
-```
 
-### Key Metadata Tags
+const style = GM_addStyle('html { filter: invert(1) hue-rotate(180deg); }');
+style.disabled = !GM_getValue('dark', true);
 
-- **@name**: The name of your script.
-- **@match**: Defines the URLs where your script should run. You can use wildcards (e.g., `*`).
-- **@run-at**: Controls when the script executes:
-  - `document-start`: Runs before any DOM is loaded.
-  - `document-end`: Runs when the DOM is fully loaded.
-  - `document-idle`: Runs after the page and all resources are loaded.
-- **@grant**: Requests access to specific `GM_*` APIs. Use `none` if you don't need any.
-- **@require**: Includes external libraries (e.g., jQuery).
-
-## Structuring Your Script
-
-It is best practice to wrap your script in an Immediately Invoked Function Expression (IIFE) to avoid polluting the global scope and to prevent conflicts with the website's own scripts.
-
-```javascript
-(function () {
-  'use strict';
-
-  // Your code here
-  console.log('Script loaded on ' + window.location.href);
-
-  const button = document.createElement('button');
-  button.textContent = 'Click Me';
-  button.style.position = 'fixed';
-  button.style.top = '10px';
-  button.style.right = '10px';
-  button.onclick = () => alert('Hello from CodeTweak!');
-
-  document.body.appendChild(button);
-})();
-```
-
-## Using GM APIs
-
-CodeTweak provides several APIs to perform tasks that standard web scripts cannot, such as cross-origin requests or persistent storage.
-
-### Persistent Storage
-
-Use `GM_setValue` and `GM_getValue` to store data that persists across page reloads and even browser restarts.
-
-```javascript
-// Store a value
-GM_setValue('username', 'Alice');
-
-// Retrieve a value
-const name = GM_getValue('username', 'Guest');
-console.log('Hello, ' + name);
-```
-
-### Cross-Origin Requests
-
-Use `GM_xmlhttpRequest` to fetch data from domains other than the one the script is running on.
-
-```javascript
-GM_xmlhttpRequest({
-  method: 'GET',
-  url: 'https://api.example.com/data',
-  onload: function (response) {
-    console.log(JSON.parse(response.responseText));
-  },
+GM_registerMenuCommand('Toggle dark mode', () => {
+  style.disabled = !style.disabled;
+  GM_setValue('dark', !style.disabled);
 });
 ```
 
-## Best Practices
+The metadata block must start with `// ==UserScript==` and end with `// ==/UserScript==`. Each line inside is `// @key value`.
 
-1. **Be Specific with @match**: Only run your script on the pages it is needed for to improve performance and security.
-2. **Check for Element Existence**: When manipulating the DOM, always ensure the elements you are looking for exist, especially if using `document-start`.
-3. **Use 'use strict'**: Helps catch common coding mistakes.
-4. **Minimal @grant**: Only request the permissions you actually use.
+## Metadata keys
+
+### Describing the script
+
+| Key            | Meaning                                                                           |
+| -------------- | --------------------------------------------------------------------------------- |
+| `@name`        | The name shown in the popup and dashboard.                                        |
+| `@namespace`   | Usually your website or profile URL. Helps tell apart scripts with the same name. |
+| `@version`     | Version number such as `1.2.0`. Used to detect updates.                           |
+| `@description` | A short summary shown in the dashboard.                                           |
+| `@author`      | Your name.                                                                        |
+| `@icon`        | An image URL (or `data:image/...` URL) shown next to the script.                  |
+| `@license`     | The script's license, such as `MIT`.                                              |
+
+### Where it runs
+
+| Key              | Meaning                                                                                               |
+| ---------------- | ----------------------------------------------------------------------------------------------------- |
+| `@match`         | A page the script runs on. Repeat it for more pages. See [Choosing sites](/reference/match-patterns). |
+| `@include`       | Like `@match`, but also accepts a regular expression written as `/.../`.                              |
+| `@exclude`       | A page to skip even if it matches. Accepts wildcards (`*` and `?`) or a `/regular expression/`.       |
+| `@exclude-match` | Same as `@exclude`.                                                                                   |
+| `@noframes`      | No value. Run only in the top-level page, not inside iframes.                                         |
+
+### When and how it runs
+
+| Key            | Meaning                                                                                                             |
+| -------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `@run-at`      | `document-start`, `document-end`, or `document-idle` (the default). See [Run timing](/reference/run-timing).        |
+| `@inject-into` | `auto` (the default), `content`, or `page`. See [Where scripts run](/reference/gm-apis/advanced#where-scripts-run). |
+
+### What it needs
+
+| Key         | Meaning                                                                                                                                                                   |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@grant`    | A GM API the script uses, such as `GM_setValue` or `GM.setValue`. Repeat it for each API. Use `@grant none` if it uses none. See the [API reference](/reference/gm-apis). |
+| `@connect`  | A server `GM_xmlhttpRequest` may contact. See [Network](/reference/gm-apis/network#allowed-servers-connect).                                                              |
+| `@require`  | A JavaScript library to load first, such as jQuery. Must be `https://`. Loaded in the order listed.                                                                       |
+| `@resource` | A named file to download, written `@resource name https://...`. Read it with the [resource APIs](/reference/gm-apis/resources).                                           |
+
+### Updates
+
+| Key            | Meaning                                                                                      |
+| -------------- | -------------------------------------------------------------------------------------------- |
+| `@updateURL`   | Where CodeTweak checks for a newer version. Usually a `.meta.js` or `.user.js` file.         |
+| `@downloadURL` | Where the new version is downloaded from. Also used for checking if there's no `@updateURL`. |
+
+See [Automatic updates](/guide/greasyfork#automatic-updates).
+
+## Verifying libraries
+
+To make sure a `@require` or `@resource` file hasn't been changed, add its hash to the end of the URL:
+
+```javascript
+// @require https://cdn.example.com/lib.min.js#sha256=2f8a...c91e
+```
+
+`sha256`, `sha384`, and `sha512` hashes are supported, in hex or base64. If the downloaded file doesn't match, the script doesn't start and the failure is shown in [Script Errors](/guide/editor#script-errors).
+
+## How your code runs
+
+- Your code runs inside its own function, so variables you declare don't leak into the page or clash with other scripts. You don't need to wrap it in an IIFE, though it does no harm.
+- The GM APIs you grant are available as ordinary functions inside your script.
+- Libraries from `@require` run in the same scope as your script, so they can use your GM APIs and you can use their globals.
+- Top-level `await` isn't supported, but you can use an `async` function:
+
+```javascript
+(async () => {
+  const theme = await GM.getValue('theme', 'light');
+  document.documentElement.dataset.theme = theme;
+})();
+```
+
+## Tips
+
+- **Keep `@match` narrow.** Run only on the pages that need the script.
+- **Grant only what you use.** Fewer grants means less a mistake or a bad update can do.
+- **Expect elements to be missing.** Pages change. Check that `document.querySelector(...)` found something before using it.
+- **Use the console.** `console.log()` output appears in the page's DevTools console (<kbd>F12</kbd>).

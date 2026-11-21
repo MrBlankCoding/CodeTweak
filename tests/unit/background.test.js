@@ -671,7 +671,12 @@ describe('background', () => {
         data: { url: 'https://example.com/page', template: 'console.log(2);' },
       })
     ).resolves.toEqual({ success: true });
-    expect(storageData.scripts[0].code).toContain('Added by element selector');
+    // The element picker always opens a new script; existing ones are untouched.
+    expect(storageData.scripts[0].code).toBe('(function(){\\n})();');
+    const editorUrl = new URL(chrome.tabs.create.mock.calls.at(-1)[0].url);
+    expect(editorUrl.pathname).toContain('editor/editor.html');
+    expect(editorUrl.searchParams.get('template')).toBe('console.log(2);');
+    expect(editorUrl.searchParams.get('targetUrl')).toBe('https://example.com/*');
 
     global.fetch = vi.fn(async () => ({ ok: false, status: 500 }));
     await expect(

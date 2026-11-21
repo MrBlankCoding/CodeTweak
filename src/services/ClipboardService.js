@@ -1,4 +1,5 @@
 import logger from '../shared/utils/logger.js';
+import { isFirefox } from '../shared/utils/browser.js';
 
 export class ClipboardService {
   async setClipboard(text, sender, setupOffscreenDocument) {
@@ -18,6 +19,15 @@ export class ClipboardService {
         return { result: null };
       } catch (e) {
         logger.warn('Offscreen clipboard failed:', e);
+      }
+    }
+
+    if (isFirefox() && navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(textToCopy);
+        return { result: null };
+      } catch (e) {
+        logger.debug('Background clipboard write failed:', e);
       }
     }
 

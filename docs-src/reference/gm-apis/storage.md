@@ -1,90 +1,100 @@
-# Storage APIs
+# Storage
 
-CodeTweak provides a persistent storage system that allows scripts to save data across page reloads and browser restarts.
+Scripts can save values that last across page loads, tabs, and browser restarts. Each script has its own private storage; scripts can't read each other's values.
 
-## Implementation Details
-
-CodeTweak uses a **dual-layer storage system**:
-
-1.  **Local Cache**: For synchronous access, values are cached in the script's execution context.
-2.  **Extension Storage**: The source of truth is stored in the extension's background process, ensuring data persists even if the tab is closed.
-
-### Synchronous vs. Asynchronous
-
-- `GM_getValue` (Sync): Returns the cached value immediately. If the value isn't in the cache yet, it returns the default value and triggers an asynchronous fetch to update the cache for the next call.
-- `GM.getValue` (Async): Always waits for the background process to return the latest value.
-
----
+Values are loaded before your script starts, so `GM_getValue` returns the saved value straight away.
 
 ## GM_setValue
 
-Stores a value in the script's persistent storage.
+Saves a value under a name.
 
 ```javascript
-GM_setValue(name: string, value: any): Promise<void>
+GM_setValue(name, value);
+await GM.setValue(name, value);
 ```
 
-- **name**: A unique key for the data.
-- **value**: Any JSON-serializable object, array, or primitive.
+- `name`: a string of up to 256 characters.
+- `value`: anything that can be stored as JSON: strings, numbers, booleans, `null`, arrays, and plain objects. Functions and `undefined` can't be stored. Dates are stored as strings.
 
----
+```javascript
+GM_setValue('settings', { theme: 'dark', fontSize: 16 });
+```
 
 ## GM_getValue
 
-Retrieves a value from storage.
+Reads a saved value, or returns `defaultValue` if nothing is saved under that name.
 
 ```javascript
-GM_getValue(name: string, defaultValue?: any): any
-GM.getValue(name: string, defaultValue?: any): Promise<any>
+const value = GM_getValue(name, defaultValue);
+const value = await GM.getValue(name, defaultValue);
 ```
 
-- **name**: The key to retrieve.
-- **defaultValue**: Returned if the key does not exist.
+```javascript
+const settings = GM_getValue('settings', { theme: 'light', fontSize: 14 });
+```
 
----
+Objects and arrays are returned as copies. Changing the returned object doesn't change what's saved until you call `GM_setValue` again.
 
 ## GM_deleteValue
 
-Removes a key and its value from storage.
+Deletes a saved value.
 
 ```javascript
-GM_deleteValue(name: string): Promise<void>
+GM_deleteValue(name);
+await GM.deleteValue(name);
 ```
-
----
 
 ## GM_listValues
 
-Returns an array of all keys currently stored by the script.
+Returns the names of all saved values.
 
 ```javascript
-GM_listValues(): string[]
-GM.listValues(): Promise<string[]>
+const names = GM_listValues();
+const names = await GM.listValues();
 ```
 
----
+## GM_addValueChangeListener
 
-## Value Change Listeners
-
-CodeTweak supports monitoring changes to storage values, which is useful for communicating between multiple instances of the same script running in different tabs.
-
-### GM_addValueChangeListener
-
-Adds a listener that triggers when a specific key is modified.
+Runs a function whenever a value changes, whether the change was made on this page or by the same script in another tab. Use it to keep several tabs in sync.
 
 ```javascript
-GM_addValueChangeListener(
-  name: string,
-  callback: (name: string, oldValue: any, newValue: any, remote: boolean) => void
-): number
+const id = GM_addValueChangeListener(name, (name, oldValue, newValue, remote) => {
+  // ...
+});
 ```
 
-- **remote**: `true` if the change originated from a different tab or script instance.
-
-### GM_removeValueChangeListener
-
-Removes a listener using the ID returned by `GM_addValueChangeListener`.
+- `remote` is `true` when the change came from another tab, and `false` when it came from this one.
+- Returns an ID for `GM_removeValueChangeListener`.
 
 ```javascript
-GM_removeValueChangeListener(listenerId: number): void
+GM_addValueChangeListener('theme', (name, oldValue, newValue, remote) => {
+  document.documentElement.dataset.theme = newValue;
+  if (remote) console.log('Theme changed in another tab');
+});
 ```
+
+## GM_removeValueChangeListener
+
+Stops a listener.
+
+```javascript
+GM_removeValueChangeListener(id);
+```
+
+## Limits
+
+| Limit                       | Value                |
+| --------------------------- | -------------------- |
+| Name length                 | 256 characters       |
+| Size of one value           | About 100 KB as JSON |
+| Number of values per script | 1,000                |
+
+Saving past a limit fails. With `GM.setValue`, the promise rejects with the reason.
+
+## Where values are kept
+
+Values are stored in your browser, in CodeTweak's extension storage. They're kept when you update or edit the script.
+
+They're deleted when you delete the script or uninstall CodeTweak. To reset a script without deleting it, click the database button next to it in the [dashboard](/guide/dashboard#scripts); reload any open pages afterwards so they don't keep using the old values.
+
+**Export All** in the dashboard doesn't include stored values.

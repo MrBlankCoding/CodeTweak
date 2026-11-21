@@ -17,10 +17,14 @@ import { PushService } from './pushService.js';
 import { DependencyCache } from '../services/scripts/DependencyCache.js';
 import { ensurePageTools } from '../shared/utils/pageTools.js';
 import { NotificationService } from '../services/NotificationService.js';
+import { isFirefox } from '../shared/utils/browser.js';
+import { FirefoxPortHub } from '../shared/firefoxFeatures.js';
+
+const firefoxHub = isFirefox() ? new FirefoxPortHub(chrome) : null;
 
 class BackgroundState {
   constructor() {
-    this.push = new PushService(chrome);
+    this.push = new PushService(chrome, { firefoxHub });
   }
 
   clearCache() {
@@ -87,6 +91,7 @@ const messageHandlers = createMessageHandlers({
   syncUserscriptRegistrations,
   refreshBadgeColor,
   scriptUpdater,
+  firefoxHub,
 });
 
 const messageRouter = new MessageRouter({
@@ -101,10 +106,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return messageRouter.handleMessage(message, sender, sendResponse);
 });
 
-// GM API calls arrive only from the USER_SCRIPT world, which page scripts
-// cannot reach.
-chrome.runtime.onUserScriptMessage?.addListener((message, sender, sendResponse) => {
+function handleUserScriptMessage(message, sender, sendResponse) {
   return messageRouter.handleUserScriptMessage(message, sender, sendResponse);
+}
+
+function attachUserScriptMessageListener() {
+  const event = chrome.runtime.onUserScriptMessage;
+  if (event && !event.hasListener?.(handleUserScriptMessage)) {
+    event.addListener(handleUserScriptMessage);
+  }
+  firefoxHub?.listen();
+}
+
+attachUserScriptMessageListener();
+
+chrome.permissions?.onAdded?.addListener(async (permissions) => {
+  if (!permissions?.permissions?.includes('userScripts')) return;
+  attachUserScriptMessageListener();
+  try {
+    await syncUserscriptRegistrations();
+    chrome.runtime.sendMessage({ action: 'scriptsUpdated' })?.catch?.(() => {});
+  } catch (error) {
+    logger.error('Sync after userScripts permission grant failed:', error);
+  }
 });
 
 chrome.notifications?.onClicked?.addListener((notificationId) => {
@@ -158,7 +182,10 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
   }
 });
 
-chrome.runtime.onInstalled.addListener(async () => {
+chrome.runtime.onInstalled.addListener(async (details) => {
+  if (details?.reason === 'install' && isFirefox() && !userscriptAdapter.isSupported()) {
+    chrome.tabs.create({ url: chrome.runtime.getURL('dashboard/dashboard.html') });
+  }
   await refreshScriptCache();
   await syncUserscriptRegistrations();
   await updateAllTabBadges((tabId, url) => updateBadgeForTab(tabId, url, getFilteredScripts));

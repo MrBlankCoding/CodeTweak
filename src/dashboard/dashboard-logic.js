@@ -182,6 +182,24 @@ async function deleteScript(scriptId) {
   }
 }
 
+async function clearScriptData(scriptId) {
+  if (
+    !confirm(
+      'Delete all values this script has saved? This cannot be undone. Reload open pages afterwards.'
+    )
+  ) {
+    return;
+  }
+
+  try {
+    await ScriptManager.clearScriptValues(scriptId);
+    showNotification('Stored data cleared', 'success');
+  } catch (error) {
+    logger.error('Error clearing script data:', error);
+    showNotification('Error clearing stored data', 'error');
+  }
+}
+
 async function loadSettings(settingsElements) {
   try {
     applyTheme();
@@ -313,6 +331,7 @@ window.editScript = editScript;
 window.exportScript = exportScript;
 window.toggleScript = toggleScript;
 window.deleteScript = deleteScript;
+window.clearScriptData = clearScriptData;
 window.refreshDashboard = refreshDashboard;
 window.reviewUpdate = reviewUpdate;
 window.decideScriptUpdate = decideScriptUpdate;
@@ -325,6 +344,7 @@ export {
   toggleScript,
   editScript,
   deleteScript,
+  clearScriptData,
   loadSettings,
   saveSettings,
   refreshDashboard,

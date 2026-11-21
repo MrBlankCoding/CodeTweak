@@ -1,99 +1,116 @@
-# UI & Elements APIs
-
-CodeTweak provides several APIs to manipulate the browser interface and the DOM in ways that standard web scripts cannot.
-
----
+# Page and browser UI
 
 ## GM_addStyle
 
-Injects a CSS style block into the document's head (or root).
+Adds CSS to the page and returns the `<style>` element it created.
 
 ```javascript
-GM_addStyle(css: string): HTMLStyleElement
+const style = GM_addStyle(css);
+const style = await GM.addStyle(css);
 ```
 
-### Implementation Note
+```javascript
+GM_addStyle(`
+  .sidebar-ads { display: none !important; }
+  body { font-size: 18px; }
+`);
+```
 
-CodeTweak appends the `<style>` tag to `document.head` or `document.documentElement` if `head` is not yet available (e.g., in `document-start` scripts).
-
----
+It works with `@run-at document-start`, before the page's `<head>` exists, which avoids a flash of the old styles. To undo it later, call `style.remove()` or set `style.disabled = true`.
 
 ## GM_addElement
 
-A versatile tool for creating and appending new DOM elements to the page.
+Creates an element, adds it to the page, and returns it.
 
 ```javascript
-// Signature 1: Appends tag to parent
-GM_addElement(parent: Node, tag: string, attributes?: object): Node
-
-// Signature 2: Appends tag to document.body (or document.head for styles/scripts)
-GM_addElement(tag: string, attributes?: object): Node
+GM_addElement(tagName, attributes);
+GM_addElement(parent, tagName, attributes);
 ```
 
-### Supported Attributes
+- Without `parent`, the element is added to the page's `<head>` (or `<body>` if there is no head). Pass a parent element to put it somewhere else.
+- `attributes` is an object of attribute names and values. `textContent` sets the element's text.
 
-CodeTweak automatically handles several attribute types:
-
-- **style**: If provided as a string, it is applied via `el.style.cssText`.
-- **Properties**: If the key exists on the element (e.g., `textContent`, `onclick`), it is assigned directly.
-- **Attributes**: Otherwise, it is set using `el.setAttribute`.
-
----
+```javascript
+GM_addElement(document.body, 'button', {
+  id: 'my-button',
+  class: 'my-script-button',
+  textContent: 'Do the thing',
+});
+```
 
 ## GM_notification
 
-Displays a standard desktop notification through the browser's notification system.
+Shows a desktop notification.
 
 ```javascript
-GM_notification(details: object, ondone?: Function): void
-GM_notification(text: string, title?: string, image?: string, ondone?: Function): void
+GM_notification(details, ondone);
+GM_notification(text, title, image, onclick);
 ```
 
-### Options
+`details` can contain:
 
-- **text**: The body message of the notification.
-- **title**: The header title.
-- **image**: A URL for an icon image.
-- **timeout**: How long to show the notification (in milliseconds).
-- **onclick**: Callback when the notification is clicked.
-- **ondone**: Callback when the notification is closed.
+| Option    | Meaning                                                       |
+| --------- | ------------------------------------------------------------- |
+| `text`    | The message.                                                  |
+| `title`   | The heading. Defaults to "CodeTweak Notification".            |
+| `timeout` | Close automatically after this many milliseconds.             |
+| `silent`  | `true` to show it without a sound.                            |
+| `onclick` | Function to run when the notification is clicked.             |
+| `ondone`  | Function to run when the notification closes, for any reason. |
 
----
+```javascript
+GM_notification({
+  title: 'Price drop',
+  text: 'The item on your watch list is now $19.99',
+  timeout: 10000,
+  onclick: () => window.focus(),
+});
+```
+
+The CodeTweak icon is always shown; the `image` option is ignored. Notifications are only shown while **Show notifications** is on in the [dashboard settings](/guide/dashboard#general).
 
 ## GM_openInTab
 
-Opens a new URL in a browser tab.
+Opens a web page in a new tab.
 
 ```javascript
-GM_openInTab(url: string, options?: object | boolean): void
+GM_openInTab(url, options);
+GM_openInTab(url, openInBackground);
 ```
 
-### Options
+| Option      | Meaning                                                                |
+| ----------- | ---------------------------------------------------------------------- |
+| `active`    | `true` to switch to the new tab. Defaults to `true`.                   |
+| `insert`    | `true` to open it right next to the current tab instead of at the end. |
+| `setParent` | `true` to return to the current tab when the new tab is closed.        |
 
-- **active**: If `true`, the new tab will be focused immediately.
-- **insert**: If `true`, the tab will be opened next to the current one.
-- **setParent**: If `true`, closing the new tab will return focus to the original tab.
+Passing `true` instead of an options object opens the tab in the background. Only `http://` and `https://` addresses can be opened.
 
----
+## GM_registerMenuCommand
 
-## Menu Command APIs
-
-Register custom actions that appear in the CodeTweak extension menu when your script is active.
-
-### GM_registerMenuCommand
+Adds a button under **Menu Commands** in the CodeTweak popup while your script runs on the page. Use it for actions the user triggers occasionally, such as opening settings or exporting data.
 
 ```javascript
-GM_registerMenuCommand(caption: string, onClick: () => void, accessKey?: string): string
+const id = GM_registerMenuCommand(caption, onClick, options);
 ```
 
-- **caption**: The text to display in the menu.
-- **onClick**: The function that runs when the command is selected.
-- **accessKey**: A keyboard shortcut (if supported by the browser).
+- `caption`: the button's text.
+- `onClick`: the function to run when it's clicked.
+- `options`: optional. Pass `{ id: 'settings' }` to choose the command's ID; registering again with the same ID replaces the command instead of adding a second one.
 
-### GM_unregisterMenuCommand
-
-Removes a command using the ID returned by `GM_registerMenuCommand`.
+Returns the command's ID.
 
 ```javascript
-GM_unregisterMenuCommand(commandId: string): void
+GM_registerMenuCommand('Reset saved data', () => {
+  GM_listValues().forEach((name) => GM_deleteValue(name));
+  location.reload();
+});
+```
+
+## GM_unregisterMenuCommand
+
+Removes a menu command.
+
+```javascript
+GM_unregisterMenuCommand(id);
 ```

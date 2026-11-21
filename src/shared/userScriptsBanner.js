@@ -1,8 +1,15 @@
+import { isFirefox, USER_SCRIPTS_PERMISSION } from './utils/browser.js';
+
 export function isUserScriptsSupported() {
-  return typeof globalThis.chrome?.userScripts?.register === 'function';
+  try {
+    return typeof globalThis.chrome?.userScripts?.register === 'function';
+  } catch {
+    return false;
+  }
 }
 
 function buildBanner(doc, { onOpenGuide } = {}) {
+  const firefox = isFirefox();
   const banner = doc.createElement('div');
   banner.className = 'ct-userscripts-banner';
   banner.setAttribute('role', 'alert');
@@ -24,28 +31,46 @@ function buildBanner(doc, { onOpenGuide } = {}) {
 
   const body = doc.createElement('span');
   body.className = 'ct-userscripts-banner-body';
-  body.setAttribute('data-i18n', 'userScriptsBannerBody');
-  body.textContent =
-    'Enable "Allow user scripts" for CodeTweak in chrome://extensions so your scripts can run.';
+  if (firefox) {
+    body.setAttribute('data-i18n', 'userScriptsBannerBodyFirefox');
+    body.textContent = 'CodeTweak needs your permission to run user scripts.';
+  } else {
+    body.setAttribute('data-i18n', 'userScriptsBannerBody');
+    body.textContent =
+      'Enable "Allow user scripts" for CodeTweak in chrome://extensions so your scripts can run.';
+  }
   textWrap.appendChild(body);
   banner.appendChild(textWrap);
 
-  const guideBtn = doc.createElement('button');
-  guideBtn.type = 'button';
-  guideBtn.className = 'ct-userscripts-banner-btn';
-  guideBtn.setAttribute('data-i18n', 'userScriptsBannerGuide');
-  guideBtn.textContent = 'How to enable';
-  guideBtn.addEventListener('click', () => {
+  const actionBtn = doc.createElement('button');
+  actionBtn.type = 'button';
+  actionBtn.className = 'ct-userscripts-banner-btn';
+  if (firefox) {
+    actionBtn.setAttribute('data-i18n', 'userScriptsBannerGrant');
+    actionBtn.textContent = 'Grant permission';
+  } else {
+    actionBtn.setAttribute('data-i18n', 'userScriptsBannerGuide');
+    actionBtn.textContent = 'How to enable';
+  }
+  actionBtn.addEventListener('click', async () => {
     if (typeof onOpenGuide === 'function') {
       onOpenGuide();
       return;
     }
     const chromeApi = globalThis.chrome;
+    if (firefox) {
+      try {
+        if (await chromeApi?.permissions?.request?.(USER_SCRIPTS_PERMISSION)) banner.remove();
+      } catch {
+        // Request dismissed or unavailable; leave the banner in place.
+      }
+      return;
+    }
     if (chromeApi?.tabs?.create) {
       chromeApi.tabs.create({ url: 'chrome://extensions' });
     }
   });
-  banner.appendChild(guideBtn);
+  banner.appendChild(actionBtn);
 
   return banner;
 }
