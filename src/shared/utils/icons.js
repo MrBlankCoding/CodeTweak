@@ -67,7 +67,15 @@ export function createIcon(name, { className = '', size = 16 } = {}) {
   if (className) {
     svg.classList.add(...className.split(/\s+/).filter(Boolean));
   }
-  svg.innerHTML = markup;
+  // Parse the static markup instead of assigning innerHTML.
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const parsed = new DOMParser().parseFromString(
+    `<svg xmlns="${SVG_NS}">${markup}</svg>`,
+    'image/svg+xml'
+  );
+  svg.append(
+    ...Array.from(parsed.documentElement.childNodes, (node) => document.importNode(node, true))
+  );
   return svg;
 }
 

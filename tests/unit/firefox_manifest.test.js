@@ -2,6 +2,7 @@ import { readFileSync } from 'fs';
 import { describe, expect, it } from 'vitest';
 
 import {
+  FIREFOX_ANDROID_MIN_VERSION,
   FIREFOX_GECKO_ID,
   FIREFOX_MIN_VERSION,
   toFirefoxManifest,
@@ -40,6 +41,13 @@ describe('toFirefoxManifest', () => {
       strict_min_version: FIREFOX_MIN_VERSION,
       data_collection_permissions: { required: ['none'] },
     });
+  });
+
+  it('requires a Firefox for Android version that supports the data consent key', () => {
+    expect(manifest.browser_specific_settings.gecko_android).toEqual({
+      strict_min_version: FIREFOX_ANDROID_MIN_VERSION,
+    });
+    expect(Number.parseFloat(FIREFOX_ANDROID_MIN_VERSION)).toBeGreaterThanOrEqual(142);
   });
 
   it('does not mutate the Chrome manifest', () => {

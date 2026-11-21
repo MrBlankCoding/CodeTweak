@@ -1,5 +1,7 @@
 export const FIREFOX_GECKO_ID = 'MrBlankCoding@CodeTweak';
 export const FIREFOX_MIN_VERSION = '140.0';
+// Firefox for Android only understands data_collection_permissions from 142.
+export const FIREFOX_ANDROID_MIN_VERSION = '142.0';
 
 const UNSUPPORTED_PERMISSIONS = new Set(['offscreen']);
 const OPTIONAL_ONLY_PERMISSIONS = new Set(['userScripts']);
@@ -29,6 +31,7 @@ export function toFirefoxManifest(chromeManifest) {
       strict_min_version: FIREFOX_MIN_VERSION,
       data_collection_permissions: { required: ['none'] },
     },
+    gecko_android: { strict_min_version: FIREFOX_ANDROID_MIN_VERSION },
   };
 
   return manifest;
