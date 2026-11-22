@@ -67,7 +67,7 @@ export class MessageRouter {
     return true;
   }
 
-  handleGmApiRequest(message, sender, sendResponse) {
+  async handleGmApiRequest(message, sender, sendResponse) {
     if (!message.payload) {
       logger.error('GM_API_REQUEST received with no payload.');
       sendResponse({ error: 'Request payload is missing.' });
@@ -82,54 +82,59 @@ export class MessageRouter {
       return;
     }
 
-    Promise.resolve()
-      .then(() => handler.authorize(action, payload))
-      .then((authError) => {
-        if (authError) {
-          sendResponse({ error: authError });
-          return null;
-        }
-        if (action === 'setClipboard') {
-          return handler.setClipboard({
-            ...payload,
-            setupOffscreenDocument: () => this.displayService.setupOffscreenDocument(),
-          });
-        }
-        return handler[action](payload);
-      })
-      .then((response) => {
-        if (response !== null) sendResponse(response ?? { result: null });
-      })
-      .catch((error) => {
-        logger.error(`GM API error [${action}]:`, error);
-        sendResponse({ error: error.message });
-      });
+    try {
+      const authError = await handler.authorize(action, payload);
+      if (authError) {
+        sendResponse({ error: authError });
+        return;
+      }
+
+      let response;
+      if (action === 'setClipboard') {
+        response = await handler.setClipboard({
+          ...payload,
+          setupOffscreenDocument: () => this.displayService.setupOffscreenDocument(),
+        });
+      } else {
+        response = await handler[action](payload);
+      }
+
+      if (response !== null) {
+        sendResponse(response ?? { result: null });
+      }
+    } catch (error) {
+      logger.error(`GM API error [${action}]:`, error);
+      sendResponse({ error: error.message });
+    }
   }
 
-  handleClearScriptErrors(message, sendResponse) {
-    clearScriptErrors(message.scriptId).then(
-      () => sendResponse({ success: true }),
-      (error) => sendResponse({ error: error.message })
-    );
+  async handleClearScriptErrors(message, sendResponse) {
+    try {
+      await clearScriptErrors(message.scriptId);
+      sendResponse({ success: true });
+    } catch (error) {
+      sendResponse({ error: error.message });
+    }
   }
 
-  handleGetScriptErrors(message, sendResponse) {
-    const storageKey = `scriptErrors_${message.scriptId}`;
-    chrome.storage.local.get(storageKey).then(
-      (result) => {
-        const errors = result[storageKey];
-        sendResponse({ errors: Array.isArray(errors) ? errors : [] });
-      },
-      (error) => sendResponse({ error: error.message })
-    );
+  async handleGetScriptErrors(message, sendResponse) {
+    try {
+      const storageKey = `scriptErrors_${message.scriptId}`;
+      const result = await chrome.storage.local.get(storageKey);
+      const errors = result[storageKey];
+      sendResponse({ errors: Array.isArray(errors) ? errors : [] });
+    } catch (error) {
+      sendResponse({ error: error.message });
+    }
   }
 
-  handleGenericAction(handler, message, sender, sendResponse) {
-    Promise.resolve(handler(message, sender))
-      .then(sendResponse)
-      .catch((error) => {
-        logger.error(`Message handler error [${message.action}]:`, error);
-        sendResponse({ error: error.message });
-      });
+  async handleGenericAction(handler, message, sender, sendResponse) {
+    try {
+      const response = await handler(message, sender);
+      sendResponse(response);
+    } catch (error) {
+      logger.error(`Message handler error [${message.action}]:`, error);
+      sendResponse({ error: error.message });
+    }
   }
 }

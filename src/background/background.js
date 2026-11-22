@@ -140,13 +140,15 @@ chrome.notifications?.onClosed?.addListener((notificationId) => {
   state.push.notificationEvent(notificationId, 'done').catch(() => {});
 });
 
-chrome.contextMenus.removeAll(() => {
-  chrome.contextMenus.create({
-    id: 'selectElement',
-    title: 'Select Element for Script',
-    contexts: ['page'],
+function setupContextMenu() {
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: 'selectElement',
+      title: 'Select Element for Script',
+      contexts: ['page'],
+    });
   });
-});
+}
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId !== 'selectElement' || typeof tab?.id !== 'number') return;
@@ -183,6 +185,7 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 });
 
 chrome.runtime.onInstalled.addListener(async (details) => {
+  setupContextMenu();
   if (details?.reason === 'install' && isFirefox() && !userscriptAdapter.isSupported()) {
     chrome.tabs.create({ url: chrome.runtime.getURL('dashboard/dashboard.html') });
   }

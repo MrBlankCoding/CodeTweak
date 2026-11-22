@@ -20,6 +20,31 @@ export class Deobfuscator {
       if (typeof code !== 'string' || code.length > 50_000 || BLOCKED.test(code)) {
         throw new Error('webcrack decoder expression blocked for safety');
       }
+
+      const iframe = document.getElementById('webcrackSandbox');
+      if (iframe?.contentWindow && globalThis.chrome?.runtime?.id) {
+        return new Promise((resolve, reject) => {
+          const id = crypto.randomUUID();
+          const timer = setTimeout(() => {
+            window.removeEventListener('message', handler);
+            reject(new Error('webcrack sandbox evaluation timed out'));
+          }, 3000);
+          function handler(event) {
+            if (event.data?.id !== id) return;
+            clearTimeout(timer);
+            window.removeEventListener('message', handler);
+            if (event.data.success) {
+              resolve(event.data.result);
+            } else {
+              reject(new Error(event.data.error || 'Evaluation failed'));
+            }
+          }
+          window.addEventListener('message', handler);
+          iframe.contentWindow.postMessage({ id, code }, '*');
+        });
+      }
+
+      // Fallback for test environments without browser extension sandbox
       const evaluator = new Function(`"use strict"; return (${code});`);
       return evaluator();
     };

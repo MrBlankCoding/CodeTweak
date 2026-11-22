@@ -5,6 +5,7 @@ let badgeColor = DEFAULT_BADGE_COLOR;
 
 export function setBadgeColor(color) {
   badgeColor = /^#[\da-f]{6}$/i.test(color || '') ? color : DEFAULT_BADGE_COLOR;
+  chrome.storage?.session?.set({ badgeColor }).catch(() => {});
   return badgeColor;
 }
 
@@ -21,7 +22,20 @@ export function safeSetBadge(tabId, text = '', color = badgeColor) {
   });
 
   if (text) {
-    chrome.action.setBadgeBackgroundColor({ tabId, color }).catch(() => {});
+    if (color !== DEFAULT_BADGE_COLOR || !chrome.storage?.session) {
+      chrome.action.setBadgeBackgroundColor({ tabId, color }).catch(() => {});
+    } else {
+      chrome.storage.session
+        .get('badgeColor')
+        .then((res) => {
+          const resolved = res?.badgeColor || color;
+          badgeColor = resolved;
+          chrome.action.setBadgeBackgroundColor({ tabId, color: resolved }).catch(() => {});
+        })
+        .catch(() => {
+          chrome.action.setBadgeBackgroundColor({ tabId, color }).catch(() => {});
+        });
+    }
   }
 }
 
